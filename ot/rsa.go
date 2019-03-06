@@ -17,7 +17,7 @@ import (
 	"github.com/markkurossi/mpc/pkcs1"
 )
 
-func RandomMessage(size int) ([]byte, error) {
+func RandomData(size int) ([]byte, error) {
 	m := make([]byte, size)
 	_, err := rand.Read(m)
 	if err != nil {
@@ -43,7 +43,7 @@ func NewSender(keyBits int) (*Sender, error) {
 	}
 
 	m0 := []byte{'M', 's', 'g', '0'}
-	m1 := []byte{'M', 's', 'g', '1'}
+	m1 := []byte{'1', 'g', 's', 'M'}
 
 	sender := &Sender{
 		key: key,
@@ -51,11 +51,11 @@ func NewSender(keyBits int) (*Sender, error) {
 		m1:  m1,
 	}
 
-	x0, err := RandomMessage(sender.MessageSize())
+	x0, err := RandomData(sender.MessageSize())
 	if err != nil {
 		return nil, err
 	}
-	x1, err := RandomMessage(sender.MessageSize())
+	x1, err := RandomData(sender.MessageSize())
 	if err != nil {
 		return nil, err
 	}
@@ -134,11 +134,11 @@ func (b *Receiver) ReceivePublicKey(pub *rsa.PublicKey) {
 }
 
 func (b *Receiver) ReceiveRandomMessages(x0, x1 []byte) error {
-	kbuf, err := RandomMessage(b.MessageSize())
+	k, err := rand.Int(rand.Reader, b.pub.N)
 	if err != nil {
 		return err
 	}
-	b.k = mpint.Mod(mpint.FromBytes(kbuf), b.pub.N)
+	b.k = k
 
 	var xb *big.Int
 	if b.bit == 0 {

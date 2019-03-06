@@ -9,6 +9,7 @@
 package ot
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -39,13 +40,13 @@ func benchmark(b *testing.B, keySize int) {
 		}
 
 		m, bit := receiver.Message()
-		var ret bool
+		var ret int
 		if bit == 0 {
-			ret = sender.VerifyM0(m)
+			ret = bytes.Compare(sender.M0(), m)
 		} else {
-			ret = sender.VerifyM1(m)
+			ret = bytes.Compare(sender.M1(), m)
 		}
-		if !ret {
+		if ret != 0 {
 			b.Fatal("Verify failed!\n")
 		}
 	}

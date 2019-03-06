@@ -22,6 +22,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("  Sender m0 : %x\n", sender.M0())
+	fmt.Printf("  Sender m1 : %x\n", sender.M1())
 
 	receiver, err := ot.NewReceiver()
 	if err != nil {
@@ -41,6 +43,8 @@ func main() {
 	}
 
 	m, bit := receiver.Message()
+	fmt.Printf("Receiver m%d : %x\n", bit, m)
+
 	var ret int
 	if bit == 0 {
 		ret = bytes.Compare(sender.M0(), m)
@@ -51,4 +55,5 @@ func main() {
 		fmt.Printf("Verify failed!\n")
 		os.Exit(1)
 	}
+
 }
