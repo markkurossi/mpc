@@ -18,6 +18,7 @@ import (
 	"os"
 
 	"github.com/markkurossi/mpc/ot/mpint"
+	"github.com/markkurossi/mpc/pkcs1"
 )
 
 const (
@@ -49,14 +50,8 @@ func NewAlice() (*Alice, error) {
 		return nil, err
 	}
 
-	m0, err := RandomMessage(KeyBits / 8)
-	if err != nil {
-		return nil, err
-	}
-	m1, err := RandomMessage(KeyBits / 8)
-	if err != nil {
-		return nil, err
-	}
+	m0 := []byte{'M', 's', 'g', '0'}
+	m1 := []byte{'M', 's', 'g', '1'}
 
 	x0, err := RandomMessage(KeyBits / 8)
 	if err != nil {
@@ -68,7 +63,7 @@ func NewAlice() (*Alice, error) {
 	}
 
 	fmt.Printf("m0: %x\n", m0)
-	fmt.Printf("m1: %x\n", m1)
+	fmt.Printf("m1: %x\n", m0)
 
 	return &Alice{
 		key: key,
@@ -98,14 +93,20 @@ func (a *Alice) ReceiveV(v *big.Int) {
 	fmt.Printf("k1: %x\n", a.k1.Bytes())
 }
 
-func (a *Alice) Messages() ([]byte, []byte) {
-	m0 := mpint.FromBytes(a.m0)
-	m0p := mpint.Add(m0, a.k0)
+func (a *Alice) Messages() ([]byte, []byte, error) {
+	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, KeyBits/8, a.m0)
+	if err != nil {
+		return nil, nil, err
+	}
+	m0p := mpint.Add(mpint.FromBytes(m0), a.k0)
 
-	m1 := mpint.FromBytes(a.m1)
-	m1p := mpint.Add(m1, a.k1)
+	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, KeyBits/8, a.m1)
+	if err != nil {
+		return nil, nil, err
+	}
+	m1p := mpint.Add(mpint.FromBytes(m1), a.k1)
 
-	return m0p.Bytes(), m1p.Bytes()
+	return m0p.Bytes(), m1p.Bytes(), nil
 }
 
 func compare(a, b []byte) bool {
@@ -144,7 +145,7 @@ type Bob struct {
 	pub *rsa.PublicKey
 	k   *big.Int
 	v   *big.Int
-	mb  *big.Int
+	mb  []byte
 }
 
 func NewBob() (*Bob, error) {
@@ -186,20 +187,33 @@ func (b *Bob) V() *big.Int {
 	return b.v
 }
 
-func (b *Bob) ReceiveMessages(m0p, m1p []byte) {
+func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
+	if err != nil {
+		return err
+	}
 	var mbp *big.Int
 	if b.bit == 0 {
 		mbp = mpint.FromBytes(m0p)
 	} else {
 		mbp = mpint.FromBytes(m1p)
 	}
-	b.mb = mpint.Sub(mbp, b.k)
+	mbBytes := make([]byte, KeyBits/8)
+	mbIntBytes := mpint.Sub(mbp, b.k).Bytes()
+	ofs := len(mbBytes) - len(mbIntBytes)
+	copy(mbBytes[ofs:], mbIntBytes)
 
-	fmt.Printf("m%d: %x\n", b.bit, b.mb.Bytes())
+	mb, err := pkcs1.ParseEncryptionBlock(mbBytes)
+	if err != nil {
+		return err
+	}
+	b.mb = mb
+
+	fmt.Printf("m%d: %x\n", b.bit, b.mb)
+	return nil
 }
 
 func (b *Bob) Message() (m []byte, bit int) {
-	return b.mb.Bytes(), b.bit
+	return b.mb, b.bit
 }
 
 func main() {
@@ -220,7 +234,10 @@ func main() {
 	}
 
 	alice.ReceiveV(bob.V())
-	bob.ReceiveMessages(alice.Messages())
+	err = bob.ReceiveMessages(alice.Messages())
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	m, bit := bob.Message()
 	var ret bool
