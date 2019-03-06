@@ -9,6 +9,7 @@
 package pkcs1
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"testing"
@@ -22,17 +23,31 @@ func TestEncryptionBlock(t *testing.T) {
 		t.Fatal("BT0 succeeded")
 	}
 
-	_, err = NewEncryptionBlock(BT1, 2048/8, data)
+	block, err := NewEncryptionBlock(BT1, 2048/8, data)
 	if err != nil {
 		t.Fatalf("Failed to create BT1: %s", err)
 	}
+	parsed, err := ParseEncryptionBlock(block)
+	if err != nil {
+		t.Fatalf("Failed to parse BT1 block: %s", err)
+	}
+	if bytes.Compare(data, parsed) != 0 {
+		t.Fatalf("Parsed invalid BT1 data")
+	}
 
-	_, err = NewEncryptionBlock(BT2, 2048/8, data)
+	block, err = NewEncryptionBlock(BT2, 2048/8, data)
 	if err != nil {
 		t.Fatalf("Failed to create BT2: %s", err)
 	}
+	parsed, err = ParseEncryptionBlock(block)
+	if err != nil {
+		t.Fatalf("Failed to parse BT2 block: %s", err)
+	}
+	if bytes.Compare(data, parsed) != 0 {
+		t.Fatalf("Parsed invalid BT2 data")
+	}
 
-	block, err := NewEncryptionBlock(BT2, len(data)+MinPadLen+3-1, data)
+	block, err = NewEncryptionBlock(BT2, len(data)+MinPadLen+3-1, data)
 	if err == nil {
 		fmt.Printf("Encoded:\n%s", hex.Dump(block))
 		t.Fatal("Too long data encoded")

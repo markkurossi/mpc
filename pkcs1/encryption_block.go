@@ -10,7 +10,6 @@ package pkcs1
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -76,8 +75,6 @@ func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 }
 
 func ParseEncryptionBlock(block []byte) ([]byte, error) {
-	fmt.Printf("block:\n%s", hex.Dump(block))
-
 	if len(block) < 4 {
 		return nil, errors.New("Truncated encryption block")
 	}
