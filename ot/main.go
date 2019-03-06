@@ -21,10 +21,6 @@ import (
 	"github.com/markkurossi/mpc/pkcs1"
 )
 
-const (
-	KeyBits = 2048
-)
-
 func RandomMessage(size int) ([]byte, error) {
 	m := make([]byte, size)
 	_, err := rand.Read(m)
@@ -44,8 +40,8 @@ type Alice struct {
 	k1  *big.Int
 }
 
-func NewAlice() (*Alice, error) {
-	key, err := rsa.GenerateKey(rand.Reader, KeyBits)
+func NewAlice(keyBits int) (*Alice, error) {
+	key, err := rsa.GenerateKey(rand.Reader, keyBits)
 	if err != nil {
 		return nil, err
 	}
@@ -53,25 +49,29 @@ func NewAlice() (*Alice, error) {
 	m0 := []byte{'M', 's', 'g', '0'}
 	m1 := []byte{'M', 's', 'g', '1'}
 
-	x0, err := RandomMessage(KeyBits / 8)
-	if err != nil {
-		return nil, err
-	}
-	x1, err := RandomMessage(KeyBits / 8)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("m0: %x\n", m0)
-	fmt.Printf("m1: %x\n", m0)
-
-	return &Alice{
+	alice := &Alice{
 		key: key,
 		m0:  m0,
 		m1:  m1,
-		x0:  x0,
-		x1:  x1,
-	}, nil
+	}
+
+	x0, err := RandomMessage(alice.MessageSize())
+	if err != nil {
+		return nil, err
+	}
+	x1, err := RandomMessage(alice.MessageSize())
+	if err != nil {
+		return nil, err
+	}
+
+	alice.x0 = x0
+	alice.x1 = x1
+
+	return alice, nil
+}
+
+func (a *Alice) MessageSize() int {
+	return a.key.PublicKey.Size()
 }
 
 func (a *Alice) PublicKey() *rsa.PublicKey {
@@ -82,25 +82,23 @@ func (a *Alice) RandomMessages() ([]byte, []byte) {
 	return a.x0, a.x1
 }
 
-func (a *Alice) ReceiveV(v *big.Int) {
+func (a *Alice) ReceiveV(data []byte) {
+	v := mpint.FromBytes(data)
 	x0 := mpint.FromBytes(a.x0)
 	x1 := mpint.FromBytes(a.x1)
 
 	a.k0 = mpint.Exp(mpint.Sub(v, x0), a.key.D, a.key.PublicKey.N)
 	a.k1 = mpint.Exp(mpint.Sub(v, x1), a.key.D, a.key.PublicKey.N)
-
-	fmt.Printf("k0: %x\n", a.k0.Bytes())
-	fmt.Printf("k1: %x\n", a.k1.Bytes())
 }
 
 func (a *Alice) Messages() ([]byte, []byte, error) {
-	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, KeyBits/8, a.m0)
+	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, a.MessageSize(), a.m0)
 	if err != nil {
 		return nil, nil, err
 	}
 	m0p := mpint.Add(mpint.FromBytes(m0), a.k0)
 
-	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, KeyBits/8, a.m1)
+	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, a.MessageSize(), a.m1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,12 +152,16 @@ func NewBob() (*Bob, error) {
 	}, nil
 }
 
+func (b *Bob) MessageSize() int {
+	return b.pub.Size()
+}
+
 func (b *Bob) ReceivePublicKey(pub *rsa.PublicKey) {
 	b.pub = pub
 }
 
 func (b *Bob) ReceiveRandomMessages(x0, x1 []byte) error {
-	kbuf, err := RandomMessage(KeyBits / 8)
+	kbuf, err := RandomMessage(b.MessageSize())
 	if err != nil {
 		return err
 	}
@@ -172,19 +174,14 @@ func (b *Bob) ReceiveRandomMessages(x0, x1 []byte) error {
 		xb = mpint.FromBytes(x1)
 	}
 
-	fmt.Printf("k : %x\n", b.k.Bytes())
-
 	e := big.NewInt(int64(b.pub.E))
-
 	b.v = mpint.Mod(mpint.Add(xb, mpint.Exp(b.k, e, b.pub.N)), b.pub.N)
-
-	fmt.Printf("v : %x\n", b.v.Bytes())
 
 	return nil
 }
 
-func (b *Bob) V() *big.Int {
-	return b.v
+func (b *Bob) V() []byte {
+	return b.v.Bytes()
 }
 
 func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
@@ -197,7 +194,7 @@ func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
 	} else {
 		mbp = mpint.FromBytes(m1p)
 	}
-	mbBytes := make([]byte, KeyBits/8)
+	mbBytes := make([]byte, b.MessageSize())
 	mbIntBytes := mpint.Sub(mbp, b.k).Bytes()
 	ofs := len(mbBytes) - len(mbIntBytes)
 	copy(mbBytes[ofs:], mbIntBytes)
@@ -208,7 +205,6 @@ func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
 	}
 	b.mb = mb
 
-	fmt.Printf("m%d: %x\n", b.bit, b.mb)
 	return nil
 }
 
@@ -217,7 +213,7 @@ func (b *Bob) Message() (m []byte, bit int) {
 }
 
 func main() {
-	alice, err := NewAlice()
+	alice, err := NewAlice(2048)
 	if err != nil {
 		log.Fatal(err)
 	}
