@@ -11,10 +11,15 @@ package ot
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot/mpint"
 	"github.com/markkurossi/mpc/pkcs1"
+)
+
+var (
+	UnknownInput = errors.New("Unknown input")
 )
 
 func RandomData(size int) ([]byte, error) {
@@ -26,29 +31,31 @@ func RandomData(size int) ([]byte, error) {
 	return m, nil
 }
 
-type Sender struct {
-	key *rsa.PrivateKey
-	m0  []byte
-	m1  []byte
-	x0  []byte
-	x1  []byte
-	k0  *big.Int
-	k1  *big.Int
+type Wire struct {
+	Label0 []byte
+	Label1 []byte
 }
 
-func NewSender(keyBits int) (*Sender, error) {
+type Inputs map[int]Wire
+
+type Sender struct {
+	key    *rsa.PrivateKey
+	inputs Inputs
+	x0     []byte
+	x1     []byte
+	k0     *big.Int
+	k1     *big.Int
+}
+
+func NewSender(keyBits int, inputs Inputs) (*Sender, error) {
 	key, err := rsa.GenerateKey(rand.Reader, keyBits)
 	if err != nil {
 		return nil, err
 	}
 
-	m0 := []byte{'M', 's', 'g', '0'}
-	m1 := []byte{'1', 'g', 's', 'M'}
-
 	sender := &Sender{
-		key: key,
-		m0:  m0,
-		m1:  m1,
+		key:    key,
+		inputs: inputs,
 	}
 
 	x0, err := RandomData(sender.MessageSize())
@@ -66,49 +73,46 @@ func NewSender(keyBits int) (*Sender, error) {
 	return sender, nil
 }
 
-func (a *Sender) MessageSize() int {
-	return a.key.PublicKey.Size()
+func (s *Sender) MessageSize() int {
+	return s.key.PublicKey.Size()
 }
 
-func (a *Sender) PublicKey() *rsa.PublicKey {
-	return &a.key.PublicKey
+func (s *Sender) PublicKey() *rsa.PublicKey {
+	return &s.key.PublicKey
 }
 
-func (a *Sender) RandomMessages() ([]byte, []byte) {
-	return a.x0, a.x1
+func (s *Sender) RandomMessages() ([]byte, []byte) {
+	return s.x0, s.x1
 }
 
-func (a *Sender) ReceiveV(data []byte) {
+func (s *Sender) ReceiveV(data []byte) {
 	v := mpint.FromBytes(data)
-	x0 := mpint.FromBytes(a.x0)
-	x1 := mpint.FromBytes(a.x1)
+	x0 := mpint.FromBytes(s.x0)
+	x1 := mpint.FromBytes(s.x1)
 
-	a.k0 = mpint.Exp(mpint.Sub(v, x0), a.key.D, a.key.PublicKey.N)
-	a.k1 = mpint.Exp(mpint.Sub(v, x1), a.key.D, a.key.PublicKey.N)
+	s.k0 = mpint.Exp(mpint.Sub(v, x0), s.key.D, s.key.PublicKey.N)
+	s.k1 = mpint.Exp(mpint.Sub(v, x1), s.key.D, s.key.PublicKey.N)
 }
 
-func (a *Sender) Messages() ([]byte, []byte, error) {
-	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, a.MessageSize(), a.m0)
-	if err != nil {
-		return nil, nil, err
+func (s *Sender) Messages(input int) ([]byte, []byte, error) {
+	w, ok := s.inputs[input]
+	if !ok {
+		return nil, nil, UnknownInput
 	}
-	m0p := mpint.Add(mpint.FromBytes(m0), a.k0)
 
-	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, a.MessageSize(), a.m1)
+	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(), w.Label0)
 	if err != nil {
 		return nil, nil, err
 	}
-	m1p := mpint.Add(mpint.FromBytes(m1), a.k1)
+	m0p := mpint.Add(mpint.FromBytes(m0), s.k0)
+
+	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(), w.Label1)
+	if err != nil {
+		return nil, nil, err
+	}
+	m1p := mpint.Add(mpint.FromBytes(m1), s.k1)
 
 	return m0p.Bytes(), m1p.Bytes(), nil
-}
-
-func (a *Sender) M0() []byte {
-	return a.m0
-}
-
-func (a *Sender) M1() []byte {
-	return a.m1
 }
 
 type Receiver struct {
@@ -125,50 +129,50 @@ func NewReceiver() (*Receiver, error) {
 	}, nil
 }
 
-func (b *Receiver) MessageSize() int {
-	return b.pub.Size()
+func (r *Receiver) MessageSize() int {
+	return r.pub.Size()
 }
 
-func (b *Receiver) ReceivePublicKey(pub *rsa.PublicKey) {
-	b.pub = pub
+func (r *Receiver) ReceivePublicKey(pub *rsa.PublicKey) {
+	r.pub = pub
 }
 
-func (b *Receiver) ReceiveRandomMessages(x0, x1 []byte) error {
-	k, err := rand.Int(rand.Reader, b.pub.N)
+func (r *Receiver) ReceiveRandomMessages(x0, x1 []byte) error {
+	k, err := rand.Int(rand.Reader, r.pub.N)
 	if err != nil {
 		return err
 	}
-	b.k = k
+	r.k = k
 
 	var xb *big.Int
-	if b.bit == 0 {
+	if r.bit == 0 {
 		xb = mpint.FromBytes(x0)
 	} else {
 		xb = mpint.FromBytes(x1)
 	}
 
-	e := big.NewInt(int64(b.pub.E))
-	b.v = mpint.Mod(mpint.Add(xb, mpint.Exp(b.k, e, b.pub.N)), b.pub.N)
+	e := big.NewInt(int64(r.pub.E))
+	r.v = mpint.Mod(mpint.Add(xb, mpint.Exp(r.k, e, r.pub.N)), r.pub.N)
 
 	return nil
 }
 
-func (b *Receiver) V() []byte {
-	return b.v.Bytes()
+func (r *Receiver) V() []byte {
+	return r.v.Bytes()
 }
 
-func (b *Receiver) ReceiveMessages(m0p, m1p []byte, err error) error {
+func (r *Receiver) ReceiveMessages(m0p, m1p []byte, err error) error {
 	if err != nil {
 		return err
 	}
 	var mbp *big.Int
-	if b.bit == 0 {
+	if r.bit == 0 {
 		mbp = mpint.FromBytes(m0p)
 	} else {
 		mbp = mpint.FromBytes(m1p)
 	}
-	mbBytes := make([]byte, b.MessageSize())
-	mbIntBytes := mpint.Sub(mbp, b.k).Bytes()
+	mbBytes := make([]byte, r.MessageSize())
+	mbIntBytes := mpint.Sub(mbp, r.k).Bytes()
 	ofs := len(mbBytes) - len(mbIntBytes)
 	copy(mbBytes[ofs:], mbIntBytes)
 
@@ -176,11 +180,11 @@ func (b *Receiver) ReceiveMessages(m0p, m1p []byte, err error) error {
 	if err != nil {
 		return err
 	}
-	b.mb = mb
+	r.mb = mb
 
 	return nil
 }
 
-func (b *Receiver) Message() (m []byte, bit int) {
-	return b.mb, b.bit
+func (r *Receiver) Message() (m []byte, bit int) {
+	return r.mb, r.bit
 }

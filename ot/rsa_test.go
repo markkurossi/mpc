@@ -14,7 +14,15 @@ import (
 )
 
 func benchmark(b *testing.B, keySize int) {
-	sender, err := NewSender(keySize)
+	m0 := []byte{'M', 's', 'g', '0'}
+	m1 := []byte{'1', 'g', 's', 'M'}
+
+	sender, err := NewSender(keySize, map[int]Wire{
+		0: Wire{
+			Label0: m0,
+			Label1: m1,
+		},
+	})
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -34,7 +42,7 @@ func benchmark(b *testing.B, keySize int) {
 		}
 
 		sender.ReceiveV(receiver.V())
-		err = receiver.ReceiveMessages(sender.Messages())
+		err = receiver.ReceiveMessages(sender.Messages(0))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -42,9 +50,9 @@ func benchmark(b *testing.B, keySize int) {
 		m, bit := receiver.Message()
 		var ret int
 		if bit == 0 {
-			ret = bytes.Compare(sender.M0(), m)
+			ret = bytes.Compare(m0, m)
 		} else {
-			ret = bytes.Compare(sender.M1(), m)
+			ret = bytes.Compare(m1, m)
 		}
 		if ret != 0 {
 			b.Fatal("Verify failed!\n")
