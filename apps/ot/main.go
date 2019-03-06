@@ -33,24 +33,32 @@ func main() {
 	fmt.Printf("  Sender m0 : %x\n", m0)
 	fmt.Printf("  Sender m1 : %x\n", m1)
 
-	receiver, err := ot.NewReceiver()
+	receiver, err := ot.NewReceiver(sender.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	receiver.ReceivePublicKey(sender.PublicKey())
-	err = receiver.ReceiveRandomMessages(sender.RandomMessages())
+	sXfer, err := sender.NewTransfer(0)
+	if err != nil {
+		log.Fatal(err)
+	}
+	rXfer, err := receiver.NewTransfer(0)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	sender.ReceiveV(receiver.V())
-	err = receiver.ReceiveMessages(sender.Messages(0))
+	err = rXfer.ReceiveRandomMessages(sXfer.RandomMessages())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	m, bit := receiver.Message()
+	sXfer.ReceiveV(rXfer.V())
+	err = rXfer.ReceiveMessages(sXfer.Messages())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	m, bit := rXfer.Message()
 	fmt.Printf("Receiver m%d : %x\n", bit, m)
 
 	var ret int

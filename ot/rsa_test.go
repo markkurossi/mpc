@@ -27,27 +27,34 @@ func benchmark(b *testing.B, keySize int) {
 		b.Fatal(err)
 	}
 
-	receiver, err := NewReceiver()
+	receiver, err := NewReceiver(sender.PublicKey())
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	receiver.ReceivePublicKey(sender.PublicKey())
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		err = receiver.ReceiveRandomMessages(sender.RandomMessages())
+		sXfer, err := sender.NewTransfer(0)
+		if err != nil {
+			b.Fatal(err)
+		}
+		rXfer, err := receiver.NewTransfer(1)
+		if err != nil {
+			b.Fatal(err)
+		}
+		err = rXfer.ReceiveRandomMessages(sXfer.RandomMessages())
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		sender.ReceiveV(receiver.V())
-		err = receiver.ReceiveMessages(sender.Messages(0))
+		sXfer.ReceiveV(rXfer.V())
+		err = rXfer.ReceiveMessages(sXfer.Messages())
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		m, bit := receiver.Message()
+		m, bit := rXfer.Message()
 		var ret int
 		if bit == 0 {
 			ret = bytes.Compare(m0, m)
