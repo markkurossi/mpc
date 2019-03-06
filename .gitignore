@@ -11,4 +11,4 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-ot/ot
+apps/ot/ot

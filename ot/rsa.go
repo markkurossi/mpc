@@ -1,21 +1,17 @@
 //
-// main.go
+// rsa.go
 //
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
 //
 
-package main
+package ot
 
 import (
-	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
-	"fmt"
-	"log"
 	"math/big"
-	"os"
 
 	"github.com/markkurossi/mpc/ot/mpint"
 	"github.com/markkurossi/mpc/pkcs1"
@@ -30,7 +26,7 @@ func RandomMessage(size int) ([]byte, error) {
 	return m, nil
 }
 
-type Alice struct {
+type Sender struct {
 	key *rsa.PrivateKey
 	m0  []byte
 	m1  []byte
@@ -40,7 +36,7 @@ type Alice struct {
 	k1  *big.Int
 }
 
-func NewAlice(keyBits int) (*Alice, error) {
+func NewSender(keyBits int) (*Sender, error) {
 	key, err := rsa.GenerateKey(rand.Reader, keyBits)
 	if err != nil {
 		return nil, err
@@ -49,40 +45,40 @@ func NewAlice(keyBits int) (*Alice, error) {
 	m0 := []byte{'M', 's', 'g', '0'}
 	m1 := []byte{'M', 's', 'g', '1'}
 
-	alice := &Alice{
+	sender := &Sender{
 		key: key,
 		m0:  m0,
 		m1:  m1,
 	}
 
-	x0, err := RandomMessage(alice.MessageSize())
+	x0, err := RandomMessage(sender.MessageSize())
 	if err != nil {
 		return nil, err
 	}
-	x1, err := RandomMessage(alice.MessageSize())
+	x1, err := RandomMessage(sender.MessageSize())
 	if err != nil {
 		return nil, err
 	}
 
-	alice.x0 = x0
-	alice.x1 = x1
+	sender.x0 = x0
+	sender.x1 = x1
 
-	return alice, nil
+	return sender, nil
 }
 
-func (a *Alice) MessageSize() int {
+func (a *Sender) MessageSize() int {
 	return a.key.PublicKey.Size()
 }
 
-func (a *Alice) PublicKey() *rsa.PublicKey {
+func (a *Sender) PublicKey() *rsa.PublicKey {
 	return &a.key.PublicKey
 }
 
-func (a *Alice) RandomMessages() ([]byte, []byte) {
+func (a *Sender) RandomMessages() ([]byte, []byte) {
 	return a.x0, a.x1
 }
 
-func (a *Alice) ReceiveV(data []byte) {
+func (a *Sender) ReceiveV(data []byte) {
 	v := mpint.FromBytes(data)
 	x0 := mpint.FromBytes(a.x0)
 	x1 := mpint.FromBytes(a.x1)
@@ -91,7 +87,7 @@ func (a *Alice) ReceiveV(data []byte) {
 	a.k1 = mpint.Exp(mpint.Sub(v, x1), a.key.D, a.key.PublicKey.N)
 }
 
-func (a *Alice) Messages() ([]byte, []byte, error) {
+func (a *Sender) Messages() ([]byte, []byte, error) {
 	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, a.MessageSize(), a.m0)
 	if err != nil {
 		return nil, nil, err
@@ -107,38 +103,15 @@ func (a *Alice) Messages() ([]byte, []byte, error) {
 	return m0p.Bytes(), m1p.Bytes(), nil
 }
 
-func compare(a, b []byte) bool {
-	if len(a) == len(b) {
-		return bytes.Compare(a, b) == 0
-	}
-	if len(a) < len(b) {
-		zeros := len(b) - len(a)
-		for i := 0; i < zeros; i++ {
-			if b[0] != 0 {
-				return false
-			}
-		}
-		return bytes.Compare(a, b[zeros:]) == 0
-	} else {
-		zeros := len(a) - len(b)
-		for i := 0; i < zeros; i++ {
-			if a[0] != 0 {
-				return false
-			}
-		}
-		return bytes.Compare(a[zeros:], b) == 0
-	}
+func (a *Sender) M0() []byte {
+	return a.m0
 }
 
-func (a *Alice) VerifyM0(data []byte) bool {
-	return compare(a.m0, data)
+func (a *Sender) M1() []byte {
+	return a.m1
 }
 
-func (a *Alice) VerifyM1(data []byte) bool {
-	return compare(a.m1, data)
-}
-
-type Bob struct {
+type Receiver struct {
 	bit int
 	pub *rsa.PublicKey
 	k   *big.Int
@@ -146,21 +119,21 @@ type Bob struct {
 	mb  []byte
 }
 
-func NewBob() (*Bob, error) {
-	return &Bob{
+func NewReceiver() (*Receiver, error) {
+	return &Receiver{
 		bit: 0,
 	}, nil
 }
 
-func (b *Bob) MessageSize() int {
+func (b *Receiver) MessageSize() int {
 	return b.pub.Size()
 }
 
-func (b *Bob) ReceivePublicKey(pub *rsa.PublicKey) {
+func (b *Receiver) ReceivePublicKey(pub *rsa.PublicKey) {
 	b.pub = pub
 }
 
-func (b *Bob) ReceiveRandomMessages(x0, x1 []byte) error {
+func (b *Receiver) ReceiveRandomMessages(x0, x1 []byte) error {
 	kbuf, err := RandomMessage(b.MessageSize())
 	if err != nil {
 		return err
@@ -180,11 +153,11 @@ func (b *Bob) ReceiveRandomMessages(x0, x1 []byte) error {
 	return nil
 }
 
-func (b *Bob) V() []byte {
+func (b *Receiver) V() []byte {
 	return b.v.Bytes()
 }
 
-func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
+func (b *Receiver) ReceiveMessages(m0p, m1p []byte, err error) error {
 	if err != nil {
 		return err
 	}
@@ -208,42 +181,6 @@ func (b *Bob) ReceiveMessages(m0p, m1p []byte, err error) error {
 	return nil
 }
 
-func (b *Bob) Message() (m []byte, bit int) {
+func (b *Receiver) Message() (m []byte, bit int) {
 	return b.mb, b.bit
-}
-
-func main() {
-	alice, err := NewAlice(2048)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	bob, err := NewBob()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	bob.ReceivePublicKey(alice.PublicKey())
-	err = bob.ReceiveRandomMessages(alice.RandomMessages())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	alice.ReceiveV(bob.V())
-	err = bob.ReceiveMessages(alice.Messages())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	m, bit := bob.Message()
-	var ret bool
-	if bit == 0 {
-		ret = alice.VerifyM0(m)
-	} else {
-		ret = alice.VerifyM1(m)
-	}
-	if !ret {
-		fmt.Printf("Verify failed!\n")
-		os.Exit(1)
-	}
 }

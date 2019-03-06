@@ -1,49 +1,49 @@
 //
-// ot_test.go
+// rsa_test.go
 //
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
 //
 
-package main
+package ot
 
 import (
 	"testing"
 )
 
 func benchmark(b *testing.B, keySize int) {
-	alice, err := NewAlice(keySize)
+	sender, err := NewSender(keySize)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	bob, err := NewBob()
+	receiver, err := NewReceiver()
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	bob.ReceivePublicKey(alice.PublicKey())
+	receiver.ReceivePublicKey(sender.PublicKey())
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		err = bob.ReceiveRandomMessages(alice.RandomMessages())
+		err = receiver.ReceiveRandomMessages(sender.RandomMessages())
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		alice.ReceiveV(bob.V())
-		err = bob.ReceiveMessages(alice.Messages())
+		sender.ReceiveV(receiver.V())
+		err = receiver.ReceiveMessages(sender.Messages())
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		m, bit := bob.Message()
+		m, bit := receiver.Message()
 		var ret bool
 		if bit == 0 {
-			ret = alice.VerifyM0(m)
+			ret = sender.VerifyM0(m)
 		} else {
-			ret = alice.VerifyM1(m)
+			ret = sender.VerifyM1(m)
 		}
 		if !ret {
 			b.Fatal("Verify failed!\n")
