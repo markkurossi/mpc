@@ -5,6 +5,7 @@
 //
 // All rights reserved.
 //
+// PKCS #1 Encryption-block formatting, RFC 2313.
 
 package pkcs1
 
