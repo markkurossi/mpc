@@ -304,20 +304,15 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 		wires[circ.N1+i] = n
 	}
 
-	for id, label := range wires {
-		fmt.Printf("W%d:\t%x\n", id, label)
-	}
-
 	// Evaluate gates.
-	// XXX this is wrong and works only with one gate.
-	for id, gate := range circ.Gates {
+	for id := 0; id < circ.NumGates; id++ {
+		gate := circ.Gates[id]
 		fmt.Printf("Evaluating gate %d %s\n", id, gate.Op)
 
 		output, err := gate.Eval(wires, dec, garbled[id])
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Output: %x\n", output)
 		wires[gate.Outputs[0]] = output
 	}
 

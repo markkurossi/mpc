@@ -155,16 +155,26 @@ func (g *Gate) Eval(wires map[int][]byte, dec Dec, garbled [][]byte) (
 	[]byte, error) {
 
 	var a []byte
+	var aOK bool
 	var b []byte
+	var bOK bool
 
 	switch g.Op {
 	case XOR, AND:
-		a = wires[g.Inputs[0]]
-		b = wires[g.Inputs[1]]
+		a, aOK = wires[g.Inputs[0]]
+		b, bOK = wires[g.Inputs[1]]
 
 	case INV:
-		a = wires[g.Inputs[0]]
+		a, aOK = wires[g.Inputs[0]]
 		b = []byte{}
+		bOK = true
+	}
+
+	if !aOK {
+		return nil, fmt.Errorf("No input for wire a found")
+	}
+	if !bOK {
+		return nil, fmt.Errorf("No input for wire b found")
 	}
 
 	for _, g := range garbled {

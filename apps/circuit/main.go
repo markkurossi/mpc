@@ -28,6 +28,9 @@ func main() {
 		defer f.Close()
 
 		c, err := circuit.Parse(f)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		fmt.Printf("digraph circuit\n{\n")
 		fmt.Printf("  overlap=scale;\n")
@@ -44,17 +47,19 @@ func main() {
 		}
 		fmt.Printf("  }\n")
 
-		fmt.Printf("  {  rank=same")
-		for w := 0; w < c.N1+c.N2; w++ {
-			fmt.Printf("; w%d", w)
-		}
-		fmt.Printf(";}\n")
+		if false {
+			fmt.Printf("  {  rank=same")
+			for w := 0; w < c.N1+c.N2; w++ {
+				fmt.Printf("; w%d", w)
+			}
+			fmt.Printf(";}\n")
 
-		fmt.Printf("  {  rank=same")
-		for w := 0; w < c.N3; w++ {
-			fmt.Printf("; w%d", c.NumWires-w-1)
+			fmt.Printf("  {  rank=same")
+			for w := 0; w < c.N3; w++ {
+				fmt.Printf("; w%d", c.NumWires-w-1)
+			}
+			fmt.Printf(";}\n")
 		}
-		fmt.Printf(";}\n")
 
 		for idx, gate := range c.Gates {
 			for _, i := range gate.Inputs {
