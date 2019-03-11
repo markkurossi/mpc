@@ -35,13 +35,17 @@ const (
 var (
 	port          = ":8080"
 	DecryptFailed = errors.New("Decrypt failed")
+	verbose       = false
 )
 
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
 	file := flag.String("c", "", "Circuit file")
 	input := flag.Int("i", 0, "Circuit input")
+	fVerbose := flag.Bool("v", false, "Verbose output")
 	flag.Parse()
+
+	verbose = *fVerbose
 
 	if len(*file) == 0 {
 		fmt.Printf("Circuit file not specified\n")
@@ -150,10 +154,16 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 
 	// Send garbled tables.
 	for id, data := range garbled {
-		sendUint32(conn, id)
-		sendUint32(conn, len(data))
+		if err := sendUint32(conn, id); err != nil {
+			return err
+		}
+		if err := sendUint32(conn, len(data)); err != nil {
+			return err
+		}
 		for _, d := range data {
-			sendData(conn, d)
+			if err := sendData(conn, d); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -175,7 +185,9 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 	// Send our inputs.
 	for idx, i := range n1 {
 		fmt.Printf("N1[%d]:\t%x\n", idx, i)
-		sendData(conn, i)
+		if err := sendData(conn, i); err != nil {
+			return err
+		}
 	}
 
 	// Init oblivious transfer.
@@ -186,41 +198,65 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 
 	// Send our public key.
 	pub := sender.PublicKey()
-	sendData(conn, pub.N.Bytes())
-	sendUint32(conn, pub.E)
+	if err := sendData(conn, pub.N.Bytes()); err != nil {
+		return err
+	}
+	if err := sendUint32(conn, pub.E); err != nil {
+		return err
+	}
 
 	// Process messages.
 	var xfer *ot.SenderXfer
 	done := false
 	for !done {
-		op := receiveUint32(conn)
+		op, err := receiveUint32(conn)
+		if err != nil {
+			return err
+		}
 		switch op {
 		case OP_OT:
-			bit := receiveUint32(conn)
+			bit, err := receiveUint32(conn)
+			if err != nil {
+				return err
+			}
 			xfer, err = sender.NewTransfer(bit)
 			if err != nil {
 				return err
 			}
 
 			x0, x1 := xfer.RandomMessages()
-			sendData(conn, x0)
-			sendData(conn, x1)
+			if err := sendData(conn, x0); err != nil {
+				return err
+			}
+			if err := sendData(conn, x1); err != nil {
+				return err
+			}
 
-			v := receiveData(conn)
+			v, err := receiveData(conn)
+			if err != nil {
+				return err
+			}
 			xfer.ReceiveV(v)
 
 			m0p, m1p, err := xfer.Messages()
 			if err != nil {
 				return err
 			}
-			sendData(conn, m0p)
-			sendData(conn, m1p)
+			if err := sendData(conn, m0p); err != nil {
+				return err
+			}
+			if err := sendData(conn, m1p); err != nil {
+				return err
+			}
 
 		case OP_RESULT:
 			var result int
 
 			for i := 0; i < circ.N3; i++ {
-				label := receiveData(conn)
+				label, err := receiveData(conn)
+				if err != nil {
+					return err
+				}
 				wire := wires[circ.NumWires-circ.N3+i]
 
 				var bit int
@@ -234,7 +270,9 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 				}
 				result |= (bit << uint(i))
 			}
-			sendUint32(conn, result)
+			if err := sendUint32(conn, result); err != nil {
+				return err
+			}
 			fmt.Printf("Result: %d\n", result)
 			done = true
 		}
@@ -254,13 +292,24 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 
 	// Receive garbled tables.
 	for i := 0; i < circ.NumGates; i++ {
-		id := receiveUint32(conn)
-		count := receiveUint32(conn)
+		id, err := receiveUint32(conn)
+		if err != nil {
+			return err
+		}
+		count, err := receiveUint32(conn)
+		if err != nil {
+			return err
+		}
 
 		var values [][]byte
 		for j := 0; j < count; j++ {
-			v := receiveData(conn)
-			fmt.Printf("G%d.%d\t%x\n", i, j, v)
+			v, err := receiveData(conn)
+			if err != nil {
+				return err
+			}
+			if verbose {
+				fmt.Printf("G%d.%d\t%x\n", i, j, v)
+			}
 			values = append(values, v)
 		}
 		garbled[id] = values
@@ -270,14 +319,23 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1; i++ {
-		n := receiveData(conn)
+		n, err := receiveData(conn)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("N1[%d]:\t%x\n", i, n)
 		wires[i] = n
 	}
 
 	// Init oblivious transfer.
-	pubN := receiveData(conn)
-	pubE := receiveUint32(conn)
+	pubN, err := receiveData(conn)
+	if err != nil {
+		return err
+	}
+	pubE, err := receiveUint32(conn)
+	if err != nil {
+		return err
+	}
 	pub := &rsa.PublicKey{
 		N: big.NewInt(0).SetBytes(pubN),
 		E: pubE,
@@ -307,7 +365,9 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 	// Evaluate gates.
 	for id := 0; id < circ.NumGates; id++ {
 		gate := circ.Gates[id]
-		fmt.Printf("Evaluating gate %d %s\n", id, gate.Op)
+		if verbose {
+			fmt.Printf("Evaluating gate %d %s\n", id, gate.Op)
+		}
 
 		output, err := gate.Eval(wires, dec, garbled[id])
 		if err != nil {
@@ -323,7 +383,10 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 		labels = append(labels, r)
 	}
 
-	val := result(conn, labels)
+	val, err := result(conn, labels)
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("Result: %d\n", val)
 
@@ -358,26 +421,44 @@ func dec(a, b, data []byte) ([]byte, error) {
 func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	[]byte, error) {
 
-	sendUint32(conn, OP_OT)
-	sendUint32(conn, wire)
+	if err := sendUint32(conn, OP_OT); err != nil {
+		return nil, err
+	}
+	if err := sendUint32(conn, wire); err != nil {
+		return nil, err
+	}
 
 	xfer, err := receiver.NewTransfer(bit)
 	if err != nil {
 		return nil, err
 	}
 
-	x0 := receiveData(conn)
-	x1 := receiveData(conn)
+	x0, err := receiveData(conn)
+	if err != nil {
+		return nil, err
+	}
+	x1, err := receiveData(conn)
+	if err != nil {
+		return nil, err
+	}
 	err = xfer.ReceiveRandomMessages(x0, x1)
 	if err != nil {
 		return nil, err
 	}
 
 	v := xfer.V()
-	sendData(conn, v)
+	if err := sendData(conn, v); err != nil {
+		return nil, err
+	}
 
-	m0p := receiveData(conn)
-	m1p := receiveData(conn)
+	m0p, err := receiveData(conn)
+	if err != nil {
+		return nil, err
+	}
+	m1p, err := receiveData(conn)
+	if err != nil {
+		return nil, err
+	}
 
 	err = xfer.ReceiveMessages(m0p, m1p, nil)
 	if err != nil {
@@ -388,12 +469,19 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	return m, nil
 }
 
-func result(conn net.Conn, labels [][]byte) int {
-	sendUint32(conn, OP_RESULT)
+func result(conn net.Conn, labels [][]byte) (int, error) {
+	if err := sendUint32(conn, OP_RESULT); err != nil {
+		return 0, err
+	}
 	for _, l := range labels {
-		sendData(conn, l)
+		if err := sendData(conn, l); err != nil {
+			return 0, err
+		}
 	}
 
-	result := receiveUint32(conn)
-	return result
+	result, err := receiveUint32(conn)
+	if err != nil {
+		return 0, err
+	}
+	return result, nil
 }
