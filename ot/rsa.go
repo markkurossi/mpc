@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot/mpint"
@@ -37,6 +38,19 @@ type Wire struct {
 }
 
 type Inputs map[int]Wire
+
+func (i Inputs) String() string {
+	var result string
+
+	for k, v := range i {
+		str := fmt.Sprintf("%d={%x,%x}", k, v.Label0, v.Label1)
+		if len(result) > 0 {
+			result += ", "
+		}
+		result += str
+	}
+	return result
+}
 
 type Sender struct {
 	key    *rsa.PrivateKey
