@@ -10,11 +10,11 @@ package circuit
 
 import (
 	"bufio"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 
 	"github.com/markkurossi/mpc/ot"
@@ -65,6 +65,45 @@ type Gate struct {
 
 type Enc func(a, b, c []byte) []byte
 
+type TableEntry struct {
+	Index int
+	Data  []byte
+}
+
+type ByIndex []TableEntry
+
+func (a ByIndex) Len() int {
+	return len(a)
+}
+
+func (a ByIndex) Swap(i, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
+func (a ByIndex) Less(i, j int) bool {
+	return a[i].Index < a[j].Index
+}
+
+func entry(enc Enc, a, b, c []byte) TableEntry {
+	return TableEntry{
+		Index: idx(a, b),
+		Data:  enc(a, b, c),
+	}
+}
+
+func idx(l0, l1 []byte) int {
+	if len(l0) == 0 {
+		if len(l1) == 0 {
+			return 0
+		}
+		return int(l1[0]&0x80) >> 7
+	} else if len(l1) == 0 {
+		return int(l0[0]&0x80) >> 7
+	} else {
+		return (int(l0[0]&0x80) >> 6) | (int(l1[0]&0x80) >> 7)
+	}
+}
+
 func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	var in []ot.Wire
 	var out []ot.Wire
@@ -85,7 +124,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		out = append(out, w)
 	}
 
-	var table [][]byte
+	var table []TableEntry
 
 	switch g.Op {
 	case XOR:
@@ -98,10 +137,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, enc(a.Label0, b.Label0, c.Label0))
-		table = append(table, enc(a.Label0, b.Label1, c.Label1))
-		table = append(table, enc(a.Label1, b.Label0, c.Label1))
-		table = append(table, enc(a.Label1, b.Label1, c.Label0))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label0))
 
 	case AND:
 		// a b c
@@ -113,10 +152,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, enc(a.Label0, b.Label0, c.Label0))
-		table = append(table, enc(a.Label0, b.Label1, c.Label0))
-		table = append(table, enc(a.Label1, b.Label0, c.Label0))
-		table = append(table, enc(a.Label1, b.Label1, c.Label1))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label0))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1))
 
 	case INV:
 		// a b c
@@ -126,27 +165,18 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		a := in[0]
 		b := []byte{}
 		c := out[0]
-		table = append(table, enc(a.Label0, b, c.Label1))
-		table = append(table, enc(a.Label1, b, c.Label0))
+		table = append(table, entry(enc, a.Label0, b, c.Label1))
+		table = append(table, entry(enc, a.Label1, b, c.Label0))
 	}
 
-	var shuffled [][]byte
+	sort.Sort(ByIndex(table))
 
-	for len(table) > 0 {
-		var buf [1]byte
-
-		_, err := rand.Read(buf[:])
-		if err != nil {
-			return nil, err
-		}
-		idx := int(buf[0]) % len(table)
-		shuffled = append(shuffled, table[idx])
-		n := table[0:idx]
-		n = append(n, table[idx+1:]...)
-		table = n
+	var result [][]byte
+	for _, entry := range table {
+		result = append(result, entry.Data)
 	}
 
-	return shuffled, nil
+	return result, nil
 }
 
 type Dec func(a, b, data []byte) ([]byte, error)
@@ -177,13 +207,7 @@ func (g *Gate) Eval(wires map[int][]byte, dec Dec, garbled [][]byte) (
 		return nil, fmt.Errorf("No input for wire b found")
 	}
 
-	for _, g := range garbled {
-		data, err := dec(a, b, g)
-		if err == nil {
-			return data, nil
-		}
-	}
-	return nil, fmt.Errorf("No result found")
+	return dec(a, b, garbled[idx(a, b)])
 }
 
 func Parse(in io.Reader) (*Circuit, error) {

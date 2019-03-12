@@ -148,11 +148,26 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 		if _, err := rand.Read(l0); err != nil {
 			return err
 		}
-
 		l1 := make([]byte, k/8)
 		if _, err := rand.Read(l1); err != nil {
 			return err
 		}
+
+		// Point-and-permutate
+
+		var s [1]byte
+		if _, err := rand.Read(s[:]); err != nil {
+			return err
+		}
+
+		ws := s[0] & 0x80
+		l0[0] &= 0x7f
+		l0[0] |= ws
+
+		ws = ws ^ 0x80
+		l1[0] &= 0x7f
+		l1[0] |= ws
+
 		wires[w] = ot.Wire{
 			Label0: l0,
 			Label1: l1,
@@ -362,7 +377,9 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("N1[%d]:\t%x\n", i, n)
+		if verbose {
+			fmt.Printf("N1[%d]:\t%x\n", i, n)
+		}
 		wires[i] = n
 	}
 
@@ -397,7 +414,9 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("N2[%d]:\t%x\n", i, n)
+		if verbose {
+			fmt.Printf("N2[%d]:\t%x\n", i, n)
+		}
 		wires[circ.N1+i] = n
 	}
 
