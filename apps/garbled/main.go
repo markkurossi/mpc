@@ -20,6 +20,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/ot"
@@ -37,6 +38,20 @@ var (
 	DecryptFailed = errors.New("Decrypt failed")
 	verbose       = false
 )
+
+type FileSize uint64
+
+func (s FileSize) String() string {
+	if s > 1024*1024*1024*1024 {
+		return fmt.Sprintf("%dGB", s/1024*1024*1024)
+	} else if s > 1024*1024*1024 {
+		return fmt.Sprintf("%dMB", s/1024*1024)
+	} else if s > 1024*1024 {
+		return fmt.Sprintf("%dkB", s/1024)
+	} else {
+		return fmt.Sprintf("%dB", s)
+	}
+}
 
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
@@ -61,9 +76,9 @@ func main() {
 	fmt.Printf("Input: %d\n", *input)
 
 	if *garbler {
-		err = garblerMode(circ, *input)
+		err = garblerMode(circ, big.NewInt(int64(*input)))
 	} else {
-		err = evaluatorMode(circ, *input)
+		err = evaluatorMode(circ, big.NewInt(int64(*input)))
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -80,7 +95,7 @@ func loadCircuit(file string) (*circuit.Circuit, error) {
 	return circuit.Parse(f)
 }
 
-func garblerMode(circ *circuit.Circuit, input int) error {
+func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -120,11 +135,13 @@ func enc(a, b, c []byte) []byte {
 	return result
 }
 
-func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
+func serveConnection(conn net.Conn, circ *circuit.Circuit,
+	input *big.Int) error {
 	fmt.Printf("Serving connetion from %s\n", conn.RemoteAddr())
 	defer conn.Close()
 
 	// Assign labels to wires.
+	start := time.Now()
 	wires := make(ot.Inputs)
 	for w := 0; w < circ.NumWires; w++ {
 		l0 := make([]byte, k/8)
@@ -141,6 +158,9 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 			Label1: l1,
 		}
 	}
+	t := time.Now()
+	fmt.Printf("Labels:\t%s\n", t.Sub(start))
+	start = t
 
 	garbled := make(map[int][][]byte)
 
@@ -151,19 +171,26 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 		}
 		garbled[id] = data
 	}
+	t = time.Now()
+	fmt.Printf("Garble:\t%s\n", t.Sub(start))
+	start = t
 
 	// Send garbled tables.
+	var size FileSize
 	for id, data := range garbled {
 		if err := sendUint32(conn, id); err != nil {
 			return err
 		}
+		size += 4
 		if err := sendUint32(conn, len(data)); err != nil {
 			return err
 		}
+		size += 4
 		for _, d := range data {
 			if err := sendData(conn, d); err != nil {
 				return err
 			}
+			size += FileSize(4 + len(d))
 		}
 	}
 
@@ -174,20 +201,23 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 
 		var n []byte
 
-		if (input & (1 << uint(i))) == 0 {
-			n = wire.Label0
-		} else {
+		if input.Bit(i) == 1 {
 			n = wire.Label1
+		} else {
+			n = wire.Label0
 		}
 		n1 = append(n1, n)
 	}
 
 	// Send our inputs.
 	for idx, i := range n1 {
-		fmt.Printf("N1[%d]:\t%x\n", idx, i)
+		if verbose {
+			fmt.Printf("N1[%d]:\t%x\n", idx, i)
+		}
 		if err := sendData(conn, i); err != nil {
 			return err
 		}
+		size += FileSize(4 + len(i))
 	}
 
 	// Init oblivious transfer.
@@ -198,12 +228,18 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 
 	// Send our public key.
 	pub := sender.PublicKey()
-	if err := sendData(conn, pub.N.Bytes()); err != nil {
+	data := pub.N.Bytes()
+	if err := sendData(conn, data); err != nil {
 		return err
 	}
+	size += FileSize(4 + len(data))
 	if err := sendUint32(conn, pub.E); err != nil {
 		return err
 	}
+	size += 4
+	t = time.Now()
+	fmt.Printf("Xfer:\t%s\t%s\n", t.Sub(start), size)
+	start = t
 
 	// Process messages.
 	var xfer *ot.SenderXfer
@@ -250,7 +286,7 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 			}
 
 		case OP_RESULT:
-			var result int
+			result := big.NewInt(0)
 
 			for i := 0; i < circ.N3; i++ {
 				label, err := receiveData(conn)
@@ -259,29 +295,32 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit, input int) error {
 				}
 				wire := wires[circ.NumWires-circ.N3+i]
 
-				var bit int
+				var bit uint
 				if bytes.Compare(label, wire.Label0) == 0 {
 					bit = 0
 				} else if bytes.Compare(label, wire.Label1) == 0 {
 					bit = 1
 				} else {
-					return fmt.Errorf("Unknown lable %x for result %d",
+					return fmt.Errorf("Unknown label %x for result %d",
 						label, i)
 				}
-				result |= (bit << uint(i))
+				result = big.NewInt(0).SetBit(result, i, bit)
 			}
-			if err := sendUint32(conn, result); err != nil {
+			if err := sendData(conn, result.Bytes()); err != nil {
 				return err
 			}
-			fmt.Printf("Result: %d\n", result)
+			fmt.Printf("Result: %v\n", result)
 			done = true
 		}
 	}
+	t = time.Now()
+	fmt.Printf("Eval:\t%s\n", t.Sub(start))
+	start = t
 
 	return nil
 }
 
-func evaluatorMode(circ *circuit.Circuit, input int) error {
+func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	conn, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
@@ -348,10 +387,10 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 	// Query our inputs.
 	for i := 0; i < circ.N2; i++ {
 		var bit int
-		if (input & (1 << uint(i))) == 0 {
-			bit = 0
-		} else {
+		if input.Bit(i) == 1 {
 			bit = 1
+		} else {
+			bit = 0
 		}
 
 		n, err := receive(conn, receiver, circ.N1+i, bit)
@@ -388,7 +427,8 @@ func evaluatorMode(circ *circuit.Circuit, input int) error {
 		return err
 	}
 
-	fmt.Printf("Result: %d\n", val)
+	fmt.Printf("Result: %v\n", val)
+	fmt.Printf("Result: %x\n", val.Bytes())
 
 	return nil
 }
@@ -469,19 +509,19 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	return m, nil
 }
 
-func result(conn net.Conn, labels [][]byte) (int, error) {
+func result(conn net.Conn, labels [][]byte) (*big.Int, error) {
 	if err := sendUint32(conn, OP_RESULT); err != nil {
-		return 0, err
+		return nil, err
 	}
 	for _, l := range labels {
 		if err := sendData(conn, l); err != nil {
-			return 0, err
+			return nil, err
 		}
 	}
 
-	result, err := receiveUint32(conn)
+	result, err := receiveData(conn)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return result, nil
+	return big.NewInt(0).SetBytes(result), nil
 }
