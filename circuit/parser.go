@@ -58,12 +58,13 @@ func (c *Circuit) String() string {
 }
 
 type Gate struct {
+	ID      uint32
 	Inputs  []int
 	Outputs []int
 	Op      Operation
 }
 
-type Enc func(a, b, c []byte) []byte
+type Enc func(a, b, c *ot.Label, t uint32) []byte
 
 type TableEntry struct {
 	Index int
@@ -84,31 +85,38 @@ func (a ByIndex) Less(i, j int) bool {
 	return a[i].Index < a[j].Index
 }
 
-func entry(enc Enc, a, b, c *ot.Label) TableEntry {
-	var ab []byte
-	if a != nil {
-		ab = a.Bytes()
-	}
-	var bb []byte
-	if b != nil {
-		bb = b.Bytes()
-	}
+func entry(enc Enc, a, b, c *ot.Label, tweak uint32) TableEntry {
 	return TableEntry{
-		Index: idx(ab, bb),
-		Data:  enc(ab, bb, c.Bytes()),
+		Index: idx(a, b),
+		Data:  enc(a, b, c, tweak),
 	}
 }
 
-func idx(l0, l1 []byte) int {
-	if len(l0) == 0 {
-		if len(l1) == 0 {
+func idx(l0, l1 *ot.Label) int {
+	if l0 == nil {
+		if l1 == nil {
 			return 0
 		}
-		return int(l1[0]&0x80) >> 7
-	} else if len(l1) == 0 {
-		return int(l0[0]&0x80) >> 7
+		if l1.S() {
+			return 1
+		} else {
+			return 0
+		}
+	} else if l1 == nil {
+		if l0.S() {
+			return 1
+		} else {
+			return 0
+		}
 	} else {
-		return (int(l0[0]&0x80) >> 6) | (int(l1[0]&0x80) >> 7)
+		var ret int
+		if l0.S() {
+			ret |= 0x2
+		}
+		if l1.S() {
+			ret |= 0x1
+		}
+		return ret
 	}
 }
 
@@ -145,10 +153,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0))
-		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1))
-		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1))
-		table = append(table, entry(enc, a.Label1, b.Label1, c.Label0))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label0, g.ID))
 
 	case AND:
 		// a b c
@@ -160,10 +168,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0))
-		table = append(table, entry(enc, a.Label0, b.Label1, c.Label0))
-		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0))
-		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, g.ID))
 
 	case INV:
 		// a b c
@@ -172,8 +180,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		// 1   0
 		a := in[0]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, nil, c.Label1))
-		table = append(table, entry(enc, a.Label1, nil, c.Label0))
+		table = append(table, entry(enc, a.Label0, nil, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label1, nil, c.Label0, g.ID))
 	}
 
 	sort.Sort(ByIndex(table))
@@ -186,14 +194,14 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	return result, nil
 }
 
-type Dec func(a, b, data []byte) ([]byte, error)
+type Dec func(a, b *ot.Label, t uint32, data []byte) ([]byte, error)
 
-func (g *Gate) Eval(wires map[int][]byte, dec Dec, garbled [][]byte) (
+func (g *Gate) Eval(wires map[int]*ot.Label, dec Dec, garbled [][]byte) (
 	[]byte, error) {
 
-	var a []byte
+	var a *ot.Label
 	var aOK bool
-	var b []byte
+	var b *ot.Label
 	var bOK bool
 
 	switch g.Op {
@@ -203,7 +211,7 @@ func (g *Gate) Eval(wires map[int][]byte, dec Dec, garbled [][]byte) (
 
 	case INV:
 		a, aOK = wires[g.Inputs[0]]
-		b = []byte{}
+		b = nil
 		bOK = true
 	}
 
@@ -214,7 +222,7 @@ func (g *Gate) Eval(wires map[int][]byte, dec Dec, garbled [][]byte) (
 		return nil, fmt.Errorf("No input for wire b found")
 	}
 
-	return dec(a, b, garbled[idx(a, b)])
+	return dec(a, b, g.ID, garbled[idx(a, b)])
 }
 
 func Parse(in io.Reader) (*Circuit, error) {
@@ -316,6 +324,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 		}
 
 		gates[gate] = &Gate{
+			ID:      uint32(gate),
 			Inputs:  inputs,
 			Outputs: outputs,
 			Op:      op,

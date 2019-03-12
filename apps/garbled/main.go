@@ -11,6 +11,7 @@ package main
 import (
 	"bytes"
 	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
@@ -37,6 +38,7 @@ var (
 	port          = ":8080"
 	DecryptFailed = errors.New("Decrypt failed")
 	verbose       = false
+	key           [32]byte // XXX
 )
 
 type FileSize uint64
@@ -115,24 +117,46 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	return nil
 }
 
-func enc(a, b, c []byte) []byte {
-	var key [32]byte
+func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {
+	k := makeK(a, b, t)
 
-	copy(key[0:], a)
-	copy(key[16:], b)
+	crypted := make([]byte, alg.BlockSize())
+	alg.Encrypt(crypted, k.Bytes())
 
-	cipher, err := aes.NewCipher(key[:])
-	if err != nil {
-		panic(err)
+	pi := ot.LabelFromData(crypted)
+	pi.Xor(k)
+	pi.Xor(c)
+
+	return pi.Bytes()
+}
+
+func decrypt(alg cipher.Block, a, b *ot.Label, t uint32, encrypted []byte) (
+	[]byte, error) {
+
+	k := makeK(a, b, t)
+
+	crypted := make([]byte, alg.BlockSize())
+	alg.Encrypt(crypted, k.Bytes())
+
+	c := ot.LabelFromData(encrypted)
+	c.Xor(ot.LabelFromData(crypted))
+	c.Xor(k)
+
+	return c.Bytes(), nil
+}
+
+func makeK(a, b *ot.Label, t uint32) *ot.Label {
+	k := a.Copy()
+	k.Mul2()
+
+	if b != nil {
+		tmp := b.Copy()
+		tmp.Mul4()
+		k.Xor(tmp)
 	}
+	k.Xor(ot.NewTweak(t))
 
-	block := cipher.BlockSize()
-
-	result := make([]byte, 2*block)
-	cipher.Encrypt(result[0:block], result[0:block])
-	cipher.Encrypt(result[block:], c)
-
-	return result
+	return k
 }
 
 func serveConnection(conn net.Conn, circ *circuit.Circuit,
@@ -175,6 +199,15 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 	start = t
 
 	garbled := make(map[int][][]byte)
+
+	alg, err := aes.NewCipher(key[:])
+	if err != nil {
+		return err
+	}
+
+	enc := func(a, b, c *ot.Label, t uint32) []byte {
+		return encrypt(alg, a, b, c, t)
+	}
 
 	for id, gate := range circ.Gates {
 		data, err := gate.Garble(wires, enc)
@@ -366,7 +399,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		garbled[id] = values
 	}
 
-	wires := make(map[int][]byte)
+	wires := make(map[int]*ot.Label)
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1; i++ {
@@ -377,7 +410,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if verbose {
 			fmt.Printf("N1[%d]:\t%x\n", i, n)
 		}
-		wires[i] = n
+		wires[i] = ot.LabelFromData(n)
 	}
 
 	// Init oblivious transfer.
@@ -398,6 +431,15 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		return err
 	}
 
+	alg, err := aes.NewCipher(key[:])
+	if err != nil {
+		return err
+	}
+
+	dec := func(a, b *ot.Label, t uint32, data []byte) ([]byte, error) {
+		return decrypt(alg, a, b, t, data)
+	}
+
 	// Query our inputs.
 	for i := 0; i < circ.N2; i++ {
 		var bit int
@@ -414,7 +456,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if verbose {
 			fmt.Printf("N2[%d]:\t%x\n", i, n)
 		}
-		wires[circ.N1+i] = n
+		wires[circ.N1+i] = ot.LabelFromData(n)
 	}
 
 	// Evaluate gates.
@@ -428,10 +470,10 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if err != nil {
 			return err
 		}
-		wires[gate.Outputs[0]] = output
+		wires[gate.Outputs[0]] = ot.LabelFromData(output)
 	}
 
-	var labels [][]byte
+	var labels []*ot.Label
 
 	for i := 0; i < circ.N3; i++ {
 		r := wires[circ.NumWires-circ.N3+i]
@@ -447,31 +489,6 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	fmt.Printf("Result: %x\n", val.Bytes())
 
 	return nil
-}
-
-func dec(a, b, data []byte) ([]byte, error) {
-	var key [32]byte
-
-	copy(key[0:], a)
-	copy(key[16:], b)
-
-	cipher, err := aes.NewCipher(key[:])
-	if err != nil {
-		return nil, err
-	}
-
-	block := cipher.BlockSize()
-	result := make([]byte, block)
-	cipher.Decrypt(result, data[:block])
-
-	for _, b := range result {
-		if b != 0 {
-			return nil, DecryptFailed
-		}
-	}
-
-	cipher.Decrypt(result, data[block:])
-	return result, nil
 }
 
 func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
@@ -525,12 +542,12 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	return m, nil
 }
 
-func result(conn net.Conn, labels [][]byte) (*big.Int, error) {
+func result(conn net.Conn, labels []*ot.Label) (*big.Int, error) {
 	if err := sendUint32(conn, OP_RESULT); err != nil {
 		return nil, err
 	}
 	for _, l := range labels {
-		if err := sendData(conn, l); err != nil {
+		if err := sendData(conn, l.Bytes()); err != nil {
 			return nil, err
 		}
 	}

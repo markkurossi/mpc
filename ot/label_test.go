@@ -27,4 +27,26 @@ func TestLabel(t *testing.T) {
 	if label.d0 != 0x7fffffffffffffff {
 		t.Fatalf("Failed to clear S-bit: %x", label.d0)
 	}
+
+	label = &Label{
+		d1: 0xffffffffffffffff,
+	}
+	label.Mul2()
+	if label.d0 != 0x1 {
+		t.Fatalf("Mul2 d0 failed")
+	}
+	if label.d1 != 0xfffffffffffffffe {
+		t.Fatalf("Mul2 d1 failed: %x", label.d1)
+	}
+
+	label = &Label{
+		d1: 0xffffffffffffffff,
+	}
+	label.Mul4()
+	if label.d0 != 0x3 {
+		t.Fatalf("Mul4 d0 failed")
+	}
+	if label.d1 != 0xfffffffffffffffc {
+		t.Fatalf("Mul4 d1 failed")
+	}
 }
