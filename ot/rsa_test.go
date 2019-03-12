@@ -10,17 +10,18 @@ package ot
 
 import (
 	"bytes"
+	"crypto/rand"
 	"testing"
 )
 
 func benchmark(b *testing.B, keySize int) {
-	m0 := []byte{'M', 's', 'g', '0'}
-	m1 := []byte{'1', 'g', 's', 'M'}
+	l0, _ := NewLabel(rand.Reader)
+	l1, _ := NewLabel(rand.Reader)
 
 	sender, err := NewSender(keySize, map[int]Wire{
 		0: Wire{
-			Label0: m0,
-			Label1: m1,
+			Label0: l0,
+			Label1: l1,
 		},
 	})
 	if err != nil {
@@ -57,9 +58,9 @@ func benchmark(b *testing.B, keySize int) {
 		m, bit := rXfer.Message()
 		var ret int
 		if bit == 0 {
-			ret = bytes.Compare(m0, m)
+			ret = bytes.Compare(l0.Bytes(), m)
 		} else {
-			ret = bytes.Compare(m1, m)
+			ret = bytes.Compare(l1.Bytes(), m)
 		}
 		if ret != 0 {
 			b.Fatal("Verify failed!\n")

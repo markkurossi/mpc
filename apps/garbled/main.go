@@ -144,12 +144,12 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 	start := time.Now()
 	wires := make(ot.Inputs)
 	for w := 0; w < circ.NumWires; w++ {
-		l0 := make([]byte, k/8)
-		if _, err := rand.Read(l0); err != nil {
+		l0, err := ot.NewLabel(rand.Reader)
+		if err != nil {
 			return err
 		}
-		l1 := make([]byte, k/8)
-		if _, err := rand.Read(l1); err != nil {
+		l1, err := ot.NewLabel(rand.Reader)
+		if err != nil {
 			return err
 		}
 
@@ -160,13 +160,10 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 			return err
 		}
 
-		ws := s[0] & 0x80
-		l0[0] &= 0x7f
-		l0[0] |= ws
+		ws := (s[0] & 0x80) != 0
 
-		ws = ws ^ 0x80
-		l1[0] &= 0x7f
-		l1[0] |= ws
+		l0.SetS(ws)
+		l1.SetS(!ws)
 
 		wires[w] = ot.Wire{
 			Label0: l0,
@@ -217,9 +214,9 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 		var n []byte
 
 		if input.Bit(i) == 1 {
-			n = wire.Label1
+			n = wire.Label1.Bytes()
 		} else {
-			n = wire.Label0
+			n = wire.Label0.Bytes()
 		}
 		n1 = append(n1, n)
 	}
@@ -311,9 +308,9 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 				wire := wires[circ.NumWires-circ.N3+i]
 
 				var bit uint
-				if bytes.Compare(label, wire.Label0) == 0 {
+				if bytes.Compare(label, wire.Label0.Bytes()) == 0 {
 					bit = 0
-				} else if bytes.Compare(label, wire.Label1) == 0 {
+				} else if bytes.Compare(label, wire.Label1.Bytes()) == 0 {
 					bit = 1
 				} else {
 					return fmt.Errorf("Unknown label %x for result %d",

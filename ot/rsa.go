@@ -11,8 +11,10 @@ package ot
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot/mpint"
@@ -32,9 +34,41 @@ func RandomData(size int) ([]byte, error) {
 	return m, nil
 }
 
+type Label struct {
+	d0 uint64
+	d1 uint64
+}
+
+func NewLabel(rand io.Reader) (*Label, error) {
+	var buf [16]byte
+
+	if _, err := rand.Read(buf[:]); err != nil {
+		return nil, err
+	}
+	return &Label{
+		d0: binary.BigEndian.Uint64(buf[0:8]),
+		d1: binary.BigEndian.Uint64(buf[8:16]),
+	}, nil
+}
+
+func (l *Label) SetS(set bool) {
+	if set {
+		l.d0 |= 0x8000000000000000
+	} else {
+		l.d0 &= 0x7fffffffffffffff
+	}
+}
+
+func (l *Label) Bytes() []byte {
+	result := make([]byte, 16)
+	binary.BigEndian.PutUint64(result[0:8], l.d0)
+	binary.BigEndian.PutUint64(result[8:16], l.d1)
+	return result
+}
+
 type Wire struct {
-	Label0 []byte
-	Label1 []byte
+	Label0 *Label
+	Label1 *Label
 }
 
 type Inputs map[int]Wire
@@ -127,14 +161,14 @@ func (s *SenderXfer) ReceiveV(data []byte) {
 
 func (s *SenderXfer) Messages() ([]byte, []byte, error) {
 	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.Label0)
+		s.input.Label0.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
 	m0p := mpint.Add(mpint.FromBytes(m0), s.k0)
 
 	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.Label1)
+		s.input.Label1.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}

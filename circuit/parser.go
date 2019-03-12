@@ -84,10 +84,18 @@ func (a ByIndex) Less(i, j int) bool {
 	return a[i].Index < a[j].Index
 }
 
-func entry(enc Enc, a, b, c []byte) TableEntry {
+func entry(enc Enc, a, b, c *ot.Label) TableEntry {
+	var ab []byte
+	if a != nil {
+		ab = a.Bytes()
+	}
+	var bb []byte
+	if b != nil {
+		bb = b.Bytes()
+	}
 	return TableEntry{
-		Index: idx(a, b),
-		Data:  enc(a, b, c),
+		Index: idx(ab, bb),
+		Data:  enc(ab, bb, c.Bytes()),
 	}
 }
 
@@ -163,10 +171,9 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		// 0   1
 		// 1   0
 		a := in[0]
-		b := []byte{}
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, b, c.Label1))
-		table = append(table, entry(enc, a.Label1, b, c.Label0))
+		table = append(table, entry(enc, a.Label0, nil, c.Label1))
+		table = append(table, entry(enc, a.Label1, nil, c.Label0))
 	}
 
 	sort.Sort(ByIndex(table))
