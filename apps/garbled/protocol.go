@@ -11,14 +11,13 @@ package main
 import (
 	"encoding/binary"
 	"io"
-	"net"
 )
 
-func sendUint32(conn net.Conn, val int) error {
+func sendUint32(conn io.Writer, val int) error {
 	return binary.Write(conn, binary.BigEndian, uint32(val))
 }
 
-func sendData(conn net.Conn, val []byte) error {
+func sendData(conn io.Writer, val []byte) error {
 	err := sendUint32(conn, len(val))
 	if err != nil {
 		return err
@@ -27,7 +26,7 @@ func sendData(conn net.Conn, val []byte) error {
 	return err
 }
 
-func receiveUint32(conn net.Conn) (int, error) {
+func receiveUint32(conn io.Reader) (int, error) {
 	var buf [4]byte
 
 	_, err := io.ReadFull(conn, buf[:])
@@ -38,7 +37,7 @@ func receiveUint32(conn net.Conn) (int, error) {
 	return int(binary.BigEndian.Uint32(buf[:])), nil
 }
 
-func receiveData(conn net.Conn) ([]byte, error) {
+func receiveData(conn io.Reader) ([]byte, error) {
 	len, err := receiveUint32(conn)
 	if err != nil {
 		return nil, err

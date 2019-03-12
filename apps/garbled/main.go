@@ -9,6 +9,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
@@ -109,7 +110,13 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 		if err != nil {
 			return err
 		}
-		err = serveConnection(conn, circ, input)
+		fmt.Printf("New connection from %s\n", conn.RemoteAddr())
+
+		io := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		err = serveConnection(io, circ, input)
+
+		conn.Close()
+
 		if err != nil {
 			return err
 		}
@@ -159,10 +166,8 @@ func makeK(a, b *ot.Label, t uint32) *ot.Label {
 	return k
 }
 
-func serveConnection(conn net.Conn, circ *circuit.Circuit,
+func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 	input *big.Int) error {
-	fmt.Printf("Serving connetion from %s\n", conn.RemoteAddr())
-	defer conn.Close()
 
 	// Assign labels to wires.
 	start := time.Now()
@@ -282,6 +287,7 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 		return err
 	}
 	size += 4
+	conn.Flush()
 	t = time.Now()
 	fmt.Printf("Xfer:\t%s\t%s\n", t.Sub(start), size)
 	start = t
@@ -312,6 +318,7 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 			if err := sendData(conn, x1); err != nil {
 				return err
 			}
+			conn.Flush()
 
 			v, err := receiveData(conn)
 			if err != nil {
@@ -329,6 +336,7 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 			if err := sendData(conn, m1p); err != nil {
 				return err
 			}
+			conn.Flush()
 
 		case OP_RESULT:
 			result := big.NewInt(0)
@@ -354,6 +362,7 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 			if err := sendData(conn, result.Bytes()); err != nil {
 				return err
 			}
+			conn.Flush()
 			fmt.Printf("Result: %v\n", result)
 			done = true
 		}
@@ -366,11 +375,13 @@ func serveConnection(conn net.Conn, circ *circuit.Circuit,
 }
 
 func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
-	conn, err := net.Dial("tcp", port)
+	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer nc.Close()
+
+	conn := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
 
 	garbled := make(map[int][][]byte)
 
@@ -491,7 +502,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	return nil
 }
 
-func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
+func receive(conn *bufio.ReadWriter, receiver *ot.Receiver, wire, bit int) (
 	[]byte, error) {
 
 	if err := sendUint32(conn, OP_OT); err != nil {
@@ -500,6 +511,7 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	if err := sendUint32(conn, wire); err != nil {
 		return nil, err
 	}
+	conn.Flush()
 
 	xfer, err := receiver.NewTransfer(bit)
 	if err != nil {
@@ -523,6 +535,7 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	if err := sendData(conn, v); err != nil {
 		return nil, err
 	}
+	conn.Flush()
 
 	m0p, err := receiveData(conn)
 	if err != nil {
@@ -542,7 +555,7 @@ func receive(conn net.Conn, receiver *ot.Receiver, wire, bit int) (
 	return m, nil
 }
 
-func result(conn net.Conn, labels []*ot.Label) (*big.Int, error) {
+func result(conn *bufio.ReadWriter, labels []*ot.Label) (*big.Int, error) {
 	if err := sendUint32(conn, OP_RESULT); err != nil {
 		return nil, err
 	}
@@ -551,6 +564,7 @@ func result(conn net.Conn, labels []*ot.Label) (*big.Int, error) {
 			return nil, err
 		}
 	}
+	conn.Flush()
 
 	result, err := receiveData(conn)
 	if err != nil {
