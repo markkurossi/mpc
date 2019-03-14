@@ -39,20 +39,23 @@ var (
 	port          = ":8080"
 	DecryptFailed = errors.New("Decrypt failed")
 	verbose       = false
+	debug         = false
 	key           [32]byte // XXX
 )
 
 type FileSize uint64
 
 func (s FileSize) String() string {
-	if s > 1024*1024*1024*1024 {
-		return fmt.Sprintf("%dGB", s/1024*1024*1024)
-	} else if s > 1024*1024*1024 {
-		return fmt.Sprintf("%dMB", s/1024*1024)
-	} else if s > 1024*1024 {
-		return fmt.Sprintf("%dkB", s/1024)
+	if s > 1000*1000*1000*1000 {
+		return fmt.Sprintf("%d TB", s/(1000*1000*1000*1000))
+	} else if s > 1000*1000*1000 {
+		return fmt.Sprintf("%d GB", s/(1000*1000*1000))
+	} else if s > 1000*1000 {
+		return fmt.Sprintf("%d MB", s/(1000*1000))
+	} else if s > 1000 {
+		return fmt.Sprintf("%d kB", s/1000)
 	} else {
-		return fmt.Sprintf("%dB", s)
+		return fmt.Sprintf("%d B", s)
 	}
 }
 
@@ -61,9 +64,11 @@ func main() {
 	file := flag.String("c", "", "Circuit file")
 	input := flag.Int("i", 0, "Circuit input")
 	fVerbose := flag.Bool("v", false, "Verbose output")
+	fDebug := flag.Bool("d", false, "Debug output")
 	flag.Parse()
 
 	verbose = *fVerbose
+	debug = *fDebug
 
 	if len(*file) == 0 {
 		fmt.Printf("Circuit file not specified\n")
@@ -294,6 +299,7 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 
 	// Process messages.
 	var xfer *ot.SenderXfer
+	lastOT := start
 	done := false
 	for !done {
 		op, err := receiveUint32(conn)
@@ -337,6 +343,7 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 				return err
 			}
 			conn.Flush()
+			lastOT = time.Now()
 
 		case OP_RESULT:
 			result := big.NewInt(0)
@@ -368,7 +375,8 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 		}
 	}
 	t = time.Now()
-	fmt.Printf("Eval:\t%s\n", t.Sub(start))
+	fmt.Printf("OT:\t%s\n", lastOT.Sub(start))
+	fmt.Printf("Eval:\t%s\n", t.Sub(lastOT))
 	start = t
 
 	return nil
@@ -402,7 +410,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 			if err != nil {
 				return err
 			}
-			if verbose {
+			if debug {
 				fmt.Printf("G%d.%d\t%x\n", i, j, v)
 			}
 			values = append(values, v)
@@ -473,7 +481,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	// Evaluate gates.
 	for id := 0; id < circ.NumGates; id++ {
 		gate := circ.Gates[id]
-		if verbose {
+		if debug {
 			fmt.Printf("Evaluating gate %d %s\n", id, gate.Op)
 		}
 
