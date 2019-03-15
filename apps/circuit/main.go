@@ -18,6 +18,7 @@ import (
 )
 
 func main() {
+	render := flag.Bool("r", false, "Render circuit")
 	flag.Parse()
 
 	for _, file := range flag.Args() {
@@ -30,6 +31,11 @@ func main() {
 		c, err := circuit.Parse(f)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if *render {
+			c.Render()
+			continue
 		}
 
 		fmt.Printf("digraph circuit\n{\n")
