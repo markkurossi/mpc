@@ -78,7 +78,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	var out []ot.Wire
 
 	for _, i := range g.Inputs {
-		w, ok := wires[i]
+		w, ok := wires[i.ID()]
 		if !ok {
 			return nil, fmt.Errorf("Unknown input wire %d", i)
 		}
@@ -86,7 +86,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	}
 
 	for _, o := range g.Outputs {
-		w, ok := wires[o]
+		w, ok := wires[o.ID()]
 		if !ok {
 			return nil, fmt.Errorf("Unknown output wire %d", o)
 		}
@@ -147,7 +147,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	return result, nil
 }
 
-func (g *Gate) Eval(wires map[int]*ot.Label, dec Dec, garbled [][]byte) (
+func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
 	[]byte, error) {
 
 	var a *ot.Label

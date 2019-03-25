@@ -56,9 +56,19 @@ func (c *Circuit) String() string {
 
 type Gate struct {
 	ID      uint32
-	Inputs  []int
-	Outputs []int
+	Inputs  []Wire
+	Outputs []Wire
 	Op      Operation
+}
+
+type Wire uint32
+
+func (w Wire) ID() int {
+	return int(w)
+}
+
+func (w Wire) String() string {
+	return fmt.Sprintf("w%d", w)
 }
 
 func Parse(in io.Reader) (*Circuit, error) {
@@ -130,22 +140,22 @@ func Parse(in io.Reader) (*Circuit, error) {
 			return nil, fmt.Errorf("Invalid gate: %v", line)
 		}
 
-		var inputs []int
+		var inputs []Wire
 		for i := 0; i < n1; i++ {
 			v, err := strconv.Atoi(line[2+i])
 			if err != nil {
 				return nil, err
 			}
-			inputs = append(inputs, v)
+			inputs = append(inputs, Wire(v))
 		}
 
-		var outputs []int
+		var outputs []Wire
 		for i := 0; i < n2; i++ {
 			v, err := strconv.Atoi(line[2+n1+i])
 			if err != nil {
 				return nil, err
 			}
-			outputs = append(outputs, v)
+			outputs = append(outputs, Wire(v))
 		}
 		var op Operation
 		switch line[len(line)-1] {

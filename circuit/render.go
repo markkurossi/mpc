@@ -30,10 +30,10 @@ func (c *Circuit) Render() {
 			G: g,
 		}
 		for _, w := range g.Inputs {
-			to[w] = g
+			to[w.ID()] = g
 		}
 		for _, w := range g.Outputs {
-			from[w] = g
+			from[w.ID()] = g
 		}
 	}
 
@@ -43,7 +43,7 @@ func (c *Circuit) Render() {
 	for _, g := range c.Gates {
 		place := placements[g.ID]
 		for _, w := range g.Inputs {
-			src, ok := from[w]
+			src, ok := from[w.ID()]
 			if ok {
 				srcPlace := placements[src.ID]
 				if srcPlace.Col >= place.Col {

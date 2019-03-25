@@ -418,7 +418,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		garbled[id] = values
 	}
 
-	wires := make(map[int]*ot.Label)
+	wires := make(map[circuit.Wire]*ot.Label)
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1; i++ {
@@ -429,7 +429,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if verbose {
 			fmt.Printf("N1[%d]:\t%x\n", i, n)
 		}
-		wires[i] = ot.LabelFromData(n)
+		wires[circuit.Wire(i)] = ot.LabelFromData(n)
 	}
 
 	// Init oblivious transfer.
@@ -475,7 +475,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		if verbose {
 			fmt.Printf("N2[%d]:\t%x\n", i, n)
 		}
-		wires[circ.N1+i] = ot.LabelFromData(n)
+		wires[circuit.Wire(circ.N1+i)] = ot.LabelFromData(n)
 	}
 
 	// Evaluate gates.
@@ -495,7 +495,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	var labels []*ot.Label
 
 	for i := 0; i < circ.N3; i++ {
-		r := wires[circ.NumWires-circ.N3+i]
+		r := wires[circuit.Wire(circ.NumWires-circ.N3+i)]
 		labels = append(labels, r)
 	}
 
