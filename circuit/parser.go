@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
 	"strconv"
 )
 
@@ -22,6 +23,7 @@ type Operation byte
 const (
 	XOR Operation = iota
 	AND
+	OR
 	INV
 )
 
@@ -33,6 +35,8 @@ func (op Operation) String() string {
 		return "XOR"
 	case AND:
 		return "AND"
+	case OR:
+		return "OR"
 	case INV:
 		return "INV"
 	default:
@@ -52,6 +56,40 @@ type Circuit struct {
 func (c *Circuit) String() string {
 	return fmt.Sprintf("#gates=%d, #wires=%d n1=%d, n2=%d, n3=%d",
 		c.NumGates, c.NumWires, c.N1, c.N2, c.N3)
+}
+
+func (c *Circuit) Marshal(out io.Writer) {
+	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
+	fmt.Fprintf(out, "%d %d %d\n", c.N1, c.N2, c.N3)
+	fmt.Fprintf(out, "\n")
+
+	type kv struct {
+		Key   uint32
+		Value *Gate
+	}
+	var gates []kv
+
+	for _, gate := range c.Gates {
+		gates = append(gates, kv{
+			Key:   gate.ID,
+			Value: gate,
+		})
+	}
+	sort.Slice(gates, func(i, j int) bool {
+		return gates[i].Key < gates[j].Key
+	})
+
+	for _, gate := range gates {
+		g := gate.Value
+		fmt.Fprintf(out, "%d %d", len(g.Inputs), len(g.Outputs))
+		for _, w := range g.Inputs {
+			fmt.Fprintf(out, " %d", w)
+		}
+		for _, w := range g.Outputs {
+			fmt.Fprintf(out, " %d", w)
+		}
+		fmt.Fprintf(out, " %s\n", g.Op)
+	}
 }
 
 type Gate struct {
@@ -163,6 +201,8 @@ func Parse(in io.Reader) (*Circuit, error) {
 			op = XOR
 		case "AND":
 			op = AND
+		case "OR":
+			op = OR
 		case "INV":
 			op = INV
 		default:

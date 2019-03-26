@@ -126,6 +126,21 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0, g.ID))
 		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, g.ID))
 
+	case OR:
+		// a b c
+		// -----
+		// 0 0 0
+		// 0 1 1
+		// 1 0 1
+		// 1 1 1
+		a := in[0]
+		b := in[1]
+		c := out[0]
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, g.ID))
+
 	case INV:
 		// a b c
 		// -----
@@ -135,6 +150,9 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 		c := out[0]
 		table = append(table, entry(enc, a.Label0, nil, c.Label1, g.ID))
 		table = append(table, entry(enc, a.Label1, nil, c.Label0, g.ID))
+
+	default:
+		return nil, fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
 	sort.Sort(ByIndex(table))
@@ -156,7 +174,7 @@ func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
 	var bOK bool
 
 	switch g.Op {
-	case XOR, AND:
+	case XOR, AND, OR:
 		a, aOK = wires[g.Inputs[0]]
 		b, bOK = wires[g.Inputs[1]]
 
@@ -164,6 +182,9 @@ func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
 		a, aOK = wires[g.Inputs[0]]
 		b = nil
 		bOK = true
+
+	default:
+		return nil, fmt.Errorf("Invalid operation %s", g.Op)
 	}
 
 	if !aOK {
