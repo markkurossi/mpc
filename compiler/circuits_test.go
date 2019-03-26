@@ -40,3 +40,41 @@ func TestAdd4(t *testing.T) {
 	fmt.Printf("Result: %s\n", result)
 	result.Marshal(os.Stdout)
 }
+
+func TestFullSubtractor(t *testing.T) {
+	c := NewCompiler(1, 2, 2)
+	NewFullSubtractor(c, c.Inputs[0], c.Inputs[1], c.Inputs[2],
+		c.Outputs[0], c.Outputs[1])
+
+	result := c.Compile()
+	fmt.Printf("Result: %s\n", result)
+	result.Marshal(os.Stdout)
+}
+
+func TestSub4(t *testing.T) {
+	bits := 4
+
+	// 2xbits inputs, bits+1 outputs
+	c := NewCompiler(bits, bits, bits+1)
+
+	bin := NewWire()
+	NewHalfSubtractor(c, c.Inputs[0], c.Inputs[bits], c.Outputs[0], bin)
+
+	for i := 1; i < bits; i++ {
+		var bout *Wire
+		if i+1 >= bits {
+			bout = c.Outputs[bits]
+		} else {
+			bout = NewWire()
+		}
+
+		NewFullSubtractor(c, c.Inputs[i], c.Inputs[bits+i], bin, c.Outputs[i],
+			bout)
+
+		bin = bout
+	}
+
+	result := c.Compile()
+	fmt.Printf("Result: %s\n", result)
+	result.Marshal(os.Stdout)
+}
