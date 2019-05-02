@@ -15,5 +15,6 @@ apps/circuit/circuit
 apps/circuit/*.dot
 apps/circuit/*.pdf
 apps/circuit/*.png
+apps/circuit/*.circ
 apps/garbled/garbled
 apps/ot/ot
