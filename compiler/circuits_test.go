@@ -14,6 +14,10 @@ import (
 	"testing"
 )
 
+const (
+	verbose = false
+)
+
 func TestAdd4(t *testing.T) {
 	bits := 4
 
@@ -37,8 +41,10 @@ func TestAdd4(t *testing.T) {
 	}
 
 	result := c.Compile()
-	fmt.Printf("Result: %s\n", result)
-	result.Marshal(os.Stdout)
+	if verbose {
+		fmt.Printf("Result: %s\n", result)
+		result.Marshal(os.Stdout)
+	}
 }
 
 func TestFullSubtractor(t *testing.T) {
@@ -47,8 +53,10 @@ func TestFullSubtractor(t *testing.T) {
 		c.Outputs[0], c.Outputs[1])
 
 	result := c.Compile()
-	fmt.Printf("Result: %s\n", result)
-	result.Marshal(os.Stdout)
+	if verbose {
+		fmt.Printf("Result: %s\n", result)
+		result.Marshal(os.Stdout)
+	}
 }
 
 func TestSub4(t *testing.T) {
@@ -75,6 +83,8 @@ func TestSub4(t *testing.T) {
 	}
 
 	result := c.Compile()
-	fmt.Printf("Result: %s\n", result)
-	result.Marshal(os.Stdout)
+	if verbose {
+		fmt.Printf("Result: %s\n", result)
+		result.Marshal(os.Stdout)
+	}
 }
