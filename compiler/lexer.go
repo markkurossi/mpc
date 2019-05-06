@@ -15,6 +15,8 @@ import (
 	"regexp"
 	"strconv"
 	"unicode"
+
+	"github.com/markkurossi/mpc/compiler/ast"
 )
 
 type TokenType int
@@ -73,25 +75,12 @@ var symbols = map[string]TokenType{
 
 var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)
 
-type Type int
-
-const (
-	TypeInt Type = iota
-	TypeFloat
-)
-
-var types = map[string]Type{
-	"int":   TypeInt,
-	"float": TypeFloat,
-}
-
 type Token struct {
 	Type     TokenType
 	From     Point
 	To       Point
 	StrVal   string
-	TypeType Type
-	TypeBits int
+	TypeInfo ast.TypeInfo
 }
 
 func (t *Token) String() string {
@@ -259,12 +248,14 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 				matches := reType.FindStringSubmatch(symbol)
 				if matches != nil {
-					tt, ok := types[matches[1]]
+					tt, ok := ast.Types[matches[1]]
 					if ok {
 						token := l.Token(T_Type)
-						token.TypeType = tt
 						ival, _ := strconv.Atoi(matches[2])
-						token.TypeBits = ival
+						token.TypeInfo = ast.TypeInfo{
+							Type: tt,
+							Bits: ival,
+						}
 						token.StrVal = symbol
 						return token, nil
 					}

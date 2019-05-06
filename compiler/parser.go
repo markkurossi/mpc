@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/markkurossi/mpc/compiler/ast"
 )
@@ -42,6 +43,10 @@ func (p *Parser) Parse() (*Unit, error) {
 	ast, err := p.parseToplevel()
 	if err != nil && err != io.EOF {
 		return nil, err
+	}
+
+	if ast != nil {
+		ast.Fprint(os.Stdout, 0)
 	}
 
 	return &Unit{
@@ -86,7 +91,7 @@ func (p *Parser) parsePackage() (string, error) {
 }
 
 func (p *Parser) parseToplevel() (ast.AST, error) {
-	result := new(ast.List)
+	var result ast.List
 
 	token, err := p.lexer.Get()
 	if err != nil {
@@ -98,7 +103,7 @@ func (p *Parser) parseToplevel() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		result.Elements = append(result.Elements, ast)
+		result = append(result, ast)
 
 	default:
 		return nil, p.err(token, "unexpected token '%s'", token.Type)
@@ -118,6 +123,9 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 	}
 
 	// Argument list.
+
+	var arguments []ast.Argument
+
 	t, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
@@ -127,17 +135,24 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 			if t.Type != T_Identifier {
 				return nil, p.errUnexpected(t, T_Identifier)
 			}
+			arg := ast.Argument{
+				Name: t.StrVal,
+			}
+
 			t, err = p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
 			if t.Type == T_Type {
 				// Type.
+				arg.Type = t.TypeInfo
 				t, err = p.lexer.Get()
 				if err != nil {
 					return nil, err
 				}
 			}
+			arguments = append(arguments, arg)
+
 			if t.Type == T_RParen {
 				break
 			}
@@ -152,7 +167,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 	}
 
 	// Return values.
-	var returnValues []*Token
+	var returnValues []ast.TypeInfo
 
 	t, err = p.lexer.Get()
 	if err != nil {
@@ -164,7 +179,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			returnValues = append(returnValues, t)
+			returnValues = append(returnValues, t.TypeInfo)
 			t, err = p.lexer.Get()
 			if t.Type == T_RParen {
 				break
@@ -174,7 +189,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 			}
 		}
 	} else if t.Type == T_Type {
-		returnValues = append(returnValues, t)
+		returnValues = append(returnValues, t.TypeInfo)
 	} else {
 		p.lexer.Unget(t)
 	}
@@ -187,21 +202,21 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 		return nil, p.errUnexpected(t, T_LBrace)
 	}
 
-	fmt.Printf("func %s() %v\n", name.StrVal, returnValues)
-
 	body, err := p.parseBlock()
 	if err != nil {
 		return nil, err
 	}
 
 	return &ast.Func{
-		Name: name.StrVal,
-		Body: body,
+		Name:   name.StrVal,
+		Args:   arguments,
+		Return: returnValues,
+		Body:   body,
 	}, nil
 }
 
-func (p *Parser) parseBlock() ([]ast.AST, error) {
-	var result []ast.AST
+func (p *Parser) parseBlock() (ast.List, error) {
+	var result ast.List
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
