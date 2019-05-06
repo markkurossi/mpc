@@ -22,6 +22,7 @@ type TokenType int
 const (
 	T_Identifier TokenType = iota
 	T_Symbol
+	T_SymPackage
 	T_SymFunc
 	T_SymReturn
 	T_Type
@@ -40,8 +41,10 @@ const (
 var tokenTypes = map[TokenType]string{
 	T_Identifier: "identifier",
 	T_Symbol:     "symbol",
+	T_SymPackage: "package",
 	T_SymFunc:    "func",
 	T_SymReturn:  "return",
+	T_Type:       "type",
 	T_Div:        "/",
 	T_DivEq:      "/=",
 	T_Plus:       "+",
@@ -63,8 +66,9 @@ func (t TokenType) String() string {
 }
 
 var symbols = map[string]TokenType{
-	"func":   T_SymFunc,
-	"return": T_SymReturn,
+	"package": T_SymPackage,
+	"func":    T_SymFunc,
+	"return":  T_SymReturn,
 }
 
 var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)
@@ -97,7 +101,7 @@ func (t *Token) String() string {
 	} else {
 		str = t.Type.String()
 	}
-	return fmt.Sprintf("%s [%s-%s]", str, t.From, t.To)
+	return str
 }
 
 type Point struct {

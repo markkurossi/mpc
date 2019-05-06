@@ -17,7 +17,9 @@ import (
 
 var input = `// This is a very basic add circuit.
 // But we start this example with 2 comment lines.
-/a/
+
+package main
+
 func main(a, b int4) int5 {
     return a + b
 }
@@ -33,6 +35,8 @@ func TestLexer(t *testing.T) {
 			}
 			t.Fatalf("Get failed: %v", err)
 		}
-		fmt.Printf("Token: %s\n", token)
+		if false {
+			fmt.Printf("Token: %s\n", token)
+		}
 	}
 }
