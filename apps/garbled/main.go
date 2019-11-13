@@ -62,7 +62,7 @@ func (s FileSize) String() string {
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
 	file := flag.String("c", "", "Circuit file")
-	input := flag.Int("i", 0, "Circuit input")
+	input := flag.Uint64("i", 0, "Circuit input")
 	fVerbose := flag.Bool("v", false, "Verbose output")
 	fDebug := flag.Bool("d", false, "Debug output")
 	flag.Parse()
