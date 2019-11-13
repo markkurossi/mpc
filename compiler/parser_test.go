@@ -46,6 +46,11 @@ func main(a, b int4) (int5) {}
 package main
 func main(a, b int4) (int5, int6) {}
 `,
+	`
+package main
+func main(a, b int4) (int5) {
+  return a + b
+}`,
 }
 
 func TestParser(t *testing.T) {

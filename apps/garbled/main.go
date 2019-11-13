@@ -505,6 +505,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	}
 
 	fmt.Printf("Result: %v\n", val)
+	fmt.Printf("Result: 0b%s\n", val.Text(2))
 	fmt.Printf("Result: %x\n", val.Bytes())
 
 	return nil

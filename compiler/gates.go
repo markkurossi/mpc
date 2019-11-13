@@ -1,5 +1,5 @@
 //
-// circuits.go
+// gates.go
 //
 // Copyright (c) 2019 Markku Rossi
 //
@@ -104,57 +104,4 @@ func (g *INV) Compile(c *Compiler) {
 		},
 		Op: circuit.INV,
 	})
-}
-
-func NewHalfAdder(compiler *Compiler, a, b, s, c *Wire) {
-	// S = XOR(A, B)
-	compiler.AddGate(NewBinary(circuit.XOR, a, b, s))
-
-	// C = AND(A, B)
-	compiler.AddGate(NewBinary(circuit.AND, a, b, c))
-}
-
-func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
-	w1 := NewWire()
-	w2 := NewWire()
-	w3 := NewWire()
-
-	// w1 = XOR(A, B)
-	compiler.AddGate(NewBinary(circuit.XOR, a, b, w1))
-
-	// s = XOR(w1, cin)
-	compiler.AddGate(NewBinary(circuit.XOR, w1, cin, s))
-
-	// w2 = AND(w1, cin)
-	compiler.AddGate(NewBinary(circuit.AND, w1, cin, w2))
-
-	// w3 = AND(A, B)
-	compiler.AddGate(NewBinary(circuit.AND, a, b, w3))
-
-	// cout = OR(w2, w3)
-	compiler.AddGate(NewBinary(circuit.OR, w2, w3, cout))
-}
-
-func NewHalfSubtractor(compiler *Compiler, a, b, diff, bout *Wire) {
-	w1 := NewWire()
-
-	compiler.AddGate(NewBinary(circuit.XOR, a, b, diff))
-	compiler.AddGate(NewINV(a, w1))
-	compiler.AddGate(NewBinary(circuit.AND, w1, b, bout))
-}
-
-func NewFullSubtractor(compiler *Compiler, a, b, bin, diff, bout *Wire) {
-	w3 := NewWire()
-	w4 := NewWire()
-	w5 := NewWire()
-	w6 := NewWire()
-	w7 := NewWire()
-
-	compiler.AddGate(NewBinary(circuit.XOR, a, b, w3))
-	compiler.AddGate(NewBinary(circuit.XOR, bin, w3, diff))
-	compiler.AddGate(NewINV(a, w4))
-	compiler.AddGate(NewBinary(circuit.AND, b, w4, w5))
-	compiler.AddGate(NewINV(w3, w6))
-	compiler.AddGate(NewBinary(circuit.AND, bin, w6, w7))
-	compiler.AddGate(NewBinary(circuit.OR, w5, w7, bout))
 }

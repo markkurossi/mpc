@@ -88,3 +88,28 @@ func TestSub4(t *testing.T) {
 		result.Marshal(os.Stdout)
 	}
 }
+
+func TestMultiply1(t *testing.T) {
+	c := NewCompiler(1, 1, 2)
+
+	err := NewMultiplier(c, c.Inputs[0:1], c.Inputs[1:2], c.Outputs)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestMultiply(t *testing.T) {
+	bits := 3
+
+	c := NewCompiler(bits, bits, bits*2)
+	err := NewMultiplier(c, c.Inputs[0:bits], c.Inputs[bits:2*bits], c.Outputs)
+	if err != nil {
+		t.Error(err)
+	}
+
+	result := c.Compile()
+	if true {
+		fmt.Printf("Result: %s\n", result)
+		result.Marshal(os.Stdout)
+	}
+}
