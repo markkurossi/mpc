@@ -99,7 +99,7 @@ func TestMultiply1(t *testing.T) {
 }
 
 func TestMultiply(t *testing.T) {
-	bits := 3
+	bits := 64
 
 	c := NewCompiler(bits, bits, bits*2)
 	err := NewMultiplier(c, c.Inputs[0:bits], c.Inputs[bits:2*bits], c.Outputs)
@@ -108,7 +108,7 @@ func TestMultiply(t *testing.T) {
 	}
 
 	result := c.Compile()
-	if true {
+	if verbose {
 		fmt.Printf("Result: %s\n", result)
 		result.Marshal(os.Stdout)
 	}
