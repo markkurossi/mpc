@@ -12,9 +12,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/markkurossi/mpc/compiler/ast"
+)
+
+var (
+	SyntaxError = errors.New("Syntax error")
 )
 
 type Unit struct {
@@ -45,10 +48,6 @@ func (p *Parser) Parse() (*Unit, error) {
 		return nil, err
 	}
 
-	if ast != nil {
-		ast.Fprint(os.Stdout, 0)
-	}
-
 	return &Unit{
 		Package: pkg,
 		AST:     ast,
@@ -76,6 +75,15 @@ func (p *Parser) needToken(tt TokenType) (*Token, error) {
 		return nil, p.errUnexpected(token, tt)
 	}
 	return token, nil
+}
+
+func (p *Parser) sameLine(current *Token) bool {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return false
+	}
+	p.lexer.Unget(t)
+	return t.From.Line == current.To.Line
 }
 
 func (p *Parser) parsePackage() (string, error) {
@@ -151,6 +159,15 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 					return nil, err
 				}
 			}
+			// All untyped arguments get this type.
+			for i := len(arguments) - 1; i >= 0; i-- {
+				if arguments[i].Type.Type != ast.TypeUndefined {
+					break
+				}
+				arguments[i].Type = arg.Type
+			}
+
+			// Append new argument.
 			arguments = append(arguments, arg)
 
 			if t.Type == T_RParen {
@@ -225,7 +242,107 @@ func (p *Parser) parseBlock() (ast.List, error) {
 		if t.Type == T_RBrace {
 			break
 		}
-		return nil, errors.New("parseBlock not implemented yet")
+		p.lexer.Unget(t)
+
+		ast, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, ast)
 	}
 	return result, nil
+}
+
+func (p *Parser) parseStatement() (ast.AST, error) {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_SymReturn:
+		var expr ast.AST
+		if p.sameLine(t) {
+			expr, err = p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+		}
+		// XXX multiple return values
+		return &ast.Return{
+			Expr: expr,
+		}, nil
+
+	}
+	return nil, SyntaxError
+}
+
+func (p *Parser) parseExpr() (ast.AST, error) {
+	return p.parseExprAdditive()
+}
+
+func (p *Parser) parseExprAdditive() (ast.AST, error) {
+	left, err := p.parseExprMultiplicative()
+	if err != nil {
+		return nil, err
+	}
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_Plus:
+		right, err := p.parseExprMultiplicative()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.Binary{
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}, nil
+	}
+	p.lexer.Unget(t)
+
+	return left, nil
+}
+
+func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
+	left, err := p.parseExprPrimary()
+	if err != nil {
+		return nil, err
+	}
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_Mult:
+		right, err := p.parseExprPrimary()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.Binary{
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}, nil
+	}
+	p.lexer.Unget(t)
+
+	return left, nil
+}
+
+func (p *Parser) parseExprPrimary() (ast.AST, error) {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_Identifier:
+		return &ast.Identifier{
+			Name: t.StrVal,
+		}, nil
+	}
+	p.lexer.Unget(t)
+	return nil, p.err(t, "unexpected token '%s' while parsing expression", t)
 }

@@ -16,6 +16,9 @@ import (
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
+	_ AST = &Return{}
+	_ AST = &Binary{}
+	_ AST = &Identifier{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -30,11 +33,11 @@ type AST interface {
 
 type List []AST
 
-func (a List) Fprint(w io.Writer, ind int) {
+func (ast List) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "{\n")
-	for _, el := range a {
-		el.Fprint(w, ind+2)
+	for _, el := range ast {
+		el.Fprint(w, ind+4)
 		fmt.Fprintf(w, ",\n")
 	}
 	indent(w, ind)
@@ -53,13 +56,15 @@ func (t Type) String() string {
 }
 
 const (
-	TypeInt Type = iota
+	TypeUndefined Type = iota
+	TypeInt
 	TypeFloat
 )
 
 var Types = map[string]Type{
-	"int":   TypeInt,
-	"float": TypeFloat,
+	"<Untyped>": TypeUndefined,
+	"int":       TypeInt,
+	"float":     TypeFloat,
 }
 
 type TypeInfo struct {
@@ -68,6 +73,9 @@ type TypeInfo struct {
 }
 
 func (t TypeInfo) String() string {
+	if t.Bits == 0 {
+		return t.Type.String()
+	}
 	return fmt.Sprintf("%s%d", t.Type, t.Bits)
 }
 
@@ -83,10 +91,10 @@ type Func struct {
 	Body   List
 }
 
-func (a *Func) Fprint(w io.Writer, ind int) {
+func (ast *Func) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
-	fmt.Fprintf(w, "func %s(", a.Name)
-	for idx, arg := range a.Args {
+	fmt.Fprintf(w, "func %s(", ast.Name)
+	for idx, arg := range ast.Args {
 		if idx > 0 {
 			fmt.Fprintf(w, ", ")
 		}
@@ -95,26 +103,85 @@ func (a *Func) Fprint(w io.Writer, ind int) {
 
 	fmt.Fprintf(w, ")")
 
-	if len(a.Return) > 0 {
+	if len(ast.Return) > 0 {
 		fmt.Fprintf(w, " ")
-		if len(a.Return) > 1 {
+		if len(ast.Return) > 1 {
 			fmt.Fprintf(w, "(")
 		}
-		for idx, ret := range a.Return {
+		for idx, ret := range ast.Return {
 			if idx > 0 {
 				fmt.Fprintf(w, ", ")
 			}
 			fmt.Fprintf(w, "%s", ret)
 		}
-		if len(a.Return) > 1 {
+		if len(ast.Return) > 1 {
 			fmt.Fprintf(w, ")")
 		}
 	}
 
-	if len(a.Body) > 0 {
+	if len(ast.Body) > 0 {
 		fmt.Fprintf(w, " {\n")
+		for _, b := range ast.Body {
+			b.Fprint(w, ind+4)
+			fmt.Fprintf(w, "\n")
+		}
+		indent(w, ind)
 		fmt.Fprintf(w, "}")
 	} else {
 		fmt.Fprintf(w, " {}")
 	}
+}
+
+type Return struct {
+	Expr AST
+}
+
+func (ast *Return) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "return")
+	if ast.Expr != nil {
+		fmt.Fprintf(w, " ")
+		ast.Expr.Fprint(w, 0)
+	}
+}
+
+type BinaryType int
+
+const (
+	BinaryPlus BinaryType = iota
+)
+
+var binaryTypes = map[BinaryType]string{
+	BinaryPlus: "+",
+}
+
+func (t BinaryType) String() string {
+	name, ok := binaryTypes[t]
+	if ok {
+		return name
+	}
+	return fmt.Sprintf("{BinaryType %d}", t)
+}
+
+type Binary struct {
+	Left  AST
+	Op    BinaryType
+	Right AST
+}
+
+func (ast *Binary) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	ast.Left.Fprint(w, ind)
+	fmt.Fprintf(w, " %s ", ast.Op)
+	ast.Right.Fprint(w, ind)
+}
+
+type Identifier struct {
+	Name string
+	// XXX Reference to variable
+}
+
+func (ast *Identifier) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%s", ast.Name)
 }

@@ -28,6 +28,8 @@ const (
 	T_SymFunc
 	T_SymReturn
 	T_Type
+	T_Mult
+	T_MultEq
 	T_Div
 	T_DivEq
 	T_Plus
@@ -47,6 +49,8 @@ var tokenTypes = map[TokenType]string{
 	T_SymFunc:    "func",
 	T_SymReturn:  "return",
 	T_Type:       "type",
+	T_Mult:       "*",
+	T_MultEq:     "*=",
 	T_Div:        "/",
 	T_DivEq:      "/=",
 	T_Plus:       "+",
@@ -65,6 +69,18 @@ func (t TokenType) String() string {
 		return name
 	}
 	return fmt.Sprintf("{TokenType %d}", t)
+}
+
+var binaryTypes = map[TokenType]ast.BinaryType{
+	T_Plus: ast.BinaryPlus,
+}
+
+func (t TokenType) BinaryType() ast.BinaryType {
+	bt, ok := binaryTypes[t]
+	if ok {
+		return bt
+	}
+	panic(fmt.Sprintf("Invalid binary operator %s", t))
 }
 
 var symbols = map[string]TokenType{
@@ -183,6 +199,23 @@ func (l *Lexer) Get() (*Token, error) {
 			default:
 				l.UnreadRune(r)
 				return l.Token(T_Plus), nil
+			}
+
+		case '*':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Mult), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(T_MultEq), nil
+
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_Mult), nil
 			}
 
 		case '/':
