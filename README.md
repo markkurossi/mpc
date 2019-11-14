@@ -7,5 +7,5 @@ Secure Multi-Party Computation
 
     func main(a, b int32) (int32, int32) {
         q, r := a / b
-	return q, r
+        return q, r
     }
