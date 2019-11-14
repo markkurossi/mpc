@@ -149,10 +149,12 @@ type BinaryType int
 
 const (
 	BinaryPlus BinaryType = iota
+	BinaryMult
 )
 
 var binaryTypes = map[BinaryType]string{
 	BinaryPlus: "+",
+	BinaryMult: "*",
 }
 
 func (t BinaryType) String() string {
@@ -174,6 +176,15 @@ func (ast *Binary) Fprint(w io.Writer, ind int) {
 	ast.Left.Fprint(w, ind)
 	fmt.Fprintf(w, " %s ", ast.Op)
 	ast.Right.Fprint(w, ind)
+}
+
+func (ast *Binary) FprintDebug(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "(%s ", ast.Op)
+	ast.Left.Fprint(w, ind)
+	fmt.Fprintf(w, " ")
+	ast.Right.Fprint(w, ind)
+	fmt.Fprintf(w, ")")
 }
 
 type Identifier struct {

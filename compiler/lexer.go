@@ -72,6 +72,7 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
+	T_Mult: ast.BinaryMult,
 	T_Plus: ast.BinaryPlus,
 }
 
