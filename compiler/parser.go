@@ -132,7 +132,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 
 	// Argument list.
 
-	var arguments []ast.Argument
+	var arguments []*ast.Variable
 
 	t, err := p.lexer.Get()
 	if err != nil {
@@ -143,7 +143,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 			if t.Type != T_Identifier {
 				return nil, p.errUnexpected(t, T_Identifier)
 			}
-			arg := ast.Argument{
+			arg := &ast.Variable{
 				Name: t.StrVal,
 			}
 
@@ -339,7 +339,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	}
 	switch t.Type {
 	case T_Identifier:
-		return &ast.Identifier{
+		return &ast.VariableRef{
 			Name: t.StrVal,
 		}, nil
 	}

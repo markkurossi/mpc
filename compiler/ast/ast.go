@@ -11,6 +11,8 @@ package ast
 import (
 	"fmt"
 	"io"
+
+	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 	_ AST = &Func{}
 	_ AST = &Return{}
 	_ AST = &Binary{}
-	_ AST = &Identifier{}
+	_ AST = &VariableRef{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -79,14 +81,14 @@ func (t TypeInfo) String() string {
 	return fmt.Sprintf("%s%d", t.Type, t.Bits)
 }
 
-type Argument struct {
+type Variable struct {
 	Name string
 	Type TypeInfo
 }
 
 type Func struct {
 	Name   string
-	Args   []Argument
+	Args   []*Variable
 	Return []TypeInfo
 	Body   List
 }
@@ -187,12 +189,12 @@ func (ast *Binary) FprintDebug(w io.Writer, ind int) {
 	fmt.Fprintf(w, ")")
 }
 
-type Identifier struct {
+type VariableRef struct {
 	Name string
-	// XXX Reference to variable
+	Var  *Variable
 }
 
-func (ast *Identifier) Fprint(w io.Writer, ind int) {
+func (ast *VariableRef) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "%s", ast.Name)
 }

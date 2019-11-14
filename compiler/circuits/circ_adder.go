@@ -6,7 +6,7 @@
 // All rights reserved.
 //
 
-package compiler
+package circuits
 
 import (
 	"github.com/markkurossi/mpc/circuit"
