@@ -94,8 +94,8 @@ var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
-	From     Point
-	To       Point
+	From     ast.Point
+	To       ast.Point
 	StrVal   string
 	TypeInfo ast.TypeInfo
 }
@@ -110,29 +110,20 @@ func (t *Token) String() string {
 	return str
 }
 
-type Point struct {
-	Line int // 1-based
-	Col  int // 0-based
-}
-
-func (s Point) String() string {
-	return fmt.Sprintf("%d:%d", s.Line, s.Col)
-}
-
 type Lexer struct {
 	in          *bufio.Reader
-	point       Point
-	tokenStart  Point
+	point       ast.Point
+	tokenStart  ast.Point
 	ungot       *Token
 	unread      bool
 	unreadRune  rune
-	unreadPoint Point
+	unreadPoint ast.Point
 }
 
 func NewLexer(in io.Reader) *Lexer {
 	return &Lexer{
 		in: bufio.NewReader(in),
-		point: Point{
+		point: ast.Point{
 			Line: 1,
 			Col:  0,
 		},

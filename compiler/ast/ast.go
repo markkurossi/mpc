@@ -11,8 +11,6 @@ package ast
 import (
 	"fmt"
 	"io"
-
-	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
 var (
@@ -22,6 +20,15 @@ var (
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
 )
+
+type Point struct {
+	Line int // 1-based
+	Col  int // 0-based
+}
+
+func (s Point) String() string {
+	return fmt.Sprintf("%d:%d", s.Line, s.Col)
+}
 
 func indent(w io.Writer, indent int) {
 	for i := 0; i < indent; i++ {
@@ -87,6 +94,7 @@ type Variable struct {
 }
 
 type Func struct {
+	Loc    Point
 	Name   string
 	Args   []*Variable
 	Return []TypeInfo

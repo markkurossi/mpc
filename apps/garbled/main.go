@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/ot"
 )
 
@@ -61,6 +62,7 @@ func (s FileSize) String() string {
 
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
+	lang := flag.String("l", "", "MPC language file")
 	file := flag.String("c", "", "Circuit file")
 	input := flag.Uint64("i", 0, "Circuit input")
 	fVerbose := flag.Bool("v", false, "Verbose output")
@@ -70,16 +72,26 @@ func main() {
 	verbose = *fVerbose
 	debug = *fDebug
 
-	if len(*file) == 0 {
+	var circ *circuit.Circuit
+	var err error
+
+	if len(*lang) != 0 {
+		circ, err = compileCircuit(*lang)
+		if err != nil {
+			fmt.Printf("Failed to compile circuit file '%s': %s\n", *lang, err)
+			os.Exit(1)
+		}
+	} else if len(*file) != 0 {
+		circ, err = loadCircuit(*file)
+		if err != nil {
+			fmt.Printf("Failed to parse circuit file '%s': %s\n", *file, err)
+			os.Exit(1)
+		}
+	} else {
 		fmt.Printf("Circuit file not specified\n")
 		return
 	}
 
-	circ, err := loadCircuit(*file)
-	if err != nil {
-		fmt.Printf("Failed to parse circuit file '%s': %s\n", *file, err)
-		os.Exit(1)
-	}
 	fmt.Printf("Circuit: %v\n", circ)
 	fmt.Printf("Input: %d\n", *input)
 
@@ -91,6 +103,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func compileCircuit(file string) (*circuit.Circuit, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	parser := compiler.NewParser(file, f)
+	unit, err := parser.Parse()
+	if err != nil {
+		return nil, err
+	}
+	return unit.Compile()
 }
 
 func loadCircuit(file string) (*circuit.Circuit, error) {

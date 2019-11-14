@@ -21,8 +21,8 @@ var (
 )
 
 type Unit struct {
-	Package string
-	AST     ast.AST
+	Package   string
+	Functions map[string]*ast.Func
 }
 
 type Parser struct {
@@ -43,25 +43,26 @@ func (p *Parser) Parse() (*Unit, error) {
 		return nil, err
 	}
 
-	ast, err := p.parseToplevel()
+	unit := &Unit{
+		Package:   pkg,
+		Functions: make(map[string]*ast.Func),
+	}
+
+	err = p.parseToplevel(unit)
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
-	return &Unit{
-		Package: pkg,
-		AST:     ast,
-	}, nil
+	return unit, nil
 }
 
-func (p *Parser) err(offending *Token, format string, a ...interface{}) error {
+func (p *Parser) err(loc ast.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s:%d:%d: %s",
-		p.inputName, offending.From.Line, offending.From.Col, msg)
+	return fmt.Errorf("%s:%d:%d: %s", p.inputName, loc.Line, loc.Col, msg)
 }
 
 func (p *Parser) errUnexpected(offending *Token, expected TokenType) error {
-	return p.err(offending, "unexpected token '%s': expected '%s'",
+	return p.err(offending.From, "unexpected token '%s': expected '%s'",
 		offending, expected)
 }
 
@@ -98,29 +99,31 @@ func (p *Parser) parsePackage() (string, error) {
 	return t.StrVal, nil
 }
 
-func (p *Parser) parseToplevel() (ast.AST, error) {
-	var result ast.List
-
+func (p *Parser) parseToplevel(unit *Unit) error {
 	token, err := p.lexer.Get()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	switch token.Type {
 	case T_SymFunc:
-		ast, err := p.parseFunc()
+		f, err := p.parseFunc()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		result = append(result, ast)
+		_, ok := unit.Functions[f.Name]
+		if ok {
+			return p.err(f.Loc, "function %s already defined", f.Name)
+		}
+		unit.Functions[f.Name] = f
 
 	default:
-		return nil, p.err(token, "unexpected token '%s'", token.Type)
+		return p.err(token.From, "unexpected token '%s'", token.Type)
 	}
 
-	return result, nil
+	return nil
 }
 
-func (p *Parser) parseFunc() (ast.AST, error) {
+func (p *Parser) parseFunc() (*ast.Func, error) {
 	name, err := p.needToken(T_Identifier)
 	if err != nil {
 		return nil, err
@@ -225,6 +228,7 @@ func (p *Parser) parseFunc() (ast.AST, error) {
 	}
 
 	return &ast.Func{
+		Loc:    name.From,
 		Name:   name.StrVal,
 		Args:   arguments,
 		Return: returnValues,
@@ -344,5 +348,6 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 		}, nil
 	}
 	p.lexer.Unget(t)
-	return nil, p.err(t, "unexpected token '%s' while parsing expression", t)
+	return nil, p.err(t.From, "unexpected token '%s' while parsing expression",
+		t)
 }
