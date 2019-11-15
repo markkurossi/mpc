@@ -61,6 +61,19 @@ func (ast Binary) Compile(compiler *circuits.Compiler,
 
 	switch ast.Op {
 	case BinaryPlus:
+		if out == nil {
+			var size int
+			if len(l) > len(r) {
+				size = len(l) + 1
+			} else {
+				size = len(r) + 1
+			}
+			out = MakeWires(size)
+		}
+		err := circuits.NewAdder(compiler, l, r, out)
+		if err != nil {
+			return nil, err
+		}
 
 	case BinaryMult:
 		if out == nil {
@@ -76,10 +89,12 @@ func (ast Binary) Compile(compiler *circuits.Compiler,
 		if err != nil {
 			return nil, err
 		}
-		return out, nil
+
+	default:
+		return nil, fmt.Errorf("Binary.Compile %s not implemented yet", ast.Op)
 	}
 
-	return nil, fmt.Errorf("Binary.Compile not implemented yet")
+	return out, nil
 }
 
 func (ast VariableRef) Compile(compiler *circuits.Compiler,

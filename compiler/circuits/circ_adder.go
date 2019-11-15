@@ -9,6 +9,8 @@
 package circuits
 
 import (
+	"fmt"
+
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -39,4 +41,32 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 
 	// cout = OR(w2, w3)
 	compiler.AddGate(NewBinary(circuit.OR, w2, w3, cout))
+}
+
+func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
+	if len(x) != len(y) || len(x)+1 != len(z) {
+		return fmt.Errorf("Invalid adder arguments: x=%d, y=%d, z=%d",
+			len(x), len(y), len(z))
+	}
+
+	if len(x) == 1 {
+		NewHalfAdder(compiler, x[0], y[0], z[0], z[1])
+	} else {
+		cin := NewWire()
+		NewHalfAdder(compiler, x[0], y[0], z[0], cin)
+
+		for i := 1; i < len(x); i++ {
+			var cout *Wire
+			if i+1 >= len(x) {
+				cout = z[len(x)]
+			} else {
+				cout = NewWire()
+			}
+
+			NewFullAdder(compiler, x[i], y[i], cin, z[i], cout)
+
+			cin = cout
+		}
+	}
+	return nil
 }
