@@ -14,63 +14,75 @@ import (
 	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
+func MakeWires(size int) []*circuits.Wire {
+	result := make([]*circuits.Wire, size)
+	for i := 0; i < size; i++ {
+		result[i] = circuits.NewWire()
+	}
+	return result
+}
+
 func (ast List) Compile(compiler *circuits.Compiler,
-	out []*circuits.Wire) error {
-	return fmt.Errorf("List.Compile() not implemented yet")
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("List.Compile() not implemented yet")
 }
 
 func (f *Func) Compile(compiler *circuits.Compiler,
-	out []*circuits.Wire) error {
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+
+	var outputs []*circuits.Wire
+	var err error
+
 	for _, ast := range f.Body {
-		err := ast.Compile(compiler, out)
+		outputs, err = ast.Compile(compiler, out)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return outputs, nil
 }
 
 func (ast Return) Compile(compiler *circuits.Compiler,
-	out []*circuits.Wire) error {
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
 	return ast.Expr.Compile(compiler, out)
 }
 
 func (ast Binary) Compile(compiler *circuits.Compiler,
-	out []*circuits.Wire) error {
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
 
-	l, err := getWires(ast.Left)
+	l, err := ast.Left.Compile(compiler, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	r, err := getWires(ast.Right)
+	r, err := ast.Right.Compile(compiler, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
 	switch ast.Op {
 	case BinaryPlus:
 
 	case BinaryMult:
+		if out == nil {
+			var size int
+			if len(l) > len(r) {
+				size = len(l) * 2
+			} else {
+				size = len(r) * 2
+			}
+			out = MakeWires(size)
+		}
 		err := circuits.NewMultiplier(compiler, l, r, out)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return nil
+		return out, nil
 	}
 
-	return fmt.Errorf("Binary.Compile not implemented yet")
-}
-
-func getWires(ast AST) ([]*circuits.Wire, error) {
-	switch a := ast.(type) {
-	case *VariableRef:
-		return a.Var.Wires, nil
-
-	default:
-		return nil, fmt.Errorf("getWires %T not implemented yet", a)
-	}
+	return nil, fmt.Errorf("Binary.Compile not implemented yet")
 }
 
 func (ast VariableRef) Compile(compiler *circuits.Compiler,
-	out []*circuits.Wire) error {
-	return fmt.Errorf("VariableRef.Compile() not implemented yet")
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return ast.Var.Wires, nil
 }

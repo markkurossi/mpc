@@ -57,6 +57,16 @@ package main
 func main(a, b int4) (int5) {
   return a * b + c * d
 }`,
+	`
+package main
+func main(a, b int4) (int5) {
+  return a * b * c
+}`,
+	`
+package main
+func main(a, b int4) (int5) {
+  return a + b + c * d + e
+}`,
 }
 
 func TestParser(t *testing.T) {
@@ -72,8 +82,8 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Parse failed: %v", err)
 		}
 		fmt.Printf("package %s\n", unit.Package)
-		if unit.AST != nil {
-			unit.AST.Fprint(os.Stdout, 0)
+		for _, f := range unit.Functions {
+			f.Fprint(os.Stdout, 0)
 			fmt.Printf("\n")
 		}
 	}

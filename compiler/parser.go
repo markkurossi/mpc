@@ -293,25 +293,28 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := p.lexer.Get()
-	if err != nil {
-		return nil, err
-	}
-	switch t.Type {
-	case T_Plus:
-		right, err := p.parseExprMultiplicative()
+	for {
+		t, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		return &ast.Binary{
-			Left:  left,
-			Op:    t.Type.BinaryType(),
-			Right: right,
-		}, nil
-	}
-	p.lexer.Unget(t)
+		switch t.Type {
+		case T_Plus:
+			right, err := p.parseExprMultiplicative()
+			if err != nil {
+				return nil, err
+			}
+			left = &ast.Binary{
+				Left:  left,
+				Op:    t.Type.BinaryType(),
+				Right: right,
+			}
 
-	return left, nil
+		default:
+			p.lexer.Unget(t)
+			return left, nil
+		}
+	}
 }
 
 func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
@@ -319,25 +322,28 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := p.lexer.Get()
-	if err != nil {
-		return nil, err
-	}
-	switch t.Type {
-	case T_Mult:
-		right, err := p.parseExprPrimary()
+	for {
+		t, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		return &ast.Binary{
-			Left:  left,
-			Op:    t.Type.BinaryType(),
-			Right: right,
-		}, nil
-	}
-	p.lexer.Unget(t)
+		switch t.Type {
+		case T_Mult:
+			right, err := p.parseExprPrimary()
+			if err != nil {
+				return nil, err
+			}
+			left = &ast.Binary{
+				Left:  left,
+				Op:    t.Type.BinaryType(),
+				Right: right,
+			}
 
-	return left, nil
+		default:
+			p.lexer.Unget(t)
+			return left, nil
+		}
+	}
 }
 
 func (p *Parser) parseExprPrimary() (ast.AST, error) {

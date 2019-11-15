@@ -41,7 +41,8 @@ func indent(w io.Writer, indent int) {
 type AST interface {
 	Fprint(w io.Writer, indent int)
 	Visit(enter, exit func(ast AST) error) error
-	Compile(compiler *circuits.Compiler, out []*circuits.Wire) error
+	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
+		[]*circuits.Wire, error)
 }
 
 type List []AST
@@ -141,7 +142,7 @@ func (ast *Func) Fprint(w io.Writer, ind int) {
 			if idx > 0 {
 				fmt.Fprintf(w, ", ")
 			}
-			fmt.Fprintf(w, "%s", ret)
+			fmt.Fprintf(w, "%s", ret.Type)
 		}
 		if len(ast.Return) > 1 {
 			fmt.Fprintf(w, ")")

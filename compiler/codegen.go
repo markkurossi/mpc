@@ -68,7 +68,7 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 		}
 	}
 
-	err := main.Compile(c, c.Outputs)
+	_, err := main.Compile(c, c.Outputs)
 	if err != nil {
 		return nil, err
 	}

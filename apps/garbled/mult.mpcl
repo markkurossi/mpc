@@ -3,6 +3,6 @@
 
 package main
 
-func main(a, b int4) int8 {
-	return a * b
+func main(a int4, b int8) int16 {
+	return a * a * b
 }
