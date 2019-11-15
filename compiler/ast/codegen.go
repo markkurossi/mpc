@@ -75,6 +75,21 @@ func (ast Binary) Compile(compiler *circuits.Compiler,
 			return nil, err
 		}
 
+	case BinaryMinus:
+		if out == nil {
+			var size int
+			if len(l) > len(r) {
+				size = len(l) + 1
+			} else {
+				size = len(r) + 1
+			}
+			out = MakeWires(size)
+		}
+		err := circuits.NewSubtractor(compiler, l, r, out)
+		if err != nil {
+			return nil, err
+		}
+
 	case BinaryMult:
 		if out == nil {
 			var size int

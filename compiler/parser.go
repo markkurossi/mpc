@@ -299,7 +299,7 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Plus:
+		case T_Plus, T_Minus:
 			right, err := p.parseExprMultiplicative()
 			if err != nil {
 				return nil, err

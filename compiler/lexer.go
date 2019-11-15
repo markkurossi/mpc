@@ -35,6 +35,9 @@ const (
 	T_Plus
 	T_PlusPlus
 	T_PlusEq
+	T_Minus
+	T_MinusMinus
+	T_MinusEq
 	T_LParen
 	T_RParen
 	T_LBrace
@@ -56,6 +59,9 @@ var tokenTypes = map[TokenType]string{
 	T_Plus:       "+",
 	T_PlusPlus:   "++",
 	T_PlusEq:     "+=",
+	T_Minus:      "-",
+	T_MinusMinus: "--",
+	T_MinusEq:    "-=",
 	T_LParen:     "(",
 	T_RParen:     ")",
 	T_LBrace:     "{",
@@ -72,8 +78,9 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	T_Mult: ast.BinaryMult,
-	T_Plus: ast.BinaryPlus,
+	T_Mult:  ast.BinaryMult,
+	T_Plus:  ast.BinaryPlus,
+	T_Minus: ast.BinaryMinus,
 }
 
 func (t TokenType) BinaryType() ast.BinaryType {
@@ -191,6 +198,24 @@ func (l *Lexer) Get() (*Token, error) {
 			default:
 				l.UnreadRune(r)
 				return l.Token(T_Plus), nil
+			}
+
+		case '-':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Minus), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '-':
+				return l.Token(T_MinusMinus), nil
+			case '=':
+				return l.Token(T_MinusEq), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_Minus), nil
 			}
 
 		case '*':

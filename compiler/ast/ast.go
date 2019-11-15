@@ -207,12 +207,14 @@ type BinaryType int
 
 const (
 	BinaryPlus BinaryType = iota
+	BinaryMinus
 	BinaryMult
 )
 
 var binaryTypes = map[BinaryType]string{
-	BinaryPlus: "+",
-	BinaryMult: "*",
+	BinaryPlus:  "+",
+	BinaryMinus: "-",
+	BinaryMult:  "*",
 }
 
 func (t BinaryType) String() string {
