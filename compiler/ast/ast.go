@@ -11,6 +11,8 @@ package ast
 import (
 	"fmt"
 	"io"
+
+	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
 var (
@@ -38,6 +40,8 @@ func indent(w io.Writer, indent int) {
 
 type AST interface {
 	Fprint(w io.Writer, indent int)
+	Visit(enter, exit func(ast AST) error) error
+	Compile(compiler *circuits.Compiler, out []*circuits.Wire) error
 }
 
 type List []AST
@@ -51,6 +55,20 @@ func (ast List) Fprint(w io.Writer, ind int) {
 	}
 	indent(w, ind)
 	fmt.Fprintf(w, "}")
+}
+
+func (ast List) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	for _, el := range ast {
+		err = el.Visit(enter, exit)
+		if err != nil {
+			return err
+		}
+	}
+	return exit(ast)
 }
 
 type Type int
@@ -89,15 +107,16 @@ func (t TypeInfo) String() string {
 }
 
 type Variable struct {
-	Name string
-	Type TypeInfo
+	Name  string
+	Type  TypeInfo
+	Wires []*circuits.Wire
 }
 
 type Func struct {
 	Loc    Point
 	Name   string
 	Args   []*Variable
-	Return []TypeInfo
+	Return []*Variable
 	Body   List
 }
 
@@ -142,6 +161,20 @@ func (ast *Func) Fprint(w io.Writer, ind int) {
 	}
 }
 
+func (ast *Func) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	for _, el := range ast.Body {
+		err = el.Visit(enter, exit)
+		if err != nil {
+			return err
+		}
+	}
+	return exit(ast)
+}
+
 type Return struct {
 	Expr AST
 }
@@ -153,6 +186,20 @@ func (ast *Return) Fprint(w io.Writer, ind int) {
 		fmt.Fprintf(w, " ")
 		ast.Expr.Fprint(w, 0)
 	}
+}
+
+func (ast *Return) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	if ast.Expr != nil {
+		err = ast.Expr.Visit(enter, exit)
+		if err != nil {
+			return err
+		}
+	}
+	return exit(ast)
 }
 
 type BinaryType int
@@ -197,6 +244,22 @@ func (ast *Binary) FprintDebug(w io.Writer, ind int) {
 	fmt.Fprintf(w, ")")
 }
 
+func (ast *Binary) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	err = ast.Left.Visit(enter, exit)
+	if err != nil {
+		return err
+	}
+	err = ast.Right.Visit(enter, exit)
+	if err != nil {
+		return err
+	}
+	return exit(ast)
+}
+
 type VariableRef struct {
 	Name string
 	Var  *Variable
@@ -205,4 +268,12 @@ type VariableRef struct {
 func (ast *VariableRef) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "%s", ast.Name)
+}
+
+func (ast *VariableRef) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	return exit(ast)
 }

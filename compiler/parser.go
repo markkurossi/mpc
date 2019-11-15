@@ -187,7 +187,7 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 	}
 
 	// Return values.
-	var returnValues []ast.TypeInfo
+	var returnValues []*ast.Variable
 
 	t, err = p.lexer.Get()
 	if err != nil {
@@ -199,7 +199,9 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			returnValues = append(returnValues, t.TypeInfo)
+			returnValues = append(returnValues, &ast.Variable{
+				Type: t.TypeInfo,
+			})
 			t, err = p.lexer.Get()
 			if t.Type == T_RParen {
 				break
@@ -209,7 +211,9 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 			}
 		}
 	} else if t.Type == T_Type {
-		returnValues = append(returnValues, t.TypeInfo)
+		returnValues = append(returnValues, &ast.Variable{
+			Type: t.TypeInfo,
+		})
 	} else {
 		p.lexer.Unget(t)
 	}

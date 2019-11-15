@@ -13,6 +13,7 @@
 
 apps/circuit/circuit
 apps/circuit/*.dot
+apps/circuit/*.svg
 apps/circuit/*.pdf
 apps/circuit/*.png
 apps/circuit/*.circ
