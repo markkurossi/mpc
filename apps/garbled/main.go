@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -62,8 +63,7 @@ func (s FileSize) String() string {
 
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
-	lang := flag.String("l", "", "MPC language file")
-	file := flag.String("c", "", "Circuit file")
+	compile := flag.Bool("c", false, "Compile MPCL to circuit")
 	input := flag.Uint64("i", 0, "Circuit input")
 	fVerbose := flag.Bool("v", false, "Verbose output")
 	fDebug := flag.Bool("d", false, "Debug output")
@@ -75,21 +75,40 @@ func main() {
 	var circ *circuit.Circuit
 	var err error
 
-	if len(*lang) != 0 {
-		circ, err = compileCircuit(*lang)
-		if err != nil {
-			fmt.Printf("Failed to compile circuit file '%s': %s\n", *lang, err)
+	if len(flag.Args()) == 0 {
+		fmt.Printf("No input files\n")
+		os.Exit(1)
+	}
+
+	for _, arg := range flag.Args() {
+		if strings.HasSuffix(arg, ".circ") {
+			circ, err = loadCircuit(arg)
+			if err != nil {
+				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
+				os.Exit(1)
+			}
+		} else if strings.HasSuffix(arg, ".mpcl") {
+			circ, err = compileCircuit(arg)
+			if err != nil {
+				fmt.Printf("Failed to compile input file '%s': %s\n", arg, err)
+				os.Exit(1)
+			}
+			if *compile {
+				out := arg[0:len(arg)-4] + "circ"
+				f, err := os.Create(out)
+				if err != nil {
+					fmt.Printf("Failed to create output file '%s': %s\n",
+						out, err)
+					os.Exit(1)
+				}
+				circ.Marshal(f)
+				f.Close()
+				return
+			}
+		} else {
+			fmt.Printf("Unknown file type '%s'\n", arg)
 			os.Exit(1)
 		}
-	} else if len(*file) != 0 {
-		circ, err = loadCircuit(*file)
-		if err != nil {
-			fmt.Printf("Failed to parse circuit file '%s': %s\n", *file, err)
-			os.Exit(1)
-		}
-	} else {
-		fmt.Printf("Circuit file not specified\n")
-		return
 	}
 
 	fmt.Printf("Circuit: %v\n", circ)
