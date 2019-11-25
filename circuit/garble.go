@@ -9,8 +9,12 @@
 package circuit
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -71,6 +75,116 @@ func idx(l0, l1 *ot.Label) int {
 		}
 		return ret
 	}
+}
+
+func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {
+	k := makeK(a, b, t)
+
+	crypted := make([]byte, alg.BlockSize())
+	alg.Encrypt(crypted, k.Bytes())
+
+	pi := ot.LabelFromData(crypted)
+	pi.Xor(k)
+	pi.Xor(c)
+
+	return pi.Bytes()
+}
+
+func decrypt(alg cipher.Block, a, b *ot.Label, t uint32, encrypted []byte) (
+	[]byte, error) {
+
+	k := makeK(a, b, t)
+
+	crypted := make([]byte, alg.BlockSize())
+	alg.Encrypt(crypted, k.Bytes())
+
+	c := ot.LabelFromData(encrypted)
+	c.Xor(ot.LabelFromData(crypted))
+	c.Xor(k)
+
+	return c.Bytes(), nil
+}
+
+func makeK(a, b *ot.Label, t uint32) *ot.Label {
+	k := a.Copy()
+	k.Mul2()
+
+	if b != nil {
+		tmp := b.Copy()
+		tmp.Mul4()
+		k.Xor(tmp)
+	}
+	k.Xor(ot.NewTweak(t))
+
+	return k
+}
+
+type Garbled struct {
+	Wires ot.Inputs
+	Gates map[int][][]byte
+}
+
+func (c *Circuit) Garble(key []byte) (*Garbled, error) {
+	// Assign labels to wires.
+	start := time.Now()
+	wires := make(ot.Inputs)
+	for w := 0; w < c.NumWires; w++ {
+		l0, err := ot.NewLabel(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+		l1, err := ot.NewLabel(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+
+		// Point-and-permutate
+
+		var s [1]byte
+		if _, err := rand.Read(s[:]); err != nil {
+			return nil, err
+		}
+
+		ws := (s[0] & 0x80) != 0
+
+		l0.SetS(ws)
+		l1.SetS(!ws)
+
+		wires[w] = ot.Wire{
+			Label0: l0,
+			Label1: l1,
+		}
+	}
+	t := time.Now()
+	fmt.Printf("Garble.Labels:\t%s\n", t.Sub(start))
+	start = t
+
+	garbled := make(map[int][][]byte)
+
+	alg, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	enc := func(a, b, c *ot.Label, t uint32) []byte {
+		return encrypt(alg, a, b, c, t)
+	}
+
+	for id, gate := range c.Gates {
+		data, err := gate.Garble(wires, enc)
+		if err != nil {
+			return nil, err
+		}
+		garbled[id] = data
+	}
+	t = time.Now()
+	fmt.Printf("Garble.Garble:\t%s\n", t.Sub(start))
+	start = t
+
+	return &Garbled{
+		Wires: wires,
+		Gates: garbled,
+	}, nil
 }
 
 func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
@@ -163,36 +277,4 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 	}
 
 	return result, nil
-}
-
-func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
-	[]byte, error) {
-
-	var a *ot.Label
-	var aOK bool
-	var b *ot.Label
-	var bOK bool
-
-	switch g.Op {
-	case XOR, AND, OR:
-		a, aOK = wires[g.Inputs[0]]
-		b, bOK = wires[g.Inputs[1]]
-
-	case INV:
-		a, aOK = wires[g.Inputs[0]]
-		b = nil
-		bOK = true
-
-	default:
-		return nil, fmt.Errorf("Invalid operation %s", g.Op)
-	}
-
-	if !aOK {
-		return nil, fmt.Errorf("No input for wire a found")
-	}
-	if !bOK {
-		return nil, fmt.Errorf("No input for wire b found")
-	}
-
-	return dec(a, b, g.ID, garbled[idx(a, b)])
 }

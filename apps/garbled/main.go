@@ -11,9 +11,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
 	"crypto/rsa"
 	"errors"
 	"flag"
@@ -173,110 +170,23 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	return nil
 }
 
-func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {
-	k := makeK(a, b, t)
-
-	crypted := make([]byte, alg.BlockSize())
-	alg.Encrypt(crypted, k.Bytes())
-
-	pi := ot.LabelFromData(crypted)
-	pi.Xor(k)
-	pi.Xor(c)
-
-	return pi.Bytes()
-}
-
-func decrypt(alg cipher.Block, a, b *ot.Label, t uint32, encrypted []byte) (
-	[]byte, error) {
-
-	k := makeK(a, b, t)
-
-	crypted := make([]byte, alg.BlockSize())
-	alg.Encrypt(crypted, k.Bytes())
-
-	c := ot.LabelFromData(encrypted)
-	c.Xor(ot.LabelFromData(crypted))
-	c.Xor(k)
-
-	return c.Bytes(), nil
-}
-
-func makeK(a, b *ot.Label, t uint32) *ot.Label {
-	k := a.Copy()
-	k.Mul2()
-
-	if b != nil {
-		tmp := b.Copy()
-		tmp.Mul4()
-		k.Xor(tmp)
-	}
-	k.Xor(ot.NewTweak(t))
-
-	return k
-}
-
 func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 	input *big.Int) error {
 
-	// Assign labels to wires.
 	start := time.Now()
-	wires := make(ot.Inputs)
-	for w := 0; w < circ.NumWires; w++ {
-		l0, err := ot.NewLabel(rand.Reader)
-		if err != nil {
-			return err
-		}
-		l1, err := ot.NewLabel(rand.Reader)
-		if err != nil {
-			return err
-		}
 
-		// Point-and-permutate
-
-		var s [1]byte
-		if _, err := rand.Read(s[:]); err != nil {
-			return err
-		}
-
-		ws := (s[0] & 0x80) != 0
-
-		l0.SetS(ws)
-		l1.SetS(!ws)
-
-		wires[w] = ot.Wire{
-			Label0: l0,
-			Label1: l1,
-		}
-	}
-	t := time.Now()
-	fmt.Printf("Labels:\t%s\n", t.Sub(start))
-	start = t
-
-	garbled := make(map[int][][]byte)
-
-	alg, err := aes.NewCipher(key[:])
+	garbled, err := circ.Garble(key[:])
 	if err != nil {
 		return err
 	}
 
-	enc := func(a, b, c *ot.Label, t uint32) []byte {
-		return encrypt(alg, a, b, c, t)
-	}
-
-	for id, gate := range circ.Gates {
-		data, err := gate.Garble(wires, enc)
-		if err != nil {
-			return err
-		}
-		garbled[id] = data
-	}
-	t = time.Now()
+	t := time.Now()
 	fmt.Printf("Garble:\t%s\n", t.Sub(start))
 	start = t
 
 	// Send garbled tables.
 	var size FileSize
-	for id, data := range garbled {
+	for id, data := range garbled.Gates {
 		if err := sendUint32(conn, id); err != nil {
 			return err
 		}
@@ -296,7 +206,7 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 	// Select our inputs.
 	var n1 [][]byte
 	for i := 0; i < circ.N1; i++ {
-		wire := wires[i]
+		wire := garbled.Wires[i]
 
 		var n []byte
 
@@ -320,7 +230,7 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 	}
 
 	// Init oblivious transfer.
-	sender, err := ot.NewSender(2048, wires)
+	sender, err := ot.NewSender(2048, garbled.Wires)
 	if err != nil {
 		return err
 	}
@@ -397,7 +307,7 @@ func serveConnection(conn *bufio.ReadWriter, circ *circuit.Circuit,
 				if err != nil {
 					return err
 				}
-				wire := wires[circ.NumWires-circ.N3+i]
+				wire := garbled.Wires[circ.NumWires-circ.N3+i]
 
 				var bit uint
 				if bytes.Compare(label, wire.Label0.Bytes()) == 0 {
@@ -494,15 +404,6 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 		return err
 	}
 
-	alg, err := aes.NewCipher(key[:])
-	if err != nil {
-		return err
-	}
-
-	dec := func(a, b *ot.Label, t uint32, data []byte) ([]byte, error) {
-		return decrypt(alg, a, b, t, data)
-	}
-
 	// Query our inputs.
 	for i := 0; i < circ.N2; i++ {
 		var bit int
@@ -523,17 +424,9 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 	}
 
 	// Evaluate gates.
-	for id := 0; id < circ.NumGates; id++ {
-		gate := circ.Gates[id]
-		if debug {
-			fmt.Printf("Evaluating gate %d %s\n", id, gate.Op)
-		}
-
-		output, err := gate.Eval(wires, dec, garbled[id])
-		if err != nil {
-			return err
-		}
-		wires[gate.Outputs[0]] = ot.LabelFromData(output)
+	err = circ.Eval(key[:], wires, garbled)
+	if err != nil {
+		return err
 	}
 
 	var labels []*ot.Label
@@ -550,7 +443,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 
 	fmt.Printf("Result: %v\n", val)
 	fmt.Printf("Result: 0b%s\n", val.Text(2))
-	fmt.Printf("Result: %x\n", val.Bytes())
+	fmt.Printf("Result: 0x%x\n", val.Bytes())
 
 	return nil
 }
