@@ -6,7 +6,7 @@
 // All rights reserved.
 //
 
-package main
+package circuit
 
 import (
 	"bytes"
@@ -24,6 +24,7 @@ func TestEnc(t *testing.T) {
 	b, _ := ot.NewLabel(rand.Reader)
 	c, _ := ot.NewLabel(rand.Reader)
 	tweak := uint32(42)
+	var key [32]byte
 
 	cipher, err := aes.NewCipher(key[:])
 	if err != nil {

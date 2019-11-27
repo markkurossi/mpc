@@ -19,6 +19,10 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
+var (
+	verbose = false
+)
+
 type Enc func(a, b, c *ot.Label, t uint32) []byte
 
 type Dec func(a, b *ot.Label, t uint32, data []byte) ([]byte, error)
@@ -156,7 +160,9 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		}
 	}
 	t := time.Now()
-	fmt.Printf("Garble.Labels:\t%s\n", t.Sub(start))
+	if verbose {
+		fmt.Printf(".Labels:\t%s\n", t.Sub(start))
+	}
 	start = t
 
 	garbled := make(map[int][][]byte)
@@ -178,7 +184,9 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		garbled[id] = data
 	}
 	t = time.Now()
-	fmt.Printf("Garble.Garble:\t%s\n", t.Sub(start))
+	if verbose {
+		fmt.Printf(".Garble:\t%s\n", t.Sub(start))
+	}
 	start = t
 
 	return &Garbled{

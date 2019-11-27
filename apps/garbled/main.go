@@ -63,7 +63,7 @@ func main() {
 				os.Exit(1)
 			}
 		} else if strings.HasSuffix(arg, ".mpcl") {
-			circ, err = compileCircuit(arg)
+			circ, err = compiler.CompileFile(arg)
 			if err != nil {
 				fmt.Printf("Failed to compile input file '%s': %s\n", arg, err)
 				os.Exit(1)
@@ -99,19 +99,6 @@ func main() {
 	}
 }
 
-func compileCircuit(file string) (*circuit.Circuit, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	parser := compiler.NewParser(file, f)
-	unit, err := parser.Parse()
-	if err != nil {
-		return nil, err
-	}
-	return unit.Compile()
-}
-
 func loadCircuit(file string) (*circuit.Circuit, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -138,13 +125,15 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 
 		io := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-		err = circuit.Garbler(io, circ, input, key[:])
+		result, err := circuit.Garbler(io, circ, input, key[:], verbose)
 
 		conn.Close()
 
 		if err != nil {
 			return err
 		}
+
+		printResult(result)
 	}
 	return nil
 }
@@ -158,5 +147,17 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
 
 	conn := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
 
-	return circuit.Evaluator(conn, circ, input, key[:])
+	result, err := circuit.Evaluator(conn, circ, input, key[:])
+	if err != nil {
+		return err
+	}
+	printResult(result)
+
+	return nil
+}
+
+func printResult(result *big.Int) {
+	fmt.Printf("Result: %v\n", result)
+	fmt.Printf("Result: 0b%s\n", result.Text(2))
+	fmt.Printf("Result: 0x%x\n", result.Bytes())
 }
