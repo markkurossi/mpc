@@ -36,22 +36,6 @@ var (
 	key           [32]byte // XXX
 )
 
-type FileSize uint64
-
-func (s FileSize) String() string {
-	if s > 1000*1000*1000*1000 {
-		return fmt.Sprintf("%d TB", s/(1000*1000*1000*1000))
-	} else if s > 1000*1000*1000 {
-		return fmt.Sprintf("%d GB", s/(1000*1000*1000))
-	} else if s > 1000*1000 {
-		return fmt.Sprintf("%d MB", s/(1000*1000))
-	} else if s > 1000 {
-		return fmt.Sprintf("%d kB", s/1000)
-	} else {
-		return fmt.Sprintf("%d B", s)
-	}
-}
-
 func main() {
 	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
 	compile := flag.Bool("c", false, "Compile MPCL to circuit")
