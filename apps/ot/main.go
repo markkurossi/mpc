@@ -10,6 +10,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"os"
@@ -18,8 +19,8 @@ import (
 )
 
 func main() {
-	m0 := []byte{'M', 's', 'g', '0'}
-	m1 := []byte{'1', 'g', 's', 'M'}
+	m0, _ := ot.NewLabel(rand.Reader)
+	m1, _ := ot.NewLabel(rand.Reader)
 
 	sender, err := ot.NewSender(2048, map[int]ot.Wire{
 		0: ot.Wire{
@@ -63,9 +64,9 @@ func main() {
 
 	var ret int
 	if bit == 0 {
-		ret = bytes.Compare(m0, m)
+		ret = bytes.Compare(m0.Bytes(), m)
 	} else {
-		ret = bytes.Compare(m1, m)
+		ret = bytes.Compare(m1.Bytes(), m)
 	}
 	if ret != 0 {
 		fmt.Printf("Verify failed!\n")
