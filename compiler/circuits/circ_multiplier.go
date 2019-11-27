@@ -28,6 +28,10 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		return nil
 	}
 
+	if len(x) == 2 {
+		fmt.Printf("XXX 2 bit multiplier does not work!\n")
+	}
+
 	var sums []*Wire
 
 	// Construct Y0 sums

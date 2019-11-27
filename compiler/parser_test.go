@@ -15,6 +15,10 @@ import (
 	"testing"
 )
 
+const (
+	verbose = false
+)
+
 var parserTests = []string{
 	`
 package main
@@ -81,10 +85,12 @@ func TestParser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse failed: %v", err)
 		}
-		fmt.Printf("package %s\n", unit.Package)
-		for _, f := range unit.Functions {
-			f.Fprint(os.Stdout, 0)
-			fmt.Printf("\n")
+		if verbose {
+			fmt.Printf("package %s\n", unit.Package)
+			for _, f := range unit.Functions {
+				f.Fprint(os.Stdout, 0)
+				fmt.Printf("\n")
+			}
 		}
 	}
 }

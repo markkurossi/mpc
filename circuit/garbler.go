@@ -86,7 +86,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 
 	// Send our inputs.
 	for idx, i := range n1 {
-		if verbose {
+		if verbose && false {
 			fmt.Printf("N1[%d]:\t%x\n", idx, i)
 		}
 		if err := sendData(conn, i); err != nil {

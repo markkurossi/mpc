@@ -32,8 +32,6 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 	n1 := main.Args[0].Type.Bits
 	n2 := main.Args[1].Type.Bits
 
-	fmt.Printf("n1=%d, n2=%d, n3=%d\n", n1, n2, returnBits)
-
 	c := circuits.NewCompiler(n1, n2, returnBits)
 
 	main.Args[0].Wires = c.Inputs[0:n1]
