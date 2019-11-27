@@ -10,6 +10,7 @@ package compiler
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"math/big"
 	"testing"
@@ -19,6 +20,7 @@ import (
 
 type Test struct {
 	Name    string
+	Skip    bool
 	Operand string
 	Bits    int
 	Eval    func(a *big.Int, b *big.Int) *big.Int
@@ -42,8 +44,42 @@ func main(a, b int2) int3 {
 }
 `,
 	},
+	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
 	Test{
-		Name:    "Multiply",
+		Name:    "Multiply 1-bit",
+		Skip:    true,
+		Operand: "*",
+		Bits:    1,
+		Eval: func(a *big.Int, b *big.Int) *big.Int {
+			result := big.NewInt(0)
+			result.Mul(a, b)
+			return result
+		},
+		Code: `
+package main
+func main(a, b int1) int2 {
+    return a * b
+}
+`,
+	},
+	Test{
+		Name:    "Multiply 2-bits",
+		Operand: "*",
+		Bits:    2,
+		Eval: func(a *big.Int, b *big.Int) *big.Int {
+			result := big.NewInt(0)
+			result.Mul(a, b)
+			return result
+		},
+		Code: `
+package main
+func main(a, b int2) int4 {
+    return a * b
+}
+`,
+	},
+	Test{
+		Name:    "Multiply n-bits",
 		Operand: "*",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -62,6 +98,10 @@ func main(a, b int3) int6 {
 
 func TestAdd(t *testing.T) {
 	for _, test := range tests {
+		if test.Skip {
+			fmt.Printf("Skipping %s\n", test.Name)
+			continue
+		}
 		circ, err := Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)

@@ -25,11 +25,9 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	// One bit multiplication is AND.
 	if len(x) == 1 {
 		compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], z[0]))
+		// XXX z[1] is unset and should be wired to 0. Implement this
+		// when circuit constants are implemented.
 		return nil
-	}
-
-	if len(x) == 2 {
-		fmt.Printf("XXX 2 bit multiplier does not work!\n")
 	}
 
 	var sums []*Wire
@@ -91,7 +89,7 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		compiler.AddGate(NewBinary(circuit.AND, xn, y[j], and))
 
 		var cout *Wire
-		if i+1 >= len(sums) {
+		if i+1 >= len(x) {
 			cout = z[len(z)-1]
 		} else {
 			cout = NewWire()
@@ -99,6 +97,8 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 
 		if i == 0 {
 			NewHalfAdder(compiler, and, sums[i], z[j+i], cout)
+		} else if i >= len(sums) {
+			NewHalfAdder(compiler, and, c, z[j+i], cout)
 		} else {
 			NewFullAdder(compiler, and, sums[i], c, z[j+i], cout)
 		}
