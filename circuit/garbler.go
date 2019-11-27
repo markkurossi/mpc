@@ -38,6 +38,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 	key []byte, verbose bool) (*big.Int, error) {
 
 	start := time.Now()
+	last := start
 
 	garbled, err := circ.Garble(key)
 	if err != nil {
@@ -46,9 +47,9 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 
 	t := time.Now()
 	if verbose {
-		fmt.Printf("Garble:\t%s\n", t.Sub(start))
+		fmt.Printf("Garble:\t%s\n", t.Sub(last))
 	}
-	start = t
+	last = t
 
 	// Send garbled tables.
 	var size FileSize
@@ -115,9 +116,9 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 	conn.Flush()
 	t = time.Now()
 	if verbose {
-		fmt.Printf("Xfer:\t%s\t%s\n", t.Sub(start), size)
+		fmt.Printf("Xfer:\t%s\t%s\n", t.Sub(last), size)
 	}
-	start = t
+	last = t
 
 	// Process messages.
 
@@ -199,10 +200,11 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 	}
 	t = time.Now()
 	if verbose {
-		fmt.Printf("OT:\t%s\n", lastOT.Sub(start))
+		fmt.Printf("OT:\t%s\n", lastOT.Sub(last))
 		fmt.Printf("Eval:\t%s\n", t.Sub(lastOT))
 	}
-	start = t
+	last = t
+	fmt.Printf("Total:\t%s\n", t.Sub(start))
 
 	return result, nil
 }
