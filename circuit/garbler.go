@@ -204,7 +204,9 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 		fmt.Printf("Eval:\t%s\n", t.Sub(lastOT))
 	}
 	last = t
-	fmt.Printf("Total:\t%s\n", t.Sub(start))
+	if verbose {
+		fmt.Printf("Total:\t%s\n", t.Sub(start))
+	}
 
 	return result, nil
 }
