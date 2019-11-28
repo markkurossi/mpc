@@ -57,6 +57,16 @@ func (c *Compiler) ZeroWire() *Wire {
 	return c.zeroWire
 }
 
+func (c *Compiler) Zero(o *Wire) {
+	w := NewWire()
+	c.AddGate(NewINV(c.ZeroWire(), w))
+	c.AddGate(NewINV(w, o))
+}
+
+func (c *Compiler) One(o *Wire) {
+	c.AddGate(NewINV(c.ZeroWire(), o))
+}
+
 func (c *Compiler) AddGate(gate Gate) {
 	c.Gates = append(c.Gates, gate)
 }
