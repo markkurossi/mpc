@@ -13,10 +13,11 @@ import (
 )
 
 type Binary struct {
-	Op circuit.Operation
-	A  *Wire
-	B  *Wire
-	O  *Wire
+	Op       circuit.Operation
+	A        *Wire
+	B        *Wire
+	O        *Wire
+	Compiled bool
 }
 
 func NewBinary(op circuit.Operation, a, b, o *Wire) *Binary {
@@ -49,6 +50,10 @@ func (g *Binary) Assign(c *Compiler) {
 }
 
 func (g *Binary) Compile(c *Compiler) {
+	if g.Compiled {
+		return
+	}
+	g.Compiled = true
 	c.compiled = append(c.compiled, &circuit.Gate{
 		ID: c.NextGateID(),
 		Inputs: []circuit.Wire{
