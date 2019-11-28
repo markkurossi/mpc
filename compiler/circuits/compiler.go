@@ -24,6 +24,7 @@ type Compiler struct {
 	pending    []Gate
 	assigned   []Gate
 	compiled   []*circuit.Gate
+	zeroWire   *Wire
 }
 
 func NewCompiler(n1, n2, n3 int) *Compiler {
@@ -41,6 +42,19 @@ func NewCompiler(n1, n2, n3 int) *Compiler {
 	}
 
 	return result
+}
+
+func (c *Compiler) ZeroWire() *Wire {
+	if c.zeroWire == nil {
+		c.zeroWire = NewWire()
+		var head []*Wire
+		head = append(head, c.Inputs[0:c.N1]...)
+		head = append(head, c.zeroWire)
+		head = append(head, c.Inputs[c.N1:]...)
+		c.Inputs = head
+		c.N1++
+	}
+	return c.zeroWire
 }
 
 func (c *Compiler) AddGate(gate Gate) {

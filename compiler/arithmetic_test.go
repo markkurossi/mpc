@@ -47,7 +47,7 @@ func main(a, b int2) int3 {
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
 	Test{
 		Name:    "Multiply 1-bit",
-		Skip:    true,
+		Skip:    false,
 		Operand: "*",
 		Bits:    1,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {

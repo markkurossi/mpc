@@ -25,8 +25,10 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	// One bit multiplication is AND.
 	if len(x) == 1 {
 		compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], z[0]))
-		// XXX z[1] is unset and should be wired to 0. Implement this
-		// when circuit constants are implemented.
+		compiler.AddGate(NewBinary(circuit.AND,
+			compiler.ZeroWire(),
+			compiler.ZeroWire(),
+			z[1]))
 		return nil
 	}
 
