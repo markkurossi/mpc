@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"sort"
 	"strconv"
@@ -44,23 +45,84 @@ func (op Operation) String() string {
 	}
 }
 
+type IOArg struct {
+	Name string
+	Type string
+	Size int
+}
+
+type IO []IOArg
+
+func (io IO) Size() int {
+	var sum int
+	for _, a := range io {
+		sum += a.Size
+	}
+	return sum
+}
+
+func (io IO) Parse(inputs []string) ([]*big.Int, error) {
+	var result []*big.Int
+
+	for idx, _ := range io {
+		i := new(big.Int)
+		// XXX Type checks
+		_, ok := i.SetString(inputs[idx], 10)
+		if !ok {
+			return nil, fmt.Errorf("Invalid input: %s", inputs[idx])
+		}
+		result = append(result, i)
+	}
+	return result, nil
+}
+
+func (io IO) String() string {
+	var str = ""
+	for i, a := range io {
+		if i > 0 {
+			str += ", "
+		}
+		if len(a.Name) > 0 {
+			str += a.Name + ":"
+		}
+		str += a.Type
+	}
+	return str
+}
+
+func (io IO) Split(in *big.Int) []*big.Int {
+	var result []*big.Int
+	var bit int
+	for _, arg := range io {
+		r := big.NewInt(0)
+		for i := 0; i < arg.Size; i++ {
+			if in.Bit(bit) == 1 {
+				r = big.NewInt(0).SetBit(r, i, 1)
+			}
+			bit++
+		}
+		result = append(result, r)
+	}
+	return result
+}
+
 type Circuit struct {
 	NumGates int
 	NumWires int
-	N1       int
-	N2       int
-	N3       int
+	N1       IO
+	N2       IO
+	N3       IO
 	Gates    map[int]*Gate
 }
 
 func (c *Circuit) String() string {
 	return fmt.Sprintf("#gates=%d, #wires=%d n1=%d, n2=%d, n3=%d",
-		c.NumGates, c.NumWires, c.N1, c.N2, c.N3)
+		c.NumGates, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
 }
 
 func (c *Circuit) Marshal(out io.Writer) {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
-	fmt.Fprintf(out, "%d %d %d\n", c.N1, c.N2, c.N3)
+	fmt.Fprintf(out, "%d %d %d\n", c.N1.Size(), c.N2.Size(), c.N3.Size())
 	fmt.Fprintf(out, "\n")
 
 	type kv struct {
@@ -220,9 +282,9 @@ func Parse(in io.Reader) (*Circuit, error) {
 	return &Circuit{
 		NumGates: numGates,
 		NumWires: numWires,
-		N1:       n1,
-		N2:       n2,
-		N3:       n3,
+		N1:       []IOArg{IOArg{Size: n1}},
+		N2:       []IOArg{IOArg{Size: n2}},
+		N3:       []IOArg{IOArg{Size: n3}},
 		Gates:    gates,
 	}, nil
 }

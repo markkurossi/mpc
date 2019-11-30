@@ -21,7 +21,7 @@ var (
 	debug = false
 )
 
-func Evaluator(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
+func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	key []byte) (*big.Int, error) {
 
 	garbled := make(map[int][][]byte)
@@ -54,7 +54,7 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 	wires := make(map[Wire]*ot.Label)
 
 	// Receive peer inputs.
-	for i := 0; i < circ.N1; i++ {
+	for i := 0; i < circ.N1.Size(); i++ {
 		n, err := receiveData(conn)
 		if err != nil {
 			return nil, err
@@ -84,22 +84,30 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 	}
 
 	// Query our inputs.
-	for i := 0; i < circ.N2; i++ {
-		var bit int
-		if input.Bit(i) == 1 {
-			bit = 1
-		} else {
-			bit = 0
+	var w int
+	for idx, io := range circ.N2 {
+		var input *big.Int
+		if idx < len(inputs) {
+			input = inputs[idx]
 		}
+		for i := 0; i < io.Size; i++ {
+			var bit int
+			if input.Bit(i) == 1 {
+				bit = 1
+			} else {
+				bit = 0
+			}
 
-		n, err := receive(conn, receiver, circ.N1+i, bit)
-		if err != nil {
-			return nil, err
+			n, err := receive(conn, receiver, circ.N1.Size()+w, bit)
+			if err != nil {
+				return nil, err
+			}
+			if verbose {
+				fmt.Printf("N2[%d]:\t%x\n", w, n)
+			}
+			wires[Wire(circ.N1.Size()+w)] = ot.LabelFromData(n)
+			w++
 		}
-		if verbose {
-			fmt.Printf("N2[%d]:\t%x\n", i, n)
-		}
-		wires[Wire(circ.N1+i)] = ot.LabelFromData(n)
 	}
 
 	// Evaluate gates.
@@ -110,8 +118,8 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 
 	var labels []*ot.Label
 
-	for i := 0; i < circ.N3; i++ {
-		r := wires[Wire(circ.NumWires-circ.N3+i)]
+	for i := 0; i < circ.N3.Size(); i++ {
+		r := wires[Wire(circ.NumWires-circ.N3.Size()+i)]
 		labels = append(labels, r)
 	}
 

@@ -10,6 +10,7 @@ package compiler
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
@@ -21,21 +22,50 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 	if !ok {
 		return nil, fmt.Errorf("No main function")
 	}
-	if len(main.Args) != 2 {
-		return nil, fmt.Errorf("Only 2 argument main() supported")
+
+	var args circuit.IO
+	for _, arg := range main.Args {
+		args = append(args, circuit.IOArg{
+			Name: arg.Name,
+			Type: arg.Type.String(),
+			Size: arg.Type.Bits,
+		})
 	}
-	var returnBits int
+
+	// Split arguments into garbler and evaluator arguments.
+	var separatorSeen bool
+	var n1, n2 circuit.IO
+	for _, a := range args {
+		if !separatorSeen {
+			if !strings.HasPrefix(a.Name, "e") {
+				n1 = append(n1, a)
+				continue
+			}
+			separatorSeen = true
+		}
+		n2 = append(n2, a)
+	}
+	if !separatorSeen {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("Can't split arguments: %s", args)
+		}
+		n1 = args[0:1]
+		n2 = args[1:]
+	}
+
+	var n3 circuit.IO
 	for _, rt := range main.Return {
-		returnBits += rt.Type.Bits
+		n3 = append(n3, circuit.IOArg{
+			Name: rt.Name,
+			Type: rt.Type.String(),
+			Size: rt.Type.Bits,
+		})
 	}
 
-	n1 := main.Args[0].Type.Bits
-	n2 := main.Args[1].Type.Bits
+	c := circuits.NewCompiler(n1, n2, n3)
 
-	c := circuits.NewCompiler(n1, n2, returnBits)
-
-	main.Args[0].Wires = c.Inputs[0:n1]
-	main.Args[1].Wires = c.Inputs[n1:]
+	main.Args[0].Wires = c.Inputs[0:n1.Size()]
+	main.Args[1].Wires = c.Inputs[n1.Size():]
 
 	var index int
 	for _, rt := range main.Return {

@@ -34,8 +34,8 @@ func (s FileSize) String() string {
 	}
 }
 
-func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
-	key []byte, verbose bool) (*big.Int, error) {
+func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
+	key []byte, verbose bool) ([]*big.Int, error) {
 
 	start := time.Now()
 	last := start
@@ -72,17 +72,25 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 
 	// Select our inputs.
 	var n1 [][]byte
-	for i := 0; i < circ.N1; i++ {
-		wire := garbled.Wires[i]
-
-		var n []byte
-
-		if input.Bit(i) == 1 {
-			n = wire.Label1.Bytes()
-		} else {
-			n = wire.Label0.Bytes()
+	var w int
+	for idx, io := range circ.N1 {
+		var input *big.Int
+		if idx < len(inputs) {
+			input = inputs[idx]
 		}
-		n1 = append(n1, n)
+		for i := 0; i < io.Size; i++ {
+			wire := garbled.Wires[w]
+			w++
+
+			var n []byte
+
+			if input != nil && input.Bit(i) == 1 {
+				n = wire.Label1.Bytes()
+			} else {
+				n = wire.Label0.Bytes()
+			}
+			n1 = append(n1, n)
+		}
 	}
 
 	// Send our inputs.
@@ -172,13 +180,12 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 			lastOT = time.Now()
 
 		case OP_RESULT:
-
-			for i := 0; i < circ.N3; i++ {
+			for i := 0; i < circ.N3.Size(); i++ {
 				label, err := receiveData(conn)
 				if err != nil {
 					return nil, err
 				}
-				wire := garbled.Wires[circ.NumWires-circ.N3+i]
+				wire := garbled.Wires[circ.NumWires-circ.N3.Size()+i]
 
 				var bit uint
 				if bytes.Compare(label, wire.Label0.Bytes()) == 0 {
@@ -208,5 +215,5 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, input *big.Int,
 		fmt.Printf("Total:\t%s\n", t.Sub(start))
 	}
 
-	return result, nil
+	return circ.N3.Split(result), nil
 }

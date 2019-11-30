@@ -13,9 +13,9 @@ import (
 )
 
 type Compiler struct {
-	N1         int
-	N2         int
-	N3         int
+	N1         circuit.IO
+	N2         circuit.IO
+	N3         circuit.IO
 	Inputs     []*Wire
 	Outputs    []*Wire
 	Gates      []Gate
@@ -27,17 +27,21 @@ type Compiler struct {
 	zeroWire   *Wire
 }
 
-func NewCompiler(n1, n2, n3 int) *Compiler {
+func NewIO(size int) circuit.IO {
+	return circuit.IO{circuit.IOArg{Size: size}}
+}
+
+func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
 	result := &Compiler{
 		N1: n1,
 		N2: n2,
 		N3: n3,
 	}
 
-	for i := 0; i < n1+n2; i++ {
+	for i := 0; i < n1.Size()+n2.Size(); i++ {
 		result.Inputs = append(result.Inputs, NewWire())
 	}
-	for i := 0; i < n3; i++ {
+	for i := 0; i < n3.Size(); i++ {
 		result.Outputs = append(result.Outputs, NewOutputWire())
 	}
 
@@ -48,11 +52,14 @@ func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
 		c.zeroWire = NewWire()
 		var head []*Wire
-		head = append(head, c.Inputs[0:c.N1]...)
+		head = append(head, c.Inputs[0:c.N1.Size()]...)
 		head = append(head, c.zeroWire)
-		head = append(head, c.Inputs[c.N1:]...)
+		head = append(head, c.Inputs[c.N1.Size():]...)
 		c.Inputs = head
-		c.N1++
+		c.N1 = append(c.N1, circuit.IOArg{
+			Name: "0",
+			Size: 1,
+		})
 	}
 	return c.zeroWire
 }

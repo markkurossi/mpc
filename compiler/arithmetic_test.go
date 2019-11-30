@@ -123,8 +123,8 @@ func TestAdd(t *testing.T) {
 					bufio.NewReader(er),
 					bufio.NewWriter(ew))
 
-				gInput := big.NewInt(int64(g))
-				eInput := big.NewInt(int64(e))
+				gInput := []*big.Int{big.NewInt(int64(g))}
+				eInput := []*big.Int{big.NewInt(int64(e))}
 
 				go func() {
 					_, err := circuit.Garbler(gio, circ, gInput, key[:], false)
@@ -138,7 +138,7 @@ func TestAdd(t *testing.T) {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}
 
-				expected := test.Eval(gInput, eInput)
+				expected := test.Eval(gInput[0], eInput[0])
 
 				if expected.Cmp(result) != 0 {
 					t.Errorf("%s failed: %s %s %s = %s, expected %s\n",

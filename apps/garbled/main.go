@@ -36,12 +36,30 @@ var (
 	key           [32]byte // XXX
 )
 
+type input []string
+
+func (i *input) String() string {
+	return fmt.Sprint(*i)
+}
+
+func (i *input) Set(value string) error {
+	for _, v := range strings.Split(value, ",") {
+		*i = append(*i, v)
+	}
+	return nil
+}
+
+var inputFlag input
+
+func init() {
+	flag.Var(&inputFlag, "i", "comma-separated list of circuit inputs")
+}
+
 func main() {
-	garbler := flag.Bool("g", false, "Garbler / Evaluator mode")
-	compile := flag.Bool("c", false, "Compile MPCL to circuit")
-	input := flag.Uint64("i", 0, "Circuit input")
-	fVerbose := flag.Bool("v", false, "Verbose output")
-	fDebug := flag.Bool("d", false, "Debug output")
+	garbler := flag.Bool("g", false, "garbler / evaluator mode")
+	compile := flag.Bool("c", false, "compile MPCL to circuit")
+	fVerbose := flag.Bool("v", false, "verbose output")
+	fDebug := flag.Bool("d", false, "debug output")
 	flag.Parse()
 
 	verbose = *fVerbose
@@ -87,12 +105,25 @@ func main() {
 	}
 
 	fmt.Printf("Circuit: %v\n", circ)
-	fmt.Printf("Input: %d\n", *input)
+	fmt.Printf(" - N1: %s\n", circ.N1)
+	fmt.Printf(" - N2: %s\n", circ.N2)
+	fmt.Printf(" - N3: %s\n", circ.N3)
+	fmt.Printf(" - In: %s\n", inputFlag)
 
 	if *garbler {
-		err = garblerMode(circ, big.NewInt(int64(*input)))
+		input, err := circ.N1.Parse(inputFlag)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		err = garblerMode(circ, input)
 	} else {
-		err = evaluatorMode(circ, big.NewInt(int64(*input)))
+		input, err := circ.N2.Parse(inputFlag)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		err = evaluatorMode(circ, input)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -109,7 +140,7 @@ func loadCircuit(file string) (*circuit.Circuit, error) {
 	return circuit.Parse(f)
 }
 
-func garblerMode(circ *circuit.Circuit, input *big.Int) error {
+func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -133,12 +164,12 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 			return err
 		}
 
-		printResult(result)
+		printResult(result[0])
 	}
 	return nil
 }
 
-func evaluatorMode(circ *circuit.Circuit, input *big.Int) error {
+func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
