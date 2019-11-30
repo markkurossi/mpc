@@ -281,7 +281,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}, nil
 
 	}
-	return nil, SyntaxError
+	return nil, p.err(t.To, "syntax error")
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {

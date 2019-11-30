@@ -83,7 +83,7 @@ func main() {
 		} else if strings.HasSuffix(arg, ".mpcl") {
 			circ, err = compiler.CompileFile(arg)
 			if err != nil {
-				fmt.Printf("Failed to compile input file '%s': %s\n", arg, err)
+				fmt.Printf("%s\n", err)
 				os.Exit(1)
 			}
 			if *compile {

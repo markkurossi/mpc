@@ -3,6 +3,6 @@
 
 package main
 
-func main(a, b int4, e int5) int6 {
-	return a + b + e
+func main(a, b int4, e int5) (int6, int5) {
+	return a + b + e, 4
 }
