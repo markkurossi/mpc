@@ -64,8 +64,11 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 
 	c := circuits.NewCompiler(n1, n2, n3)
 
-	main.Args[0].Wires = c.Inputs[0:n1.Size()]
-	main.Args[1].Wires = c.Inputs[n1.Size():]
+	var w int
+	for idx, arg := range args {
+		main.Args[idx].Wires = c.Inputs[w : w+arg.Size]
+		w += arg.Size
+	}
 
 	var index int
 	for _, rt := range main.Return {
