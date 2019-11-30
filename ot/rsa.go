@@ -39,6 +39,10 @@ type Label struct {
 	d1 uint64
 }
 
+func (l *Label) String() string {
+	return fmt.Sprintf("%016x/%016x", l.d0, l.d1)
+}
+
 func NewLabel(rand io.Reader) (*Label, error) {
 	var buf [16]byte
 
