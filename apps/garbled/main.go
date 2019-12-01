@@ -164,7 +164,7 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 			return err
 		}
 
-		printResult(result[0])
+		printResult(result)
 	}
 	return nil
 }
@@ -187,8 +187,10 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 	return nil
 }
 
-func printResult(result *big.Int) {
-	fmt.Printf("Result: %v\n", result)
-	fmt.Printf("Result: 0b%s\n", result.Text(2))
-	fmt.Printf("Result: 0x%x\n", result.Bytes())
+func printResult(results []*big.Int) {
+	for idx, result := range results {
+		fmt.Printf("Result[%d]: %v\n", idx, result)
+		fmt.Printf("Result[%d]: 0b%s\n", idx, result.Text(2))
+		fmt.Printf("Result[%d]: 0x%x\n", idx, result.Bytes())
+	}
 }

@@ -78,13 +78,13 @@ func (p *Parser) needToken(tt TokenType) (*Token, error) {
 	return token, nil
 }
 
-func (p *Parser) sameLine(current *Token) bool {
+func (p *Parser) sameLine(current ast.Point) bool {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return false
 	}
 	p.lexer.Unget(t)
-	return t.From.Line == current.To.Line
+	return t.From.Line == current.Line
 }
 
 func (p *Parser) parsePackage() (string, error) {
@@ -268,16 +268,31 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 	}
 	switch t.Type {
 	case T_SymReturn:
-		var expr ast.AST
-		if p.sameLine(t) {
-			expr, err = p.parseExpr()
+		var exprs []ast.AST
+		if p.sameLine(t.To) {
+			expr, err := p.parseExpr()
 			if err != nil {
 				return nil, err
 			}
+			exprs = append(exprs, expr)
+			for {
+				t, err := p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+				if t.Type != T_Comma {
+					p.lexer.Unget(t)
+					break
+				}
+				expr, err = p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				exprs = append(exprs, expr)
+			}
 		}
-		// XXX multiple return values
 		return &ast.Return{
-			Expr: expr,
+			Exprs: exprs,
 		}, nil
 
 	}

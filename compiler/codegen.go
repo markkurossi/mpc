@@ -76,22 +76,24 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 		index += rt.Type.Bits
 	}
 
-	// Resolve variables
+	// Resolve variables and return values.
 	for _, f := range unit.Functions {
 		vars := make(map[string]*ast.Variable)
 		for _, arg := range f.Args {
 			vars[arg.Name] = arg
 		}
 		err := f.Visit(func(a ast.AST) error {
-			ref, ok := a.(*ast.VariableRef)
-			if !ok {
-				return nil
+			switch a := a.(type) {
+			case *ast.VariableRef:
+				v, ok := vars[a.Name]
+				if !ok {
+					return fmt.Errorf("Unknown variable %s", a.Name)
+				}
+				a.Var = v
+
+			case *ast.Return:
+				a.Return = f.Return
 			}
-			v, ok := vars[ref.Name]
-			if !ok {
-				return fmt.Errorf("Unknown variable %s", ref.Name)
-			}
-			ref.Var = v
 			return nil
 		}, func(a ast.AST) error { return nil })
 		if err != nil {

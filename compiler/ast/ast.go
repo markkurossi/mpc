@@ -177,15 +177,21 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Return struct {
-	Expr AST
+	Exprs  []AST
+	Return []*Variable
 }
 
 func (ast *Return) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "return")
-	if ast.Expr != nil {
+	if len(ast.Exprs) > 0 {
 		fmt.Fprintf(w, " ")
-		ast.Expr.Fprint(w, 0)
+		for idx, expr := range ast.Exprs {
+			if idx > 0 {
+				fmt.Fprintf(w, ", ")
+			}
+			expr.Fprint(w, 0)
+		}
 	}
 }
 
@@ -194,8 +200,8 @@ func (ast *Return) Visit(enter, exit func(ast AST) error) error {
 	if err != nil {
 		return err
 	}
-	if ast.Expr != nil {
-		err = ast.Expr.Visit(enter, exit)
+	for _, expr := range ast.Exprs {
+		err = expr.Visit(enter, exit)
 		if err != nil {
 			return err
 		}

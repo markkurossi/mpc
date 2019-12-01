@@ -22,7 +22,7 @@ var (
 )
 
 func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
-	key []byte) (*big.Int, error) {
+	key []byte) ([]*big.Int, error) {
 
 	garbled := make(map[int][][]byte)
 
@@ -123,5 +123,9 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		labels = append(labels, r)
 	}
 
-	return result(conn, labels)
+	raw, err := result(conn, labels)
+	if err != nil {
+		return nil, err
+	}
+	return circ.N3.Split(raw), nil
 }

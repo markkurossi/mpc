@@ -44,7 +44,21 @@ func (f *Func) Compile(compiler *circuits.Compiler,
 
 func (ast Return) Compile(compiler *circuits.Compiler,
 	out []*circuits.Wire) ([]*circuits.Wire, error) {
-	return ast.Expr.Compile(compiler, out)
+	if len(ast.Return) != len(ast.Exprs) {
+		return nil, fmt.Errorf("Invalid amount of return values")
+	}
+	var result []*circuits.Wire
+	var w int
+	for idx, expr := range ast.Exprs {
+		size := ast.Return[idx].Type.Bits
+		o, err := expr.Compile(compiler, out[w:w+size])
+		if err != nil {
+			return nil, err
+		}
+		w += size
+		result = append(result, o...)
+	}
+	return result, nil
 }
 
 func (ast Binary) Compile(compiler *circuits.Compiler,
