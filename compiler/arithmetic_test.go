@@ -140,7 +140,7 @@ func TestAdd(t *testing.T) {
 
 				expected := test.Eval(gInput[0], eInput[0])
 
-				if expected.Cmp(result) != 0 {
+				if expected.Cmp(result[0]) != 0 {
 					t.Errorf("%s failed: %s %s %s = %s, expected %s\n",
 						test.Name, gInput, test.Operand, eInput, result,
 						expected)
