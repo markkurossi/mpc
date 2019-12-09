@@ -26,12 +26,18 @@ const (
 	T_Symbol
 	T_SymPackage
 	T_SymFunc
+	T_SymIf
+	T_SymElse
 	T_SymReturn
 	T_Type
+	T_Assign
 	T_Mult
 	T_MultEq
 	T_Div
 	T_DivEq
+	T_Mod
+	T_Lshift
+	T_Rshift
 	T_Plus
 	T_PlusPlus
 	T_PlusEq
@@ -43,6 +49,18 @@ const (
 	T_LBrace
 	T_RBrace
 	T_Comma
+	T_Lt
+	T_Le
+	T_Gt
+	T_Ge
+	T_Eq
+	T_Neq
+	T_And
+	T_Or
+	T_BitAnd
+	T_BitOr
+	T_BitXor
+	T_BitClear
 )
 
 var tokenTypes = map[TokenType]string{
@@ -50,12 +68,18 @@ var tokenTypes = map[TokenType]string{
 	T_Symbol:     "symbol",
 	T_SymPackage: "package",
 	T_SymFunc:    "func",
+	T_SymIf:      "if",
+	T_SymElse:    "else",
 	T_SymReturn:  "return",
 	T_Type:       "type",
+	T_Assign:     "=",
 	T_Mult:       "*",
 	T_MultEq:     "*=",
 	T_Div:        "/",
 	T_DivEq:      "/=",
+	T_Mod:        "%",
+	T_Lshift:     "<<",
+	T_Rshift:     ">>",
 	T_Plus:       "+",
 	T_PlusPlus:   "++",
 	T_PlusEq:     "+=",
@@ -67,6 +91,18 @@ var tokenTypes = map[TokenType]string{
 	T_LBrace:     "{",
 	T_RBrace:     "}",
 	T_Comma:      ",",
+	T_Lt:         "<",
+	T_Le:         "<=",
+	T_Gt:         ">",
+	T_Ge:         ">=",
+	T_Eq:         "==",
+	T_Neq:        "!=",
+	T_And:        "&&",
+	T_Or:         "||",
+	T_BitAnd:     "&",
+	T_BitOr:      "|",
+	T_BitXor:     "^",
+	T_BitClear:   "&^",
 }
 
 func (t TokenType) String() string {
@@ -81,6 +117,15 @@ var binaryTypes = map[TokenType]ast.BinaryType{
 	T_Mult:  ast.BinaryMult,
 	T_Plus:  ast.BinaryPlus,
 	T_Minus: ast.BinaryMinus,
+	T_Div:   ast.BinaryDiv,
+	T_Lt:    ast.BinaryLt,
+	T_Le:    ast.BinaryLe,
+	T_Gt:    ast.BinaryGt,
+	T_Ge:    ast.BinaryGe,
+	T_Eq:    ast.BinaryEq,
+	T_Neq:   ast.BinaryNeq,
+	T_And:   ast.BinaryAnd,
+	T_Or:    ast.BinaryOr,
 }
 
 func (t TokenType) BinaryType() ast.BinaryType {
@@ -94,6 +139,8 @@ func (t TokenType) BinaryType() ast.BinaryType {
 var symbols = map[string]TokenType{
 	"package": T_SymPackage,
 	"func":    T_SymFunc,
+	"if":      T_SymIf,
+	"else":    T_SymElse,
 	"return":  T_SymReturn,
 }
 
@@ -125,6 +172,7 @@ type Lexer struct {
 	unread      bool
 	unreadRune  rune
 	unreadPoint ast.Point
+	history     map[int][]rune
 }
 
 func NewLexer(in io.Reader) *Lexer {
@@ -134,6 +182,7 @@ func NewLexer(in io.Reader) *Lexer {
 			Line: 1,
 			Col:  0,
 		},
+		history: make(map[int][]rune),
 	}
 }
 
@@ -154,6 +203,7 @@ func (l *Lexer) ReadRune() (rune, error) {
 		l.point.Col = 0
 	} else {
 		l.point.Col++
+		l.history[l.point.Line] = append(l.history[l.point.Line], r)
 	}
 
 	return r, nil
@@ -163,6 +213,21 @@ func (l *Lexer) UnreadRune(r rune) {
 	l.point, l.unreadPoint = l.unreadPoint, l.point
 	l.unreadRune = r
 	l.unread = true
+}
+
+func (l *Lexer) FlushEOL() error {
+	for {
+		r, err := l.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				return err
+			}
+			return nil
+		}
+		if r == '\n' {
+			return nil
+		}
+	}
 }
 
 func (l *Lexer) Get() (*Token, error) {
@@ -274,6 +339,86 @@ func (l *Lexer) Get() (*Token, error) {
 			return l.Token(T_RBrace), nil
 		case ',':
 			return l.Token(T_Comma), nil
+
+		case '<':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Lt), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(T_Le), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_Lt), nil
+			}
+
+		case '>':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Gt), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(T_Ge), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_Lt), nil
+			}
+
+		case '=':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Assign), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(T_Eq), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_Assign), nil
+			}
+
+		case '|':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_BitOr), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '|':
+				return l.Token(T_Or), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_BitOr), nil
+			}
+
+		case '&':
+			r, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_BitAnd), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '&':
+				return l.Token(T_And), nil
+			default:
+				l.UnreadRune(r)
+				return l.Token(T_BitAnd), nil
+			}
 
 		default:
 			if unicode.IsLetter(r) {

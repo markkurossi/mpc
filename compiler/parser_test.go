@@ -71,6 +71,32 @@ package main
 func main(a, b int4) (int5) {
   return a + b + c * d + e
 }`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b {
+    return a
+  }
+  return b
+}`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b {
+    return a
+  } else {
+    return b
+  }
+}`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b || a == b {
+    return a
+  } else {
+    return b
+  }
+}`,
 }
 
 func TestParser(t *testing.T) {

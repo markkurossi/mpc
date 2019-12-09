@@ -18,6 +18,7 @@ import (
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
+	_ AST = &If{}
 	_ AST = &Return{}
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
@@ -176,6 +177,27 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 	return exit(ast)
 }
 
+type If struct {
+	Expr  AST
+	True  List
+	False List
+}
+
+func (ast *If) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "if ")
+	ast.Expr.Fprint(w, 0)
+	ast.True.Fprint(w, ind)
+	if ast.False != nil {
+		fmt.Fprintf(w, "else ")
+		ast.False.Fprint(w, ind)
+	}
+}
+
+func (ast *If) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("If.Visit not implemented yet")
+}
+
 type Return struct {
 	Exprs  []AST
 	Return []*Variable
@@ -215,12 +237,30 @@ const (
 	BinaryPlus BinaryType = iota
 	BinaryMinus
 	BinaryMult
+	BinaryDiv
+	BinaryLt
+	BinaryLe
+	BinaryGt
+	BinaryGe
+	BinaryEq
+	BinaryNeq
+	BinaryAnd
+	BinaryOr
 )
 
 var binaryTypes = map[BinaryType]string{
 	BinaryPlus:  "+",
 	BinaryMinus: "-",
 	BinaryMult:  "*",
+	BinaryDiv:   "/",
+	BinaryLt:    "<",
+	BinaryLe:    "<=",
+	BinaryGt:    ">",
+	BinaryGe:    ">=",
+	BinaryEq:    "==",
+	BinaryNeq:   "!=",
+	BinaryAnd:   "&&",
+	BinaryOr:    "||",
 }
 
 func (t BinaryType) String() string {

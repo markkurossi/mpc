@@ -9,15 +9,10 @@
 package compiler
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/ast"
-)
-
-var (
-	SyntaxError = errors.New("Syntax error")
 )
 
 type Unit struct {
@@ -58,6 +53,26 @@ func (p *Parser) Parse() (*Unit, error) {
 
 func (p *Parser) err(loc ast.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
+
+	p.lexer.FlushEOL()
+
+	line, ok := p.lexer.history[loc.Line]
+	if ok {
+		var indicator []rune
+		for i := 0; i < loc.Col; i++ {
+			var r rune
+			if line[i] == '\t' {
+				r = '\t'
+			} else {
+				r = ' '
+			}
+			indicator = append(indicator, r)
+		}
+		indicator = append(indicator, '^')
+		return fmt.Errorf("%s:%d:%d: %s\n%s\n%s",
+			p.inputName, loc.Line, loc.Col, msg,
+			string(line), string(indicator))
+	}
 	return fmt.Errorf("%s:%d:%d: %s", p.inputName, loc.Line, loc.Col, msg)
 }
 
@@ -267,6 +282,43 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
+	case T_SymIf:
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_LBrace)
+		if err != nil {
+			return nil, err
+		}
+
+		var b1, b2 ast.List
+		b1, err = p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type == T_SymElse {
+			_, err = p.needToken(T_LBrace)
+			if err != nil {
+				return nil, err
+			}
+			b2, err = p.parseBlock()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			p.lexer.Unget(t)
+		}
+		return &ast.If{
+			Expr:  expr,
+			True:  b1,
+			False: b2,
+		}, nil
+
 	case T_SymReturn:
 		var exprs []ast.AST
 		if p.sameLine(t.To) {
@@ -296,11 +348,99 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}, nil
 
 	}
-	return nil, p.err(t.To, "syntax error")
+	return nil, p.err(t.From, "syntax error")
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {
-	return p.parseExprAdditive()
+	// Precedence Operator
+	// -----------------------------
+	//   5          * / % << >> & &^
+	//   4          + - | ^
+	//   3          == != < <= > >=
+	//   2          &&
+	//   1          ||
+	return p.parseExprLogicalOr()
+}
+
+func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
+	left, err := p.parseExprLogicalAnd()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_Or {
+			p.lexer.Unget(t)
+			return left, nil
+		}
+		right, err := p.parseExprLogicalAnd()
+		if err != nil {
+			return nil, err
+		}
+		left = &ast.Binary{
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}
+	}
+}
+
+func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
+	left, err := p.parseExprComparative()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_And {
+			p.lexer.Unget(t)
+			return left, nil
+		}
+		right, err := p.parseExprComparative()
+		if err != nil {
+			return nil, err
+		}
+		left = &ast.Binary{
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}
+	}
+}
+
+func (p *Parser) parseExprComparative() (ast.AST, error) {
+	left, err := p.parseExprAdditive()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		switch t.Type {
+		case T_Eq, T_Neq, T_Lt, T_Le, T_Gt, T_Ge:
+			right, err := p.parseExprAdditive()
+			if err != nil {
+				return nil, err
+			}
+			left = &ast.Binary{
+				Left:  left,
+				Op:    t.Type.BinaryType(),
+				Right: right,
+			}
+
+		default:
+			p.lexer.Unget(t)
+			return left, nil
+		}
+	}
 }
 
 func (p *Parser) parseExprAdditive() (ast.AST, error) {
@@ -314,7 +454,7 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Plus, T_Minus:
+		case T_Plus, T_Minus, T_BitOr, T_BitXor:
 			right, err := p.parseExprMultiplicative()
 			if err != nil {
 				return nil, err
@@ -343,7 +483,7 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Mult:
+		case T_Mult, T_Div, T_Mod, T_Lshift, T_Rshift, T_BitAnd, T_BitClear:
 			right, err := p.parseExprPrimary()
 			if err != nil {
 				return nil, err

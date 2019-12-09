@@ -20,7 +20,7 @@ import (
 
 type Test struct {
 	Name    string
-	Skip    bool
+	Heavy   bool
 	Operand string
 	Bits    int
 	Eval    func(a *big.Int, b *big.Int) *big.Int
@@ -30,6 +30,7 @@ type Test struct {
 var tests = []Test{
 	Test{
 		Name:    "Add",
+		Heavy:   true,
 		Operand: "+",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -47,7 +48,6 @@ func main(a, b int2) int3 {
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
 	Test{
 		Name:    "Multiply 1-bit",
-		Skip:    false,
 		Operand: "*",
 		Bits:    1,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -64,6 +64,7 @@ func main(a, b int1) int2 {
 	},
 	Test{
 		Name:    "Multiply 2-bits",
+		Heavy:   true,
 		Operand: "*",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -80,6 +81,7 @@ func main(a, b int2) int4 {
 	},
 	Test{
 		Name:    "Multiply n-bits",
+		Heavy:   true,
 		Operand: "*",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -98,7 +100,7 @@ func main(a, b int3) int6 {
 
 func TestAdd(t *testing.T) {
 	for _, test := range tests {
-		if test.Skip {
+		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)
 			continue
 		}

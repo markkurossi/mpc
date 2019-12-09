@@ -42,6 +42,11 @@ func (f *Func) Compile(compiler *circuits.Compiler,
 	return outputs, nil
 }
 
+func (ast If) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("If.Compile not implemented yet")
+}
+
 func (ast Return) Compile(compiler *circuits.Compiler,
 	out []*circuits.Wire) ([]*circuits.Wire, error) {
 	if len(ast.Return) != len(ast.Exprs) {
