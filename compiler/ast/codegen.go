@@ -16,8 +16,11 @@ import (
 )
 
 type Codegen struct {
-	Func    *Func
-	targets []ssa.Variable
+	Func      *Func
+	targets   []ssa.Variable
+	BlockHead *ssa.Block
+	BlockCurr *ssa.Block
+	BlockTail *ssa.Block
 }
 
 func NewCodegen() *Codegen {
@@ -51,6 +54,13 @@ func (ctx *Codegen) Peek() (ssa.Variable, error) {
 	}
 	return ctx.targets[len(ctx.targets)-1], nil
 }
+
+func (ctx *Codegen) AddBlock(b *ssa.Block) {
+	ctx.BlockCurr.AddTo(b)
+	ctx.BlockCurr = b
+}
+
+/* Old garbage follows */
 
 func MakeWires(size int) []*circuits.Wire {
 	result := make([]*circuits.Wire, size)

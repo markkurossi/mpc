@@ -18,6 +18,42 @@ type Block struct {
 	Instr []Instr
 }
 
+func (b *Block) Equals(o *Block) bool {
+	return b.ID == o.ID
+}
+
+func (b *Block) AddFrom(o *Block) {
+	b.addFrom(o)
+	o.addTo(b)
+}
+
+func (b *Block) addFrom(o *Block) {
+	for _, f := range b.From {
+		if f.Equals(o) {
+			return
+		}
+	}
+	b.From = append(b.From, o)
+}
+
+func (b *Block) AddTo(o *Block) {
+	b.addTo(o)
+	o.addFrom(b)
+}
+
+func (b *Block) addTo(o *Block) {
+	for _, f := range b.To {
+		if f.Equals(o) {
+			return
+		}
+	}
+	b.To = append(b.To, o)
+}
+
+func (b *Block) AddInstr(instr Instr) {
+	b.Instr = append(b.Instr, instr)
+}
+
 func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	if seen[b.ID] {
 		return

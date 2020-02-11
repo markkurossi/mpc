@@ -30,6 +30,7 @@ const (
 	Idiv
 	Udiv
 	Fdiv
+	Jump
 )
 
 var operands = map[Operand]string{
@@ -47,6 +48,7 @@ var operands = map[Operand]string{
 	Idiv:  "idiv",
 	Udiv:  "udiv",
 	Fdiv:  "fdiv",
+	Jump:  "jump",
 }
 
 func (op Operand) String() string {
@@ -64,7 +66,7 @@ type Instr struct {
 	Label *Block
 }
 
-func NewAddInstr(t types.Info, l, r, o Variable) (*Instr, error) {
+func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.Int:
@@ -74,16 +76,16 @@ func NewAddInstr(t types.Info, l, r, o Variable) (*Instr, error) {
 	case types.Float:
 		op = Fadd
 	default:
-		return nil, fmt.Errorf("Invalid type %s for addition", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for addition", t)
 	}
-	return &Instr{
+	return Instr{
 		Op:  op,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil
 }
 
-func NewSubInstr(t types.Info, l, r, o Variable) (*Instr, error) {
+func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.Int:
@@ -93,18 +95,25 @@ func NewSubInstr(t types.Info, l, r, o Variable) (*Instr, error) {
 	case types.Float:
 		op = Fsub
 	default:
-		return nil, fmt.Errorf("Invalid type %s for addition", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for addition", t)
 	}
-	return &Instr{
+	return Instr{
 		Op:  op,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil
 }
 
+func NewJumpInstr(label *Block) Instr {
+	return Instr{
+		Op:    Jump,
+		Label: label,
+	}
+}
+
 // iadd i{0,0}/int32 j{0,0}/int32 x{0,0}/int32
 // if0 i{0,0}/int32 block0
-func (i *Instr) String() string {
+func (i Instr) String() string {
 	result := i.Op.String()
 	for _, i := range i.In {
 		result += " "
@@ -121,7 +130,7 @@ func (i *Instr) String() string {
 	return result
 }
 
-func (i *Instr) PP(out io.Writer) {
+func (i Instr) PP(out io.Writer) {
 	fmt.Fprintf(out, "\t%s\n", i)
 }
 

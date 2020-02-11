@@ -86,6 +86,11 @@ func (ast *Return) SSA(ctx *Codegen, gen *ssa.Generator) error {
 		}
 	}
 
+	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
+	ctx.BlockCurr.AddTo(ctx.BlockTail)
+
+	ctx.AddBlock(gen.Block())
+
 	return nil
 }
 
@@ -119,25 +124,26 @@ func (ast *Binary) SSA(ctx *Codegen, gen *ssa.Generator) error {
 
 	// TODO: check that target is of correct type
 
+	var instr ssa.Instr
 	switch ast.Op {
 	case BinaryPlus:
-		instr, err := ssa.NewAddInstr(t.Type, l, r, t)
+		instr, err = ssa.NewAddInstr(t.Type, l, r, t)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\t%s\n", instr)
 
 	case BinaryMinus:
-		instr, err := ssa.NewSubInstr(t.Type, l, r, t)
+		instr, err = ssa.NewSubInstr(t.Type, l, r, t)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("\t%s\n", instr)
 
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return fmt.Errorf("Binary.SSA '%s' not implemented yet", ast.Op)
 	}
+
+	ctx.BlockCurr.AddInstr(instr)
 
 	return nil
 }

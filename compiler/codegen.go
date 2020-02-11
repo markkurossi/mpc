@@ -10,6 +10,7 @@ package compiler
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -24,10 +25,19 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 	}
 
 	output := ssa.NewGenerator()
-	err := main.SSA(ast.NewCodegen(), output)
+	ctx := ast.NewCodegen()
+
+	ctx.BlockHead = output.Block()
+	ctx.BlockCurr = ctx.BlockHead
+	ctx.BlockTail = output.Block()
+
+	err := main.SSA(ctx, output)
 	if err != nil {
 		return nil, err
 	}
+
+	ssa.PP(os.Stdout, ctx.BlockHead)
+
 	return nil, nil
 }
 

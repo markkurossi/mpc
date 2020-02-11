@@ -18,6 +18,7 @@ const (
 
 type Generator struct {
 	versions map[string]Variable
+	blockID  int
 }
 
 func NewGenerator() *Generator {
@@ -72,4 +73,13 @@ func (gen *Generator) Lookup(name string, scope int) (Variable, error) {
 
 func fmtKey(name string, scope int) string {
 	return fmt.Sprintf("%s@%d", name, scope)
+}
+
+func (gen *Generator) Block() *Block {
+	block := &Block{
+		ID: fmt.Sprintf("l%d", gen.blockID),
+	}
+	gen.blockID++
+
+	return block
 }
