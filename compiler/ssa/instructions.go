@@ -31,6 +31,7 @@ const (
 	Udiv
 	Fdiv
 	Jump
+	Ret
 )
 
 var operands = map[Operand]string{
@@ -49,6 +50,7 @@ var operands = map[Operand]string{
 	Udiv:  "udiv",
 	Fdiv:  "fdiv",
 	Jump:  "jump",
+	Ret:   "ret",
 }
 
 func (op Operand) String() string {
@@ -108,6 +110,12 @@ func NewJumpInstr(label *Block) Instr {
 	return Instr{
 		Op:    Jump,
 		Label: label,
+	}
+}
+
+func NewRetInstr() Instr {
+	return Instr{
+		Op: Ret,
 	}
 }
 
