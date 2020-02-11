@@ -1,7 +1,7 @@
 //
 // parser.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2020 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,7 +14,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
-	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/ssa"
 )
 
 func (unit *Unit) Compile() (*circuit.Circuit, error) {
@@ -23,6 +23,19 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 		return nil, fmt.Errorf("No main function")
 	}
 
+	output := ssa.NewGenerator()
+	err := main.SSA(ast.NewCodegen(), output)
+	if err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+func (unit *Unit) oldCompile() (*circuit.Circuit, error) {
+	main, ok := unit.Functions["main"]
+	if !ok {
+		return nil, fmt.Errorf("No main function")
+	}
 	var args circuit.IO
 	for _, arg := range main.Args {
 		args = append(args, circuit.IOArg{
@@ -62,49 +75,5 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 		})
 	}
 
-	c := circuits.NewCompiler(n1, n2, n3)
-
-	var w int
-	for idx, arg := range args {
-		main.Args[idx].Wires = c.Inputs[w : w+arg.Size]
-		w += arg.Size
-	}
-
-	var index int
-	for _, rt := range main.Return {
-		rt.Wires = c.Outputs[index : index+rt.Type.Bits]
-		index += rt.Type.Bits
-	}
-
-	// Resolve variables and return values.
-	for _, f := range unit.Functions {
-		vars := make(map[string]*ast.Variable)
-		for _, arg := range f.Args {
-			vars[arg.Name] = arg
-		}
-		err := f.Visit(func(a ast.AST) error {
-			switch a := a.(type) {
-			case *ast.VariableRef:
-				v, ok := vars[a.Name]
-				if !ok {
-					return fmt.Errorf("Unknown variable %s", a.Name)
-				}
-				a.Var = v
-
-			case *ast.Return:
-				a.Return = f.Return
-			}
-			return nil
-		}, func(a ast.AST) error { return nil })
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	_, err := main.Compile(c, c.Outputs)
-	if err != nil {
-		return nil, err
-	}
-
-	return c.Compile(), nil
+	return nil, fmt.Errorf("Unit.Compile not implemented yet")
 }

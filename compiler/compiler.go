@@ -9,6 +9,7 @@
 package compiler
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -26,6 +27,15 @@ func CompileFile(file string) (*circuit.Circuit, error) {
 		return nil, err
 	}
 	return compile(file, f)
+}
+
+func compileCircuit(name string, in io.Reader) (*circuit.Circuit, error) {
+	parser := NewParser(name, in)
+	_, err := parser.Parse()
+	if err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("not implemented yet")
 }
 
 func compile(name string, in io.Reader) (*circuit.Circuit, error) {

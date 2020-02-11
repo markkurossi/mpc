@@ -17,6 +17,7 @@ import (
 	"unicode"
 
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 type TokenType int
@@ -151,7 +152,7 @@ type Token struct {
 	From     ast.Point
 	To       ast.Point
 	StrVal   string
-	TypeInfo ast.TypeInfo
+	TypeInfo types.Info
 }
 
 func (t *Token) String() string {
@@ -171,6 +172,7 @@ type Lexer struct {
 	ungot       *Token
 	unread      bool
 	unreadRune  rune
+	unreadSize  int
 	unreadPoint ast.Point
 	history     map[int][]rune
 }
@@ -186,17 +188,19 @@ func NewLexer(in io.Reader) *Lexer {
 	}
 }
 
-func (l *Lexer) ReadRune() (rune, error) {
+func (l *Lexer) ReadRune() (rune, int, error) {
 	if l.unread {
 		l.point, l.unreadPoint = l.unreadPoint, l.point
 		l.unread = false
-		return l.unreadRune, nil
+		return l.unreadRune, l.unreadSize, nil
 	}
-	r, _, err := l.in.ReadRune()
+	r, size, err := l.in.ReadRune()
 	if err != nil {
-		return 0, err
+		return r, size, err
 	}
 
+	l.unreadRune = r
+	l.unreadSize = size
 	l.unreadPoint = l.point
 	if r == '\n' {
 		l.point.Line++
@@ -206,18 +210,18 @@ func (l *Lexer) ReadRune() (rune, error) {
 		l.history[l.point.Line] = append(l.history[l.point.Line], r)
 	}
 
-	return r, nil
+	return r, size, nil
 }
 
-func (l *Lexer) UnreadRune(r rune) {
+func (l *Lexer) UnreadRune() error {
 	l.point, l.unreadPoint = l.unreadPoint, l.point
-	l.unreadRune = r
 	l.unread = true
+	return nil
 }
 
 func (l *Lexer) FlushEOL() error {
 	for {
-		r, err := l.ReadRune()
+		r, _, err := l.ReadRune()
 		if err != nil {
 			if err != io.EOF {
 				return err
@@ -239,7 +243,7 @@ func (l *Lexer) Get() (*Token, error) {
 
 	for {
 		l.tokenStart = l.point
-		r, err := l.ReadRune()
+		r, _, err := l.ReadRune()
 		if err != nil {
 			return nil, err
 		}
@@ -248,7 +252,7 @@ func (l *Lexer) Get() (*Token, error) {
 		}
 		switch r {
 		case '+':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Plus), nil
@@ -261,12 +265,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(T_PlusEq), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Plus), nil
 			}
 
 		case '-':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Minus), nil
@@ -279,12 +283,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(T_MinusEq), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Minus), nil
 			}
 
 		case '*':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Mult), nil
@@ -296,12 +300,12 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(T_MultEq), nil
 
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Mult), nil
 			}
 
 		case '/':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Div), nil
@@ -311,7 +315,7 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '/':
 				for {
-					r, err := l.ReadRune()
+					r, _, err := l.ReadRune()
 					if err != nil {
 						return nil, err
 					}
@@ -325,7 +329,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(T_DivEq), nil
 
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Div), nil
 			}
 
@@ -341,7 +345,7 @@ func (l *Lexer) Get() (*Token, error) {
 			return l.Token(T_Comma), nil
 
 		case '<':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Lt), nil
@@ -352,12 +356,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(T_Le), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Lt), nil
 			}
 
 		case '>':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Gt), nil
@@ -368,12 +372,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(T_Ge), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Lt), nil
 			}
 
 		case '=':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_Assign), nil
@@ -384,12 +388,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(T_Eq), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_Assign), nil
 			}
 
 		case '|':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_BitOr), nil
@@ -400,12 +404,12 @@ func (l *Lexer) Get() (*Token, error) {
 			case '|':
 				return l.Token(T_Or), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_BitOr), nil
 			}
 
 		case '&':
-			r, err := l.ReadRune()
+			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
 					return l.Token(T_BitAnd), nil
@@ -416,7 +420,7 @@ func (l *Lexer) Get() (*Token, error) {
 			case '&':
 				return l.Token(T_And), nil
 			default:
-				l.UnreadRune(r)
+				l.UnreadRune()
 				return l.Token(T_BitAnd), nil
 			}
 
@@ -424,7 +428,7 @@ func (l *Lexer) Get() (*Token, error) {
 			if unicode.IsLetter(r) {
 				symbol := string(r)
 				for {
-					r, err := l.ReadRune()
+					r, _, err := l.ReadRune()
 					if err != nil {
 						if err != io.EOF {
 							return nil, err
@@ -432,7 +436,7 @@ func (l *Lexer) Get() (*Token, error) {
 						break
 					}
 					if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-						l.UnreadRune(r)
+						l.UnreadRune()
 						break
 					}
 					symbol += string(r)
@@ -443,11 +447,11 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 				matches := reType.FindStringSubmatch(symbol)
 				if matches != nil {
-					tt, ok := ast.Types[matches[1]]
+					tt, ok := types.Types[matches[1]]
 					if ok {
 						token := l.Token(T_Type)
 						ival, _ := strconv.Atoi(matches[2])
-						token.TypeInfo = ast.TypeInfo{
+						token.TypeInfo = types.Info{
 							Type: tt,
 							Bits: ival,
 						}
@@ -460,7 +464,7 @@ func (l *Lexer) Get() (*Token, error) {
 				token.StrVal = symbol
 				return token, nil
 			}
-			l.UnreadRune(r)
+			l.UnreadRune()
 			return nil, fmt.Errorf("%s: unexpected character '%s'",
 				l.point, string(r))
 		}

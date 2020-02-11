@@ -12,7 +12,45 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/ssa"
 )
+
+type Codegen struct {
+	Func    *Func
+	targets []ssa.Variable
+}
+
+func NewCodegen() *Codegen {
+	return new(Codegen)
+}
+
+func (ctx *Codegen) Scope() int {
+	if ctx.Func != nil {
+		return 1
+	}
+	return 0
+}
+
+func (ctx *Codegen) Push(target ssa.Variable) {
+	ctx.targets = append(ctx.targets, target)
+}
+
+func (ctx *Codegen) Pop() (ssa.Variable, error) {
+	if len(ctx.targets) == 0 {
+		return ssa.Variable{}, fmt.Errorf("target stack underflow")
+	}
+	ret := ctx.targets[len(ctx.targets)-1]
+	ctx.targets = ctx.targets[:len(ctx.targets)-1]
+
+	return ret, nil
+}
+
+func (ctx *Codegen) Peek() (ssa.Variable, error) {
+	if len(ctx.targets) == 0 {
+		return ssa.Variable{}, fmt.Errorf("target stack underflow")
+	}
+	return ctx.targets[len(ctx.targets)-1], nil
+}
 
 func MakeWires(size int) []*circuits.Wire {
 	result := make([]*circuits.Wire, size)

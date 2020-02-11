@@ -13,6 +13,8 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 var (
@@ -44,6 +46,7 @@ type AST interface {
 	Visit(enter, exit func(ast AST) error) error
 	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
 		[]*circuits.Wire, error)
+	SSA(ctx *Codegen, gen *ssa.Generator) error
 }
 
 type List []AST
@@ -73,44 +76,9 @@ func (ast List) Visit(enter, exit func(ast AST) error) error {
 	return exit(ast)
 }
 
-type Type int
-
-func (t Type) String() string {
-	for k, v := range Types {
-		if v == t {
-			return k
-		}
-	}
-	return fmt.Sprintf("{Type %d}", t)
-}
-
-const (
-	TypeUndefined Type = iota
-	TypeInt
-	TypeFloat
-)
-
-var Types = map[string]Type{
-	"<Untyped>": TypeUndefined,
-	"int":       TypeInt,
-	"float":     TypeFloat,
-}
-
-type TypeInfo struct {
-	Type Type
-	Bits int
-}
-
-func (t TypeInfo) String() string {
-	if t.Bits == 0 {
-		return t.Type.String()
-	}
-	return fmt.Sprintf("%s%d", t.Type, t.Bits)
-}
-
 type Variable struct {
 	Name  string
-	Type  TypeInfo
+	Type  types.Info
 	Wires []*circuits.Wire
 }
 
@@ -199,7 +167,10 @@ func (ast *If) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Return struct {
-	Exprs  []AST
+	Loc   Point
+	Exprs []AST
+
+	// XXX to be removed
 	Return []*Variable
 }
 

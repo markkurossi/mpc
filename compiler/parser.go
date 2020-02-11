@@ -13,6 +13,7 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 type Unit struct {
@@ -179,7 +180,7 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 			}
 			// All untyped arguments get this type.
 			for i := len(arguments) - 1; i >= 0; i-- {
-				if arguments[i].Type.Type != ast.TypeUndefined {
+				if arguments[i].Type.Type != types.Undefined {
 					break
 				}
 				arguments[i].Type = arg.Type
@@ -277,11 +278,11 @@ func (p *Parser) parseBlock() (ast.List, error) {
 }
 
 func (p *Parser) parseStatement() (ast.AST, error) {
-	t, err := p.lexer.Get()
+	tStmt, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
 	}
-	switch t.Type {
+	switch tStmt.Type {
 	case T_SymIf:
 		expr, err := p.parseExpr()
 		if err != nil {
@@ -321,7 +322,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 
 	case T_SymReturn:
 		var exprs []ast.AST
-		if p.sameLine(t.To) {
+		if p.sameLine(tStmt.To) {
 			expr, err := p.parseExpr()
 			if err != nil {
 				return nil, err
@@ -344,11 +345,12 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			}
 		}
 		return &ast.Return{
+			Loc:   tStmt.From,
 			Exprs: exprs,
 		}, nil
 
 	}
-	return nil, p.err(t.From, "syntax error")
+	return nil, p.err(tStmt.From, "syntax error")
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {
