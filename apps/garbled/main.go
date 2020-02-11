@@ -166,7 +166,6 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 
 		printResult(result)
 	}
-	return nil
 }
 
 func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
