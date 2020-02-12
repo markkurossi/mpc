@@ -84,9 +84,13 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 	seen[b.ID] = true
 
 	var label string
-	for _, i := range b.Instr {
-		label += i.String()
-		label += "\\l"
+	if len(b.Instr) == 1 {
+		label = b.Instr[0].String()
+	} else {
+		for _, i := range b.Instr {
+			label += i.String()
+			label += "\\l"
+		}
 	}
 
 	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b.ID, label)

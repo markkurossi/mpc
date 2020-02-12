@@ -203,6 +203,11 @@ func NewRetInstr() Instr {
 // if0 i{0,0}/int32 block0
 func (i Instr) String() string {
 	result := i.Op.String()
+
+	if len(i.In) == 0 && i.Out == nil && i.Label == nil {
+		return result
+	}
+
 	for len(result) < maxOperandLength+1 {
 		result += " "
 	}

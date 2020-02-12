@@ -75,8 +75,15 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, err
 	}
-	tBlock := gen.Block()
 
+	branchBlock := gen.Block()
+	block.AddInstr(ssa.NewJumpInstr(branchBlock))
+	block.AddTo(branchBlock)
+
+	block = branchBlock
+
+	// Branch.
+	tBlock := gen.Block()
 	block.AddInstr(ssa.NewIfInstr(e, tBlock))
 	block.AddTo(tBlock)
 
