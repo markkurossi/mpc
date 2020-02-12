@@ -68,12 +68,12 @@ func (ast *If) SSA(ctx *Codegen, gen *ssa.Generator) error {
 	instr := ssa.NewIfInstr(e, tBlock)
 	ctx.BlockCurr.AddInstr(instr)
 	ctx.BlockCurr.AddTo(tBlock)
-	tBlock.AddTo(nBlock)
 
 	// False (else) branch.
 	if len(ast.False) > 0 {
 		fBlock := gen.Block()
 		fBlock.AddTo(nBlock)
+		fBlock.AddInstr(ssa.NewJumpInstr(nBlock))
 
 		ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(fBlock))
 		ctx.AddBlock(fBlock)
@@ -83,8 +83,9 @@ func (ast *If) SSA(ctx *Codegen, gen *ssa.Generator) error {
 				return err
 			}
 		}
+	} else {
+		ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
 	}
-	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
 
 	// True branch.
 	ctx.BlockCurr = tBlock
@@ -94,7 +95,8 @@ func (ast *If) SSA(ctx *Codegen, gen *ssa.Generator) error {
 			return err
 		}
 	}
-	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
+	fmt.Printf("nBlock: %s\n", nBlock)
+	tBlock.AddInstr(ssa.NewJumpInstr(nBlock))
 	ctx.AddBlock(nBlock)
 	return nil
 }
