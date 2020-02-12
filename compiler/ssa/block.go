@@ -18,6 +18,10 @@ type Block struct {
 	Instr []Instr
 }
 
+func (b *Block) String() string {
+	return b.ID
+}
+
 func (b *Block) Equals(o *Block) bool {
 	return b.ID == o.ID
 }
@@ -60,7 +64,7 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	}
 	seen[b.ID] = true
 
-	fmt.Fprintf(out, "%s:\n", b.ID)
+	fmt.Fprintf(out, "%s:\t\t\t\t\tfrom: %v, to: %v\n", b.ID, b.From, b.To)
 	for _, i := range b.Instr {
 		i.PP(out)
 	}

@@ -14,6 +14,7 @@ import (
 
 const (
 	undef = "$undef"
+	anon  = "$_"
 )
 
 type Generator struct {
@@ -40,6 +41,23 @@ func (gen *Generator) UndefVar() Variable {
 	return v
 }
 
+func (gen *Generator) AnonVar(t types.Info) Variable {
+	v, ok := gen.versions[anon]
+	if !ok {
+		v = Variable{
+			Name: anon,
+			Type: t,
+		}
+	} else {
+		v.Version = v.Version + 1
+	}
+	gen.versions[anon] = v
+
+	// TODO: check that v.type == t
+
+	return v
+}
+
 func (gen *Generator) Var(name string, t types.Info, scope int) Variable {
 	key := fmtKey(name, scope)
 	v, ok := gen.versions[key]
@@ -54,6 +72,8 @@ func (gen *Generator) Var(name string, t types.Info, scope int) Variable {
 	}
 	gen.versions[key] = v
 
+	// TODO: check that v.type == t
+
 	return v
 }
 
@@ -63,12 +83,7 @@ func (gen *Generator) Lookup(name string, scope int) (Variable, error) {
 	if !ok {
 		return Variable{}, fmt.Errorf("undefined variable %s", name)
 	}
-	return Variable{
-		Name:    name,
-		Scope:   scope,
-		Version: v.Version,
-		Type:    v.Type,
-	}, nil
+	return v, nil
 }
 
 func fmtKey(name string, scope int) string {

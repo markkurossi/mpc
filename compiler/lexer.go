@@ -373,7 +373,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(T_Ge), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Lt), nil
+				return l.Token(T_Gt), nil
 			}
 
 		case '=':

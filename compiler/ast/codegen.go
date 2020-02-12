@@ -16,6 +16,7 @@ import (
 )
 
 type Codegen struct {
+	Verbose   bool
 	Func      *Func
 	targets   []ssa.Variable
 	BlockHead *ssa.Block

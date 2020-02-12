@@ -30,6 +30,14 @@ const (
 	Idiv
 	Udiv
 	Fdiv
+	Ilt
+	Ult
+	Flt
+	Igt
+	Ugt
+	Fgt
+	If
+	Mov
 	Jump
 	Ret
 )
@@ -49,6 +57,14 @@ var operands = map[Operand]string{
 	Idiv:  "idiv",
 	Udiv:  "udiv",
 	Fdiv:  "fdiv",
+	Ilt:   "ilt",
+	Ult:   "ult",
+	Flt:   "flt",
+	Igt:   "Igt",
+	Ugt:   "Ugt",
+	Fgt:   "Fgt",
+	If:    "if",
+	Mov:   "mov",
 	Jump:  "jump",
 	Ret:   "ret",
 }
@@ -104,6 +120,60 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil
+}
+
+func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Ilt
+	case types.Uint:
+		op = Ult
+	case types.Float:
+		op = Flt
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for < comparison", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Igt
+	case types.Uint:
+		op = Ugt
+	case types.Float:
+		op = Fgt
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for < comparison", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewIfInstr(c Variable, t *Block) Instr {
+	return Instr{
+		Op:    If,
+		In:    []Variable{c},
+		Label: t,
+	}
+}
+
+func NewMovInstr(from, to Variable) Instr {
+	return Instr{
+		Op:  Mov,
+		In:  []Variable{from},
+		Out: &to,
+	}
 }
 
 func NewJumpInstr(label *Block) Instr {

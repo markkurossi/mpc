@@ -25,6 +25,7 @@ func (t Type) String() string {
 
 const (
 	Undefined Type = iota
+	Bool
 	Int
 	Uint
 	Float
@@ -32,6 +33,7 @@ const (
 
 var Types = map[string]Type{
 	"<Untyped>": Undefined,
+	"bool":      Bool,
 	"int":       Int,
 	"uint":      Uint,
 	"float":     Float,
@@ -47,4 +49,10 @@ func (i Info) String() string {
 		return i.Type.String()
 	}
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
+}
+
+func BoolType() Info {
+	return Info{
+		Type: Bool,
+	}
 }

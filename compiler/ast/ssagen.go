@@ -28,7 +28,9 @@ func (ast *Func) SSA(ctx *Codegen, gen *ssa.Generator) error {
 	// Define arguments.
 	for idx, arg := range ast.Args {
 		a := gen.Var(arg.Name, arg.Type, ctx.Scope())
-		fmt.Printf("args[%d]=%s\n", idx, a)
+		if ctx.Verbose {
+			fmt.Printf("args[%d]=%s\n", idx, a)
+		}
 	}
 	// Define return variables.
 	for idx, ret := range ast.Return {
@@ -36,7 +38,9 @@ func (ast *Func) SSA(ctx *Codegen, gen *ssa.Generator) error {
 			ret.Name = fmt.Sprintf("$ret%d", idx)
 		}
 		r := gen.Var(ret.Name, ret.Type, ctx.Scope())
-		fmt.Printf("ret[%d]=%s\n", idx, r)
+		if ctx.Verbose {
+			fmt.Printf("ret[%d]=%s\n", idx, r)
+		}
 	}
 
 	for _, b := range ast.Body {
@@ -49,7 +53,50 @@ func (ast *Func) SSA(ctx *Codegen, gen *ssa.Generator) error {
 }
 
 func (ast *If) SSA(ctx *Codegen, gen *ssa.Generator) error {
-	return fmt.Errorf("If.SSA not implemented yet")
+	ctx.Push(gen.AnonVar(types.BoolType()))
+	err := ast.Expr.SSA(ctx, gen)
+	if err != nil {
+		return err
+	}
+	e, err := ctx.Pop()
+	if err != nil {
+		return err
+	}
+	tBlock := gen.Block()
+	nBlock := gen.Block()
+
+	instr := ssa.NewIfInstr(e, tBlock)
+	ctx.BlockCurr.AddInstr(instr)
+	ctx.BlockCurr.AddTo(tBlock)
+	tBlock.AddTo(nBlock)
+
+	// False (else) branch.
+	if len(ast.False) > 0 {
+		fBlock := gen.Block()
+		fBlock.AddTo(nBlock)
+
+		ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(fBlock))
+		ctx.AddBlock(fBlock)
+		for _, el := range ast.False {
+			err = el.SSA(ctx, gen)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
+
+	// True branch.
+	ctx.BlockCurr = tBlock
+	for _, el := range ast.True {
+		err = el.SSA(ctx, gen)
+		if err != nil {
+			return err
+		}
+	}
+	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
+	ctx.AddBlock(nBlock)
+	return nil
 }
 
 func (ast *Return) SSA(ctx *Codegen, gen *ssa.Generator) error {
@@ -127,13 +174,25 @@ func (ast *Binary) SSA(ctx *Codegen, gen *ssa.Generator) error {
 	var instr ssa.Instr
 	switch ast.Op {
 	case BinaryPlus:
-		instr, err = ssa.NewAddInstr(t.Type, l, r, t)
+		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
 		if err != nil {
 			return err
 		}
 
 	case BinaryMinus:
-		instr, err = ssa.NewSubInstr(t.Type, l, r, t)
+		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
+		if err != nil {
+			return err
+		}
+
+	case BinaryLt:
+		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
+		if err != nil {
+			return err
+		}
+
+	case BinaryGt:
+		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 		if err != nil {
 			return err
 		}
@@ -165,5 +224,8 @@ func (ast *VariableRef) SSA(ctx *Codegen, gen *ssa.Generator) error {
 	}
 	// TODO: check assignement is valid.
 	// Assing variable
-	return fmt.Errorf("VariableRef.SSA: variable assignment")
+
+	ctx.BlockCurr.AddInstr(ssa.NewMovInstr(v, t))
+
+	return nil
 }
