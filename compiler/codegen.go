@@ -37,6 +37,7 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 	}
 
 	ssa.PP(os.Stdout, ctx.BlockHead)
+	ssa.Dot(os.Stdout, ctx.BlockHead)
 
 	return nil, nil
 }

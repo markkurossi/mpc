@@ -60,13 +60,23 @@ var operands = map[Operand]string{
 	Ilt:   "ilt",
 	Ult:   "ult",
 	Flt:   "flt",
-	Igt:   "Igt",
-	Ugt:   "Ugt",
-	Fgt:   "Fgt",
+	Igt:   "igt",
+	Ugt:   "ugt",
+	Fgt:   "fgt",
 	If:    "if",
 	Mov:   "mov",
 	Jump:  "jump",
 	Ret:   "ret",
+}
+
+var maxOperandLength int
+
+func init() {
+	for _, v := range operands {
+		if len(v) > maxOperandLength {
+			maxOperandLength = len(v)
+		}
+	}
 }
 
 func (op Operand) String() string {
@@ -193,6 +203,9 @@ func NewRetInstr() Instr {
 // if0 i{0,0}/int32 block0
 func (i Instr) String() string {
 	result := i.Op.String()
+	for len(result) < maxOperandLength+1 {
+		result += " "
+	}
 	for _, i := range i.In {
 		result += " "
 		result += i.String()
@@ -221,5 +234,5 @@ type Variable struct {
 
 func (v Variable) String() string {
 	return fmt.Sprintf("%s@%d,%d/%s",
-		v.Name, v.Scope, v.Version, v.Type)
+		v.Name, v.Scope, v.Version, v.Type.ShortString())
 }

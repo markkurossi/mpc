@@ -76,3 +76,50 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 func PP(out io.Writer, block *Block) {
 	block.PP(out, make(map[string]bool))
 }
+
+func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
+	if seen[b.ID] {
+		return
+	}
+	seen[b.ID] = true
+
+	var label string
+	for _, i := range b.Instr {
+		label += i.String()
+		label += "\\l"
+	}
+
+	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b.ID, label)
+
+	for _, to := range b.To {
+		to.DotNodes(out, seen)
+	}
+}
+
+func (b *Block) DotLinks(out io.Writer, seen map[string]bool) {
+	if seen[b.ID] {
+		return
+	}
+	seen[b.ID] = true
+	for _, to := range b.To {
+		fmt.Fprintf(out, "  %s -> %s [label=\"%s\"];\n", b.ID, to.ID, to.ID)
+	}
+
+	for _, to := range b.To {
+		to.DotLinks(out, seen)
+	}
+}
+
+func Dot(out io.Writer, block *Block) {
+	fontname := "Courier"
+	fontsize := 10
+
+	fmt.Fprintln(out, "digraph program {")
+	fmt.Fprintf(out, "  node [shape=box fontname=\"%s\" fontsize=\"%d\"]\n",
+		fontname, fontsize)
+	fmt.Fprintf(out, "  edge [fontname=\"%s\" fontsize=\"%d\"]\n",
+		fontname, fontsize)
+	block.DotNodes(out, make(map[string]bool))
+	block.DotLinks(out, make(map[string]bool))
+	fmt.Fprintln(out, "}")
+}
