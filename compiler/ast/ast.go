@@ -42,14 +42,26 @@ func indent(w io.Writer, indent int) {
 }
 
 type AST interface {
+	Location() Point
 	Fprint(w io.Writer, indent int)
 	Visit(enter, exit func(ast AST) error) error
 	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
 		[]*circuits.Wire, error)
-	SSA(ctx *Codegen, gen *ssa.Generator) error
+	// SSA generates SSA code from the AST node. The code is appended
+	// into the basic block `block'. The function returns the next
+	// sequential basic block or nil if the AST node terminates the
+	// control flow, i.e. any potentially following code will be dead.
+	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (*ssa.Block, error)
 }
 
 type List []AST
+
+func (ast List) Location() Point {
+	if len(ast) > 0 {
+		return ast[0].Location()
+	}
+	return Point{}
+}
 
 func (ast List) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
@@ -88,6 +100,10 @@ type Func struct {
 	Args   []*Variable
 	Return []*Variable
 	Body   List
+}
+
+func (ast *Func) Location() Point {
+	return ast.Loc
 }
 
 func (ast *Func) Fprint(w io.Writer, ind int) {
@@ -146,9 +162,14 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 }
 
 type If struct {
+	Loc   Point
 	Expr  AST
 	True  List
 	False List
+}
+
+func (ast *If) Location() Point {
+	return ast.Loc
 }
 
 func (ast *If) Fprint(w io.Writer, ind int) {
@@ -172,6 +193,10 @@ type Return struct {
 
 	// XXX to be removed
 	Return []*Variable
+}
+
+func (ast *Return) Location() Point {
+	return ast.Loc
 }
 
 func (ast *Return) Fprint(w io.Writer, ind int) {
@@ -243,9 +268,14 @@ func (t BinaryType) String() string {
 }
 
 type Binary struct {
+	Loc   Point
 	Left  AST
 	Op    BinaryType
 	Right AST
+}
+
+func (ast *Binary) Location() Point {
+	return ast.Loc
 }
 
 func (ast *Binary) Fprint(w io.Writer, ind int) {
@@ -281,8 +311,13 @@ func (ast *Binary) Visit(enter, exit func(ast AST) error) error {
 }
 
 type VariableRef struct {
+	Loc  Point
 	Name string
 	Var  *Variable
+}
+
+func (ast *VariableRef) Location() Point {
+	return ast.Loc
 }
 
 func (ast *VariableRef) Fprint(w io.Writer, ind int) {

@@ -20,7 +20,6 @@ type Codegen struct {
 	Func      *Func
 	targets   []ssa.Variable
 	BlockHead *ssa.Block
-	BlockCurr *ssa.Block
 	BlockTail *ssa.Block
 }
 
@@ -54,11 +53,6 @@ func (ctx *Codegen) Peek() (ssa.Variable, error) {
 		return ssa.Variable{}, fmt.Errorf("target stack underflow")
 	}
 	return ctx.targets[len(ctx.targets)-1], nil
-}
-
-func (ctx *Codegen) AddBlock(b *ssa.Block) {
-	ctx.BlockCurr.AddTo(b)
-	ctx.BlockCurr = b
 }
 
 /* Old garbage follows */

@@ -47,11 +47,28 @@ func main(a, b int) int {
 }
 `,
 	},
+	SSAGenTest{
+		Name: "If-Else",
+		Code: `
+package main
+func main(a, b int) int {
+    if a > b {
+        return a
+    } else {
+        return b
+    }
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {
 	for idx, test := range ssagenTests {
-		fmt.Printf("* Test '%s':\n", test.Name)
+		fmt.Printf(`==================================================
+// Test '%s':
+%s--------------------------------------------------
+`,
+			test.Name, test.Code)
 		_, err := Compile(test.Code)
 		if err != nil {
 			t.Fatalf("SSA test %d failed: %s", idx, err)

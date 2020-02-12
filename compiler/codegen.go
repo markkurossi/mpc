@@ -28,11 +28,10 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 	ctx := ast.NewCodegen()
 
 	ctx.BlockHead = output.Block()
-	ctx.BlockCurr = ctx.BlockHead
 	ctx.BlockTail = output.Block()
 	ctx.BlockTail.AddInstr(ssa.NewRetInstr())
 
-	err := main.SSA(ctx, output)
+	_, err := main.SSA(ctx.BlockHead, ctx, output)
 	if err != nil {
 		return nil, err
 	}

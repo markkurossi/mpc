@@ -15,11 +15,28 @@ import (
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
-func (ast List) SSA(ctx *Codegen, gen *ssa.Generator) error {
-	return fmt.Errorf("List.SSA not implemented yet")
+func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
+	var err error
+
+	for _, b := range ast {
+		if block == nil {
+			fmt.Printf("%s: unreachable code\n", b.Location())
+			break
+		}
+		block, err = b.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return block, nil
 }
 
-func (ast *Func) SSA(ctx *Codegen, gen *ssa.Generator) error {
+func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
 	ctx.Func = ast
 	defer func() {
 		ctx.Func = nil
@@ -43,67 +60,77 @@ func (ast *Func) SSA(ctx *Codegen, gen *ssa.Generator) error {
 		}
 	}
 
-	for _, b := range ast.Body {
-		err := b.SSA(ctx, gen)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return ast.Body.SSA(block, ctx, gen)
 }
 
-func (ast *If) SSA(ctx *Codegen, gen *ssa.Generator) error {
+func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
 	ctx.Push(gen.AnonVar(types.BoolType()))
-	err := ast.Expr.SSA(ctx, gen)
+	block, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	e, err := ctx.Pop()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tBlock := gen.Block()
-	nBlock := gen.Block()
 
-	instr := ssa.NewIfInstr(e, tBlock)
-	ctx.BlockCurr.AddInstr(instr)
-	ctx.BlockCurr.AddTo(tBlock)
-
-	// False (else) branch.
-	if len(ast.False) > 0 {
-		fBlock := gen.Block()
-		fBlock.AddTo(nBlock)
-		fBlock.AddInstr(ssa.NewJumpInstr(nBlock))
-
-		ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(fBlock))
-		ctx.AddBlock(fBlock)
-		for _, el := range ast.False {
-			err = el.SSA(ctx, gen)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(nBlock))
-	}
+	block.AddInstr(ssa.NewIfInstr(e, tBlock))
+	block.AddTo(tBlock)
 
 	// True branch.
-	ctx.BlockCurr = tBlock
-	for _, el := range ast.True {
-		err = el.SSA(ctx, gen)
-		if err != nil {
-			return err
-		}
+	tNext, err := ast.True.SSA(tBlock, ctx, gen)
+	if err != nil {
+		return nil, err
 	}
-	fmt.Printf("nBlock: %s\n", nBlock)
-	tBlock.AddInstr(ssa.NewJumpInstr(nBlock))
-	ctx.AddBlock(nBlock)
-	return nil
+
+	// False (else) branch.
+	if len(ast.False) == 0 {
+		// No else branch.
+		if tNext == nil {
+			// True branch terminated.
+			tNext = gen.Block()
+		}
+		block.AddInstr(ssa.NewJumpInstr(tNext))
+		block.AddTo(tNext)
+
+		return tNext, nil
+	}
+
+	fBlock := gen.Block()
+	block.AddTo(fBlock)
+	block.AddInstr(ssa.NewJumpInstr(fBlock))
+
+	fNext, err := ast.False.SSA(fBlock, ctx, gen)
+	if err != nil {
+		return nil, err
+	}
+
+	if fNext == nil && tNext == nil {
+		// Both branches terminate.
+		return nil, nil
+	} else if fNext == nil {
+		// False-branch terminates.
+		return tNext, nil
+	} else if tNext == nil {
+		// True-branch terminates.
+		return fNext, nil
+	}
+
+	// Both branches continue.
+	fNext.AddTo(tNext)
+	fNext.AddInstr(ssa.NewJumpInstr(tNext))
+
+	return tNext, nil
 }
 
-func (ast *Return) SSA(ctx *Codegen, gen *ssa.Generator) error {
+func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
 	if ctx.Func == nil {
-		return fmt.Errorf("%s: return outside function", ast.Loc)
+		return nil, fmt.Errorf("%s: return outside function", ast.Loc)
 	}
 	if len(ctx.Func.Return) != len(ast.Exprs) {
 		// TODO %s: too many arguments to return
@@ -114,61 +141,62 @@ func (ast *Return) SSA(ctx *Codegen, gen *ssa.Generator) error {
 		// TODO \thave ()
 		// TODO \twant (error)
 
-		return fmt.Errorf("%s: invalid number of arguments to return", ast.Loc)
+		return nil, fmt.Errorf("%s: invalid number of arguments to return",
+			ast.Loc)
 	}
 
 	for idx, expr := range ast.Exprs {
 		r := ctx.Func.Return[idx]
 		v, err := gen.Lookup(r.Name, ctx.Scope())
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		ctx.Push(v)
-		err = expr.SSA(ctx, gen)
+		block, err = expr.SSA(block, ctx, gen)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		_, err = ctx.Pop()
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	ctx.BlockCurr.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
-	ctx.BlockCurr.AddTo(ctx.BlockTail)
+	block.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
+	block.AddTo(ctx.BlockTail)
 
-	ctx.AddBlock(gen.Block())
-
-	return nil
+	return nil, nil
 }
 
-func (ast *Binary) SSA(ctx *Codegen, gen *ssa.Generator) error {
+func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
 	ctx.Push(gen.UndefVar())
-	err := ast.Left.SSA(ctx, gen)
+	block, err := ast.Left.SSA(block, ctx, gen)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	l, err := ctx.Pop()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	ctx.Push(gen.UndefVar())
-	err = ast.Right.SSA(ctx, gen)
+	block, err = ast.Right.SSA(block, ctx, gen)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	r, err := ctx.Pop()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO: check that l and r are of same type
 
 	t, err := ctx.Peek()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO: check that target is of correct type
@@ -177,57 +205,46 @@ func (ast *Binary) SSA(ctx *Codegen, gen *ssa.Generator) error {
 	switch ast.Op {
 	case BinaryPlus:
 		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
-		if err != nil {
-			return err
-		}
-
 	case BinaryMinus:
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
-		if err != nil {
-			return err
-		}
-
 	case BinaryLt:
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
-		if err != nil {
-			return err
-		}
-
 	case BinaryGt:
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
-		if err != nil {
-			return err
-		}
-
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return fmt.Errorf("Binary.SSA '%s' not implemented yet", ast.Op)
+		return nil, fmt.Errorf("Binary.SSA '%s' not implemented yet", ast.Op)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	ctx.BlockCurr.AddInstr(instr)
+	block.AddInstr(instr)
 
-	return nil
+	return block, nil
 }
 
-func (ast *VariableRef) SSA(ctx *Codegen, gen *ssa.Generator) error {
+func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, error) {
+
 	v, err := gen.Lookup(ast.Name, ctx.Scope())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	t, err := ctx.Peek()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if t.Type.Type == types.Undefined {
 		// Replace undefined variable with referenced one.
 		ctx.Pop()
 		ctx.Push(v)
-		return nil
+		return block, nil
 	}
 	// TODO: check assignement is valid.
 	// Assing variable
 
-	ctx.BlockCurr.AddInstr(ssa.NewMovInstr(v, t))
+	block.AddInstr(ssa.NewMovInstr(v, t))
 
-	return nil
+	return block, nil
 }
