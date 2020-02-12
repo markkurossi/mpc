@@ -20,6 +20,8 @@ import (
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
+	_ AST = &VariableDef{}
+	_ AST = &Assign{}
 	_ AST = &If{}
 	_ AST = &Return{}
 	_ AST = &Binary{}
@@ -159,6 +161,52 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 		}
 	}
 	return exit(ast)
+}
+
+type VariableDef struct {
+	Loc   Point
+	Names []string
+	Type  types.Info
+}
+
+func (ast *VariableDef) Location() Point {
+	return ast.Loc
+}
+
+func (ast *VariableDef) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "var ")
+	for idx, name := range ast.Names {
+		if idx > 0 {
+			fmt.Fprintf(w, ", ")
+			fmt.Fprintf(w, "%s", name)
+		}
+	}
+	fmt.Fprintf(w, " %s", ast.Type)
+}
+
+func (ast *VariableDef) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("VariableDef.Visit not implemented")
+}
+
+type Assign struct {
+	Loc  Point
+	Name string
+	Expr AST
+}
+
+func (ast *Assign) Location() Point {
+	return ast.Loc
+}
+
+func (ast *Assign) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%s = ", ast.Name)
+	ast.Expr.Fprint(w, ind)
+}
+
+func (ast *Assign) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("Assign.Visit not implemented")
 }
 
 type If struct {

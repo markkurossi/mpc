@@ -30,6 +30,7 @@ const (
 	T_SymIf
 	T_SymElse
 	T_SymReturn
+	T_SymVar
 	T_Type
 	T_Assign
 	T_Mult
@@ -72,6 +73,7 @@ var tokenTypes = map[TokenType]string{
 	T_SymIf:      "if",
 	T_SymElse:    "else",
 	T_SymReturn:  "return",
+	T_SymVar:     "var",
 	T_Type:       "type",
 	T_Assign:     "=",
 	T_Mult:       "*",
@@ -143,6 +145,7 @@ var symbols = map[string]TokenType{
 	"if":      T_SymIf,
 	"else":    T_SymElse,
 	"return":  T_SymReturn,
+	"var":     T_SymVar,
 }
 
 var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)

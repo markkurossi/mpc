@@ -12,8 +12,9 @@ import (
 )
 
 type SSAGenTest struct {
-	Name string
-	Code string
+	Enabled bool
+	Name    string
+	Code    string
 }
 
 var ssagenTests = []SSAGenTest{
@@ -60,10 +61,32 @@ func main(a, b int) int {
 }
 `,
 	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "If-Else-Assign",
+		Code: `
+package main
+func main(a, b int) int {
+    var max, min int
+    if a > b {
+        max = a
+        min = b
+    } else {
+        max = b
+        min = a
+    }
+    max = max + min
+    return max
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {
 	for idx, test := range ssagenTests {
+		if !test.Enabled {
+			continue
+		}
 		fmt.Printf(`==================================================
 // Test '%s':
 %s--------------------------------------------------

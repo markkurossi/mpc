@@ -44,7 +44,10 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	// Define arguments.
 	for idx, arg := range ast.Args {
-		a := gen.Var(arg.Name, arg.Type, ctx.Scope())
+		a, err := gen.Var(arg.Name, arg.Type, ctx.Scope())
+		if err != nil {
+			return nil, err
+		}
 		if ctx.Verbose {
 			fmt.Printf("args[%d]=%s\n", idx, a)
 		}
@@ -54,13 +57,50 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if len(ret.Name) == 0 {
 			ret.Name = fmt.Sprintf("$ret%d", idx)
 		}
-		r := gen.Var(ret.Name, ret.Type, ctx.Scope())
+		r, err := gen.Var(ret.Name, ret.Type, ctx.Scope())
+		if err != nil {
+			return nil, err
+		}
 		if ctx.Verbose {
 			fmt.Printf("ret[%d]=%s\n", idx, r)
 		}
 	}
 
 	return ast.Body.SSA(block, ctx, gen)
+}
+
+func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, error) {
+
+	for _, n := range ast.Names {
+		v, err := gen.Var(n, ast.Type, ctx.Scope())
+		if err != nil {
+			return nil, err
+		}
+		if ctx.Verbose {
+			fmt.Printf("var %s\n", v)
+		}
+	}
+	return block, nil
+}
+
+func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, error) {
+
+	v, err := gen.Lookup(ast.Name, ctx.Scope(), true)
+	if err != nil {
+		return nil, err
+	}
+	ctx.Push(v)
+	block, err = ast.Expr.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, err
+	}
+	_, err = ctx.Pop()
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
@@ -127,10 +167,13 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Both branches continue.
-	fNext.AddTo(tNext)
-	fNext.AddInstr(ssa.NewJumpInstr(tNext))
+	next := gen.Block()
+	fNext.AddTo(next)
+	fNext.AddInstr(ssa.NewJumpInstr(next))
+	tNext.AddTo(next)
+	tNext.AddInstr(ssa.NewJumpInstr(next))
 
-	return tNext, nil
+	return next, nil
 }
 
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
@@ -154,7 +197,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for idx, expr := range ast.Exprs {
 		r := ctx.Func.Return[idx]
-		v, err := gen.Lookup(r.Name, ctx.Scope())
+		v, err := gen.Lookup(r.Name, ctx.Scope(), false)
 		if err != nil {
 			return nil, err
 		}
@@ -234,7 +277,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, error) {
 
-	v, err := gen.Lookup(ast.Name, ctx.Scope())
+	v, err := gen.Lookup(ast.Name, ctx.Scope(), false)
 	if err != nil {
 		return nil, err
 	}

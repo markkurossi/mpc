@@ -283,6 +283,37 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		return nil, err
 	}
 	switch tStmt.Type {
+	case T_SymVar:
+		var names []string
+		for {
+			tName, err := p.needToken(T_Identifier)
+			if err != nil {
+				return nil, err
+			}
+			names = append(names, tName.StrVal)
+			t, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if t.Type != T_Comma {
+				p.lexer.Unget(t)
+				break
+			}
+		}
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_Type {
+			p.lexer.Unget(t)
+			return nil, p.errUnexpected(t, T_Type)
+		}
+		return &ast.VariableDef{
+			Loc:   tStmt.From,
+			Names: names,
+			Type:  t.TypeInfo,
+		}, nil
+
 	case T_SymIf:
 		expr, err := p.parseExpr()
 		if err != nil {
@@ -349,6 +380,27 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			Exprs: exprs,
 		}, nil
 
+	case T_Identifier:
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		switch t.Type {
+		case T_Assign:
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			return &ast.Assign{
+				Loc:  tStmt.From,
+				Name: tStmt.StrVal,
+				Expr: expr,
+			}, nil
+
+		default:
+			p.lexer.Unget(t)
+			return nil, p.err(t.From, "syntax error")
+		}
 	}
 	return nil, p.err(tStmt.From, "syntax error")
 }
@@ -511,6 +563,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	switch t.Type {
 	case T_Identifier:
 		return &ast.VariableRef{
+			Loc:  t.From,
 			Name: t.StrVal,
 		}, nil
 	}

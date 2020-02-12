@@ -85,6 +85,16 @@ func (f *Func) Compile(compiler *circuits.Compiler,
 	return outputs, nil
 }
 
+func (f *VariableDef) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("VariableDef.Compile not implemented")
+}
+
+func (f *Assign) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("Assign.Compile not implemented")
+}
+
 func (ast If) Compile(compiler *circuits.Compiler,
 	out []*circuits.Wire) ([]*circuits.Wire, error) {
 	return nil, fmt.Errorf("If.Compile not implemented yet")
