@@ -281,6 +281,8 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, err
 	}
+	v.Version = -1
+
 	t, err := ctx.Peek()
 	if err != nil {
 		return nil, err
@@ -292,7 +294,6 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		return block, nil
 	}
 	// TODO: check assignement is valid.
-	// Assing variable
 
 	block.AddInstr(ssa.NewMovInstr(v, t))
 

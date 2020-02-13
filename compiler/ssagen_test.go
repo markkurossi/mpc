@@ -19,7 +19,7 @@ type SSAGenTest struct {
 
 var ssagenTests = []SSAGenTest{
 	SSAGenTest{
-		Name: "Add",
+		Name: "add",
 		Code: `
 package main
 func main(a, b int) int {
@@ -28,7 +28,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Name: "2 Return Values",
+		Name: "ret2",
 		Code: `
 package main
 func main(a, b int) (int, int) {
@@ -37,7 +37,7 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Name: "If",
+		Name: "if",
 		Code: `
 package main
 func main(a, b int) int {
@@ -49,7 +49,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Name: "If-Else",
+		Name: "ifelse",
 		Code: `
 package main
 func main(a, b int) int {
@@ -63,10 +63,10 @@ func main(a, b int) int {
 	},
 	SSAGenTest{
 		Enabled: true,
-		Name:    "If-Else-Assign",
+		Name:    "if-else-assign",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int) (int, int) {
     var max, min int
     if a > b {
         max = a
@@ -75,7 +75,32 @@ func main(a, b int) int {
         max = b
         min = a
     }
+    min = min + max
     max = max + min
+    return min, max
+}
+`,
+	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "max3",
+		Code: `
+package main
+func main(a, b, c int) int {
+    var max int
+    if a > b {
+        if a > c {
+            max = a
+        } else {
+            max = c
+        }
+    } else {
+        if b > c {
+            max = b
+        } else {
+            max = c
+        }
+    }
     return max
 }
 `,

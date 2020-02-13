@@ -238,6 +238,12 @@ type Variable struct {
 }
 
 func (v Variable) String() string {
-	return fmt.Sprintf("%s@%d,%d/%s",
-		v.Name, v.Scope, v.Version, v.Type.ShortString())
+	var version string
+	if v.Version >= 0 {
+		version = fmt.Sprintf("%d", v.Version)
+	} else {
+		version = "?"
+	}
+	return fmt.Sprintf("%s@%d,%s/%s",
+		v.Name, v.Scope, version, v.Type.ShortString())
 }
