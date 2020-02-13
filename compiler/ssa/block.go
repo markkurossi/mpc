@@ -64,7 +64,7 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	}
 	seen[b.ID] = true
 
-	fmt.Fprintf(out, "%s:\t\t\t\t\tfrom: %v, to: %v\n", b.ID, b.From, b.To)
+	fmt.Fprintf(out, "%s:\n", b.ID)
 	for _, i := range b.Instr {
 		i.PP(out)
 	}
