@@ -204,9 +204,10 @@ func NewPhiInstr(cond, l, r, v Variable) Instr {
 	}
 }
 
-func NewRetInstr() Instr {
+func NewRetInstr(ret []Variable) Instr {
 	return Instr{
 		Op: Ret,
+		In: ret,
 	}
 }
 

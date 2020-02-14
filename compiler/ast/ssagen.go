@@ -68,11 +68,24 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	}
 
-	// XXX add return with correct `block' bindings and phi for each
-	// return value
-	ctx.BlockTail.AddInstr(ssa.NewRetInstr())
+	block, err := ast.Body.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, err
+	}
 
-	return ast.Body.SSA(block, ctx, gen)
+	// Select return variables.
+	// XXX this is broken, we must use decision tree for the return values.
+	var vars []ssa.Variable
+	for _, ret := range ast.Return {
+		b, err := block.Bindings.Get(ret.Name)
+		if err != nil {
+			return nil, err
+		}
+		vars = append(vars, b.Value(block, gen))
+	}
+	ctx.BlockTail.AddInstr(ssa.NewRetInstr(vars))
+
+	return block, nil
 }
 
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,

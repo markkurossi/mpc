@@ -37,7 +37,8 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Name: "if",
+		Enabled: true,
+		Name:    "if",
 		Code: `
 package main
 func main(a, b int) int {
@@ -62,7 +63,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "if-else-assign",
 		Code: `
 package main
@@ -82,7 +83,7 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "max3",
 		Code: `
 package main
