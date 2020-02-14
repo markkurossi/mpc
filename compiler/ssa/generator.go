@@ -46,19 +46,17 @@ func (gen *Generator) AnonVar(t types.Info) Variable {
 	if !ok {
 		v = Variable{
 			Name: anon,
-			Type: t,
 		}
 	} else {
 		v.Version = v.Version + 1
 	}
+	v.Type = t
 	gen.versions[anon] = v
-
-	// TODO: check that v.type == t
 
 	return v
 }
 
-func (gen *Generator) Var(name string, t types.Info, scope int) (
+func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 	Variable, error) {
 
 	key := fmtKey(name, scope)
@@ -105,4 +103,11 @@ func (gen *Generator) Block() *Block {
 	gen.blockID++
 
 	return block
+}
+
+func (gen *Generator) NextBlock(b *Block) *Block {
+	n := gen.Block()
+	n.Bindings = b.Bindings.Clone()
+	b.AddTo(n)
+	return n
 }

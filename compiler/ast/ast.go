@@ -51,8 +51,8 @@ type AST interface {
 		[]*circuits.Wire, error)
 	// SSA generates SSA code from the AST node. The code is appended
 	// into the basic block `block'. The function returns the next
-	// sequential basic block or nil if the AST node terminates the
-	// control flow, i.e. any potentially following code will be dead.
+	// sequential basic. The `ssa.Dead' is set to `true' if the code
+	// terminates i.e. all following AST nodes are dead code.
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (*ssa.Block, error)
 }
 

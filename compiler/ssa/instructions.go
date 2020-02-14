@@ -39,6 +39,7 @@ const (
 	If
 	Mov
 	Jump
+	Phi
 	Ret
 )
 
@@ -66,6 +67,7 @@ var operands = map[Operand]string{
 	If:    "if",
 	Mov:   "mov",
 	Jump:  "jump",
+	Phi:   "phi",
 	Ret:   "ret",
 }
 
@@ -104,6 +106,7 @@ func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fadd
 	default:
+		fmt.Printf("%v + %v (%v)\n", l, r, t)
 		return Instr{}, fmt.Errorf("Invalid type %s for addition", t)
 	}
 	return Instr{
@@ -123,7 +126,7 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fsub
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for addition", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for subtraction", t)
 	}
 	return Instr{
 		Op:  op,
@@ -193,6 +196,14 @@ func NewJumpInstr(label *Block) Instr {
 	}
 }
 
+func NewPhiInstr(cond, l, r, v Variable) Instr {
+	return Instr{
+		Op:  Phi,
+		In:  []Variable{cond, l, r},
+		Out: &v,
+	}
+}
+
 func NewRetInstr() Instr {
 	return Instr{
 		Op: Ret,
@@ -246,4 +257,16 @@ func (v Variable) String() string {
 	}
 	return fmt.Sprintf("%s@%d,%s/%s",
 		v.Name, v.Scope, version, v.Type.ShortString())
+}
+
+func (v *Variable) Equal(other BindingValue) bool {
+	o, ok := other.(*Variable)
+	if !ok {
+		return false
+	}
+	return o.Name == v.Name && o.Scope == v.Scope && o.Version == v.Version
+}
+
+func (v *Variable) Value(block *Block, gen *Generator) Variable {
+	return *v
 }

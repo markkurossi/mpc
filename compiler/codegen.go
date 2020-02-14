@@ -29,7 +29,6 @@ func (unit *Unit) Compile() (*circuit.Circuit, error) {
 
 	ctx.BlockHead = output.Block()
 	ctx.BlockTail = output.Block()
-	ctx.BlockTail.AddInstr(ssa.NewRetInstr())
 
 	_, err := main.SSA(ctx.BlockHead, ctx, output)
 	if err != nil {

@@ -21,7 +21,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var err error
 
 	for _, b := range ast {
-		if block == nil {
+		if block.Dead {
 			fmt.Printf("%s: unreachable code\n", b.Location())
 			break
 		}
@@ -44,10 +44,11 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	// Define arguments.
 	for idx, arg := range ast.Args {
-		a, err := gen.Var(arg.Name, arg.Type, ctx.Scope())
+		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
 		if err != nil {
 			return nil, err
 		}
+		block.Bindings.Set(a)
 		if ctx.Verbose {
 			fmt.Printf("args[%d]=%s\n", idx, a)
 		}
@@ -57,14 +58,19 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if len(ret.Name) == 0 {
 			ret.Name = fmt.Sprintf("$ret%d", idx)
 		}
-		r, err := gen.Var(ret.Name, ret.Type, ctx.Scope())
+		r, err := gen.NewVar(ret.Name, ret.Type, ctx.Scope())
 		if err != nil {
 			return nil, err
 		}
+		block.Bindings.Set(r)
 		if ctx.Verbose {
 			fmt.Printf("ret[%d]=%s\n", idx, r)
 		}
 	}
+
+	// XXX add return with correct `block' bindings and phi for each
+	// return value
+	ctx.BlockTail.AddInstr(ssa.NewRetInstr())
 
 	return ast.Body.SSA(block, ctx, gen)
 }
@@ -73,10 +79,11 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, error) {
 
 	for _, n := range ast.Names {
-		v, err := gen.Var(n, ast.Type, ctx.Scope())
+		v, err := gen.NewVar(n, ast.Type, ctx.Scope())
 		if err != nil {
 			return nil, err
 		}
+		block.Bindings.Set(v)
 		if ctx.Verbose {
 			fmt.Printf("var %s\n", v)
 		}
@@ -87,7 +94,11 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, error) {
 
-	v, err := gen.Lookup(ast.Name, ctx.Scope(), true)
+	b, err := block.Bindings.Get(ast.Name)
+	if err != nil {
+		return nil, err
+	}
+	v, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
 	if err != nil {
 		return nil, err
 	}
@@ -96,10 +107,12 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, err
 	}
-	_, err = ctx.Pop()
+	v, err = ctx.Pop()
 	if err != nil {
 		return nil, err
 	}
+	block.Bindings.Set(v)
+
 	return block, nil
 }
 
@@ -116,16 +129,14 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, err
 	}
 
-	branchBlock := gen.Block()
+	branchBlock := gen.NextBlock(block)
 	block.AddInstr(ssa.NewJumpInstr(branchBlock))
-	block.AddTo(branchBlock)
 
 	block = branchBlock
 
 	// Branch.
-	tBlock := gen.Block()
+	tBlock := gen.NextBlock(block)
 	block.AddInstr(ssa.NewIfInstr(e, tBlock))
-	block.AddTo(tBlock)
 
 	// True branch.
 	tNext, err := ast.True.SSA(tBlock, ctx, gen)
@@ -136,18 +147,19 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// False (else) branch.
 	if len(ast.False) == 0 {
 		// No else branch.
-		if tNext == nil {
+		if tNext.Dead {
 			// True branch terminated.
-			tNext = gen.Block()
+			tNext = gen.NextBlock(block)
+		} else {
+			tNext.Bindings = tNext.Bindings.Merge(e, block.Bindings)
+			block.AddTo(tNext)
 		}
 		block.AddInstr(ssa.NewJumpInstr(tNext))
-		block.AddTo(tNext)
 
 		return tNext, nil
 	}
 
-	fBlock := gen.Block()
-	block.AddTo(fBlock)
+	fBlock := gen.NextBlock(block)
 	block.AddInstr(ssa.NewJumpInstr(fBlock))
 
 	fNext, err := ast.False.SSA(fBlock, ctx, gen)
@@ -155,23 +167,29 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, err
 	}
 
-	if fNext == nil && tNext == nil {
+	if fNext.Dead && tNext.Dead {
 		// Both branches terminate.
-		return nil, nil
-	} else if fNext == nil {
+		next := gen.Block()
+		next.Dead = true
+		return next, nil
+	} else if fNext.Dead {
 		// False-branch terminates.
 		return tNext, nil
-	} else if tNext == nil {
+	} else if tNext.Dead {
 		// True-branch terminates.
 		return fNext, nil
 	}
 
 	// Both branches continue.
+
 	next := gen.Block()
-	fNext.AddTo(next)
-	fNext.AddInstr(ssa.NewJumpInstr(next))
 	tNext.AddTo(next)
 	tNext.AddInstr(ssa.NewJumpInstr(next))
+
+	fNext.AddTo(next)
+	fNext.AddInstr(ssa.NewJumpInstr(next))
+
+	next.Bindings = tNext.Bindings.Merge(e, fNext.Bindings)
 
 	return next, nil
 }
@@ -197,7 +215,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for idx, expr := range ast.Exprs {
 		r := ctx.Func.Return[idx]
-		v, err := gen.Lookup(r.Name, ctx.Scope(), false)
+		v, err := gen.NewVar(r.Name, r.Type, ctx.Scope())
 		if err != nil {
 			return nil, err
 		}
@@ -215,8 +233,9 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	block.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
 	block.AddTo(ctx.BlockTail)
+	block.Dead = true
 
-	return nil, nil
+	return block, nil
 }
 
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
@@ -277,11 +296,16 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, error) {
 
-	v, err := gen.Lookup(ast.Name, ctx.Scope(), false)
+	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
 		return nil, err
 	}
-	v.Version = -1
+
+	v := b.Value(block, gen)
+	if err != nil {
+		return nil, err
+	}
+	block.Bindings.Set(v)
 
 	t, err := ctx.Peek()
 	if err != nil {
