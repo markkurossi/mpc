@@ -16,7 +16,7 @@ func main(a, b int) int {
 
 The compiler creates the following SSA form assembly:
 
-```
+```assembly_x86
 l0:
 	igt    a{1,0}i b{1,0}i %_{0,0}b
 	jump   l2
