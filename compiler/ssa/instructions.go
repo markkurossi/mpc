@@ -211,8 +211,6 @@ func NewRetInstr(ret []Variable) Instr {
 	}
 }
 
-// iadd i{0,0}/int32 j{0,0}/int32 x{0,0}/int32
-// if0 i{0,0}/int32 block0
 func (i Instr) String() string {
 	result := i.Op.String()
 
