@@ -48,7 +48,7 @@ func main(a, b int) (int, int) {
 }
 ```
 
-## Building Blocks
+## Building blocks
 
 ### MUX
 
