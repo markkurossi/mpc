@@ -34,7 +34,7 @@ l3:
 	jump   l1
 ```
 
-![If-else SSA form](ifelse.png)
+<img align="left" width="500" height="400" src="ifelse.png">
 
 # Syntax
 
