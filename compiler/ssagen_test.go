@@ -19,7 +19,8 @@ type SSAGenTest struct {
 
 var ssagenTests = []SSAGenTest{
 	SSAGenTest{
-		Name: "add",
+		Enabled: true,
+		Name:    "add",
 		Code: `
 package main
 func main(a, b int) int {
@@ -28,7 +29,8 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Name: "ret2",
+		Enabled: true,
+		Name:    "ret2",
 		Code: `
 package main
 func main(a, b int) (int, int) {
@@ -50,7 +52,8 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Name: "ifelse",
+		Enabled: true,
+		Name:    "ifelse",
 		Code: `
 package main
 func main(a, b int) int {
@@ -63,7 +66,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: false,
+		Enabled: true,
 		Name:    "if-else-assign",
 		Code: `
 package main
@@ -83,7 +86,7 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Enabled: false,
+		Enabled: true,
 		Name:    "max3",
 		Code: `
 package main

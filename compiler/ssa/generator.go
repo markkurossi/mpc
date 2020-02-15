@@ -108,6 +108,13 @@ func (gen *Generator) Block() *Block {
 func (gen *Generator) NextBlock(b *Block) *Block {
 	n := gen.Block()
 	n.Bindings = b.Bindings.Clone()
-	b.AddTo(n)
+	b.SetNext(n)
+	return n
+}
+
+func (gen *Generator) BranchBlock(b *Block) *Block {
+	n := gen.Block()
+	n.Bindings = b.Bindings.Clone()
+	b.SetBranch(n)
 	return n
 }

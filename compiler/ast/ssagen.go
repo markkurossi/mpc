@@ -74,14 +74,13 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Select return variables.
-	// XXX this is broken, we must use decision tree for the return values.
 	var vars []ssa.Variable
 	for _, ret := range ast.Return {
-		b, err := block.Bindings.Get(ret.Name)
+		v, err := ctx.BlockHead.ReturnBinding(ret.Name, ctx.BlockTail, gen)
 		if err != nil {
 			return nil, err
 		}
-		vars = append(vars, b.Value(block, gen))
+		vars = append(vars, v)
 	}
 	ctx.BlockTail.AddInstr(ssa.NewRetInstr(vars))
 
@@ -143,12 +142,13 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	branchBlock := gen.NextBlock(block)
+	branchBlock.BranchCond = e
 	block.AddInstr(ssa.NewJumpInstr(branchBlock))
 
 	block = branchBlock
 
 	// Branch.
-	tBlock := gen.NextBlock(block)
+	tBlock := gen.BranchBlock(block)
 	block.AddInstr(ssa.NewIfInstr(e, tBlock))
 
 	// True branch.
@@ -165,7 +165,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			tNext = gen.NextBlock(block)
 		} else {
 			tNext.Bindings = tNext.Bindings.Merge(e, block.Bindings)
-			block.AddTo(tNext)
+			block.SetNext(tNext)
 		}
 		block.AddInstr(ssa.NewJumpInstr(tNext))
 
@@ -196,10 +196,10 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Both branches continue.
 
 	next := gen.Block()
-	tNext.AddTo(next)
+	tNext.SetNext(next)
 	tNext.AddInstr(ssa.NewJumpInstr(next))
 
-	fNext.AddTo(next)
+	fNext.SetNext(next)
 	fNext.AddInstr(ssa.NewJumpInstr(next))
 
 	next.Bindings = tNext.Bindings.Merge(e, fNext.Bindings)
@@ -238,14 +238,15 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, err
 		}
-		_, err = ctx.Pop()
+		v, err = ctx.Pop()
 		if err != nil {
 			return nil, err
 		}
+		block.Bindings.Set(v)
 	}
 
 	block.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
-	block.AddTo(ctx.BlockTail)
+	block.SetNext(ctx.BlockTail)
 	block.Dead = true
 
 	return block, nil
