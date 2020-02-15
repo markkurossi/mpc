@@ -37,6 +37,19 @@ l3:
 
 # Syntax
 
+## Types
+
+| Name   | Size | Signed | Alias  |
+|:------:|:----:|:------:|:------:|
+| bool   | 1    | no     |        |
+| byte   | 8    | no     | uint8  |
+| uint   | 32   | no     | uint32 |
+| int    | 32   | yes    | int32  |
+| uintN  | N    | no     |        |
+| intN   | N    | yes    |        |
+| floatN | N    | yes    |        |
+
+
 ## Mathematical operations
 
 ```go
