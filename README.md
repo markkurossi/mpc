@@ -16,8 +16,6 @@ func main(a, b int) int {
 
 The compiler creates the following SSA form assembly:
 
-<img align="right" width="500" height="400" src="ifelse.png">
-
 ```
 l0:
 	igt    a@1,0/i b@1,0/i $_@0,0/b
@@ -35,6 +33,7 @@ l3:
 	mov    a@1,0/i $ret0@1,1/i
 	jump   l1
 ```
+<img align="center" width="500" height="400" src="ifelse.png">
 
 # Syntax
 
