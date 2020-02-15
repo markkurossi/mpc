@@ -40,11 +40,11 @@ const (
 )
 
 var Types = map[string]Type{
-	"<Untyped>": Undefined,
-	"bool":      Bool,
-	"int":       Int,
-	"uint":      Uint,
-	"float":     Float,
+	"<Undefined>": Undefined,
+	"bool":        Bool,
+	"int":         Int,
+	"uint":        Uint,
+	"float":       Float,
 }
 
 var shortTypes = map[Type]string{
@@ -72,6 +72,10 @@ func (i Info) ShortString() string {
 		return i.Type.ShortString()
 	}
 	return fmt.Sprintf("%s%d", i.Type.ShortString(), i.Bits)
+}
+
+func (i Info) Undefined() bool {
+	return i.Type == Undefined
 }
 
 func BoolType() Info {

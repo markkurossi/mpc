@@ -325,7 +325,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, err
 	}
-	if t.Type.Type == types.Undefined {
+	if t.Type.Undefined() {
 		// Replace undefined variable with referenced one.
 		ctx.Pop()
 		ctx.Push(v)
