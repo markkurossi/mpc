@@ -56,7 +56,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Define return variables.
 	for idx, ret := range ast.Return {
 		if len(ret.Name) == 0 {
-			ret.Name = fmt.Sprintf("$ret%d", idx)
+			ret.Name = fmt.Sprintf("%%ret%d", idx)
 		}
 		r, err := gen.NewVar(ret.Name, ret.Type, ctx.Scope())
 		if err != nil {

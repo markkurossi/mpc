@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	undef = "$undef"
-	anon  = "$_"
+	undef = "%undef"
+	anon  = "%_"
 )
 
 type Generator struct {

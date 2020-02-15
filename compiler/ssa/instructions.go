@@ -256,7 +256,7 @@ func (v Variable) String() string {
 	} else {
 		version = "?"
 	}
-	return fmt.Sprintf("%s@%d,%s/%s",
+	return fmt.Sprintf("%s{%d,%s}%s",
 		v.Name, v.Scope, version, v.Type.ShortString())
 }
 
