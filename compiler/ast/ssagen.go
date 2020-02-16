@@ -22,7 +22,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for _, b := range ast {
 		if block.Dead {
-			ctx.logger.Warningf(b.Location(), "unreachable code\n")
+			ctx.logger.Warningf(b.Location(), "unreachable code")
 			break
 		}
 		block, err = b.SSA(block, ctx, gen)
@@ -211,19 +211,16 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, error) {
 
 	if ctx.Func == nil {
-		return nil, fmt.Errorf("%s: return outside function", ast.Loc)
+		return nil, ctx.logger.Errorf(ast.Loc, "return outside function")
 	}
-	if len(ctx.Func.Return) != len(ast.Exprs) {
-		// TODO %s: too many arguments to return
+	if len(ast.Exprs) > len(ctx.Func.Return) {
 		// TODO \thave (nil, error)
 		// TODO \twant (error)
-
-		// TODO %s: not enough arguments to return
+		return nil, ctx.logger.Errorf(ast.Loc, "too many aruments to return")
+	} else if len(ast.Exprs) < len(ctx.Func.Return) {
 		// TODO \thave ()
 		// TODO \twant (error)
-
-		return nil, fmt.Errorf("%s: invalid number of arguments to return",
-			ast.Loc)
+		return nil, ctx.logger.Errorf(ast.Loc, "not enough arguments to return")
 	}
 
 	for idx, expr := range ast.Exprs {
@@ -296,7 +293,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, fmt.Errorf("Binary.SSA '%s' not implemented yet", ast.Op)
+		return nil, ctx.logger.Errorf(ast.Loc,
+			"Binary.SSA '%s' not implemented yet", ast.Op)
 	}
 	if err != nil {
 		return nil, err

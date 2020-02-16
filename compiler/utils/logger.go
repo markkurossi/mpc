@@ -7,8 +7,10 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"strings"
 )
 
 type Logger struct {
@@ -23,17 +25,29 @@ func NewLogger(input string, out io.Writer) *Logger {
 	}
 }
 
-func (l *Logger) Errorf(loc Point, format string, a ...interface{}) {
+func (l *Logger) Errorf(loc Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
+	if len(msg) > 0 && msg[len(msg)-1] != '\n' {
+		msg += "\n"
+	}
 	if loc.Line == 0 {
 		fmt.Fprintf(l.out, "%s: %s", l.input, msg)
 	} else {
 		fmt.Fprintf(l.out, "%s:%s: %s", l.input, loc, msg)
 	}
+
+	idx := strings.IndexRune(msg, '\n')
+	if idx > 0 {
+		msg = msg[:idx]
+	}
+	return errors.New(msg)
 }
 
 func (l *Logger) Warningf(loc Point, format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
+	if len(msg) > 0 && msg[len(msg)-1] != '\n' {
+		msg += "\n"
+	}
 	if loc.Line == 0 {
 		fmt.Fprintf(l.out, "%s: warning: %s", l.input, msg)
 	} else {
