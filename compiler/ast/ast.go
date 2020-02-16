@@ -15,6 +15,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 var (
@@ -26,16 +27,8 @@ var (
 	_ AST = &Return{}
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
+	_ AST = &Constant{}
 )
-
-type Point struct {
-	Line int // 1-based
-	Col  int // 0-based
-}
-
-func (s Point) String() string {
-	return fmt.Sprintf("%d:%d", s.Line, s.Col)
-}
 
 func indent(w io.Writer, indent int) {
 	for i := 0; i < indent; i++ {
@@ -44,7 +37,7 @@ func indent(w io.Writer, indent int) {
 }
 
 type AST interface {
-	Location() Point
+	Location() utils.Point
 	Fprint(w io.Writer, indent int)
 	Visit(enter, exit func(ast AST) error) error
 	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
@@ -58,11 +51,11 @@ type AST interface {
 
 type List []AST
 
-func (ast List) Location() Point {
+func (ast List) Location() utils.Point {
 	if len(ast) > 0 {
 		return ast[0].Location()
 	}
-	return Point{}
+	return utils.Point{}
 }
 
 func (ast List) Fprint(w io.Writer, ind int) {
@@ -97,14 +90,14 @@ type Variable struct {
 }
 
 type Func struct {
-	Loc    Point
+	Loc    utils.Point
 	Name   string
 	Args   []*Variable
 	Return []*Variable
 	Body   List
 }
 
-func (ast *Func) Location() Point {
+func (ast *Func) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -164,12 +157,12 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 }
 
 type VariableDef struct {
-	Loc   Point
+	Loc   utils.Point
 	Names []string
 	Type  types.Info
 }
 
-func (ast *VariableDef) Location() Point {
+func (ast *VariableDef) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -190,12 +183,12 @@ func (ast *VariableDef) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Assign struct {
-	Loc  Point
+	Loc  utils.Point
 	Name string
 	Expr AST
 }
 
-func (ast *Assign) Location() Point {
+func (ast *Assign) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -210,13 +203,13 @@ func (ast *Assign) Visit(enter, exit func(ast AST) error) error {
 }
 
 type If struct {
-	Loc   Point
+	Loc   utils.Point
 	Expr  AST
 	True  List
 	False List
 }
 
-func (ast *If) Location() Point {
+func (ast *If) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -236,14 +229,14 @@ func (ast *If) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Return struct {
-	Loc   Point
+	Loc   utils.Point
 	Exprs []AST
 
 	// XXX to be removed
 	Return []*Variable
 }
 
-func (ast *Return) Location() Point {
+func (ast *Return) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -316,13 +309,13 @@ func (t BinaryType) String() string {
 }
 
 type Binary struct {
-	Loc   Point
+	Loc   utils.Point
 	Left  AST
 	Op    BinaryType
 	Right AST
 }
 
-func (ast *Binary) Location() Point {
+func (ast *Binary) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -359,12 +352,12 @@ func (ast *Binary) Visit(enter, exit func(ast AST) error) error {
 }
 
 type VariableRef struct {
-	Loc  Point
+	Loc  utils.Point
 	Name string
 	Var  *Variable
 }
 
-func (ast *VariableRef) Location() Point {
+func (ast *VariableRef) Location() utils.Point {
 	return ast.Loc
 }
 
@@ -382,7 +375,7 @@ func (ast *VariableRef) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Constant struct {
-	Loc     Point
+	Loc     utils.Point
 	UintVal *uint64
 }
 
@@ -406,7 +399,7 @@ func (ast *Constant) Variable() (ssa.Variable, error) {
 	return v, nil
 }
 
-func (ast *Constant) Location() Point {
+func (ast *Constant) Location() utils.Point {
 	return ast.Loc
 }
 

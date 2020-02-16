@@ -14,16 +14,18 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func (unit *Unit) Compile() (*circuit.Circuit, error) {
+func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	main, ok := unit.Functions["main"]
 	if !ok {
-		return nil, fmt.Errorf("No main function")
+		logger.Errorf(utils.Point{}, "no main function defined\n")
+		return nil, fmt.Errorf("No main function defined")
 	}
 
 	output := ssa.NewGenerator()
-	ctx := ast.NewCodegen()
+	ctx := ast.NewCodegen(logger)
 
 	ctx.BlockHead = output.Block()
 	ctx.BlockTail = output.Block()

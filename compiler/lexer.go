@@ -16,6 +16,7 @@ import (
 
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type TokenType int
@@ -152,8 +153,8 @@ var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
-	From     ast.Point
-	To       ast.Point
+	From     utils.Point
+	To       utils.Point
 	StrVal   string
 	UintVal  *uint64
 	TypeInfo types.Info
@@ -173,20 +174,20 @@ func (t *Token) String() string {
 
 type Lexer struct {
 	in          *bufio.Reader
-	point       ast.Point
-	tokenStart  ast.Point
+	point       utils.Point
+	tokenStart  utils.Point
 	ungot       *Token
 	unread      bool
 	unreadRune  rune
 	unreadSize  int
-	unreadPoint ast.Point
+	unreadPoint utils.Point
 	history     map[int][]rune
 }
 
 func NewLexer(in io.Reader) *Lexer {
 	return &Lexer{
 		in: bufio.NewReader(in),
-		point: ast.Point{
+		point: utils.Point{
 			Line: 1,
 			Col:  0,
 		},

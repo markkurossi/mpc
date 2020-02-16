@@ -7,11 +7,13 @@
 package compiler
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Unit struct {
@@ -20,14 +22,14 @@ type Unit struct {
 }
 
 type Parser struct {
-	inputName string
-	lexer     *Lexer
+	logger *utils.Logger
+	lexer  *Lexer
 }
 
-func NewParser(inputName string, in io.Reader) *Parser {
+func NewParser(logger *utils.Logger, in io.Reader) *Parser {
 	return &Parser{
-		inputName: inputName,
-		lexer:     NewLexer(in),
+		logger: logger,
+		lexer:  NewLexer(in),
 	}
 }
 
@@ -50,7 +52,7 @@ func (p *Parser) Parse() (*Unit, error) {
 	return unit, nil
 }
 
-func (p *Parser) err(loc ast.Point, format string, a ...interface{}) error {
+func (p *Parser) err(loc utils.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 
 	p.lexer.FlushEOL()
@@ -68,11 +70,13 @@ func (p *Parser) err(loc ast.Point, format string, a ...interface{}) error {
 			indicator = append(indicator, r)
 		}
 		indicator = append(indicator, '^')
-		return fmt.Errorf("%s:%d:%d: %s\n%s\n%s",
-			p.inputName, loc.Line, loc.Col, msg,
-			string(line), string(indicator))
+		p.logger.Errorf(loc, "%s\n%s\n%s\n",
+			msg, string(line), string(indicator))
+
+		return errors.New(msg)
 	}
-	return fmt.Errorf("%s:%d:%d: %s", p.inputName, loc.Line, loc.Col, msg)
+	p.logger.Errorf(loc, "%s", msg)
+	return errors.New(msg)
 }
 
 func (p *Parser) errUnexpected(offending *Token, expected TokenType) error {
@@ -92,7 +96,7 @@ func (p *Parser) needToken(tt TokenType) (*Token, error) {
 	return token, nil
 }
 
-func (p *Parser) sameLine(current ast.Point) bool {
+func (p *Parser) sameLine(current utils.Point) bool {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return false

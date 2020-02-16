@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 func Compile(data string) (*circuit.Circuit, error) {
@@ -28,7 +29,8 @@ func CompileFile(file string) (*circuit.Circuit, error) {
 }
 
 func compileCircuit(name string, in io.Reader) (*circuit.Circuit, error) {
-	parser := NewParser(name, in)
+	logger := utils.NewLogger(name, os.Stdout)
+	parser := NewParser(logger, in)
 	_, err := parser.Parse()
 	if err != nil {
 		return nil, err
@@ -37,10 +39,11 @@ func compileCircuit(name string, in io.Reader) (*circuit.Circuit, error) {
 }
 
 func compile(name string, in io.Reader) (*circuit.Circuit, error) {
-	parser := NewParser(name, in)
+	logger := utils.NewLogger(name, os.Stdout)
+	parser := NewParser(logger, in)
 	unit, err := parser.Parse()
 	if err != nil {
 		return nil, err
 	}
-	return unit.Compile()
+	return unit.Compile(logger)
 }

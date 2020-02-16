@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
@@ -103,8 +105,8 @@ func TestParser(t *testing.T) {
 		if idx < min {
 			continue
 		}
-		parser := NewParser(fmt.Sprintf("{test %d}", idx),
-			bytes.NewReader([]byte(test)))
+		logger := utils.NewLogger(fmt.Sprintf("{test %d}", idx), os.Stdout)
+		parser := NewParser(logger, bytes.NewReader([]byte(test)))
 		unit, err := parser.Parse()
 		if err != nil {
 			t.Fatalf("Parse failed: %v", err)

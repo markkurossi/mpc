@@ -22,7 +22,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for _, b := range ast {
 		if block.Dead {
-			fmt.Printf("%s: unreachable code\n", b.Location())
+			ctx.logger.Warningf(b.Location(), "unreachable code\n")
 			break
 		}
 		block, err = b.SSA(block, ctx, gen)

@@ -13,9 +13,11 @@ import (
 
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Codegen struct {
+	logger    *utils.Logger
 	Verbose   bool
 	Func      *Func
 	targets   []ssa.Variable
@@ -23,8 +25,10 @@ type Codegen struct {
 	BlockTail *ssa.Block
 }
 
-func NewCodegen() *Codegen {
-	return new(Codegen)
+func NewCodegen(logger *utils.Logger) *Codegen {
+	return &Codegen{
+		logger: logger,
+	}
 }
 
 func (ctx *Codegen) Scope() int {
