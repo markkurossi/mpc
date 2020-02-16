@@ -21,7 +21,7 @@ var input = `// This is a very basic add circuit.
 package main
 
 func main(a, b int4) int5 {
-    return a + b
+    return a + b + 1
 }
 `
 

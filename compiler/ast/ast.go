@@ -380,3 +380,45 @@ func (ast *VariableRef) Visit(enter, exit func(ast AST) error) error {
 	}
 	return exit(ast)
 }
+
+type Constant struct {
+	Loc     Point
+	UintVal *uint64
+}
+
+func (ast *Constant) String() string {
+	return fmt.Sprintf("$%d", *ast.UintVal)
+}
+
+func (ast *Constant) Variable() (ssa.Variable, error) {
+	v := ssa.Variable{
+		Const: true,
+	}
+	if ast.UintVal != nil {
+		v.Name = fmt.Sprintf("$%d", *ast.UintVal)
+		v.Type = types.Info{
+			Type: types.Uint, // XXX min bits
+		}
+		v.ConstUint = ast.UintVal
+	} else {
+		return v, fmt.Errorf("constant %v not implemented yet", ast)
+	}
+	return v, nil
+}
+
+func (ast *Constant) Location() Point {
+	return ast.Loc
+}
+
+func (ast *Constant) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%d", ast.UintVal)
+}
+
+func (ast *Constant) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	return exit(ast)
+}

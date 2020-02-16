@@ -24,6 +24,7 @@ type TokenType int
 
 const (
 	T_Identifier TokenType = iota
+	T_Constant
 	T_Symbol
 	T_SymPackage
 	T_SymFunc
@@ -67,6 +68,7 @@ const (
 
 var tokenTypes = map[TokenType]string{
 	T_Identifier: "identifier",
+	T_Constant:   "constant",
 	T_Symbol:     "symbol",
 	T_SymPackage: "package",
 	T_SymFunc:    "func",
@@ -155,6 +157,7 @@ type Token struct {
 	From     ast.Point
 	To       ast.Point
 	StrVal   string
+	UintVal  *uint64
 	TypeInfo types.Info
 }
 
@@ -162,6 +165,8 @@ func (t *Token) String() string {
 	var str string
 	if len(t.StrVal) > 0 {
 		str = t.StrVal
+	} else if t.UintVal != nil {
+		str = strconv.FormatUint(*t.UintVal, 10)
 	} else {
 		str = t.Type.String()
 	}
@@ -465,6 +470,32 @@ func (l *Lexer) Get() (*Token, error) {
 
 				token := l.Token(T_Identifier)
 				token.StrVal = symbol
+				return token, nil
+			}
+			if unicode.IsDigit(r) {
+				// XXX 0b, 0x, etc.
+				input := string(r)
+				for {
+					r, _, err := l.ReadRune()
+					if err != nil {
+						if err != io.EOF {
+							return nil, err
+						}
+						break
+					}
+					if !unicode.IsDigit(r) {
+						l.UnreadRune()
+						break
+					}
+					input += string(r)
+				}
+				u, err := strconv.ParseUint(input, 10, 64)
+				if err != nil {
+					// XXX bigint constants
+					return nil, err
+				}
+				token := l.Token(T_Constant)
+				token.UintVal = &u
 				return token, nil
 			}
 			l.UnreadRune()

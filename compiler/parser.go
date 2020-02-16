@@ -566,6 +566,12 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			Loc:  t.From,
 			Name: t.StrVal,
 		}, nil
+
+	case T_Constant:
+		return &ast.Constant{
+			Loc:     t.From,
+			UintVal: t.UintVal,
+		}, nil
 	}
 	p.lexer.Unget(t)
 	return nil, p.err(t.From, "unexpected token '%s' while parsing expression",

@@ -331,9 +331,30 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		ctx.Push(v)
 		return block, nil
 	}
-	// TODO: check assignement is valid.
-
+	// TODO: check assignment is valid.
 	block.AddInstr(ssa.NewMovInstr(v, t))
+	return block, nil
+}
 
+func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, error) {
+
+	v, err := ast.Variable()
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := ctx.Peek()
+	if err != nil {
+		return nil, err
+	}
+	if t.Type.Undefined() {
+		// Replace undefined variable with constant.
+		ctx.Pop()
+		ctx.Push(v)
+		return block, nil
+	}
+	// TODO: check assignment is valid.
+	block.AddInstr(ssa.NewMovInstr(v, t))
 	return block, nil
 }

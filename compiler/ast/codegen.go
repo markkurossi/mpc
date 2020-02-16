@@ -188,3 +188,8 @@ func (ast VariableRef) Compile(compiler *circuits.Compiler,
 	out []*circuits.Wire) ([]*circuits.Wire, error) {
 	return ast.Var.Wires, nil
 }
+
+func (ast Constant) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("Constant.Compile not implemented")
+}

@@ -241,13 +241,18 @@ func (i Instr) PP(out io.Writer) {
 }
 
 type Variable struct {
-	Name    string
-	Scope   int
-	Version int
-	Type    types.Info
+	Name      string
+	Scope     int
+	Version   int
+	Type      types.Info
+	Const     bool
+	ConstUint *uint64
 }
 
 func (v Variable) String() string {
+	if v.Const {
+		return v.Name
+	}
 	var version string
 	if v.Version >= 0 {
 		version = fmt.Sprintf("%d", v.Version)

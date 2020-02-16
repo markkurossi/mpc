@@ -109,6 +109,20 @@ func main(a, b, c int) int {
 }
 `,
 	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "Millionaire",
+		Code: `
+package main
+func main(a, b int) int {
+    if a > b {
+        return 0
+    } else {
+        return 1
+    }
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {
