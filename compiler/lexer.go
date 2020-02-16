@@ -1,6 +1,4 @@
 //
-// lexer.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.

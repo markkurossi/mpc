@@ -1,6 +1,4 @@
 //
-// parser.go
-//
 // Copyright (c) 2019-2020 Markku Rossi
 //
 // All rights reserved.
