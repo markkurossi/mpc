@@ -18,3 +18,7 @@ type Point struct {
 func (p Point) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Col)
 }
+
+func (p Point) Undefined() bool {
+	return p.Line == 0
+}

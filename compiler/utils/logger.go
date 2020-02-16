@@ -30,7 +30,7 @@ func (l *Logger) Errorf(loc Point, format string, a ...interface{}) error {
 	if len(msg) > 0 && msg[len(msg)-1] != '\n' {
 		msg += "\n"
 	}
-	if loc.Line == 0 {
+	if loc.Undefined() {
 		fmt.Fprintf(l.out, "%s: %s", l.input, msg)
 	} else {
 		fmt.Fprintf(l.out, "%s:%s: %s", l.input, loc, msg)
@@ -48,7 +48,7 @@ func (l *Logger) Warningf(loc Point, format string, a ...interface{}) {
 	if len(msg) > 0 && msg[len(msg)-1] != '\n' {
 		msg += "\n"
 	}
-	if loc.Line == 0 {
+	if loc.Undefined() {
 		fmt.Fprintf(l.out, "%s: warning: %s", l.input, msg)
 	} else {
 		fmt.Fprintf(l.out, "%s:%s: warning: %s", l.input, loc, msg)
