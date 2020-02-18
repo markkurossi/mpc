@@ -280,39 +280,28 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			l.Type, ast.Op, r.Type)
 	}
 
+	// Check that target is of correct type
 	t, err := ctx.Peek()
 	if err != nil {
 		return nil, err
 	}
-
-	var instr ssa.Instr
 	var resultType types.Info
 	switch ast.Op {
 	case BinaryPlus:
 		resultType = l.Type
-		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
 	case BinaryMinus:
 		resultType = l.Type
-		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryMult:
 		resultType = l.Type
-		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryLt:
 		resultType = types.BoolType()
-		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
 	case BinaryGt:
 		resultType = types.BoolType()
-		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, ctx.logger.Errorf(ast.Loc,
 			"Binary.SSA '%s' not implemented yet", ast.Op)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	// Check that target is of correct type
 	if t.Type.Undefined() {
 		// Target undefined, use expression type.
 		ctx.Pop()
@@ -321,6 +310,27 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	} else if !t.Type.Equal(resultType) {
 		return nil, ctx.logger.Errorf(ast.Loc,
 			"cannot assign value of type %s to type %s", l.Type, t.Type)
+	}
+
+	var instr ssa.Instr
+	switch ast.Op {
+	case BinaryPlus:
+		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
+	case BinaryMinus:
+		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
+	case BinaryMult:
+		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
+	case BinaryLt:
+		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
+	case BinaryGt:
+		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
+	default:
+		fmt.Printf("%s %s %s\n", l, ast.Op, r)
+		return nil, ctx.logger.Errorf(ast.Loc,
+			"Binary.SSA '%s' not implemented yet", ast.Op)
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	block.AddInstr(instr)
