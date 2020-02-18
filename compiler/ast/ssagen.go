@@ -274,24 +274,31 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, err
 	}
 
-	// TODO: check that l and r are of same type
+	// Check that l and r are of same type
+	if !l.Type.Equal(r.Type) {
+		return nil, ctx.logger.Errorf(ast.Loc, "invalid types: %s %s %s",
+			l.Type, ast.Op, r.Type)
+	}
 
 	t, err := ctx.Peek()
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: check that target is of correct type
-
 	var instr ssa.Instr
+	var resultType types.Info
 	switch ast.Op {
 	case BinaryPlus:
+		resultType = l.Type
 		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
 	case BinaryMinus:
+		resultType = l.Type
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryLt:
+		resultType = types.BoolType()
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
 	case BinaryGt:
+		resultType = types.BoolType()
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
@@ -300,6 +307,17 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	// Check that target is of correct type
+	if t.Type.Undefined() {
+		// Target undefined, use expression type.
+		ctx.Pop()
+		t.Type = resultType
+		ctx.Push(t)
+	} else if !t.Type.Equal(resultType) {
+		return nil, ctx.logger.Errorf(ast.Loc,
+			"cannot assign value of type %s to type %s", l, t)
 	}
 
 	block.AddInstr(instr)
@@ -325,6 +343,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, err
 	}
+
 	if t.Type.Undefined() {
 		// Replace undefined variable with referenced one.
 		ctx.Pop()

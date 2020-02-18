@@ -29,6 +29,16 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
+		Enabled: true,
+		Name:    "add3",
+		Code: `
+package main
+func main(a, b, e int) (int) {
+    return a + b + e
+}
+`,
+	},
+	SSAGenTest{
 		Enabled: false,
 		Name:    "ret2",
 		Code: `

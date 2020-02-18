@@ -78,6 +78,10 @@ func (i Info) Undefined() bool {
 	return i.Type == Undefined
 }
 
+func (i Info) Equal(o Info) bool {
+	return i.Type == o.Type && i.Bits == o.Bits
+}
+
 func BoolType() Info {
 	return Info{
 		Type: Bool,

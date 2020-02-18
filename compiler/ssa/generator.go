@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	undef = "%undef"
-	anon  = "%_"
+	anon = "%_"
 )
 
 type Generator struct {
@@ -29,15 +28,19 @@ func NewGenerator() *Generator {
 }
 
 func (gen *Generator) UndefVar() Variable {
-	v, ok := gen.versions[undef]
+	v, ok := gen.versions[anon]
 	if !ok {
 		v = Variable{
-			Name: undef,
+			Name: anon,
 		}
 	} else {
 		v.Version = v.Version + 1
 	}
-	gen.versions[undef] = v
+	v.Type = types.Info{
+		Type: types.Undefined,
+		Bits: 0,
+	}
+	gen.versions[anon] = v
 	return v
 }
 

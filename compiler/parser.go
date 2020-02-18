@@ -432,6 +432,7 @@ func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
 			return nil, err
 		}
 		left = &ast.Binary{
+			Loc:   t.From,
 			Left:  left,
 			Op:    t.Type.BinaryType(),
 			Right: right,
@@ -458,6 +459,7 @@ func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
 			return nil, err
 		}
 		left = &ast.Binary{
+			Loc:   t.From,
 			Left:  left,
 			Op:    t.Type.BinaryType(),
 			Right: right,
@@ -482,6 +484,7 @@ func (p *Parser) parseExprComparative() (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
+				Loc:   t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -511,6 +514,7 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
+				Loc:   t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -540,6 +544,7 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
+				Loc:   t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
