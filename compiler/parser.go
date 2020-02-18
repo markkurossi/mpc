@@ -249,13 +249,8 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 		return nil, err
 	}
 
-	return &ast.Func{
-		Loc:    name.From,
-		Name:   name.StrVal,
-		Args:   arguments,
-		Return: returnValues,
-		Body:   body,
-	}, nil
+	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body),
+		nil
 }
 
 func (p *Parser) parseBlock() (ast.List, error) {

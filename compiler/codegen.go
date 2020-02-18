@@ -13,6 +13,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
@@ -20,17 +21,16 @@ import (
 func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	main, ok := unit.Functions["main"]
 	if !ok {
-		logger.Errorf(utils.Point{}, "no main function defined\n")
-		return nil, fmt.Errorf("No main function defined")
+		return nil, logger.Errorf(utils.Point{}, "no main function defined\n")
 	}
 
-	output := ssa.NewGenerator()
+	gen := ssa.NewGenerator()
 	ctx := ast.NewCodegen(logger)
 
-	ctx.BlockHead = output.Block()
-	ctx.BlockTail = output.Block()
+	ctx.BlockHead = gen.Block()
+	ctx.BlockTail = gen.Block()
 
-	_, err := main.SSA(ctx.BlockHead, ctx, output)
+	_, err := main.SSA(ctx.BlockHead, ctx, gen)
 	if err != nil {
 		return nil, err
 	}
@@ -38,52 +38,68 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	ssa.PP(os.Stdout, ctx.BlockHead)
 	ssa.Dot(os.Stdout, ctx.BlockHead)
 
-	return nil, nil
-}
-
-func (unit *Unit) oldCompile() (*circuit.Circuit, error) {
-	main, ok := unit.Functions["main"]
-	if !ok {
-		return nil, fmt.Errorf("No main function")
-	}
+	// Arguments.
 	var args circuit.IO
 	for _, arg := range main.Args {
+		v, ok := main.Bindings[arg.Name]
+		if !ok {
+			return nil, fmt.Errorf("argument %s not bound", arg.Name)
+		}
 		args = append(args, circuit.IOArg{
-			Name: arg.Name,
-			Type: arg.Type.String(),
-			Size: arg.Type.Bits,
+			Name: v.String(),
+			Type: v.Type.String(),
+			Size: v.Type.Bits,
 		})
 	}
 
 	// Split arguments into garbler and evaluator arguments.
 	var separatorSeen bool
-	var n1, n2 circuit.IO
+	var g, e circuit.IO
 	for _, a := range args {
 		if !separatorSeen {
 			if !strings.HasPrefix(a.Name, "e") {
-				n1 = append(n1, a)
+				g = append(g, a)
 				continue
 			}
 			separatorSeen = true
 		}
-		n2 = append(n2, a)
+		e = append(e, a)
 	}
 	if !separatorSeen {
 		if len(args) != 2 {
-			return nil, fmt.Errorf("Can't split arguments: %s", args)
+			return nil, fmt.Errorf("can't split arguments: %s", args)
 		}
-		n1 = args[0:1]
-		n2 = args[1:]
+		g = args[0:1]
+		e = args[1:]
 	}
 
-	var n3 circuit.IO
+	// Return values
+	var r circuit.IO
 	for _, rt := range main.Return {
-		n3 = append(n3, circuit.IOArg{
-			Name: rt.Name,
-			Type: rt.Type.String(),
-			Size: rt.Type.Bits,
+		v, ok := main.Bindings[rt.Name]
+		if !ok {
+			return nil, fmt.Errorf("return value %s not bound", rt.Name)
+		}
+		r = append(r, circuit.IOArg{
+			Name: v.String(),
+			Type: v.Type.String(),
+			Size: v.Type.Bits,
 		})
 	}
 
-	return nil, fmt.Errorf("Unit.Compile not implemented yet")
+	cc := circuits.NewCompiler(g, e, r)
+
+	err = ctx.BlockHead.Circuit(gen, cc)
+	if err != nil {
+		return nil, err
+	}
+
+	circ := cc.Compile()
+	fmt.Printf(" => %s\n", circ)
+
+	if true {
+		circ.Marshal(os.Stdout)
+	}
+
+	return circ, nil
 }

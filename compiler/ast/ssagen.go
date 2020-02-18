@@ -52,6 +52,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if ctx.Verbose {
 			fmt.Printf("args[%d]=%s\n", idx, a)
 		}
+		ast.Bindings[arg.Name] = a
 	}
 	// Define return variables.
 	for idx, ret := range ast.Return {
@@ -66,6 +67,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if ctx.Verbose {
 			fmt.Printf("ret[%d]=%s\n", idx, r)
 		}
+		ast.Bindings[ret.Name] = r
 	}
 
 	block, err := ast.Body.SSA(block, ctx, gen)

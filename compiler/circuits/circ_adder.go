@@ -39,12 +39,14 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 	// w3 = AND(A, B)
 	compiler.AddGate(NewBinary(circuit.AND, a, b, w3))
 
-	// cout = OR(w2, w3)
-	compiler.AddGate(NewBinary(circuit.OR, w2, w3, cout))
+	if cout != nil {
+		// cout = OR(w2, w3)
+		compiler.AddGate(NewBinary(circuit.OR, w2, w3, cout))
+	}
 }
 
 func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
-	if len(x) != len(y) || len(x)+1 != len(z) {
+	if len(x) != len(y) || len(z) < len(x) || len(z) > len(x)+1 {
 		return fmt.Errorf("Invalid adder arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
@@ -58,7 +60,12 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 		for i := 1; i < len(x); i++ {
 			var cout *Wire
 			if i+1 >= len(x) {
-				cout = z[len(x)]
+				if i+1 >= len(z) {
+					// N+N=N, overflow, drop carry bit.
+					cout = nil
+				} else {
+					cout = z[len(x)]
+				}
 			} else {
 				cout = NewWire()
 			}

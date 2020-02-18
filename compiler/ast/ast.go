@@ -84,17 +84,32 @@ func (ast List) Visit(enter, exit func(ast AST) error) error {
 }
 
 type Variable struct {
-	Name  string
-	Type  types.Info
+	Name string
+	Type types.Info
+
+	// XXX old garbage follows
 	Wires []*circuits.Wire
 }
 
 type Func struct {
-	Loc    utils.Point
-	Name   string
-	Args   []*Variable
-	Return []*Variable
-	Body   List
+	Loc      utils.Point
+	Name     string
+	Args     []*Variable
+	Return   []*Variable
+	Body     List
+	Bindings map[string]ssa.Variable
+}
+
+func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
+	body List) *Func {
+	return &Func{
+		Loc:      loc,
+		Name:     name,
+		Args:     args,
+		Return:   ret,
+		Body:     body,
+		Bindings: make(map[string]ssa.Variable),
+	}
 }
 
 func (ast *Func) Location() utils.Point {

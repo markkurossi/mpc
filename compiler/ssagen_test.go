@@ -29,7 +29,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "ret2",
 		Code: `
 package main
@@ -39,7 +39,7 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "if",
 		Code: `
 package main
@@ -52,7 +52,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "ifelse",
 		Code: `
 package main
@@ -66,7 +66,7 @@ func main(a, b int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "if-else-assign",
 		Code: `
 package main
@@ -86,7 +86,7 @@ func main(a, b int) (int, int) {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "max3",
 		Code: `
 package main
@@ -110,7 +110,7 @@ func main(a, b, c int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: true,
+		Enabled: false,
 		Name:    "Millionaire",
 		Code: `
 package main

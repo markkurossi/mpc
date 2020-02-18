@@ -457,10 +457,26 @@ func (l *Lexer) Get() (*Token, error) {
 					tt, ok := types.Types[matches[1]]
 					if ok {
 						token := l.Token(T_Type)
-						ival, _ := strconv.Atoi(matches[2])
+						var bits int
+						if len(matches[2]) > 0 {
+							bits, err = strconv.Atoi(matches[2])
+							if err != nil {
+								return nil, err
+							}
+						} else {
+							// Default size for types.
+							switch tt {
+							case types.Bool:
+								bits = 1
+							case types.Int, types.Uint:
+								bits = 32
+							case types.Float:
+								return nil, fmt.Errorf("invalid type %s", tt)
+							}
+						}
 						token.TypeInfo = types.Info{
 							Type: tt,
-							Bits: ival,
+							Bits: bits,
 						}
 						token.StrVal = symbol
 						return token, nil

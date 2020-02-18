@@ -20,6 +20,7 @@ type Block struct {
 	Instr      []Instr
 	Bindings   Bindings
 	Dead       bool
+	Processed  bool
 }
 
 func (b *Block) String() string {
