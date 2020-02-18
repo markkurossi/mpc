@@ -294,6 +294,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case BinaryMinus:
 		resultType = l.Type
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
+	case BinaryMult:
+		resultType = l.Type
+		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryLt:
 		resultType = types.BoolType()
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
@@ -317,7 +320,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ctx.Push(t)
 	} else if !t.Type.Equal(resultType) {
 		return nil, ctx.logger.Errorf(ast.Loc,
-			"cannot assign value of type %s to type %s", l, t)
+			"cannot assign value of type %s to type %s", l.Type, t.Type)
 	}
 
 	block.AddInstr(instr)

@@ -3,6 +3,6 @@
 
 package main
 
-func main(a, b int32) int64 {
+func main(a, b int) int {
 	return a * b
 }
