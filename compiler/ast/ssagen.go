@@ -309,7 +309,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ctx.Push(t)
 	} else if !t.Type.Equal(resultType) {
 		return nil, ctx.logger.Errorf(ast.Loc,
-			"cannot assign value of type %s to type %s", l.Type, t.Type)
+			"cannot assign value of type %s to type %s", resultType, t.Type)
 	}
 
 	var instr ssa.Instr

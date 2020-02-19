@@ -466,8 +466,6 @@ func (l *Lexer) Get() (*Token, error) {
 						} else {
 							// Default size for types.
 							switch tt {
-							case types.Bool:
-								bits = 1
 							case types.Int, types.Uint:
 								bits = 32
 							case types.Float:
@@ -481,6 +479,14 @@ func (l *Lexer) Get() (*Token, error) {
 						token.StrVal = symbol
 						return token, nil
 					}
+				} else if symbol == "bool" {
+					token := l.Token(T_Type)
+					token.TypeInfo = types.Info{
+						Type: types.Bool,
+						Bits: 1,
+					}
+					token.StrVal = symbol
+					return token, nil
 				}
 
 				token := l.Token(T_Identifier)

@@ -54,6 +54,26 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Ilt, Ult:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLtComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Igt, Ugt:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLtComparator(cc, wires[1], wires[0], o)
+			if err != nil {
+				return err
+			}
+
 		case Jump:
 			// nop
 

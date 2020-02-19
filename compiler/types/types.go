@@ -85,5 +85,6 @@ func (i Info) Equal(o Info) bool {
 func BoolType() Info {
 	return Info{
 		Type: Bool,
+		Bits: 1,
 	}
 }
