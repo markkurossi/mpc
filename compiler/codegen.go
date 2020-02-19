@@ -69,8 +69,8 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("can't split arguments: %s", args)
 		}
-		g = args[0:1]
-		e = args[1:]
+		g = circuit.IO{args[0]}
+		e = circuit.IO{args[1]}
 	}
 
 	// Return values
@@ -97,7 +97,7 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	circ := cc.Compile()
 	fmt.Printf(" => %s\n", circ)
 
-	if true {
+	if false {
 		circ.Marshal(os.Stdout)
 	}
 

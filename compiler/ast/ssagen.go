@@ -386,7 +386,13 @@ func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 		ctx.Push(v)
 		return block, nil
 	}
-	// TODO: check assignment is valid.
+	// Check that the assignment is valid.
+	if v.Type.Bits > t.Type.Bits {
+		return nil, ctx.logger.Errorf(ast.Loc,
+			"constant overflow when assigning %s to %s", v.Type, t.Type)
+	}
+
+	// XXX signed vs. unsigned
 	block.AddInstr(ssa.NewMovInstr(v, t))
 	return block, nil
 }

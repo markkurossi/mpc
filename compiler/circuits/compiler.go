@@ -138,6 +138,15 @@ func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
 	return wires, nil
 }
 
+func (c *Compiler) SetWires(v string, w []*Wire) error {
+	_, ok := c.wires[v]
+	if ok {
+		return fmt.Errorf("wires already set for %v", v)
+	}
+	c.wires[v] = w
+	return nil
+}
+
 func (c *Compiler) Compile() *circuit.Circuit {
 	for _, w := range c.Inputs {
 		w.Assign(c)

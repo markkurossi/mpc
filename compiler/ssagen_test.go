@@ -120,7 +120,7 @@ func main(a, b, c int) int {
 `,
 	},
 	SSAGenTest{
-		Enabled: false,
+		Enabled: true,
 		Name:    "Millionaire",
 		Code: `
 package main

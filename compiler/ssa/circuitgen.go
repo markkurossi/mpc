@@ -74,8 +74,44 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
-		case Jump:
-			// nop
+		case If, Jump:
+			// Branch operations are no-ops in circuits.
+
+		case Mov:
+			var o []*circuits.Wire
+			if instr.In[0].Const {
+				// Create constant value bits.
+				for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+					var w *circuits.Wire
+					if bit < len(wires[0]) {
+						w = wires[0][bit]
+					} else {
+						w = circuits.NewWire()
+					}
+					if instr.In[0].Bit(bit) {
+						cc.One(w)
+					} else {
+						cc.Zero(w)
+					}
+					o = append(o, w)
+				}
+			} else {
+				o = wires[0]
+			}
+			err := cc.SetWires(instr.Out.String(), o)
+			if err != nil {
+				return err
+			}
+
+		case Phi:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewMux(cc, wires[0], wires[1], wires[2], o)
+			if err != nil {
+				return err
+			}
 
 		case Ret:
 			// Assign output wires.

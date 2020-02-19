@@ -403,9 +403,19 @@ func (ast *Constant) Variable() (ssa.Variable, error) {
 		Const: true,
 	}
 	if ast.UintVal != nil {
+		var bits int
+		// Count minimum bits needed to represent the value.
+		for bits = 2; bits < 64; bits++ {
+			if (0xffffffffffffffff<<bits)&*ast.UintVal == 0 {
+				bits--
+				break
+			}
+		}
+
 		v.Name = fmt.Sprintf("$%d", *ast.UintVal)
 		v.Type = types.Info{
-			Type: types.Uint, // XXX min bits
+			Type: types.Uint,
+			Bits: bits,
 		}
 		v.ConstUint = ast.UintVal
 	} else {

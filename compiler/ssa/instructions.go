@@ -37,8 +37,8 @@ const (
 	Ugt
 	Fgt
 	If
-	Mov
 	Jump
+	Mov
 	Phi
 	Ret
 )
@@ -65,8 +65,8 @@ var operands = map[Operand]string{
 	Ugt:   "ugt",
 	Fgt:   "fgt",
 	If:    "if",
-	Mov:   "mov",
 	Jump:  "jump",
+	Mov:   "mov",
 	Phi:   "phi",
 	Ret:   "ret",
 }
@@ -292,4 +292,12 @@ func (v *Variable) Equal(other BindingValue) bool {
 
 func (v *Variable) Value(block *Block, gen *Generator) Variable {
 	return *v
+}
+
+func (v *Variable) Bit(bit int) bool {
+	if v.ConstUint != nil {
+		return (*v.ConstUint & (1 << bit)) != 0
+	} else {
+		panic(fmt.Sprintf("BitSet called for a non variable %v", v))
+	}
 }
