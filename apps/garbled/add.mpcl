@@ -4,5 +4,5 @@
 package main
 
 func main(a, b, e int) (int, int) {
-	return a + b + e, a + a
+	return a + b + e, a - e
 }

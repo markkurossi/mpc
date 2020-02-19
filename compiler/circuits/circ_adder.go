@@ -18,8 +18,10 @@ func NewHalfAdder(compiler *Compiler, a, b, s, c *Wire) {
 	// S = XOR(A, B)
 	compiler.AddGate(NewBinary(circuit.XOR, a, b, s))
 
-	// C = AND(A, B)
-	compiler.AddGate(NewBinary(circuit.AND, a, b, c))
+	if c != nil {
+		// C = AND(A, B)
+		compiler.AddGate(NewBinary(circuit.AND, a, b, c))
+	}
 }
 
 func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
@@ -52,7 +54,11 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 	}
 
 	if len(x) == 1 {
-		NewHalfAdder(compiler, x[0], y[0], z[0], z[1])
+		var cin *Wire
+		if len(z) > 1 {
+			cin = z[1]
+		}
+		NewHalfAdder(compiler, x[0], y[0], z[0], cin)
 	} else {
 		cin := NewWire()
 		NewHalfAdder(compiler, x[0], y[0], z[0], cin)
