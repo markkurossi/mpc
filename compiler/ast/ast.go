@@ -39,9 +39,6 @@ func indent(w io.Writer, indent int) {
 type AST interface {
 	Location() utils.Point
 	Fprint(w io.Writer, indent int)
-	Visit(enter, exit func(ast AST) error) error
-	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
-		[]*circuits.Wire, error)
 	// SSA generates SSA code from the AST node. The code is appended
 	// into the basic block `block'. The function returns the next
 	// sequential basic. The `ssa.Dead' is set to `true' if the code
@@ -67,20 +64,6 @@ func (ast List) Fprint(w io.Writer, ind int) {
 	}
 	indent(w, ind)
 	fmt.Fprintf(w, "}")
-}
-
-func (ast List) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	for _, el := range ast {
-		err = el.Visit(enter, exit)
-		if err != nil {
-			return err
-		}
-	}
-	return exit(ast)
 }
 
 type Variable struct {
@@ -155,20 +138,6 @@ func (ast *Func) Fprint(w io.Writer, ind int) {
 	} else {
 		fmt.Fprintf(w, " {}")
 	}
-}
-
-func (ast *Func) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	for _, el := range ast.Body {
-		err = el.Visit(enter, exit)
-		if err != nil {
-			return err
-		}
-	}
-	return exit(ast)
 }
 
 type VariableDef struct {
@@ -269,20 +238,6 @@ func (ast *Return) Fprint(w io.Writer, ind int) {
 	}
 }
 
-func (ast *Return) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	for _, expr := range ast.Exprs {
-		err = expr.Visit(enter, exit)
-		if err != nil {
-			return err
-		}
-	}
-	return exit(ast)
-}
-
 type BinaryType int
 
 const (
@@ -348,22 +303,6 @@ func (ast *Binary) FprintDebug(w io.Writer, ind int) {
 	fmt.Fprintf(w, " ")
 	ast.Right.Fprint(w, ind)
 	fmt.Fprintf(w, ")")
-}
-
-func (ast *Binary) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	err = ast.Left.Visit(enter, exit)
-	if err != nil {
-		return err
-	}
-	err = ast.Right.Visit(enter, exit)
-	if err != nil {
-		return err
-	}
-	return exit(ast)
 }
 
 type VariableRef struct {
