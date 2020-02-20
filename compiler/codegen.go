@@ -35,8 +35,10 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 		return nil, err
 	}
 
-	ssa.PP(os.Stdout, ctx.BlockHead)
-	ssa.Dot(os.Stdout, ctx.BlockHead)
+	if false {
+		ssa.PP(os.Stdout, ctx.BlockHead)
+		ssa.Dot(os.Stdout, ctx.BlockHead)
+	}
 
 	// Arguments.
 	var args circuit.IO
@@ -95,9 +97,8 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	}
 
 	circ := cc.Compile()
-	fmt.Printf(" => %s\n", circ)
-
 	if false {
+		fmt.Printf(" => %s\n", circ)
 		circ.Marshal(os.Stdout)
 	}
 

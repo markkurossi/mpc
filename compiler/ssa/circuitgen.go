@@ -54,6 +54,16 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Imult, Umult:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewMultiplier(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
 		case Ilt, Ult:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {

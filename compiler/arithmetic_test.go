@@ -38,7 +38,7 @@ var tests = []Test{
 		},
 		Code: `
 package main
-func main(a, b int2) int3 {
+func main(a, b int3) int3 {
     return a + b
 }
 `,
@@ -55,7 +55,7 @@ func main(a, b int2) int3 {
 		},
 		Code: `
 package main
-func main(a, b int1) int2 {
+func main(a, b int1) int1 {
     return a * b
 }
 `,
@@ -72,7 +72,7 @@ func main(a, b int1) int2 {
 		},
 		Code: `
 package main
-func main(a, b int2) int4 {
+func main(a, b int4) int4 {
     return a * b
 }
 `,
@@ -89,14 +89,14 @@ func main(a, b int2) int4 {
 		},
 		Code: `
 package main
-func main(a, b int3) int6 {
+func main(a, b int6) int6 {
     return a * b
 }
 `,
 	},
 }
 
-func XTestAdd(t *testing.T) {
+func TestArithmetics(t *testing.T) {
 	for _, test := range tests {
 		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)

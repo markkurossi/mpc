@@ -17,7 +17,7 @@ import (
 // NewMultiplier creates a multiplier circuit implementing x*y=z. This
 // function implements Array Multiplier Circuit.
 func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
-	if len(x) != len(y) || len(x)+len(y) != len(z) {
+	if len(x) != len(y) || len(x) > len(z) || len(x)+len(y) < len(z) {
 		return fmt.Errorf("Invalid multiplier arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
@@ -25,7 +25,9 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	// One bit multiplication is AND.
 	if len(x) == 1 {
 		compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], z[0]))
-		compiler.Zero(z[1])
+		if len(z) > 1 {
+			compiler.Zero(z[1])
+		}
 		return nil
 	}
 
@@ -94,12 +96,14 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 			cout = NewWire()
 		}
 
-		if i == 0 {
-			NewHalfAdder(compiler, and, sums[i], z[j+i], cout)
-		} else if i >= len(sums) {
-			NewHalfAdder(compiler, and, c, z[j+i], cout)
-		} else {
-			NewFullAdder(compiler, and, sums[i], c, z[j+i], cout)
+		if j+i < len(z) {
+			if i == 0 {
+				NewHalfAdder(compiler, and, sums[i], z[j+i], cout)
+			} else if i >= len(sums) {
+				NewHalfAdder(compiler, and, c, z[j+i], cout)
+			} else {
+				NewFullAdder(compiler, and, sums[i], c, z[j+i], cout)
+			}
 		}
 		c = cout
 	}
