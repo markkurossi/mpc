@@ -571,8 +571,8 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 
 	case T_Constant:
 		return &ast.Constant{
-			Loc:     t.From,
-			UintVal: t.UintVal,
+			Loc:   t.From,
+			Value: t.ConstVal,
 		}, nil
 	}
 	p.lexer.Unget(t)

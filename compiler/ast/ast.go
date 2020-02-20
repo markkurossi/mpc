@@ -309,36 +309,52 @@ func (ast *VariableRef) Fprint(w io.Writer, ind int) {
 }
 
 type Constant struct {
-	Loc     utils.Point
-	UintVal *uint64
+	Loc   utils.Point
+	Value interface{}
 }
 
 func (ast *Constant) String() string {
-	return fmt.Sprintf("$%d", *ast.UintVal)
+	switch val := ast.Value.(type) {
+	case uint64:
+		return fmt.Sprintf("$%d", val)
+	case bool:
+		return fmt.Sprintf("$%v", val)
+	default:
+		return fmt.Sprintf("{undefined constant %v}", ast.Value)
+	}
 }
 
 func (ast *Constant) Variable() (ssa.Variable, error) {
 	v := ssa.Variable{
-		Const: true,
+		Const:      true,
+		ConstValue: ast.Value,
 	}
-	if ast.UintVal != nil {
+	switch val := ast.Value.(type) {
+	case uint64:
 		var bits int
 		// Count minimum bits needed to represent the value.
 		for bits = 2; bits < 64; bits++ {
-			if (0xffffffffffffffff<<bits)&*ast.UintVal == 0 {
+			if (0xffffffffffffffff<<bits)&val == 0 {
 				bits--
 				break
 			}
 		}
-
-		v.Name = fmt.Sprintf("$%d", *ast.UintVal)
+		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
 			Type: types.Uint,
 			Bits: bits,
 		}
-		v.ConstUint = ast.UintVal
-	} else {
-		return v, fmt.Errorf("constant %v not implemented yet", ast)
+
+	case bool:
+		v.Name = fmt.Sprintf("$%v", val)
+		v.Type = types.Info{
+			Type: types.Bool,
+			Bits: 1,
+		}
+
+	default:
+		return v, fmt.Errorf("ast.Constant.Variable(): %v not implemented yet",
+			ast)
 	}
 	return v, nil
 }
@@ -349,5 +365,5 @@ func (ast *Constant) Location() utils.Point {
 
 func (ast *Constant) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
-	fmt.Fprintf(w, "%d", ast.UintVal)
+	fmt.Fprintf(w, "%v", ast.Value)
 }

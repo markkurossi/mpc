@@ -143,6 +143,19 @@ func main(a, b int) int {
 }
 `,
 	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "Bool",
+		Code: `
+package main
+func main(a, b int) bool {
+    if a > b {
+        return true
+    }
+    return false
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {

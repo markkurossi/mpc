@@ -156,7 +156,7 @@ type Token struct {
 	From     utils.Point
 	To       utils.Point
 	StrVal   string
-	UintVal  *uint64
+	ConstVal interface{}
 	TypeInfo types.Info
 }
 
@@ -164,10 +164,15 @@ func (t *Token) String() string {
 	var str string
 	if len(t.StrVal) > 0 {
 		str = t.StrVal
-	} else if t.UintVal != nil {
-		str = strconv.FormatUint(*t.UintVal, 10)
 	} else {
-		str = t.Type.String()
+		switch val := t.ConstVal.(type) {
+		case uint64:
+			str = strconv.FormatUint(val, 10)
+		case bool:
+			str = fmt.Sprintf("%v", val)
+		default:
+			str = t.Type.String()
+		}
 	}
 	return str
 }
@@ -487,6 +492,10 @@ func (l *Lexer) Get() (*Token, error) {
 					}
 					token.StrVal = symbol
 					return token, nil
+				} else if symbol == "true" || symbol == "false" {
+					token := l.Token(T_Constant)
+					token.ConstVal = symbol == "true"
+					return token, nil
 				}
 
 				token := l.Token(T_Identifier)
@@ -516,7 +525,7 @@ func (l *Lexer) Get() (*Token, error) {
 					return nil, err
 				}
 				token := l.Token(T_Constant)
-				token.UintVal = &u
+				token.ConstVal = u
 				return token, nil
 			}
 			l.UnreadRune()

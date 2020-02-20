@@ -110,7 +110,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 
 	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
-		return nil, err
+		return nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}
 	v, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
 	if err != nil {
@@ -343,7 +343,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 
 	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
-		return nil, err
+		return nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}
 
 	v := b.Value(block, gen)

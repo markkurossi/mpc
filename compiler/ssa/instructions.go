@@ -260,12 +260,12 @@ func (i Instr) PP(out io.Writer) {
 }
 
 type Variable struct {
-	Name      string
-	Scope     int
-	Version   int
-	Type      types.Info
-	Const     bool
-	ConstUint *uint64
+	Name       string
+	Scope      int
+	Version    int
+	Type       types.Info
+	Const      bool
+	ConstValue interface{}
 }
 
 func (v Variable) String() string {
@@ -295,9 +295,17 @@ func (v *Variable) Value(block *Block, gen *Generator) Variable {
 }
 
 func (v *Variable) Bit(bit int) bool {
-	if v.ConstUint != nil {
-		return (*v.ConstUint & (1 << bit)) != 0
-	} else {
-		panic(fmt.Sprintf("BitSet called for a non variable %v", v))
+	switch val := v.ConstValue.(type) {
+	case bool:
+		if bit == 0 {
+			return val
+		}
+		return false
+
+	case uint64:
+		return (val & (1 << bit)) != 0
+
+	default:
+		panic(fmt.Sprintf("Variable.Bit called for a non variable %v", v))
 	}
 }

@@ -3,10 +3,10 @@
 
 package main
 
-func main(a, b int64) int {
+func main(a, b int64) bool {
 	if a > b {
-		return 0
+		return true
 	} else {
-		return 1
+		return false
 	}
 }
