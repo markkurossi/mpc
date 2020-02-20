@@ -1,6 +1,4 @@
 //
-// lexer_test.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -21,7 +19,7 @@ var input = `// This is a very basic add circuit.
 package main
 
 func main(a, b int4) int5 {
-    return a + b
+    return a + b + 1
 }
 `
 

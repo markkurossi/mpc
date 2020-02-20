@@ -62,6 +62,12 @@ func (io IO) Size() int {
 }
 
 func (io IO) Parse(inputs []string) ([]*big.Int, error) {
+	if len(inputs) != len(io) {
+		return nil,
+			fmt.Errorf("invalid amount of arguments, got %d, expected %d",
+				len(inputs), len(io))
+	}
+
 	var result []*big.Int
 
 	for idx, _ := range io {

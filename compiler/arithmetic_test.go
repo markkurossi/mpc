@@ -1,6 +1,4 @@
 //
-// arithmetic_test.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -20,7 +18,7 @@ import (
 
 type Test struct {
 	Name    string
-	Skip    bool
+	Heavy   bool
 	Operand string
 	Bits    int
 	Eval    func(a *big.Int, b *big.Int) *big.Int
@@ -30,6 +28,7 @@ type Test struct {
 var tests = []Test{
 	Test{
 		Name:    "Add",
+		Heavy:   true,
 		Operand: "+",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -39,7 +38,7 @@ var tests = []Test{
 		},
 		Code: `
 package main
-func main(a, b int2) int3 {
+func main(a, b int3) int3 {
     return a + b
 }
 `,
@@ -47,7 +46,6 @@ func main(a, b int2) int3 {
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
 	Test{
 		Name:    "Multiply 1-bit",
-		Skip:    false,
 		Operand: "*",
 		Bits:    1,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -57,13 +55,14 @@ func main(a, b int2) int3 {
 		},
 		Code: `
 package main
-func main(a, b int1) int2 {
+func main(a, b int1) int1 {
     return a * b
 }
 `,
 	},
 	Test{
 		Name:    "Multiply 2-bits",
+		Heavy:   true,
 		Operand: "*",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -73,13 +72,14 @@ func main(a, b int1) int2 {
 		},
 		Code: `
 package main
-func main(a, b int2) int4 {
+func main(a, b int4) int4 {
     return a * b
 }
 `,
 	},
 	Test{
 		Name:    "Multiply n-bits",
+		Heavy:   true,
 		Operand: "*",
 		Bits:    2,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -89,16 +89,16 @@ func main(a, b int2) int4 {
 		},
 		Code: `
 package main
-func main(a, b int3) int6 {
+func main(a, b int6) int6 {
     return a * b
 }
 `,
 	},
 }
 
-func TestAdd(t *testing.T) {
+func TestArithmetics(t *testing.T) {
 	for _, test := range tests {
-		if test.Skip {
+		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)
 			continue
 		}
@@ -140,7 +140,7 @@ func TestAdd(t *testing.T) {
 
 				expected := test.Eval(gInput[0], eInput[0])
 
-				if expected.Cmp(result) != 0 {
+				if expected.Cmp(result[0]) != 0 {
 					t.Errorf("%s failed: %s %s %s = %s, expected %s\n",
 						test.Name, gInput, test.Operand, eInput, result,
 						expected)

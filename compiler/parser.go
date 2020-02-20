@@ -1,6 +1,4 @@
 //
-// parser.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -14,10 +12,8 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/ast"
-)
-
-var (
-	SyntaxError = errors.New("Syntax error")
+	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Unit struct {
@@ -26,14 +22,14 @@ type Unit struct {
 }
 
 type Parser struct {
-	inputName string
-	lexer     *Lexer
+	logger *utils.Logger
+	lexer  *Lexer
 }
 
-func NewParser(inputName string, in io.Reader) *Parser {
+func NewParser(logger *utils.Logger, in io.Reader) *Parser {
 	return &Parser{
-		inputName: inputName,
-		lexer:     NewLexer(in),
+		logger: logger,
+		lexer:  NewLexer(in),
 	}
 }
 
@@ -56,9 +52,31 @@ func (p *Parser) Parse() (*Unit, error) {
 	return unit, nil
 }
 
-func (p *Parser) err(loc ast.Point, format string, a ...interface{}) error {
+func (p *Parser) err(loc utils.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
-	return fmt.Errorf("%s:%d:%d: %s", p.inputName, loc.Line, loc.Col, msg)
+
+	p.lexer.FlushEOL()
+
+	line, ok := p.lexer.history[loc.Line]
+	if ok {
+		var indicator []rune
+		for i := 0; i < loc.Col; i++ {
+			var r rune
+			if line[i] == '\t' {
+				r = '\t'
+			} else {
+				r = ' '
+			}
+			indicator = append(indicator, r)
+		}
+		indicator = append(indicator, '^')
+		p.logger.Errorf(loc, "%s\n%s\n%s\n",
+			msg, string(line), string(indicator))
+
+		return errors.New(msg)
+	}
+	p.logger.Errorf(loc, "%s", msg)
+	return errors.New(msg)
 }
 
 func (p *Parser) errUnexpected(offending *Token, expected TokenType) error {
@@ -78,7 +96,7 @@ func (p *Parser) needToken(tt TokenType) (*Token, error) {
 	return token, nil
 }
 
-func (p *Parser) sameLine(current ast.Point) bool {
+func (p *Parser) sameLine(current utils.Point) bool {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return false
@@ -164,7 +182,7 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 			}
 			// All untyped arguments get this type.
 			for i := len(arguments) - 1; i >= 0; i-- {
-				if arguments[i].Type.Type != ast.TypeUndefined {
+				if arguments[i].Type.Type != types.Undefined {
 					break
 				}
 				arguments[i].Type = arg.Type
@@ -231,13 +249,8 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 		return nil, err
 	}
 
-	return &ast.Func{
-		Loc:    name.From,
-		Name:   name.StrVal,
-		Args:   arguments,
-		Return: returnValues,
-		Body:   body,
-	}, nil
+	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body),
+		nil
 }
 
 func (p *Parser) parseBlock() (ast.List, error) {
@@ -262,14 +275,82 @@ func (p *Parser) parseBlock() (ast.List, error) {
 }
 
 func (p *Parser) parseStatement() (ast.AST, error) {
-	t, err := p.lexer.Get()
+	tStmt, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
 	}
-	switch t.Type {
+	switch tStmt.Type {
+	case T_SymVar:
+		var names []string
+		for {
+			tName, err := p.needToken(T_Identifier)
+			if err != nil {
+				return nil, err
+			}
+			names = append(names, tName.StrVal)
+			t, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if t.Type != T_Comma {
+				p.lexer.Unget(t)
+				break
+			}
+		}
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_Type {
+			p.lexer.Unget(t)
+			return nil, p.errUnexpected(t, T_Type)
+		}
+		return &ast.VariableDef{
+			Loc:   tStmt.From,
+			Names: names,
+			Type:  t.TypeInfo,
+		}, nil
+
+	case T_SymIf:
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_LBrace)
+		if err != nil {
+			return nil, err
+		}
+
+		var b1, b2 ast.List
+		b1, err = p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type == T_SymElse {
+			_, err = p.needToken(T_LBrace)
+			if err != nil {
+				return nil, err
+			}
+			b2, err = p.parseBlock()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			p.lexer.Unget(t)
+		}
+		return &ast.If{
+			Expr:  expr,
+			True:  b1,
+			False: b2,
+		}, nil
+
 	case T_SymReturn:
 		var exprs []ast.AST
-		if p.sameLine(t.To) {
+		if p.sameLine(tStmt.To) {
 			expr, err := p.parseExpr()
 			if err != nil {
 				return nil, err
@@ -292,15 +373,128 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			}
 		}
 		return &ast.Return{
+			Loc:   tStmt.From,
 			Exprs: exprs,
 		}, nil
 
+	case T_Identifier:
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		switch t.Type {
+		case T_Assign:
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			return &ast.Assign{
+				Loc:  tStmt.From,
+				Name: tStmt.StrVal,
+				Expr: expr,
+			}, nil
+
+		default:
+			p.lexer.Unget(t)
+			return nil, p.err(t.From, "syntax error")
+		}
 	}
-	return nil, p.err(t.To, "syntax error")
+	return nil, p.err(tStmt.From, "syntax error")
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {
-	return p.parseExprAdditive()
+	// Precedence Operator
+	// -----------------------------
+	//   5          * / % << >> & &^
+	//   4          + - | ^
+	//   3          == != < <= > >=
+	//   2          &&
+	//   1          ||
+	return p.parseExprLogicalOr()
+}
+
+func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
+	left, err := p.parseExprLogicalAnd()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_Or {
+			p.lexer.Unget(t)
+			return left, nil
+		}
+		right, err := p.parseExprLogicalAnd()
+		if err != nil {
+			return nil, err
+		}
+		left = &ast.Binary{
+			Loc:   t.From,
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}
+	}
+}
+
+func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
+	left, err := p.parseExprComparative()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_And {
+			p.lexer.Unget(t)
+			return left, nil
+		}
+		right, err := p.parseExprComparative()
+		if err != nil {
+			return nil, err
+		}
+		left = &ast.Binary{
+			Loc:   t.From,
+			Left:  left,
+			Op:    t.Type.BinaryType(),
+			Right: right,
+		}
+	}
+}
+
+func (p *Parser) parseExprComparative() (ast.AST, error) {
+	left, err := p.parseExprAdditive()
+	if err != nil {
+		return nil, err
+	}
+	for {
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		switch t.Type {
+		case T_Eq, T_Neq, T_Lt, T_Le, T_Gt, T_Ge:
+			right, err := p.parseExprAdditive()
+			if err != nil {
+				return nil, err
+			}
+			left = &ast.Binary{
+				Loc:   t.From,
+				Left:  left,
+				Op:    t.Type.BinaryType(),
+				Right: right,
+			}
+
+		default:
+			p.lexer.Unget(t)
+			return left, nil
+		}
+	}
 }
 
 func (p *Parser) parseExprAdditive() (ast.AST, error) {
@@ -314,12 +508,13 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Plus, T_Minus:
+		case T_Plus, T_Minus, T_BitOr, T_BitXor:
 			right, err := p.parseExprMultiplicative()
 			if err != nil {
 				return nil, err
 			}
 			left = &ast.Binary{
+				Loc:   t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -343,12 +538,13 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Mult:
+		case T_Mult, T_Div, T_Mod, T_Lshift, T_Rshift, T_BitAnd, T_BitClear:
 			right, err := p.parseExprPrimary()
 			if err != nil {
 				return nil, err
 			}
 			left = &ast.Binary{
+				Loc:   t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -369,7 +565,14 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	switch t.Type {
 	case T_Identifier:
 		return &ast.VariableRef{
+			Loc:  t.From,
 			Name: t.StrVal,
+		}, nil
+
+	case T_Constant:
+		return &ast.Constant{
+			Loc:     t.From,
+			UintVal: t.UintVal,
 		}, nil
 	}
 	p.lexer.Unget(t)

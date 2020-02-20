@@ -112,7 +112,8 @@ func (l *Label) Bytes() []byte {
 
 func (l *Label) SetBytes(data []byte) {
 	if len(data) != 16 {
-		panic("Invalid data length")
+		panic(fmt.Sprintf("Invalid data length: got %d, expected 16",
+			len(data)))
 	}
 	l.d0 = binary.BigEndian.Uint64(data[0:8])
 	l.d1 = binary.BigEndian.Uint64(data[8:16])

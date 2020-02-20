@@ -12,7 +12,54 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
+
+type Codegen struct {
+	logger    *utils.Logger
+	Verbose   bool
+	Func      *Func
+	targets   []ssa.Variable
+	BlockHead *ssa.Block
+	BlockTail *ssa.Block
+}
+
+func NewCodegen(logger *utils.Logger) *Codegen {
+	return &Codegen{
+		logger: logger,
+	}
+}
+
+func (ctx *Codegen) Scope() int {
+	if ctx.Func != nil {
+		return 1
+	}
+	return 0
+}
+
+func (ctx *Codegen) Push(target ssa.Variable) {
+	ctx.targets = append(ctx.targets, target)
+}
+
+func (ctx *Codegen) Pop() (ssa.Variable, error) {
+	if len(ctx.targets) == 0 {
+		return ssa.Variable{}, fmt.Errorf("target stack underflow")
+	}
+	ret := ctx.targets[len(ctx.targets)-1]
+	ctx.targets = ctx.targets[:len(ctx.targets)-1]
+
+	return ret, nil
+}
+
+func (ctx *Codegen) Peek() (ssa.Variable, error) {
+	if len(ctx.targets) == 0 {
+		return ssa.Variable{}, fmt.Errorf("target stack underflow")
+	}
+	return ctx.targets[len(ctx.targets)-1], nil
+}
+
+/* Old garbage follows */
 
 func MakeWires(size int) []*circuits.Wire {
 	result := make([]*circuits.Wire, size)
@@ -40,6 +87,21 @@ func (f *Func) Compile(compiler *circuits.Compiler,
 		}
 	}
 	return outputs, nil
+}
+
+func (f *VariableDef) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("VariableDef.Compile not implemented")
+}
+
+func (f *Assign) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("Assign.Compile not implemented")
+}
+
+func (ast If) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("If.Compile not implemented yet")
 }
 
 func (ast Return) Compile(compiler *circuits.Compiler,
@@ -129,4 +191,9 @@ func (ast Binary) Compile(compiler *circuits.Compiler,
 func (ast VariableRef) Compile(compiler *circuits.Compiler,
 	out []*circuits.Wire) ([]*circuits.Wire, error) {
 	return ast.Var.Wires, nil
+}
+
+func (ast Constant) Compile(compiler *circuits.Compiler,
+	out []*circuits.Wire) ([]*circuits.Wire, error) {
+	return nil, fmt.Errorf("Constant.Compile not implemented")
 }

@@ -1,0 +1,12 @@
+// -*- go -*-
+//
+
+package main
+
+func main(a, b int64) int {
+	if a > b {
+		return 0
+	} else {
+		return 1
+	}
+}

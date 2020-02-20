@@ -1,6 +1,4 @@
 //
-// parser_test.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -13,6 +11,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
@@ -71,6 +71,32 @@ package main
 func main(a, b int4) (int5) {
   return a + b + c * d + e
 }`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b {
+    return a
+  }
+  return b
+}`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b {
+    return a
+  } else {
+    return b
+  }
+}`,
+	`
+package main
+func main(a, b int4) (int4) {
+  if a > b || a == b {
+    return a
+  } else {
+    return b
+  }
+}`,
 }
 
 func TestParser(t *testing.T) {
@@ -79,8 +105,8 @@ func TestParser(t *testing.T) {
 		if idx < min {
 			continue
 		}
-		parser := NewParser(fmt.Sprintf("{test %d}", idx),
-			bytes.NewReader([]byte(test)))
+		logger := utils.NewLogger(fmt.Sprintf("{test %d}", idx), os.Stdout)
+		parser := NewParser(logger, bytes.NewReader([]byte(test)))
 		unit, err := parser.Parse()
 		if err != nil {
 			t.Fatalf("Parse failed: %v", err)

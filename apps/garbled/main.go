@@ -110,15 +110,16 @@ func main() {
 	fmt.Printf(" - N3: %s\n", circ.N3)
 	fmt.Printf(" - In: %s\n", inputFlag)
 
+	var input []*big.Int
 	if *garbler {
-		input, err := circ.N1.Parse(inputFlag)
+		input, err = circ.N1.Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
 		err = garblerMode(circ, input)
 	} else {
-		input, err := circ.N2.Parse(inputFlag)
+		input, err = circ.N2.Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
@@ -166,7 +167,6 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 
 		printResult(result)
 	}
-	return nil
 }
 
 func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {

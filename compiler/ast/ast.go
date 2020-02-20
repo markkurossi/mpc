@@ -13,24 +13,22 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
+	_ AST = &VariableDef{}
+	_ AST = &Assign{}
+	_ AST = &If{}
 	_ AST = &Return{}
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
+	_ AST = &Constant{}
 )
-
-type Point struct {
-	Line int // 1-based
-	Col  int // 0-based
-}
-
-func (s Point) String() string {
-	return fmt.Sprintf("%d:%d", s.Line, s.Col)
-}
 
 func indent(w io.Writer, indent int) {
 	for i := 0; i < indent; i++ {
@@ -39,13 +37,26 @@ func indent(w io.Writer, indent int) {
 }
 
 type AST interface {
+	Location() utils.Point
 	Fprint(w io.Writer, indent int)
 	Visit(enter, exit func(ast AST) error) error
 	Compile(compiler *circuits.Compiler, out []*circuits.Wire) (
 		[]*circuits.Wire, error)
+	// SSA generates SSA code from the AST node. The code is appended
+	// into the basic block `block'. The function returns the next
+	// sequential basic. The `ssa.Dead' is set to `true' if the code
+	// terminates i.e. all following AST nodes are dead code.
+	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (*ssa.Block, error)
 }
 
 type List []AST
+
+func (ast List) Location() utils.Point {
+	if len(ast) > 0 {
+		return ast[0].Location()
+	}
+	return utils.Point{}
+}
 
 func (ast List) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
@@ -72,53 +83,37 @@ func (ast List) Visit(enter, exit func(ast AST) error) error {
 	return exit(ast)
 }
 
-type Type int
-
-func (t Type) String() string {
-	for k, v := range Types {
-		if v == t {
-			return k
-		}
-	}
-	return fmt.Sprintf("{Type %d}", t)
-}
-
-const (
-	TypeUndefined Type = iota
-	TypeInt
-	TypeFloat
-)
-
-var Types = map[string]Type{
-	"<Untyped>": TypeUndefined,
-	"int":       TypeInt,
-	"float":     TypeFloat,
-}
-
-type TypeInfo struct {
-	Type Type
-	Bits int
-}
-
-func (t TypeInfo) String() string {
-	if t.Bits == 0 {
-		return t.Type.String()
-	}
-	return fmt.Sprintf("%s%d", t.Type, t.Bits)
-}
-
 type Variable struct {
-	Name  string
-	Type  TypeInfo
+	Name string
+	Type types.Info
+
+	// XXX old garbage follows
 	Wires []*circuits.Wire
 }
 
 type Func struct {
-	Loc    Point
-	Name   string
-	Args   []*Variable
-	Return []*Variable
-	Body   List
+	Loc      utils.Point
+	Name     string
+	Args     []*Variable
+	Return   []*Variable
+	Body     List
+	Bindings map[string]ssa.Variable
+}
+
+func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
+	body List) *Func {
+	return &Func{
+		Loc:      loc,
+		Name:     name,
+		Args:     args,
+		Return:   ret,
+		Body:     body,
+		Bindings: make(map[string]ssa.Variable),
+	}
+}
+
+func (ast *Func) Location() utils.Point {
+	return ast.Loc
 }
 
 func (ast *Func) Fprint(w io.Writer, ind int) {
@@ -176,9 +171,88 @@ func (ast *Func) Visit(enter, exit func(ast AST) error) error {
 	return exit(ast)
 }
 
+type VariableDef struct {
+	Loc   utils.Point
+	Names []string
+	Type  types.Info
+}
+
+func (ast *VariableDef) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *VariableDef) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "var ")
+	for idx, name := range ast.Names {
+		if idx > 0 {
+			fmt.Fprintf(w, ", ")
+			fmt.Fprintf(w, "%s", name)
+		}
+	}
+	fmt.Fprintf(w, " %s", ast.Type)
+}
+
+func (ast *VariableDef) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("VariableDef.Visit not implemented")
+}
+
+type Assign struct {
+	Loc  utils.Point
+	Name string
+	Expr AST
+}
+
+func (ast *Assign) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *Assign) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%s = ", ast.Name)
+	ast.Expr.Fprint(w, ind)
+}
+
+func (ast *Assign) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("Assign.Visit not implemented")
+}
+
+type If struct {
+	Loc   utils.Point
+	Expr  AST
+	True  List
+	False List
+}
+
+func (ast *If) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *If) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "if ")
+	ast.Expr.Fprint(w, 0)
+	ast.True.Fprint(w, ind)
+	if ast.False != nil {
+		fmt.Fprintf(w, "else ")
+		ast.False.Fprint(w, ind)
+	}
+}
+
+func (ast *If) Visit(enter, exit func(ast AST) error) error {
+	return fmt.Errorf("If.Visit not implemented yet")
+}
+
 type Return struct {
-	Exprs  []AST
+	Loc   utils.Point
+	Exprs []AST
+
+	// XXX to be removed
 	Return []*Variable
+}
+
+func (ast *Return) Location() utils.Point {
+	return ast.Loc
 }
 
 func (ast *Return) Fprint(w io.Writer, ind int) {
@@ -215,12 +289,30 @@ const (
 	BinaryPlus BinaryType = iota
 	BinaryMinus
 	BinaryMult
+	BinaryDiv
+	BinaryLt
+	BinaryLe
+	BinaryGt
+	BinaryGe
+	BinaryEq
+	BinaryNeq
+	BinaryAnd
+	BinaryOr
 )
 
 var binaryTypes = map[BinaryType]string{
 	BinaryPlus:  "+",
 	BinaryMinus: "-",
 	BinaryMult:  "*",
+	BinaryDiv:   "/",
+	BinaryLt:    "<",
+	BinaryLe:    "<=",
+	BinaryGt:    ">",
+	BinaryGe:    ">=",
+	BinaryEq:    "==",
+	BinaryNeq:   "!=",
+	BinaryAnd:   "&&",
+	BinaryOr:    "||",
 }
 
 func (t BinaryType) String() string {
@@ -232,9 +324,14 @@ func (t BinaryType) String() string {
 }
 
 type Binary struct {
+	Loc   utils.Point
 	Left  AST
 	Op    BinaryType
 	Right AST
+}
+
+func (ast *Binary) Location() utils.Point {
+	return ast.Loc
 }
 
 func (ast *Binary) Fprint(w io.Writer, ind int) {
@@ -270,8 +367,13 @@ func (ast *Binary) Visit(enter, exit func(ast AST) error) error {
 }
 
 type VariableRef struct {
+	Loc  utils.Point
 	Name string
 	Var  *Variable
+}
+
+func (ast *VariableRef) Location() utils.Point {
+	return ast.Loc
 }
 
 func (ast *VariableRef) Fprint(w io.Writer, ind int) {
@@ -280,6 +382,58 @@ func (ast *VariableRef) Fprint(w io.Writer, ind int) {
 }
 
 func (ast *VariableRef) Visit(enter, exit func(ast AST) error) error {
+	err := enter(ast)
+	if err != nil {
+		return err
+	}
+	return exit(ast)
+}
+
+type Constant struct {
+	Loc     utils.Point
+	UintVal *uint64
+}
+
+func (ast *Constant) String() string {
+	return fmt.Sprintf("$%d", *ast.UintVal)
+}
+
+func (ast *Constant) Variable() (ssa.Variable, error) {
+	v := ssa.Variable{
+		Const: true,
+	}
+	if ast.UintVal != nil {
+		var bits int
+		// Count minimum bits needed to represent the value.
+		for bits = 2; bits < 64; bits++ {
+			if (0xffffffffffffffff<<bits)&*ast.UintVal == 0 {
+				bits--
+				break
+			}
+		}
+
+		v.Name = fmt.Sprintf("$%d", *ast.UintVal)
+		v.Type = types.Info{
+			Type: types.Uint,
+			Bits: bits,
+		}
+		v.ConstUint = ast.UintVal
+	} else {
+		return v, fmt.Errorf("constant %v not implemented yet", ast)
+	}
+	return v, nil
+}
+
+func (ast *Constant) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *Constant) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%d", ast.UintVal)
+}
+
+func (ast *Constant) Visit(enter, exit func(ast AST) error) error {
 	err := enter(ast)
 	if err != nil {
 		return err

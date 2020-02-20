@@ -9,6 +9,8 @@
 package circuits
 
 import (
+	"fmt"
+
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -24,6 +26,7 @@ type Compiler struct {
 	pending    []Gate
 	assigned   []Gate
 	compiled   []*circuit.Gate
+	wires      map[string][]*Wire
 	zeroWire   *Wire
 }
 
@@ -33,16 +36,45 @@ func NewIO(size int) circuit.IO {
 
 func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
 	result := &Compiler{
-		N1: n1,
-		N2: n2,
-		N3: n3,
+		N1:    n1,
+		N2:    n2,
+		N3:    n3,
+		wires: make(map[string][]*Wire),
 	}
 
-	for i := 0; i < n1.Size()+n2.Size(); i++ {
-		result.Inputs = append(result.Inputs, NewWire())
+	// Inputs into wires
+	for idx, n := range n1 {
+		if len(n.Name) == 0 {
+			n.Name = fmt.Sprintf("n1{%d}", idx)
+		}
+		wires, err := result.Wires(n.Name, n.Size)
+		if err != nil {
+			panic(err)
+		}
+		result.Inputs = append(result.Inputs, wires...)
 	}
-	for i := 0; i < n3.Size(); i++ {
-		result.Outputs = append(result.Outputs, NewOutputWire())
+	for idx, n := range n2 {
+		if len(n.Name) == 0 {
+			n.Name = fmt.Sprintf("n2{%d}", idx)
+		}
+		wires, err := result.Wires(n.Name, n.Size)
+		if err != nil {
+			panic(err)
+		}
+		result.Inputs = append(result.Inputs, wires...)
+	}
+	for idx, n := range n3 {
+		if len(n.Name) == 0 {
+			n.Name = fmt.Sprintf("%%ret%d", idx)
+		}
+		wires, err := result.Wires(n.Name, n.Size)
+		if err != nil {
+			panic(err)
+		}
+		for _, w := range wires {
+			w.Output = true
+			result.Outputs = append(result.Outputs, w)
+		}
 	}
 
 	return result
@@ -57,7 +89,8 @@ func (c *Compiler) ZeroWire() *Wire {
 		head = append(head, c.Inputs[c.N1.Size():]...)
 		c.Inputs = head
 		c.N1 = append(c.N1, circuit.IOArg{
-			Name: "0",
+			Name: "%0",
+			Type: "uint1",
 			Size: 1,
 		})
 	}
@@ -88,6 +121,30 @@ func (c *Compiler) NextGateID() uint32 {
 	ret := c.nextGateID
 	c.nextGateID++
 	return ret
+}
+
+func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
+	if bits == 0 {
+		return nil, fmt.Errorf("size not set for variable %v", v)
+	}
+	wires, ok := c.wires[v]
+	if !ok {
+		wires = make([]*Wire, bits)
+		for i := 0; i < bits; i++ {
+			wires[i] = NewWire()
+		}
+		c.wires[v] = wires
+	}
+	return wires, nil
+}
+
+func (c *Compiler) SetWires(v string, w []*Wire) error {
+	_, ok := c.wires[v]
+	if ok {
+		return fmt.Errorf("wires already set for %v", v)
+	}
+	c.wires[v] = w
+	return nil
 }
 
 func (c *Compiler) Compile() *circuit.Circuit {
@@ -145,6 +202,11 @@ func NewOutputWire() *Wire {
 	return &Wire{
 		Output: true,
 	}
+}
+
+func (w *Wire) String() string {
+	return fmt.Sprintf("Wire{Output:%v, ID:%d, Input:%v, Outputs:%d}",
+		w.Output, w.ID, w.Input, len(w.Outputs))
 }
 
 func (w *Wire) Assign(c *Compiler) {
