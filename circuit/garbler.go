@@ -37,19 +37,14 @@ func (s FileSize) String() string {
 func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	key []byte, verbose bool) ([]*big.Int, error) {
 
-	start := time.Now()
-	last := start
+	timing := NewTiming()
 
 	garbled, err := circ.Garble(key)
 	if err != nil {
 		return nil, err
 	}
 
-	t := time.Now()
-	if verbose {
-		fmt.Printf("Garble:\t%s\n", t.Sub(last))
-	}
-	last = t
+	timing.Sample("Garble")
 
 	// Send garbled tables.
 	var size FileSize
@@ -122,16 +117,12 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	}
 	size += 4
 	conn.Flush()
-	t = time.Now()
-	if verbose {
-		fmt.Printf("Xfer:\t%s\t%s\n", t.Sub(last), size)
-	}
-	last = t
+	timing.Sample("Xfer")
 
 	// Process messages.
 
 	var xfer *ot.SenderXfer
-	lastOT := start
+	lastOT := time.Now()
 	done := false
 	result := big.NewInt(0)
 
@@ -205,15 +196,8 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 			done = true
 		}
 	}
-	t = time.Now()
-	if verbose {
-		fmt.Printf("OT:\t%s\n", lastOT.Sub(last))
-		fmt.Printf("Eval:\t%s\n", t.Sub(lastOT))
-	}
-	last = t
-	if verbose {
-		fmt.Printf("Total:\t%s\n", t.Sub(start))
-	}
+	timing.Sample("Eval").SubSample("OT", lastOT)
+	timing.Print()
 
 	return circ.N3.Split(result), nil
 }

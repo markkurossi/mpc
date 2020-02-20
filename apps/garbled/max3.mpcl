@@ -1,0 +1,20 @@
+// -*- go -*-
+//
+
+package main
+
+func main(a, b, e int4) int4 {
+	if a > b {
+		if a > e {
+			return a
+		} else {
+			return e
+		}
+	} else {
+		if b > e {
+			return b
+		} else {
+			return e
+		}
+	}
+}
