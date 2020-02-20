@@ -162,10 +162,6 @@ func (ast *VariableDef) Fprint(w io.Writer, ind int) {
 	fmt.Fprintf(w, " %s", ast.Type)
 }
 
-func (ast *VariableDef) Visit(enter, exit func(ast AST) error) error {
-	return fmt.Errorf("VariableDef.Visit not implemented")
-}
-
 type Assign struct {
 	Loc  utils.Point
 	Name string
@@ -180,10 +176,6 @@ func (ast *Assign) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "%s = ", ast.Name)
 	ast.Expr.Fprint(w, ind)
-}
-
-func (ast *Assign) Visit(enter, exit func(ast AST) error) error {
-	return fmt.Errorf("Assign.Visit not implemented")
 }
 
 type If struct {
@@ -206,10 +198,6 @@ func (ast *If) Fprint(w io.Writer, ind int) {
 		fmt.Fprintf(w, "else ")
 		ast.False.Fprint(w, ind)
 	}
-}
-
-func (ast *If) Visit(enter, exit func(ast AST) error) error {
-	return fmt.Errorf("If.Visit not implemented yet")
 }
 
 type Return struct {
@@ -320,14 +308,6 @@ func (ast *VariableRef) Fprint(w io.Writer, ind int) {
 	fmt.Fprintf(w, "%s", ast.Name)
 }
 
-func (ast *VariableRef) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	return exit(ast)
-}
-
 type Constant struct {
 	Loc     utils.Point
 	UintVal *uint64
@@ -370,12 +350,4 @@ func (ast *Constant) Location() utils.Point {
 func (ast *Constant) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "%d", ast.UintVal)
-}
-
-func (ast *Constant) Visit(enter, exit func(ast AST) error) error {
-	err := enter(ast)
-	if err != nil {
-		return err
-	}
-	return exit(ast)
 }
