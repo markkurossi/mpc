@@ -197,7 +197,9 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		}
 	}
 	timing.Sample("Eval").SubSample("OT", lastOT)
-	timing.Print()
+	if verbose {
+		timing.Print()
+	}
 
 	return circ.N3.Split(result), nil
 }
