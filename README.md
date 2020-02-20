@@ -35,6 +35,22 @@ l3:
 ```
 <img align="center" width="500" height="400" src="ifelse.png">
 
+# Circuit generation
+
+The SSA form assembly is converted into logic gate circuit. The following circuit was generated from the following 4-bit max MPCL code:
+```go
+package main
+
+func main(a, b int4) int4 {
+    if a > b {
+        return a
+    }
+    return b
+}
+```
+
+<img align="center" width="500" height="664" src="max.png">
+
 # Syntax
 
 ## Types
