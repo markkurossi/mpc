@@ -17,7 +17,8 @@ import (
 // NewMultiplier creates a multiplier circuit implementing x*y=z. This
 // function implements Array Multiplier Circuit.
 func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
-	if len(x) != len(y) || len(x) > len(z) || len(x)+len(y) < len(z) {
+	x, y = compiler.ZeroPad(x, y)
+	if len(x) > len(z) || len(x)+len(y) < len(z) {
 		return fmt.Errorf("Invalid multiplier arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
