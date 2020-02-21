@@ -126,6 +126,13 @@ func (c *Circuit) String() string {
 		c.NumGates, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
 }
 
+func (c *Circuit) Dump() {
+	fmt.Printf("circuit %s\n", c)
+	for id, gate := range c.Gates {
+		fmt.Printf("%04d\t%s\n", id, gate)
+	}
+}
+
 func (c *Circuit) Marshal(out io.Writer) {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
 	fmt.Fprintf(out, "%d %d %d\n", c.N1.Size(), c.N2.Size(), c.N3.Size())
@@ -165,6 +172,10 @@ type Gate struct {
 	Inputs  []Wire
 	Outputs []Wire
 	Op      Operation
+}
+
+func (g *Gate) String() string {
+	return fmt.Sprintf("G%4d %v %v %v", g.ID, g.Inputs, g.Op, g.Outputs)
 }
 
 type Wire uint32
