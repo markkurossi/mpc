@@ -1,0 +1,17 @@
+// -*- go -*-
+
+package main
+
+func main(male bool, age, income int, eMaxAge, fIncome, mIncome int) bool {
+	// Bank sets the maximum age limit.
+	if age > eMaxAge {
+		return false
+	}
+	if male {
+		// Credit criteria for males.
+		return age >= 21 && income >= mIncome
+	} else {
+		// Credit criteria for females.
+		return age >= 18 && income >= fIncome
+	}
+}

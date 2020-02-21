@@ -13,6 +13,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -155,13 +156,13 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 		}
 		fmt.Printf("New connection from %s\n", conn.RemoteAddr())
 
-		io := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		bio := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 
-		result, err := circuit.Garbler(io, circ, input, key[:], verbose)
+		result, err := circuit.Garbler(bio, circ, input, key[:], verbose)
 
 		conn.Close()
 
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return err
 		}
 
