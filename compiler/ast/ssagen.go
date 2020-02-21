@@ -275,7 +275,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Check that l and r are of same type
-	if !l.Type.Equal(r.Type) {
+	if !l.TypeCompatible(r) {
 		return nil, ctx.logger.Errorf(ast.Loc, "invalid types: %s %s %s",
 			l.Type, ast.Op, r.Type)
 	}
@@ -287,16 +287,13 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryPlus:
+	case BinaryPlus, BinaryMinus, BinaryMult:
 		resultType = l.Type
-	case BinaryMinus:
-		resultType = l.Type
-	case BinaryMult:
-		resultType = l.Type
-	case BinaryLt:
+
+	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
+		BinaryAnd, BinaryOr:
 		resultType = types.BoolType()
-	case BinaryGt:
-		resultType = types.BoolType()
+
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, ctx.logger.Errorf(ast.Loc,
@@ -322,8 +319,14 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryLt:
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
+	case BinaryLe:
+		instr, err = ssa.NewLeInstr(l.Type, l, r, t)
 	case BinaryGt:
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
+	case BinaryGe:
+		instr, err = ssa.NewGeInstr(l.Type, l, r, t)
+	case BinaryAnd:
+		instr, err = ssa.NewAndInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, ctx.logger.Errorf(ast.Loc,
@@ -375,6 +378,7 @@ func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, err
 	}
+	gen.AddConstant(v)
 
 	t, err := ctx.Peek()
 	if err != nil {

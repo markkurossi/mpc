@@ -82,6 +82,18 @@ func (i Info) Equal(o Info) bool {
 	return i.Type == o.Type && i.Bits == o.Bits
 }
 
+// CanAssignConst tests if the argument const type can be assigned to
+// this type.
+func (i Info) CanAssignConst(o Info) bool {
+	switch i.Type {
+	case Int:
+		return (o.Type == Int || o.Type == Uint) && i.Bits >= o.Bits
+
+	default:
+		return i.Type == o.Type && i.Bits >= o.Bits
+	}
+}
+
 func BoolType() Info {
 	return Info{
 		Type: Bool,

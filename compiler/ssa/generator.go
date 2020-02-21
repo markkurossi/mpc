@@ -17,13 +17,15 @@ const (
 )
 
 type Generator struct {
-	versions map[string]Variable
-	blockID  int
+	versions  map[string]Variable
+	blockID   int
+	constants map[string]Variable
 }
 
 func NewGenerator() *Generator {
 	return &Generator{
-		versions: make(map[string]Variable),
+		versions:  make(map[string]Variable),
+		constants: make(map[string]Variable),
 	}
 }
 
@@ -93,6 +95,13 @@ func (gen *Generator) Lookup(name string, scope int, assign bool) (
 		gen.versions[key] = v
 	}
 	return v, nil
+}
+
+func (gen *Generator) AddConstant(c Variable) {
+	_, ok := gen.constants[c.Name]
+	if !ok {
+		gen.constants[c.Name] = c
+	}
 }
 
 func fmtKey(name string, scope int) string {

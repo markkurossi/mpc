@@ -9,6 +9,8 @@
 package circuits
 
 import (
+	"fmt"
+
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -35,7 +37,7 @@ func NewBinary(op circuit.Operation, a, b, o *Wire) *Binary {
 }
 
 func (g *Binary) String() string {
-	return g.Op.String()
+	return fmt.Sprintf("%s %d %d %d", g.Op, g.A.ID, g.B.ID, g.O.ID)
 }
 
 func (g *Binary) Visit(c *Compiler) {
@@ -84,7 +86,7 @@ func NewINV(i, o *Wire) *INV {
 }
 
 func (g *INV) String() string {
-	return "inv"
+	return fmt.Sprintf("INV %d %d", g.I.ID, g.O.ID)
 }
 
 func (g *INV) Visit(c *Compiler) {

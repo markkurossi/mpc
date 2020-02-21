@@ -107,6 +107,39 @@ func (c *Compiler) One(o *Wire) {
 	c.AddGate(NewINV(c.ZeroWire(), o))
 }
 
+func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
+	if len(x) == len(y) {
+		return x, y
+	}
+
+	max := len(x)
+	if len(y) > max {
+		max = len(y)
+	}
+
+	rx := make([]*Wire, max)
+	for i := 0; i < max; i++ {
+		if i < len(x) {
+			rx[i] = x[i]
+		} else {
+			rx[i] = NewWire()
+			c.Zero(rx[i])
+		}
+	}
+
+	ry := make([]*Wire, max)
+	for i := 0; i < max; i++ {
+		if i < len(y) {
+			ry[i] = y[i]
+		} else {
+			ry[i] = NewWire()
+			c.Zero(ry[i])
+		}
+	}
+
+	return rx, ry
+}
+
 func (c *Compiler) AddGate(gate Gate) {
 	c.Gates = append(c.Gates, gate)
 }

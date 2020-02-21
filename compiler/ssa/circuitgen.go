@@ -8,9 +8,46 @@ package ssa
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
 )
+
+func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
+	var consts []Variable
+	for _, c := range gen.constants {
+		consts = append(consts, c)
+	}
+	sort.Slice(consts, func(i, j int) bool {
+		return strings.Compare(consts[i].Name, consts[j].Name) == -1
+	})
+
+	fmt.Printf("Defining constants:\n")
+	for _, c := range consts {
+		fmt.Printf(" - %v(%d)\t", c, c.Type.Bits)
+
+		var wires []*circuits.Wire
+		for bit := 0; bit < c.Type.Bits; bit++ {
+			w := circuits.NewWire()
+			if c.Bit(bit) {
+				fmt.Print("1")
+				cc.One(w)
+			} else {
+				fmt.Print("0")
+				cc.Zero(w)
+			}
+			wires = append(wires, w)
+		}
+		fmt.Println()
+
+		err := cc.SetWires(c.String(), wires)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 	if b.Processed {
@@ -74,6 +111,16 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Ile, Ule:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLeComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
 		case Igt, Ugt:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
@@ -84,29 +131,42 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Ige, Uge:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLeComparator(cc, wires[1], wires[0], o)
+			if err != nil {
+				return err
+			}
+
+		case And:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLogicalAnd(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
 		case If, Jump:
 			// Branch operations are no-ops in circuits.
 
 		case Mov:
-			var o []*circuits.Wire
-			if instr.In[0].Const {
-				// Create constant value bits.
-				for bit := 0; bit < instr.Out.Type.Bits; bit++ {
-					var w *circuits.Wire
-					if bit < len(wires[0]) {
-						w = wires[0][bit]
-					} else {
-						w = circuits.NewWire()
-					}
-					if instr.In[0].Bit(bit) {
-						cc.One(w)
-					} else {
-						cc.Zero(w)
-					}
-					o = append(o, w)
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+
+			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+				var w *circuits.Wire
+				if bit < len(wires[0]) {
+					w = wires[0][bit]
+				} else {
+					w = circuits.NewWire()
+					// XXX Types, sign bit expansion on signed values.
+					cc.Zero(w)
 				}
-			} else {
-				o = wires[0]
+				o[bit] = w
 			}
 			err := cc.SetWires(instr.Out.String(), o)
 			if err != nil {
@@ -134,7 +194,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		default:
-			return fmt.Errorf("%s.Circuit not implemented yet", instr.Op)
+			return fmt.Errorf("Block.Circuit: %s not implemented yet", instr.Op)
 		}
 	}
 

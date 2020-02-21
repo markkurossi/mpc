@@ -124,6 +124,11 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 
 	cc := circuits.NewCompiler(g, e, r)
 
+	err = gen.DefineConstants(cc)
+	if err != nil {
+		return nil, err
+	}
+
 	err = ctx.BlockHead.Circuit(gen, cc)
 	if err != nil {
 		return nil, err

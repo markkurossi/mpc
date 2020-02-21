@@ -39,9 +39,9 @@ func NewFullLtComparator(compiler *Compiler, a, b, bin, bout *Wire) {
 }
 
 func NewLtComparator(compiler *Compiler, x, y, r []*Wire) error {
-	if len(x) != len(y) || len(r) != 1 {
-		return fmt.Errorf("Invalid lt comparator arguments: x=%d, y=%d, z=%d",
-			len(x), len(y), len(r))
+	x, y = compiler.ZeroPad(x, y)
+	if len(r) != 1 {
+		return fmt.Errorf("invalid lt comparator arguments: r=%d", len(r))
 	}
 	if len(x) == 1 {
 		NewHalfLtComparator(compiler, x[0], y[0], r[0])
@@ -62,5 +62,35 @@ func NewLtComparator(compiler *Compiler, x, y, r []*Wire) error {
 			bin = bout
 		}
 	}
+	return nil
+}
+
+// NewLeComparator creates comparator circuit computing `r :=
+// x<=y'. The circuit is implemented by checking that `y-x' does not
+// overflow i.e. `x<=y == !(y<x)'.
+func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
+	x, y = compiler.ZeroPad(x, y)
+	if len(r) != 1 {
+		return fmt.Errorf("Invalid le comparator arguments: r=%d", len(r))
+	}
+
+	// w = y < x
+	w := NewWire()
+	err := NewLtComparator(compiler, y, x, []*Wire{w})
+	if err != nil {
+		return err
+	}
+
+	// r = !w
+	compiler.AddGate(NewINV(w, r[0]))
+	return nil
+}
+
+func NewLogicalAnd(compiler *Compiler, x, y, r []*Wire) error {
+	if len(x) != 1 || len(y) != 1 || len(r) != 1 {
+		return fmt.Errorf("invalid logical and arguments: x=%d, y=%d, r=%d",
+			len(x), len(y), len(r))
+	}
+	compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], r[0]))
 	return nil
 }

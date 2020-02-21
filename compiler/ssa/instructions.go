@@ -33,9 +33,17 @@ const (
 	Ilt
 	Ult
 	Flt
+	Ile
+	Ule
+	Fle
 	Igt
 	Ugt
 	Fgt
+	Ige
+	Uge
+	Fge
+	And
+	Or
 	If
 	Jump
 	Mov
@@ -61,9 +69,17 @@ var operands = map[Operand]string{
 	Ilt:   "ilt",
 	Ult:   "ult",
 	Flt:   "flt",
+	Ile:   "ile",
+	Ule:   "ule",
+	Fle:   "fle",
 	Igt:   "igt",
 	Ugt:   "ugt",
 	Fgt:   "fgt",
+	Ige:   "ige",
+	Uge:   "uge",
+	Fge:   "fge",
+	And:   "and",
+	Or:    "or",
 	If:    "if",
 	Jump:  "jump",
 	Mov:   "mov",
@@ -173,6 +189,25 @@ func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Ile
+	case types.Uint:
+		op = Ule
+	case types.Float:
+		op = Fle
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for <= comparison", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
 func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -183,10 +218,37 @@ func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fgt
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for < comparison", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for > comparison", t)
 	}
 	return Instr{
 		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Ige
+	case types.Uint:
+		op = Uge
+	case types.Float:
+		op = Fge
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for >= comparison", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewAndInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  And,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil
@@ -307,5 +369,17 @@ func (v *Variable) Bit(bit int) bool {
 
 	default:
 		panic(fmt.Sprintf("Variable.Bit called for a non variable %v", v))
+	}
+}
+
+func (v Variable) TypeCompatible(o Variable) bool {
+	if v.Const && o.Const {
+		return v.Type.Type == o.Type.Type
+	} else if v.Const {
+		return o.Type.CanAssignConst(v.Type)
+	} else if o.Const {
+		return v.Type.CanAssignConst(o.Type)
+	} else {
+		return v.Type.Equal(o.Type)
 	}
 }

@@ -333,9 +333,8 @@ func (ast *Constant) Variable() (ssa.Variable, error) {
 	case uint64:
 		var bits int
 		// Count minimum bits needed to represent the value.
-		for bits = 2; bits < 64; bits++ {
+		for bits = 1; bits < 64; bits++ {
 			if (0xffffffffffffffff<<bits)&val == 0 {
-				bits--
 				break
 			}
 		}
