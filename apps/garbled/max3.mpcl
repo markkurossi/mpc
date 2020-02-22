@@ -3,7 +3,7 @@
 
 package main
 
-func main(a, b, e int4) int4 {
+func main(a, b, e int) int {
 	if a > b {
 		if a > e {
 			return a
