@@ -22,7 +22,9 @@ var (
 )
 
 func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
-	key []byte) ([]*big.Int, error) {
+	key []byte, verbose bool) ([]*big.Int, error) {
+
+	timing := NewTiming()
 
 	garbled := make(map[int][][]byte)
 
@@ -59,11 +61,12 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		if err != nil {
 			return nil, err
 		}
-		if verbose {
+		if debug {
 			fmt.Printf("N1[%d]:\t%x\n", i, n)
 		}
 		wires[Wire(i)] = ot.LabelFromData(n)
 	}
+	timing.Sample("Recv")
 
 	// Init oblivious transfer.
 	pubN, err := receiveData(conn)
@@ -102,19 +105,21 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 			if err != nil {
 				return nil, err
 			}
-			if verbose {
+			if debug {
 				fmt.Printf("N2[%d]:\t%x\n", w, n)
 			}
 			wires[Wire(circ.N1.Size()+w)] = ot.LabelFromData(n)
 			w++
 		}
 	}
+	timing.Sample("Inputs")
 
 	// Evaluate gates.
 	err = circ.Eval(key[:], wires, garbled)
 	if err != nil {
 		return nil, err
 	}
+	timing.Sample("Eval")
 
 	var labels []*ot.Label
 
@@ -127,5 +132,10 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	if err != nil {
 		return nil, err
 	}
+	timing.Sample("Result")
+	if verbose {
+		timing.Print()
+	}
+
 	return circ.N3.Split(raw), nil
 }

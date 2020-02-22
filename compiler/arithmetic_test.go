@@ -133,7 +133,8 @@ func TestArithmetics(t *testing.T) {
 					}
 				}()
 
-				result, err := circuit.Evaluator(eio, circ, eInput, key[:])
+				result, err := circuit.Evaluator(eio, circ, eInput, key[:],
+					false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}

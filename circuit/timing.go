@@ -43,7 +43,12 @@ func (t *Timing) Print() {
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
 		duration := sample.End.Sub(sample.Start)
-		fmt.Printf("%s:\t%s\t%.2f%%\n", sample.Label, duration,
+		dstr := fmt.Sprintf("%s", duration)
+		if len(dstr) < 8 {
+			dstr += "\t"
+		}
+
+		fmt.Printf("%s:\t%s\t%.2f%%\n", sample.Label, dstr,
 			float64(duration)/float64(total)*100)
 
 		for _, sub := range sample.Samples {

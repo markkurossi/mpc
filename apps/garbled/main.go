@@ -208,7 +208,7 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 
 	conn := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
 
-	result, err := circuit.Evaluator(conn, circ, input, key[:])
+	result, err := circuit.Evaluator(conn, circ, input, key[:], verbose)
 	if err != nil {
 		return err
 	}
