@@ -58,7 +58,9 @@ func init() {
 
 func main() {
 	garbler := flag.Bool("g", false, "garbler / evaluator mode")
-	compile := flag.Bool("c", false, "compile MPCL to circuit")
+	compile := flag.Bool("circ", false, "compile MPCL to circuit")
+	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
+	dot := flag.Bool("dot", false, "create Graphviz DOT output")
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDebug := flag.Bool("d", false, "debug output")
 	flag.Parse()
@@ -74,6 +76,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	params := &compiler.Params{
+		Verbose: *fVerbose,
+	}
+
 	for _, arg := range flag.Args() {
 		if strings.HasSuffix(arg, ".circ") {
 			circ, err = loadCircuit(arg)
@@ -82,27 +88,50 @@ func main() {
 				os.Exit(1)
 			}
 		} else if strings.HasSuffix(arg, ".mpcl") {
-			circ, err = compiler.CompileFile(arg)
+			if *ssa {
+				params.SSAOut, err = makeOutput(arg, "ssa")
+				if err != nil {
+					fmt.Printf("Failed to create SSA file: %s\n", err)
+					os.Exit(1)
+				}
+				if *dot {
+					params.SSADotOut, err = makeOutput(arg, "ssa.dot")
+					if err != nil {
+						fmt.Printf("Failed to create SSA DOT file: %s\n", err)
+						os.Exit(1)
+					}
+				}
+			}
+			if *compile {
+				params.CircOut, err = makeOutput(arg, "circ")
+				if err != nil {
+					fmt.Printf("Failed to create circuit file: %s\n", err)
+					os.Exit(1)
+				}
+				if *dot {
+					params.CircDotOut, err = makeOutput(arg, "circ.dot")
+					if err != nil {
+						fmt.Printf("Failed to create circuit DOT file: %s\n",
+							err)
+						os.Exit(1)
+					}
+				}
+			}
+
+			circ, err = compiler.CompileFile(arg, params)
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				os.Exit(1)
 			}
-			if *compile {
-				out := arg[0:len(arg)-4] + "circ"
-				f, err := os.Create(out)
-				if err != nil {
-					fmt.Printf("Failed to create output file '%s': %s\n",
-						out, err)
-					os.Exit(1)
-				}
-				circ.Marshal(f)
-				f.Close()
-				return
-			}
+			params.Close()
 		} else {
 			fmt.Printf("Unknown file type '%s'\n", arg)
 			os.Exit(1)
 		}
+	}
+
+	if *ssa || *compile {
+		return
 	}
 
 	fmt.Printf("Circuit: %v\n", circ)
@@ -194,4 +223,16 @@ func printResult(results []*big.Int) {
 		fmt.Printf("Result[%d]: 0b%s\n", idx, result.Text(2))
 		fmt.Printf("Result[%d]: 0x%x\n", idx, result.Bytes())
 	}
+}
+
+func makeOutput(base, suffix string) (*os.File, error) {
+	var path string
+
+	idx := strings.LastIndexByte(base, '.')
+	if idx < 0 {
+		path = base + "." + suffix
+	} else {
+		path = base[:idx+1] + suffix
+	}
+	return os.Create(path)
 }

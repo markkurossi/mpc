@@ -17,13 +17,15 @@ const (
 )
 
 type Generator struct {
+	verbose   bool
 	versions  map[string]Variable
 	blockID   int
 	constants map[string]Variable
 }
 
-func NewGenerator() *Generator {
+func NewGenerator(verbose bool) *Generator {
 	return &Generator{
+		verbose:   verbose,
 		versions:  make(map[string]Variable),
 		constants: make(map[string]Variable),
 	}

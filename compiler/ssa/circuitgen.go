@@ -23,23 +23,27 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 		return strings.Compare(consts[i].Name, consts[j].Name) == -1
 	})
 
-	fmt.Printf("Defining constants:\n")
+	if len(consts) > 0 && gen.verbose {
+		fmt.Printf("Defining constants:\n")
+	}
 	for _, c := range consts {
-		fmt.Printf(" - %v(%d)\t", c, c.Type.Bits)
+		msg := fmt.Sprintf(" - %v(%d)\t", c, c.Type.Bits)
 
 		var wires []*circuits.Wire
 		for bit := 0; bit < c.Type.Bits; bit++ {
 			w := circuits.NewWire()
 			if c.Bit(bit) {
-				fmt.Print("1")
+				msg += "1"
 				cc.One(w)
 			} else {
-				fmt.Print("0")
+				msg += "0"
 				cc.Zero(w)
 			}
 			wires = append(wires, w)
 		}
-		fmt.Println()
+		if gen.verbose {
+			fmt.Printf("%s\n", msg)
+		}
 
 		err := cc.SetWires(c.String(), wires)
 		if err != nil {

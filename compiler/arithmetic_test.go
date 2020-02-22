@@ -102,7 +102,7 @@ func TestArithmetics(t *testing.T) {
 			fmt.Printf("Skipping %s\n", test.Name)
 			continue
 		}
-		circ, err := Compile(test.Code)
+		circ, err := Compile(test.Code, &Params{})
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}

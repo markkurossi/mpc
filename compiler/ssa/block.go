@@ -179,5 +179,5 @@ func Dot(out io.Writer, block *Block) {
 		fontname, fontsize)
 	block.DotNodes(out, make(map[string]bool))
 	block.DotLinks(out, make(map[string]bool))
-	fmt.Fprintln(out, "}")
+	fmt.Fprintln(out, "}\n")
 }

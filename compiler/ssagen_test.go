@@ -170,7 +170,7 @@ func TestSSAGen(t *testing.T) {
 `,
 				test.Name, test.Code)
 		}
-		_, err := Compile(test.Code)
+		_, err := Compile(test.Code, &Params{})
 		if err != nil {
 			t.Fatalf("SSA test %d failed: %s", idx, err)
 		}

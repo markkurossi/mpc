@@ -19,45 +19,66 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func Compile(data string) (*circuit.Circuit, error) {
-	return compile("{data}", strings.NewReader(data))
+type Params struct {
+	Verbose    bool
+	SSAOut     io.WriteCloser
+	SSADotOut  io.WriteCloser
+	CircOut    io.WriteCloser
+	CircDotOut io.WriteCloser
 }
 
-func CompileFile(file string) (*circuit.Circuit, error) {
+func (p *Params) Close() {
+	if p.SSAOut != nil {
+		p.SSAOut.Close()
+		p.SSAOut = nil
+	}
+	if p.SSADotOut != nil {
+		p.SSADotOut.Close()
+		p.SSADotOut = nil
+	}
+	if p.CircOut != nil {
+		p.CircOut.Close()
+		p.CircOut = nil
+	}
+	if p.CircDotOut != nil {
+		p.CircDotOut.Close()
+		p.CircDotOut = nil
+	}
+}
+
+func Compile(data string, params *Params) (*circuit.Circuit, error) {
+	return compile("{data}", strings.NewReader(data), params)
+}
+
+func CompileFile(file string, params *Params) (*circuit.Circuit, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	return compile(file, f)
+	return compile(file, f, params)
 }
 
-func compileCircuit(name string, in io.Reader) (*circuit.Circuit, error) {
-	logger := utils.NewLogger(name, os.Stdout)
-	parser := NewParser(logger, in)
-	_, err := parser.Parse()
-	if err != nil {
-		return nil, err
-	}
-	return nil, fmt.Errorf("not implemented yet")
-}
+func compile(name string, in io.Reader, params *Params) (
+	*circuit.Circuit, error) {
 
-func compile(name string, in io.Reader) (*circuit.Circuit, error) {
 	logger := utils.NewLogger(name, os.Stdout)
 	parser := NewParser(logger, in)
 	unit, err := parser.Parse()
 	if err != nil {
 		return nil, err
 	}
-	return unit.Compile(logger)
+	return unit.Compile(logger, params)
 }
 
-func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
+func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
+	*circuit.Circuit, error) {
+
 	main, ok := unit.Functions["main"]
 	if !ok {
 		return nil, logger.Errorf(utils.Point{}, "no main function defined\n")
 	}
 
-	gen := ssa.NewGenerator()
+	gen := ssa.NewGenerator(params.Verbose)
 	ctx := ast.NewCodegen(logger)
 
 	ctx.BlockHead = gen.Block()
@@ -68,9 +89,11 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 		return nil, err
 	}
 
-	if false {
-		ssa.PP(os.Stdout, ctx.BlockHead)
-		ssa.Dot(os.Stdout, ctx.BlockHead)
+	if params.SSAOut != nil {
+		ssa.PP(params.SSAOut, ctx.BlockHead)
+	}
+	if params.SSADotOut != nil {
+		ssa.Dot(params.SSADotOut, ctx.BlockHead)
 	}
 
 	// Arguments.
@@ -135,9 +158,11 @@ func (unit *Unit) Compile(logger *utils.Logger) (*circuit.Circuit, error) {
 	}
 
 	circ := cc.Compile()
-	if false {
-		fmt.Printf(" => %s\n", circ)
-		circ.Marshal(os.Stdout)
+	if params.CircOut != nil {
+		circ.Marshal(params.CircOut)
+	}
+	if params.CircDotOut != nil {
+		circ.Dot(params.CircDotOut)
 	}
 
 	return circ, nil
