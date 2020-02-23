@@ -22,7 +22,7 @@ func NewTiming() *Timing {
 	}
 }
 
-func (t *Timing) Sample(label string) *Sample {
+func (t *Timing) Sample(label string, cols []string) *Sample {
 	start := t.Start
 	if len(t.Samples) > 0 {
 		start = t.Samples[len(t.Samples)-1].End
@@ -31,6 +31,7 @@ func (t *Timing) Sample(label string) *Sample {
 		Label: label,
 		Start: start,
 		End:   time.Now(),
+		Cols:  cols,
 	}
 	t.Samples = append(t.Samples, sample)
 	return sample
@@ -48,8 +49,13 @@ func (t *Timing) Print() {
 			dstr += "\t"
 		}
 
-		fmt.Printf("%s:\t%s\t%.2f%%\n", sample.Label, dstr,
+		fmt.Printf("%s:\t%s\t%.2f%%", sample.Label, dstr,
 			float64(duration)/float64(total)*100)
+
+		for _, col := range sample.Cols {
+			fmt.Printf("\t%s", col)
+		}
+		fmt.Println()
 
 		for _, sub := range sample.Samples {
 			d := sub.End.Sub(sub.Start)
@@ -65,6 +71,7 @@ type Sample struct {
 	Label   string
 	Start   time.Time
 	End     time.Time
+	Cols    []string
 	Samples []*Sample
 }
 

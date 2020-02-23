@@ -44,7 +44,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		return nil, err
 	}
 
-	timing.Sample("Garble")
+	timing.Sample("Garble", nil)
 
 	// Send garbled tables.
 	var size FileSize
@@ -117,10 +117,11 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	}
 	size += 4
 	conn.Flush()
-	timing.Sample("Xfer")
+	timing.Sample("Xfer", []string{size.String()})
 
 	// Process messages.
 
+	size = 0
 	var xfer *ot.SenderXfer
 	lastOT := time.Now()
 	done := false
@@ -131,12 +132,16 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		if err != nil {
 			return nil, err
 		}
+		size += 4
+
 		switch op {
 		case OP_OT:
 			bit, err := receiveUint32(conn)
 			if err != nil {
 				return nil, err
 			}
+			size += 4
+
 			xfer, err = sender.NewTransfer(bit)
 			if err != nil {
 				return nil, err
@@ -149,6 +154,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 			if err := sendData(conn, x1); err != nil {
 				return nil, err
 			}
+			size += FileSize(8 + len(x0) + len(x1))
 			conn.Flush()
 
 			v, err := receiveData(conn)
@@ -156,6 +162,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 				return nil, err
 			}
 			xfer.ReceiveV(v)
+			size += FileSize(4 + len(v))
 
 			m0p, m1p, err := xfer.Messages()
 			if err != nil {
@@ -169,6 +176,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 			}
 			conn.Flush()
 			lastOT = time.Now()
+			size += FileSize(8 + len(m0p) + len(m1p))
 
 		case OP_RESULT:
 			for i := 0; i < circ.N3.Size(); i++ {
@@ -177,6 +185,7 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 					return nil, err
 				}
 				wire := garbled.Wires[circ.NumWires-circ.N3.Size()+i]
+				size += FileSize(4 + len(label))
 
 				var bit uint
 				if bytes.Compare(label, wire.Label0.Bytes()) == 0 {
@@ -189,14 +198,16 @@ func Garbler(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 				}
 				result = big.NewInt(0).SetBit(result, i, bit)
 			}
-			if err := sendData(conn, result.Bytes()); err != nil {
+			data := result.Bytes()
+			if err := sendData(conn, data); err != nil {
 				return nil, err
 			}
 			conn.Flush()
 			done = true
+			size += FileSize(4 + len(data))
 		}
 	}
-	timing.Sample("Eval").SubSample("OT", lastOT)
+	timing.Sample("Eval", []string{size.String()}).SubSample("OT", lastOT)
 	if verbose {
 		timing.Print()
 	}
