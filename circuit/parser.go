@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 type Operation byte
@@ -135,8 +136,20 @@ func (c *Circuit) Dump() {
 
 func (c *Circuit) Marshal(out io.Writer) {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
-	fmt.Fprintf(out, "%d %d %d\n", c.N1.Size(), c.N2.Size(), c.N3.Size())
-	fmt.Fprintf(out, "\n")
+	fmt.Fprintf(out, "%d", len(c.N1)+len(c.N2))
+	for _, arg := range c.N1 {
+		fmt.Fprintf(out, " %d", arg.Size)
+	}
+	for _, arg := range c.N2 {
+		fmt.Fprintf(out, " %d", arg.Size)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintf(out, "%d", len(c.N3))
+	for _, ret := range c.N3 {
+		fmt.Fprintf(out, " %d", ret.Size)
+	}
+	fmt.Fprintln(out)
+	fmt.Fprintln(out)
 
 	type kv struct {
 		Key   uint32
@@ -209,28 +222,59 @@ func Parse(in io.Reader) (*Circuit, error) {
 		return nil, err
 	}
 
-	// N1 N2 N3
+	// Inputs N1+N2
 	line, err = readLine(r)
 	if err != nil {
 		return nil, err
 	}
+	niv, err := strconv.Atoi(line[0])
 	if err != nil {
 		return nil, err
 	}
-	if len(line) != 3 {
-		return nil, errors.New("Invalid 2nd line")
+	if 1+niv != len(line) {
+		return nil, fmt.Errorf("invalid inputs line: niv=%d, len=%d",
+			niv, len(line))
 	}
-	n1, err := strconv.Atoi(line[0])
+	var inputs IO
+	for i := 1; i < len(line); i++ {
+		bits, err := strconv.Atoi(line[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid input bits: %s", err)
+		}
+		inputs = append(inputs, IOArg{
+			Name: fmt.Sprintf("NI%d", i),
+			Type: fmt.Sprintf("u%d", bits),
+			Size: bits,
+		})
+	}
+	// XXX Split inputs into N1 and N2.
+	mid := niv / 2
+	n1 := inputs[0:mid]
+	n2 := inputs[mid:]
+
+	// Outputs N3
+	line, err = readLine(r)
 	if err != nil {
 		return nil, err
 	}
-	n2, err := strconv.Atoi(line[1])
+	nov, err := strconv.Atoi(line[0])
 	if err != nil {
 		return nil, err
 	}
-	n3, err := strconv.Atoi(line[2])
-	if err != nil {
-		return nil, err
+	if 1+nov != len(line) {
+		return nil, errors.New("invalid outputs line")
+	}
+	var n3 IO
+	for i := 1; i < len(line); i++ {
+		bits, err := strconv.Atoi(line[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid output bits: %s", err)
+		}
+		n3 = append(n3, IOArg{
+			Name: fmt.Sprintf("NO%d", i),
+			Type: fmt.Sprintf("u%d", bits),
+			Size: bits,
+		})
 	}
 
 	gates := make(map[int]*Gate)
@@ -299,9 +343,9 @@ func Parse(in io.Reader) (*Circuit, error) {
 	return &Circuit{
 		NumGates: numGates,
 		NumWires: numWires,
-		N1:       []IOArg{IOArg{Size: n1}},
-		N2:       []IOArg{IOArg{Size: n2}},
-		N3:       []IOArg{IOArg{Size: n3}},
+		N1:       n1,
+		N2:       n2,
+		N3:       n3,
 		Gates:    gates,
 	}, nil
 }
@@ -312,10 +356,11 @@ func readLine(r *bufio.Reader) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(line) == 1 {
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
 			continue
 		}
-		parts := reParts.Split(line[:len(line)-1], -1)
+		parts := reParts.Split(line, -1)
 		if len(parts) > 0 {
 			return parts, nil
 		}
