@@ -22,66 +22,107 @@ const (
 	OP_RESULT
 )
 
-func sendUint32(conn io.Writer, val int) error {
-	return binary.Write(conn, binary.BigEndian, uint32(val))
+type Conn struct {
+	IO    *bufio.ReadWriter
+	Stats IOStats
 }
 
-func sendData(conn io.Writer, val []byte) error {
-	err := sendUint32(conn, len(val))
+type IOStats struct {
+	Sent  uint64
+	Recvd uint64
+}
+
+func (stats IOStats) Sub(o IOStats) IOStats {
+	return IOStats{
+		Sent:  stats.Sent - o.Sent,
+		Recvd: stats.Recvd - o.Recvd,
+	}
+}
+
+func (stats IOStats) Sum() uint64 {
+	return stats.Sent + stats.Recvd
+}
+
+func NewConn(c *bufio.ReadWriter) *Conn {
+	return &Conn{
+		IO: c,
+	}
+}
+
+func (c *Conn) Flush() error {
+	return c.IO.Flush()
+}
+
+func (c *Conn) SendUint32(val int) error {
+	err := binary.Write(c.IO, binary.BigEndian, uint32(val))
 	if err != nil {
 		return err
 	}
-	_, err = conn.Write(val)
-	return err
+	c.Stats.Sent += 4
+	return nil
 }
 
-func receiveUint32(conn io.Reader) (int, error) {
+func (c *Conn) SendData(val []byte) error {
+	err := c.SendUint32(len(val))
+	if err != nil {
+		return err
+	}
+	_, err = c.IO.Write(val)
+	if err != nil {
+		return err
+	}
+	c.Stats.Sent += uint64(len(val))
+	return nil
+}
+
+func (c *Conn) ReceiveUint32() (int, error) {
 	var buf [4]byte
 
-	_, err := io.ReadFull(conn, buf[:])
+	_, err := io.ReadFull(c.IO, buf[:])
 	if err != nil {
 		return 0, err
 	}
+	c.Stats.Recvd += 4
 
 	return int(binary.BigEndian.Uint32(buf[:])), nil
 }
 
-func receiveData(conn io.Reader) ([]byte, error) {
-	len, err := receiveUint32(conn)
+func (c *Conn) ReceiveData() ([]byte, error) {
+	len, err := c.ReceiveUint32()
 	if err != nil {
 		return nil, err
 	}
 
 	result := make([]byte, len)
-	_, err = io.ReadFull(conn, result)
+	_, err = io.ReadFull(c.IO, result)
 	if err != nil {
 		return nil, err
 	}
+	c.Stats.Recvd += uint64(len)
 
 	return result, nil
 }
 
-func receive(conn *bufio.ReadWriter, receiver *ot.Receiver, wire, bit int) (
-	[]byte, error) {
+func (c *Conn) Receive(receiver *ot.Receiver, wire, bit int) ([]byte, error) {
 
-	if err := sendUint32(conn, OP_OT); err != nil {
+	if err := c.SendUint32(OP_OT); err != nil {
 		return nil, err
 	}
-	if err := sendUint32(conn, wire); err != nil {
+	if err := c.SendUint32(wire); err != nil {
 		return nil, err
 	}
-	conn.Flush()
+	c.Flush()
 
 	xfer, err := receiver.NewTransfer(bit)
 	if err != nil {
 		return nil, err
 	}
 
-	x0, err := receiveData(conn)
+	x0, err := c.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
-	x1, err := receiveData(conn)
+	x1, err := c.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
@@ -91,16 +132,16 @@ func receive(conn *bufio.ReadWriter, receiver *ot.Receiver, wire, bit int) (
 	}
 
 	v := xfer.V()
-	if err := sendData(conn, v); err != nil {
+	if err := c.SendData(v); err != nil {
 		return nil, err
 	}
-	conn.Flush()
+	c.Flush()
 
-	m0p, err := receiveData(conn)
+	m0p, err := c.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
-	m1p, err := receiveData(conn)
+	m1p, err := c.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
@@ -114,18 +155,18 @@ func receive(conn *bufio.ReadWriter, receiver *ot.Receiver, wire, bit int) (
 	return m, nil
 }
 
-func result(conn *bufio.ReadWriter, labels []*ot.Label) (*big.Int, error) {
-	if err := sendUint32(conn, OP_RESULT); err != nil {
+func (c *Conn) Result(labels []*ot.Label) (*big.Int, error) {
+	if err := c.SendUint32(OP_RESULT); err != nil {
 		return nil, err
 	}
 	for _, l := range labels {
-		if err := sendData(conn, l.Bytes()); err != nil {
+		if err := c.SendData(l.Bytes()); err != nil {
 			return nil, err
 		}
 	}
-	conn.Flush()
+	c.Flush()
 
-	result, err := receiveData(conn)
+	result, err := c.ReceiveData()
 	if err != nil {
 		return nil, err
 	}

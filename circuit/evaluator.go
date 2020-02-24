@@ -9,7 +9,6 @@
 package circuit
 
 import (
-	"bufio"
 	"crypto/rsa"
 	"fmt"
 	"math/big"
@@ -21,8 +20,8 @@ var (
 	debug = false
 )
 
-func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
-	key []byte, verbose bool) ([]*big.Int, error) {
+func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
+	verbose bool) ([]*big.Int, error) {
 
 	timing := NewTiming()
 
@@ -30,18 +29,18 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 
 	// Receive garbled tables.
 	for i := 0; i < circ.NumGates; i++ {
-		id, err := receiveUint32(conn)
+		id, err := conn.ReceiveUint32()
 		if err != nil {
 			return nil, err
 		}
-		count, err := receiveUint32(conn)
+		count, err := conn.ReceiveUint32()
 		if err != nil {
 			return nil, err
 		}
 
 		var values [][]byte
 		for j := 0; j < count; j++ {
-			v, err := receiveData(conn)
+			v, err := conn.ReceiveData()
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +56,7 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1.Size(); i++ {
-		n, err := receiveData(conn)
+		n, err := conn.ReceiveData()
 		if err != nil {
 			return nil, err
 		}
@@ -66,14 +65,13 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		}
 		wires[Wire(i)] = ot.LabelFromData(n)
 	}
-	timing.Sample("Recv", nil)
 
 	// Init oblivious transfer.
-	pubN, err := receiveData(conn)
+	pubN, err := conn.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
-	pubE, err := receiveUint32(conn)
+	pubE, err := conn.ReceiveUint32()
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +83,8 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 	if err != nil {
 		return nil, err
 	}
+	ioStats := conn.Stats
+	timing.Sample("Recv", []string{FileSize(ioStats.Sum()).String()})
 
 	// Query our inputs.
 	var w int
@@ -101,7 +101,7 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 				bit = 0
 			}
 
-			n, err := receive(conn, receiver, circ.N1.Size()+w, bit)
+			n, err := conn.Receive(receiver, circ.N1.Size()+w, bit)
 			if err != nil {
 				return nil, err
 			}
@@ -112,7 +112,9 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 			w++
 		}
 	}
-	timing.Sample("Inputs", nil)
+	xfer := conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Inputs", []string{FileSize(xfer.Sum()).String()})
 
 	// Evaluate gates.
 	err = circ.Eval(key[:], wires, garbled)
@@ -128,11 +130,13 @@ func Evaluator(conn *bufio.ReadWriter, circ *Circuit, inputs []*big.Int,
 		labels = append(labels, r)
 	}
 
-	raw, err := result(conn, labels)
+	raw, err := conn.Result(labels)
 	if err != nil {
 		return nil, err
 	}
-	timing.Sample("Result", nil)
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
 	if verbose {
 		timing.Print()
 	}

@@ -127,14 +127,15 @@ func TestArithmetics(t *testing.T) {
 				eInput := []*big.Int{big.NewInt(int64(e))}
 
 				go func() {
-					_, err := circuit.Garbler(gio, circ, gInput, key[:], false)
+					_, err := circuit.Garbler(circuit.NewConn(gio), circ,
+						gInput, key[:], false)
 					if err != nil {
 						t.Fatalf("Garbler failed: %s\n", err)
 					}
 				}()
 
-				result, err := circuit.Evaluator(eio, circ, eInput, key[:],
-					false)
+				result, err := circuit.Evaluator(circuit.NewConn(eio), circ,
+					eInput, key[:], false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}

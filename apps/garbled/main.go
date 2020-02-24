@@ -186,8 +186,9 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 		fmt.Printf("New connection from %s\n", conn.RemoteAddr())
 
 		bio := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+		ccon := circuit.NewConn(bio)
 
-		result, err := circuit.Garbler(bio, circ, input, key[:], verbose)
+		result, err := circuit.Garbler(ccon, circ, input, key[:], verbose)
 
 		conn.Close()
 
@@ -206,7 +207,8 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 	}
 	defer nc.Close()
 
-	conn := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
+	bio := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
+	conn := circuit.NewConn(bio)
 
 	result, err := circuit.Evaluator(conn, circ, input, key[:], verbose)
 	if err != nil {
