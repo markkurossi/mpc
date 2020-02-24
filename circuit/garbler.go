@@ -22,15 +22,15 @@ type FileSize uint64
 
 func (s FileSize) String() string {
 	if s > 1000*1000*1000*1000 {
-		return fmt.Sprintf("%d TB", s/(1000*1000*1000*1000))
+		return fmt.Sprintf("%dTB", s/(1000*1000*1000*1000))
 	} else if s > 1000*1000*1000 {
-		return fmt.Sprintf("%d GB", s/(1000*1000*1000))
+		return fmt.Sprintf("%dGB", s/(1000*1000*1000))
 	} else if s > 1000*1000 {
-		return fmt.Sprintf("%d MB", s/(1000*1000))
+		return fmt.Sprintf("%dMB", s/(1000*1000))
 	} else if s > 1000 {
-		return fmt.Sprintf("%d kB", s/1000)
+		return fmt.Sprintf("%dkB", s/1000)
 	} else {
-		return fmt.Sprintf("%d B", s)
+		return fmt.Sprintf("%dB", s)
 	}
 }
 

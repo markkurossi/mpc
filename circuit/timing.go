@@ -8,6 +8,7 @@ package circuit
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -41,30 +42,45 @@ func (t *Timing) Print() {
 	if len(t.Samples) == 0 {
 		return
 	}
+
+	tab := NewTabulateUnicode()
+	tab.Header(AlignLeft, "Op")
+	tab.Header(AlignRight, "Time")
+	tab.Header(AlignRight, "%")
+	tab.Header(AlignRight, "Xfer")
+
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
-		duration := sample.End.Sub(sample.Start)
-		dstr := fmt.Sprintf("%s", duration)
-		if len(dstr) < 8 {
-			dstr += "\t"
-		}
+		row := tab.Row()
+		row.Column(sample.Label)
 
-		fmt.Printf("%s:\t%s\t%.2f%%", sample.Label, dstr,
-			float64(duration)/float64(total)*100)
+		duration := sample.End.Sub(sample.Start)
+		row.Column(fmt.Sprintf("%s", duration.String()))
+		row.Column(fmt.Sprintf("%.2f%%",
+			float64(duration)/float64(total)*100))
 
 		for _, col := range sample.Cols {
-			fmt.Printf("\t%s", col)
+			row.Column(col)
 		}
-		fmt.Println()
 
 		for _, sub := range sample.Samples {
+			row := tab.Row()
+			row.ColumnAttrs(AlignLeft, sub.Label, FmtItalic)
+
 			d := sub.End.Sub(sub.Start)
-			fmt.Printf("\x1b[3m  %s:\t%s\t%.2f%%\x1b[m\n", sub.Label, d,
-				float64(d)/float64(duration)*100)
+			row.ColumnAttrs(AlignRight, d.String(), FmtItalic)
+			row.ColumnAttrs(AlignRight,
+				fmt.Sprintf("%.2f%%", float64(d)/float64(duration)*100),
+				FmtItalic)
 		}
 	}
-	fmt.Printf("\x1b[1mTotal:\t%s\x1b[m\n",
-		t.Samples[len(t.Samples)-1].End.Sub(t.Start))
+	row := tab.Row()
+	row.ColumnAttrs(AlignLeft, "Total", FmtBold)
+	row.ColumnAttrs(AlignRight,
+		t.Samples[len(t.Samples)-1].End.Sub(t.Start).String(),
+		FmtBold)
+
+	tab.Print(os.Stdout)
 }
 
 type Sample struct {
