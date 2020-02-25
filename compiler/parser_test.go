@@ -97,6 +97,19 @@ func main(a, b int4) (int4) {
     return b
   }
 }`,
+	`
+package main
+func main(a, b int4) int4 {
+    return max(a, b)
+}
+
+func max(a, b int4) int4 {
+    if a > b {
+        return a
+    }
+    return v
+}
+`,
 }
 
 func TestParser(t *testing.T) {

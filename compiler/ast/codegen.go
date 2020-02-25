@@ -18,15 +18,17 @@ import (
 type Codegen struct {
 	logger    *utils.Logger
 	Verbose   bool
+	Functions map[string]*Func
 	Func      *Func
 	targets   []ssa.Variable
-	BlockHead *ssa.Block
-	BlockTail *ssa.Block
+	Start     *ssa.Block
+	Return    *ssa.Block
 }
 
-func NewCodegen(logger *utils.Logger) *Codegen {
+func NewCodegen(logger *utils.Logger, functions map[string]*Func) *Codegen {
 	return &Codegen{
-		logger: logger,
+		logger:    logger,
+		Functions: functions,
 	}
 }
 
@@ -56,4 +58,10 @@ func (ctx *Codegen) Peek() (ssa.Variable, error) {
 		return ssa.Variable{}, fmt.Errorf("target stack underflow")
 	}
 	return ctx.targets[len(ctx.targets)-1], nil
+}
+
+type FuncInfo struct {
+	AST    *Func
+	Start  *ssa.Block
+	Return *ssa.Block
 }

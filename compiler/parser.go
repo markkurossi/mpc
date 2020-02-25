@@ -44,9 +44,13 @@ func (p *Parser) Parse() (*Unit, error) {
 		Functions: make(map[string]*ast.Func),
 	}
 
-	err = p.parseToplevel(unit)
-	if err != nil && err != io.EOF {
-		return nil, err
+	for {
+		err = p.parseToplevel(unit)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		}
 	}
 
 	return unit, nil
@@ -564,10 +568,40 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	}
 	switch t.Type {
 	case T_Identifier:
-		return &ast.VariableRef{
-			Loc:  t.From,
-			Name: t.StrVal,
-		}, nil
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == T_LParen {
+			// Function call.
+			var arguments []ast.AST
+			for {
+				expr, err := p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				arguments = append(arguments, expr)
+
+				n, err := p.lexer.Get()
+				if n.Type == T_RParen {
+					break
+				} else if n.Type != T_Comma {
+					return nil, p.err(n.From, "unexpected token %s", n)
+				}
+			}
+			return &ast.Call{
+				Loc:   t.From,
+				Name:  t.StrVal,
+				Exprs: arguments,
+			}, nil
+		} else {
+			// Variable reference.
+			p.lexer.Unget(n)
+			return &ast.VariableRef{
+				Loc:  t.From,
+				Name: t.StrVal,
+			}, nil
+		}
 
 	case T_Constant:
 		return &ast.Constant{

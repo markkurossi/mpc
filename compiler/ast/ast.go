@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -24,6 +23,7 @@ var (
 	_ AST = &VariableDef{}
 	_ AST = &Assign{}
 	_ AST = &If{}
+	_ AST = &Call{}
 	_ AST = &Return{}
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
@@ -69,9 +69,6 @@ func (ast List) Fprint(w io.Writer, ind int) {
 type Variable struct {
 	Name string
 	Type types.Info
-
-	// XXX old garbage follows
-	Wires []*circuits.Wire
 }
 
 type Func struct {
@@ -200,12 +197,31 @@ func (ast *If) Fprint(w io.Writer, ind int) {
 	}
 }
 
+type Call struct {
+	Loc   utils.Point
+	Name  string
+	Exprs []AST
+}
+
+func (ast *Call) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *Call) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%s(", ast.Name)
+	for idx, arg := range ast.Exprs {
+		if idx > 0 {
+			fmt.Fprint(w, ", ")
+		}
+		arg.Fprint(w, ind)
+	}
+	fmt.Fprint(w, ")")
+}
+
 type Return struct {
 	Loc   utils.Point
 	Exprs []AST
-
-	// XXX to be removed
-	Return []*Variable
 }
 
 func (ast *Return) Location() utils.Point {

@@ -8,6 +8,7 @@ package compiler
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -156,6 +157,22 @@ func main(a, b int) bool {
 }
 `,
 	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "Call",
+		Code: `
+package main
+func main(a, b int) int {
+    return max(a, b)
+}
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {
@@ -163,14 +180,16 @@ func TestSSAGen(t *testing.T) {
 		if !test.Enabled {
 			continue
 		}
-		if false {
+		if true {
 			fmt.Printf(`==================================================
 // Test '%s':
 %s--------------------------------------------------
 `,
 				test.Name, test.Code)
 		}
-		_, err := Compile(test.Code, &Params{})
+		_, err := Compile(test.Code, &Params{
+			SSAOut: os.Stdout,
+		})
 		if err != nil {
 			t.Fatalf("SSA test %d failed: %s", idx, err)
 		}

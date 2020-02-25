@@ -37,11 +37,6 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, error) {
 
-	ctx.Func = ast
-	defer func() {
-		ctx.Func = nil
-	}()
-
 	// Define arguments.
 	for idx, arg := range ast.Args {
 		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
@@ -78,13 +73,13 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Select return variables.
 	var vars []ssa.Variable
 	for _, ret := range ast.Return {
-		v, err := ctx.BlockHead.ReturnBinding(ret.Name, ctx.BlockTail, gen)
+		v, err := ctx.Start.ReturnBinding(ret.Name, ctx.Return, gen)
 		if err != nil {
 			return nil, err
 		}
 		vars = append(vars, v)
 	}
-	ctx.BlockTail.AddInstr(ssa.NewRetInstr(vars))
+	ctx.Return.AddInstr(ssa.NewRetInstr(vars))
 
 	return block, nil
 }
@@ -209,6 +204,52 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return next, nil
 }
 
+func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, error) {
+
+	called, ok := ctx.Functions[ast.Name]
+	if !ok {
+		return nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
+			ast.Name)
+	}
+
+	var args []ssa.Variable
+	var err error
+
+	for _, expr := range ast.Exprs {
+		ctx.Push(gen.UndefVar())
+		block, err = expr.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, err
+		}
+		v, err := ctx.Pop()
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, v)
+	}
+	fmt.Printf("call arguments: %v\n", args)
+
+	t, err := ctx.Peek()
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Return variables: %v\n", t)
+
+	// XXX stacked ctx, this is wrong.
+	start := gen.Block()
+	ctx.Return = gen.Block()
+
+	_, err = called.SSA(start, ctx, gen)
+
+	// XXX pop ctx
+
+	block.AddCall(start)
+	block.AddInstr(ssa.NewCallInstr(args, t, start))
+
+	return block, nil
+}
+
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, error) {
 
@@ -244,8 +285,8 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.Bindings.Set(v)
 	}
 
-	block.AddInstr(ssa.NewJumpInstr(ctx.BlockTail))
-	block.SetNext(ctx.BlockTail)
+	block.AddInstr(ssa.NewJumpInstr(ctx.Return))
+	block.SetNext(ctx.Return)
 	block.Dead = true
 
 	return block, nil
