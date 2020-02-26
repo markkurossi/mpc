@@ -81,22 +81,21 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 	gen := ssa.NewGenerator(params.Verbose)
 	ctx := ast.NewCodegen(logger, unit.Functions)
 
-	ctx.Start = gen.Block()
-	ctx.Return = gen.Block()
+	ctx.PushCompilation(gen.Block(), gen.Block())
 
 	// Compile main.
 	ctx.Func = main
-	_, err := main.SSA(ctx.Start, ctx, gen)
+	_, err := main.SSA(ctx.Start(), ctx, gen)
 	ctx.Func = nil
 	if err != nil {
 		return nil, err
 	}
 
 	if params.SSAOut != nil {
-		ssa.PP(params.SSAOut, ctx.Start)
+		ssa.PP(params.SSAOut, ctx.Start())
 	}
 	if params.SSADotOut != nil {
-		ssa.Dot(params.SSADotOut, ctx.Start)
+		ssa.Dot(params.SSADotOut, ctx.Start())
 	}
 
 	// Arguments.
@@ -155,7 +154,7 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 		return nil, err
 	}
 
-	err = ctx.Start.Circuit(gen, cc)
+	err = ctx.Start().Circuit(gen, cc)
 	if err != nil {
 		return nil, err
 	}

@@ -21,8 +21,7 @@ type Codegen struct {
 	Functions map[string]*Func
 	Func      *Func
 	targets   []ssa.Variable
-	Start     *ssa.Block
-	Return    *ssa.Block
+	Stack     []Compilation
 }
 
 func NewCodegen(logger *utils.Logger, functions map[string]*Func) *Codegen {
@@ -60,8 +59,29 @@ func (ctx *Codegen) Peek() (ssa.Variable, error) {
 	return ctx.targets[len(ctx.targets)-1], nil
 }
 
-type FuncInfo struct {
-	AST    *Func
+func (ctx *Codegen) PushCompilation(start, ret *ssa.Block) {
+	ctx.Stack = append(ctx.Stack, Compilation{
+		Start:  start,
+		Return: ret,
+	})
+}
+
+func (ctx *Codegen) PopCompilation() {
+	if len(ctx.Stack) == 0 {
+		panic("compilation stack underflow")
+	}
+	ctx.Stack = ctx.Stack[:len(ctx.Stack)-1]
+}
+
+func (ctx *Codegen) Start() *ssa.Block {
+	return ctx.Stack[len(ctx.Stack)-1].Start
+}
+
+func (ctx *Codegen) Return() *ssa.Block {
+	return ctx.Stack[len(ctx.Stack)-1].Return
+}
+
+type Compilation struct {
 	Start  *ssa.Block
 	Return *ssa.Block
 }

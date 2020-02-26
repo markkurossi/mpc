@@ -73,13 +73,13 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Select return variables.
 	var vars []ssa.Variable
 	for _, ret := range ast.Return {
-		v, err := ctx.Start.ReturnBinding(ret.Name, ctx.Return, gen)
+		v, err := ctx.Start().ReturnBinding(ret.Name, ctx.Return(), gen)
 		if err != nil {
 			return nil, err
 		}
 		vars = append(vars, v)
 	}
-	ctx.Return.AddInstr(ssa.NewRetInstr(vars))
+	ctx.Return().AddInstr(ssa.NewRetInstr(vars))
 
 	return block, nil
 }
@@ -236,16 +236,16 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	fmt.Printf("Return variables: %v\n", t)
 
-	// XXX stacked ctx, this is wrong.
-	start := gen.Block()
-	ctx.Return = gen.Block()
+	ctx.PushCompilation(gen.Block(), gen.Block())
+	_, err = called.SSA(ctx.Start(), ctx, gen)
+	if err != nil {
+		return nil, err
+	}
 
-	_, err = called.SSA(start, ctx, gen)
+	block.AddCall(ctx.Start())
+	block.AddInstr(ssa.NewCallInstr(args, t, ctx.Start()))
 
-	// XXX pop ctx
-
-	block.AddCall(start)
-	block.AddInstr(ssa.NewCallInstr(args, t, start))
+	ctx.PopCompilation()
 
 	return block, nil
 }
@@ -285,8 +285,8 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.Bindings.Set(v)
 	}
 
-	block.AddInstr(ssa.NewJumpInstr(ctx.Return))
-	block.SetNext(ctx.Return)
+	block.AddInstr(ssa.NewJumpInstr(ctx.Return()))
+	block.SetNext(ctx.Return())
 	block.Dead = true
 
 	return block, nil
