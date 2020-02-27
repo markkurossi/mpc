@@ -78,8 +78,19 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, err
 		}
 		vars = append(vars, v)
+
+		ctx.Push(v)
 	}
-	ctx.Return().AddInstr(ssa.NewRetInstr(vars))
+
+	caller := ctx.Caller()
+	if caller != nil {
+		ctx.Return().AddInstr(ssa.NewJumpInstr(caller))
+	} else {
+		for idx, ret := range ast.Return {
+			ast.Bindings[ret.Name] = vars[idx]
+		}
+		ctx.Return().AddInstr(ssa.NewRetInstr(vars))
+	}
 
 	return block, nil
 }
@@ -228,22 +239,49 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		args = append(args, v)
 	}
-	fmt.Printf("call arguments: %v\n", args)
 
-	t, err := ctx.Peek()
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("Return variables: %v\n", t)
+	// Return block.
+	rblock := gen.Block()
+	rblock.Bindings = block.Bindings.Clone()
 
-	ctx.PushCompilation(gen.Block(), gen.Block())
+	ctx.PushCompilation(gen.Block(), gen.Block(), rblock)
 	_, err = called.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
 		return nil, err
 	}
 
-	block.AddCall(ctx.Start())
-	block.AddInstr(ssa.NewCallInstr(args, t, ctx.Start()))
+	for idx, arg := range called.Args {
+		b, err := ctx.Start().Bindings.Get(arg.Name)
+		if err != nil {
+			return nil, err
+		}
+		bv := b.Value(block, gen)
+		block.AddInstr(ssa.NewMovInstr(args[idx], bv))
+	}
+
+	block.SetNext(ctx.Start())
+	block.AddInstr(ssa.NewJumpInstr(ctx.Start()))
+
+	ctx.Return().SetNext(rblock)
+	block = rblock
+	returnValues := make([]ssa.Variable, len(called.Return))
+	for i := 0; i < len(called.Return); i++ {
+		v, err := ctx.Pop()
+		if err != nil {
+			return nil, err
+		}
+		returnValues[len(returnValues)-1-i] = v
+	}
+
+	// Assign return values to lvalues.
+	for i := 0; i < len(returnValues); i++ {
+		lValue := ctx.Target(i)
+		if lValue.Type.Undefined() {
+			ctx.SetTarget(i, returnValues[i])
+		} else {
+			block.AddInstr(ssa.NewMovInstr(returnValues[i], lValue))
+		}
+	}
 
 	ctx.PopCompilation()
 
@@ -256,11 +294,28 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if ctx.Func == nil {
 		return nil, ctx.logger.Errorf(ast.Loc, "return outside function")
 	}
-	if len(ast.Exprs) > len(ctx.Func.Return) {
+	var cardinality int
+	if len(ast.Exprs) == 1 {
+		cardinality = ctx.Cardinality(ast.Exprs[0])
+	} else {
+		for _, expr := range ast.Exprs {
+			c := ctx.Cardinality(expr)
+			if c == 0 {
+				return nil, ctx.logger.Errorf(ast.Loc, "%s used as value", expr)
+			}
+			if c > 1 {
+				return nil, ctx.logger.Errorf(ast.Loc,
+					"multiple-value %s in single-value context", expr)
+			}
+			cardinality++
+		}
+	}
+	// return values.
+	if cardinality > len(ctx.Func.Return) {
 		// TODO \thave (nil, error)
 		// TODO \twant (error)
 		return nil, ctx.logger.Errorf(ast.Loc, "too many aruments to return")
-	} else if len(ast.Exprs) < len(ctx.Func.Return) {
+	} else if cardinality < len(ctx.Func.Return) {
 		// TODO \thave ()
 		// TODO \twant (error)
 		return nil, ctx.logger.Errorf(ast.Loc, "not enough arguments to return")

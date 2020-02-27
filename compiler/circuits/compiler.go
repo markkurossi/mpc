@@ -63,19 +63,6 @@ func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
 		}
 		result.Inputs = append(result.Inputs, wires...)
 	}
-	for idx, n := range n3 {
-		if len(n.Name) == 0 {
-			n.Name = fmt.Sprintf("%%ret%d", idx)
-		}
-		wires, err := result.Wires(n.Name, n.Size)
-		if err != nil {
-			panic(err)
-		}
-		for _, w := range wires {
-			w.Output = true
-			result.Outputs = append(result.Outputs, w)
-		}
-	}
 
 	return result
 }

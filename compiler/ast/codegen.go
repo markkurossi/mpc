@@ -59,10 +59,23 @@ func (ctx *Codegen) Peek() (ssa.Variable, error) {
 	return ctx.targets[len(ctx.targets)-1], nil
 }
 
-func (ctx *Codegen) PushCompilation(start, ret *ssa.Block) {
+func (ctx *Codegen) NumTargets() int {
+	return len(ctx.targets)
+}
+
+func (ctx *Codegen) Target(idx int) ssa.Variable {
+	return ctx.targets[len(ctx.targets)-1-idx]
+}
+
+func (ctx *Codegen) SetTarget(idx int, v ssa.Variable) {
+	ctx.targets[len(ctx.targets)-1-idx] = v
+}
+
+func (ctx *Codegen) PushCompilation(start, ret, caller *ssa.Block) {
 	ctx.Stack = append(ctx.Stack, Compilation{
 		Start:  start,
 		Return: ret,
+		Caller: caller,
 	})
 }
 
@@ -81,7 +94,26 @@ func (ctx *Codegen) Return() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Return
 }
 
+func (ctx *Codegen) Caller() *ssa.Block {
+	return ctx.Stack[len(ctx.Stack)-1].Caller
+}
+
 type Compilation struct {
 	Start  *ssa.Block
 	Return *ssa.Block
+	Caller *ssa.Block
+}
+
+func (ctx *Codegen) Cardinality(ast AST) int {
+	switch a := ast.(type) {
+	case *Call:
+		f, ok := ctx.Functions[a.Name]
+		if ok {
+			return len(f.Return)
+		}
+	case *Binary, *VariableRef, *Constant:
+		return 1
+	}
+
+	return 0
 }

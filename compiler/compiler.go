@@ -81,7 +81,7 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 	gen := ssa.NewGenerator(params.Verbose)
 	ctx := ast.NewCodegen(logger, unit.Functions)
 
-	ctx.PushCompilation(gen.Block(), gen.Block())
+	ctx.PushCompilation(gen.Block(), gen.Block(), nil)
 
 	// Compile main.
 	ctx.Func = main
@@ -135,11 +135,12 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 
 	// Return values
 	var r circuit.IO
-	for _, rt := range main.Return {
-		v, ok := main.Bindings[rt.Name]
+	for idx, rt := range main.Return {
+		_, ok := main.Bindings[rt.Name]
 		if !ok {
 			return nil, fmt.Errorf("return value %s not bound", rt.Name)
 		}
+		v := ctx.Target(len(main.Return) - idx - 1)
 		r = append(r, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type.String(),

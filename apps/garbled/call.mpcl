@@ -1,0 +1,21 @@
+// -*- go -*-
+
+package main
+
+func main(a, b int4) int4 {
+	return max(a, b) + min(a, b)
+}
+
+func max(a, b int4) int4 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func min(a, b int4) int4 {
+	if a < b {
+		return a
+	}
+	return b
+}
