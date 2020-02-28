@@ -35,13 +35,13 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 	// s = XOR(w1, cin)
 	compiler.AddGate(NewBinary(circuit.XOR, w1, cin, s))
 
-	// w2 = AND(w1, cin)
-	compiler.AddGate(NewBinary(circuit.AND, w1, cin, w2))
-
-	// w3 = AND(A, B)
-	compiler.AddGate(NewBinary(circuit.AND, a, b, w3))
-
 	if cout != nil {
+		// w2 = AND(w1, cin)
+		compiler.AddGate(NewBinary(circuit.AND, w1, cin, w2))
+
+		// w3 = AND(A, B)
+		compiler.AddGate(NewBinary(circuit.AND, a, b, w3))
+
 		// cout = OR(w2, w3)
 		compiler.AddGate(NewBinary(circuit.OR, w2, w3, cout))
 	}
