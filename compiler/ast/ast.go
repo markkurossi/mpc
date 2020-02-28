@@ -72,12 +72,13 @@ type Variable struct {
 }
 
 type Func struct {
-	Loc      utils.Point
-	Name     string
-	Args     []*Variable
-	Return   []*Variable
-	Body     List
-	Bindings map[string]ssa.Variable
+	Loc          utils.Point
+	Name         string
+	Args         []*Variable
+	Return       []*Variable
+	Body         List
+	Bindings     map[string]ssa.Variable
+	NumInstances int
 }
 
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,

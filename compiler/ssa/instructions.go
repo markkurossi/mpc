@@ -49,7 +49,6 @@ const (
 	Mov
 	Phi
 	Ret
-	Call
 )
 
 var operands = map[Operand]string{
@@ -86,7 +85,6 @@ var operands = map[Operand]string{
 	Mov:   "mov",
 	Phi:   "phi",
 	Ret:   "ret",
-	Call:  "call",
 }
 
 var maxOperandLength int
@@ -291,15 +289,6 @@ func NewRetInstr(ret []Variable) Instr {
 	return Instr{
 		Op: Ret,
 		In: ret,
-	}
-}
-
-func NewCallInstr(args []Variable, ret Variable, f *Block) Instr {
-	return Instr{
-		Op:    Call,
-		In:    args,
-		Out:   &ret,
-		Label: f,
 	}
 }
 
