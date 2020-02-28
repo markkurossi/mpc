@@ -13,12 +13,12 @@ import (
 
 type Block struct {
 	ID         string
+	Name       string
 	From       []*Block
 	Next       *Block
 	BranchCond Variable
 	Branch     *Block
 	Instr      []Instr
-	Calls      map[string]*Block
 	Bindings   Bindings
 	Dead       bool
 	Processed  bool
@@ -48,10 +48,6 @@ func (b *Block) SetBranch(o *Block) {
 	}
 	b.Branch = o
 	o.addFrom(b)
-}
-
-func (b *Block) AddCall(call *Block) {
-	b.Calls[call.ID] = call
 }
 
 func (b *Block) addFrom(o *Block) {
@@ -109,6 +105,10 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	}
 	seen[b.ID] = true
 
+	if len(b.Name) > 0 {
+		fmt.Fprintf(out, "# %s:\n", b.Name)
+	}
+
 	fmt.Fprintf(out, "%s:\n", b.ID)
 	for _, i := range b.Instr {
 		i.PP(out)
@@ -118,9 +118,6 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	}
 	if b.Branch != nil {
 		b.Branch.PP(out, seen)
-	}
-	for _, call := range b.Calls {
-		call.PP(out, seen)
 	}
 }
 

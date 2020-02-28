@@ -37,6 +37,9 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, error) {
 
+	ctx.Start().Name = fmt.Sprintf("%s", ast.Name)
+	ctx.Return().Name = fmt.Sprintf("%s.ret", ast.Name)
+
 	// Define arguments.
 	for idx, arg := range ast.Args {
 		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())

@@ -3,14 +3,14 @@
 package main
 
 func main(a, b int4) int4 {
-	return max(a, b) + min(a, b)
+	return max(a, b)
 }
 
 func max(a, b int4) int4 {
 	if a > b {
-		return a
+		return add1(a)
 	}
-	return b
+	return add1(b)
 }
 
 func min(a, b int4) int4 {
@@ -18,4 +18,8 @@ func min(a, b int4) int4 {
 		return a
 	}
 	return b
+}
+
+func add1(a int4) int4 {
+	return a + 1
 }

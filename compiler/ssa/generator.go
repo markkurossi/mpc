@@ -112,8 +112,7 @@ func fmtKey(name string, scope int) string {
 
 func (gen *Generator) Block() *Block {
 	block := &Block{
-		ID:    fmt.Sprintf("l%d", gen.blockID),
-		Calls: make(map[string]*Block),
+		ID: fmt.Sprintf("l%d", gen.blockID),
 	}
 	gen.blockID++
 
