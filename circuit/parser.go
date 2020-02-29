@@ -201,6 +201,16 @@ func (w Wire) String() string {
 	return fmt.Sprintf("w%d", w)
 }
 
+type Seen []bool
+
+func (s Seen) Set(index int) error {
+	if index < 0 || index >= len(s) {
+		return fmt.Errorf("invalid wire %d [0...%d[", index, len(s))
+	}
+	s[index] = true
+	return nil
+}
+
 func Parse(in io.Reader) (*Circuit, error) {
 	r := bufio.NewReader(in)
 
@@ -221,6 +231,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 	if err != nil {
 		return nil, err
 	}
+	wiresSeen := make(Seen, numWires)
 
 	// Inputs N1+N2
 	line, err = readLine(r)
@@ -236,6 +247,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 			niv, len(line))
 	}
 	var inputs IO
+	var inputWires int
 	for i := 1; i < len(line); i++ {
 		bits, err := strconv.Atoi(line[i])
 		if err != nil {
@@ -246,11 +258,20 @@ func Parse(in io.Reader) (*Circuit, error) {
 			Type: fmt.Sprintf("u%d", bits),
 			Size: bits,
 		})
+		inputWires += bits
 	}
 	// XXX Split inputs into N1 and N2.
 	mid := niv / 2
 	n1 := inputs[0:mid]
 	n2 := inputs[mid:]
+
+	// Mark input wires set.
+	for i := 0; i < inputWires; i++ {
+		err = wiresSeen.Set(i)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Outputs N3
 	line, err = readLine(r)
@@ -307,12 +328,19 @@ func Parse(in io.Reader) (*Circuit, error) {
 			if err != nil {
 				return nil, err
 			}
+			if !wiresSeen[v] {
+				return nil, fmt.Errorf("input %d of gate %d not set", v, gate)
+			}
 			inputs = append(inputs, Wire(v))
 		}
 
 		var outputs []Wire
 		for i := 0; i < n2; i++ {
 			v, err := strconv.Atoi(line[2+n1+i])
+			if err != nil {
+				return nil, err
+			}
+			err = wiresSeen.Set(v)
 			if err != nil {
 				return nil, err
 			}
@@ -337,6 +365,13 @@ func Parse(in io.Reader) (*Circuit, error) {
 			Inputs:  inputs,
 			Outputs: outputs,
 			Op:      op,
+		}
+	}
+
+	// Check that all wires are seen.
+	for i := 0; i < len(wiresSeen); i++ {
+		if !wiresSeen[i] {
+			return nil, fmt.Errorf("wire %d not assigned\n", i)
 		}
 	}
 

@@ -14,17 +14,11 @@ import (
 	"testing"
 )
 
-var data = `375 439
-2 32 32
-1 33
+var data = `1 3
+2 1 1
+1 1
 
-2 1 0 32 406 XOR
-2 1 5 37 373 AND
-2 1 4 36 336 AND
-2 1 10 42 340 AND
-2 1 14 46 366 AND
-2 1 24 56 341 AND
-2 1 8 40 342 AND
+2 1 0 1 2 AND
 `
 
 func TestParse(t *testing.T) {
