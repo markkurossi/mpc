@@ -46,6 +46,7 @@ func main(a, b int3) int3 {
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
 	Test{
 		Name:    "Multiply 1-bit",
+		Heavy:   false,
 		Operand: "*",
 		Bits:    1,
 		Eval: func(a *big.Int, b *big.Int) *big.Int {
@@ -96,7 +97,7 @@ func main(a, b int6) int6 {
 	},
 }
 
-func TestArithmetics(t *testing.T) {
+func XTestArithmetics(t *testing.T) {
 	for _, test := range tests {
 		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)

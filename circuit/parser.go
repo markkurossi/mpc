@@ -347,17 +347,31 @@ func Parse(in io.Reader) (*Circuit, error) {
 			outputs = append(outputs, Wire(v))
 		}
 		var op Operation
+		var numInputs int
 		switch line[len(line)-1] {
 		case "XOR":
 			op = XOR
+			numInputs = 2
 		case "AND":
 			op = AND
+			numInputs = 2
 		case "OR":
 			op = OR
+			numInputs = 2
 		case "INV":
 			op = INV
+			numInputs = 1
 		default:
 			return nil, fmt.Errorf("Invalid operation '%s'", line[len(line)-1])
+		}
+
+		if len(inputs) != numInputs {
+			return nil, fmt.Errorf("invalid number of inputs %d for %s",
+				len(inputs), op)
+		}
+		if len(outputs) != 1 {
+			return nil, fmt.Errorf("invalid number of outputs %d for %s",
+				len(outputs), op)
 		}
 
 		gates[gate] = &Gate{
