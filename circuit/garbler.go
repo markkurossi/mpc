@@ -92,6 +92,8 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 			return nil, err
 		}
 	}
+	ioStats := conn.Stats
+	timing.Sample("Xfer", []string{FileSize(ioStats.Sum()).String()})
 
 	// Init oblivious transfer.
 	sender, err := ot.NewSender(2048, garbled.Wires)
@@ -110,8 +112,8 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 	}
 	conn.Flush()
 
-	ioStats := conn.Stats
-	timing.Sample("Xfer", []string{FileSize(ioStats.Sum()).String()})
+	ioStats = conn.Stats.Sub(ioStats)
+	timing.Sample("OT Init", []string{FileSize(ioStats.Sum()).String()})
 
 	// Process messages.
 
