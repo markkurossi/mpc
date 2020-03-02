@@ -35,9 +35,8 @@ func (c *Circuit) Compute(n1, n2 []uint64) ([]uint64, error) {
 		}
 	}
 
-	// XXX change c.Gates to an array.
-	for i := 0; i < c.NumGates; i++ {
-		gate := c.Gates[i]
+	// Evaluate circuit.
+	for _, gate := range c.Gates {
 		var result byte
 
 		switch gate.Op {

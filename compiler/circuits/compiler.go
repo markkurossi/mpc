@@ -196,11 +196,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 		N1:       c.N1,
 		N2:       c.N2,
 		N3:       c.N3,
-		Gates:    make(map[int]*circuit.Gate),
-	}
-
-	for _, gate := range c.compiled {
-		result.Gates[int(gate.ID)] = gate
+		Gates:    c.compiled,
 	}
 
 	return result

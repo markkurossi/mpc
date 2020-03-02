@@ -119,7 +119,7 @@ type Circuit struct {
 	N1       IO
 	N2       IO
 	N3       IO
-	Gates    map[int]*Gate
+	Gates    []*Gate
 }
 
 func (c *Circuit) String() string {
@@ -298,14 +298,18 @@ func Parse(in io.Reader) (*Circuit, error) {
 		})
 	}
 
-	gates := make(map[int]*Gate)
-	for gate := 0; ; gate++ {
+	gates := make([]*Gate, numGates)
+	var gate int
+	for gate = 0; ; gate++ {
 		line, err = readLine(r)
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
 			return nil, err
+		}
+		if gate >= numGates {
+			return nil, errors.New("too many gates")
 		}
 		if len(line) < 3 {
 			return nil, fmt.Errorf("Invalid gate: %v", line)
@@ -380,6 +384,10 @@ func Parse(in io.Reader) (*Circuit, error) {
 			Outputs: outputs,
 			Op:      op,
 		}
+	}
+	if gate != numGates {
+		return nil, fmt.Errorf("not enough gates: got %d, expected %d",
+			gate, numGates)
 	}
 
 	// Check that all wires are seen.
