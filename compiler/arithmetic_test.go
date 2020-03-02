@@ -97,7 +97,7 @@ func main(a, b int6) int6 {
 	},
 }
 
-func XTestArithmetics(t *testing.T) {
+func TestArithmetics(t *testing.T) {
 	for _, test := range tests {
 		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)
