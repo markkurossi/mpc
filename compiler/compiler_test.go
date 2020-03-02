@@ -28,7 +28,7 @@ var iteratorTests = []IteratorTest{
 		},
 		Code: `
 package main
-func main(a, b int3) int3 {
+func main(a, b uint3) uint3 {
     return a + b
 }
 `,
@@ -43,7 +43,7 @@ func main(a, b int3) int3 {
 		},
 		Code: `
 package main
-func main(a, b int1) int1 {
+func main(a, b uint1) uint1 {
     return a * b
 }
 `,
@@ -57,7 +57,7 @@ func main(a, b int1) int1 {
 		},
 		Code: `
 package main
-func main(a, b int4) int4 {
+func main(a, b uint4) uint4 {
     return a * b
 }
 `,
@@ -71,7 +71,7 @@ func main(a, b int4) int4 {
 		},
 		Code: `
 package main
-func main(a, b int6) int6 {
+func main(a, b uint6) uint6 {
     return a * b
 }
 `,

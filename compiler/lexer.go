@@ -149,7 +149,7 @@ var symbols = map[string]TokenType{
 	"var":     T_SymVar,
 }
 
-var reType = regexp.MustCompilePOSIX(`^(int|float)([[:digit:]]*)$`)
+var reType = regexp.MustCompilePOSIX(`^(uint|int|float)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
