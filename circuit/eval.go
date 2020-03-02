@@ -16,7 +16,7 @@ import (
 )
 
 func (c *Circuit) Eval(key []byte, wires map[Wire]*ot.Label,
-	garbled map[int][][]byte) error {
+	garbled [][][]byte) error {
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
@@ -27,10 +27,8 @@ func (c *Circuit) Eval(key []byte, wires map[Wire]*ot.Label,
 		return decrypt(alg, a, b, t, data)
 	}
 
-	for id := 0; id < c.NumGates; id++ {
-		gate := c.Gates[id]
-
-		output, err := gate.Eval(wires, dec, garbled[id])
+	for idx, gate := range c.Gates {
+		output, err := gate.Eval(wires, dec, garbled[idx])
 		if err != nil {
 			return err
 		}

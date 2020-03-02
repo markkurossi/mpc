@@ -125,7 +125,7 @@ func makeK(a, b *ot.Label, t uint32) *ot.Label {
 
 type Garbled struct {
 	Wires ot.Inputs
-	Gates map[int][][]byte
+	Gates [][][]byte
 }
 
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
@@ -165,7 +165,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}
 	start = t
 
-	garbled := make(map[int][][]byte)
+	garbled := make([][][]byte, c.NumGates)
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
@@ -176,12 +176,12 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return encrypt(alg, a, b, c, t)
 	}
 
-	for id, gate := range c.Gates {
+	for idx, gate := range c.Gates {
 		data, err := gate.Garble(wires, enc)
 		if err != nil {
 			return nil, err
 		}
-		garbled[id] = data
+		garbled[idx] = data
 	}
 	t = time.Now()
 	if verbose {

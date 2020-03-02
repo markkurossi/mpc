@@ -46,10 +46,10 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 	timing.Sample("Garble", nil)
 
 	// Send garbled tables.
-	for id, data := range garbled.Gates {
-		if err := conn.SendUint32(id); err != nil {
-			return nil, err
-		}
+	if err := conn.SendUint32(len(garbled.Gates)); err != nil {
+		return nil, err
+	}
+	for _, data := range garbled.Gates {
 		if err := conn.SendUint32(len(data)); err != nil {
 			return nil, err
 		}

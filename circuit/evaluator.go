@@ -25,14 +25,18 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 
 	timing := NewTiming()
 
-	garbled := make(map[int][][]byte)
+	garbled := make([][][]byte, circ.NumGates)
 
 	// Receive garbled tables.
+	count, err := conn.ReceiveUint32()
+	if err != nil {
+		return nil, err
+	}
+	if count != circ.NumGates {
+		return nil, fmt.Errorf("wrong number of gates: got %d, expected %d",
+			count, circ.NumGates)
+	}
 	for i := 0; i < circ.NumGates; i++ {
-		id, err := conn.ReceiveUint32()
-		if err != nil {
-			return nil, err
-		}
 		count, err := conn.ReceiveUint32()
 		if err != nil {
 			return nil, err
@@ -49,7 +53,7 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 			}
 			values = append(values, v)
 		}
-		garbled[id] = values
+		garbled[i] = values
 	}
 
 	wires := make(map[Wire]*ot.Label)
