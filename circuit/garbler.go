@@ -115,6 +115,12 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 	ioStats = conn.Stats.Sub(ioStats)
 	timing.Sample("OT Init", []string{FileSize(ioStats.Sum()).String()})
 
+	// Init wires the peer is allowed to OT.
+	allowedOTs := make(map[int]bool)
+	for bit := 0; bit < circ.N2.Size(); bit++ {
+		allowedOTs[circ.N1.Size()+bit] = true
+	}
+
 	// Process messages.
 
 	var xfer *ot.SenderXfer
@@ -134,6 +140,10 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
 			if err != nil {
 				return nil, err
 			}
+			if !allowedOTs[bit] {
+				return nil, fmt.Errorf("peer can't OT wire %d", bit)
+			}
+			allowedOTs[bit] = false
 
 			xfer, err = sender.NewTransfer(bit)
 			if err != nil {
