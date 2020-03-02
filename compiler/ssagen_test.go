@@ -8,6 +8,7 @@ package compiler
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"testing"
 )
@@ -180,7 +181,9 @@ func TestSSAGen(t *testing.T) {
 		if !test.Enabled {
 			continue
 		}
-		if true {
+		var ssaOut io.WriteCloser
+		if testing.Verbose() {
+			ssaOut = os.Stdout
 			fmt.Printf(`==================================================
 // Test '%s':
 %s--------------------------------------------------
@@ -188,7 +191,7 @@ func TestSSAGen(t *testing.T) {
 				test.Name, test.Code)
 		}
 		_, err := Compile(test.Code, &Params{
-			SSAOut: os.Stdout,
+			SSAOut: ssaOut,
 		})
 		if err != nil {
 			t.Fatalf("SSA test %d failed: %s", idx, err)
