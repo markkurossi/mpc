@@ -37,6 +37,7 @@ func indent(w io.Writer, indent int) {
 }
 
 type AST interface {
+	String() string
 	Location() utils.Point
 	Fprint(w io.Writer, indent int)
 	// SSA generates SSA code from the AST node. The code is appended
@@ -48,6 +49,10 @@ type AST interface {
 }
 
 type List []AST
+
+func (ast List) String() string {
+	return fmt.Sprintf("%v", []AST(ast))
+}
 
 func (ast List) Location() utils.Point {
 	if len(ast) > 0 {
@@ -92,6 +97,10 @@ func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 		Body:     body,
 		Bindings: make(map[string]ssa.Variable),
 	}
+}
+
+func (ast *Func) String() string {
+	return fmt.Sprintf("func %s()", ast.Name)
 }
 
 func (ast *Func) Location() utils.Point {
@@ -145,6 +154,10 @@ type VariableDef struct {
 	Type  types.Info
 }
 
+func (ast *VariableDef) String() string {
+	return fmt.Sprintf("var %v %s", ast.Names, ast.Type)
+}
+
 func (ast *VariableDef) Location() utils.Point {
 	return ast.Loc
 }
@@ -167,6 +180,10 @@ type Assign struct {
 	Expr AST
 }
 
+func (ast *Assign) String() string {
+	return fmt.Sprintf("%s = %s", ast.Name, ast.Expr)
+}
+
 func (ast *Assign) Location() utils.Point {
 	return ast.Loc
 }
@@ -182,6 +199,10 @@ type If struct {
 	Expr  AST
 	True  List
 	False List
+}
+
+func (ast *If) String() string {
+	return fmt.Sprintf("if %s", ast.Expr)
 }
 
 func (ast *If) Location() utils.Point {
@@ -205,6 +226,10 @@ type Call struct {
 	Exprs []AST
 }
 
+func (ast *Call) String() string {
+	return fmt.Sprintf("%s()", ast.Name)
+}
+
 func (ast *Call) Location() utils.Point {
 	return ast.Loc
 }
@@ -224,6 +249,10 @@ func (ast *Call) Fprint(w io.Writer, ind int) {
 type Return struct {
 	Loc   utils.Point
 	Exprs []AST
+}
+
+func (ast *Return) String() string {
+	return fmt.Sprintf("return %v", ast.Exprs)
 }
 
 func (ast *Return) Location() utils.Point {
@@ -291,6 +320,10 @@ type Binary struct {
 	Right AST
 }
 
+func (ast *Binary) String() string {
+	return fmt.Sprintf("%s %s %s", ast.Left, ast.Op, ast.Right)
+}
+
 func (ast *Binary) Location() utils.Point {
 	return ast.Loc
 }
@@ -315,6 +348,10 @@ type VariableRef struct {
 	Loc  utils.Point
 	Name string
 	Var  *Variable
+}
+
+func (ast *VariableRef) String() string {
+	return ast.Name
 }
 
 func (ast *VariableRef) Location() utils.Point {
