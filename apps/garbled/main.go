@@ -10,7 +10,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -30,11 +29,10 @@ const (
 )
 
 var (
-	port          = ":8080"
-	DecryptFailed = errors.New("Decrypt failed")
-	verbose       = false
-	debug         = false
-	key           [32]byte // XXX
+	port    = ":8080"
+	verbose = false
+	debug   = false
+	key     [32]byte // XXX
 )
 
 type input []string
@@ -57,7 +55,7 @@ func init() {
 }
 
 func main() {
-	garbler := flag.Bool("g", false, "garbler / evaluator mode")
+	evaluator := flag.Bool("e", false, "evaluator / garbler mode")
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
 	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
@@ -135,26 +133,35 @@ func main() {
 	}
 
 	fmt.Printf("Circuit: %v\n", circ)
-	fmt.Printf(" - N1: %s\n", circ.N1)
-	fmt.Printf(" - N2: %s\n", circ.N2)
+	var n1t, n2t string
+	if *evaluator {
+		n1t = "- "
+		n2t = "+ "
+	} else {
+		n1t = "+ "
+		n2t = "- "
+	}
+
+	fmt.Printf(" %sN1: %s\n", n1t, circ.N1)
+	fmt.Printf(" %sN2: %s\n", n2t, circ.N2)
 	fmt.Printf(" - N3: %s\n", circ.N3)
 	fmt.Printf(" - In: %s\n", inputFlag)
 
 	var input []*big.Int
-	if *garbler {
-		input, err = circ.N1.Parse(inputFlag)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
-		}
-		err = garblerMode(circ, input)
-	} else {
+	if *evaluator {
 		input, err = circ.N2.Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
 		err = evaluatorMode(circ, input)
+	} else {
+		input, err = circ.N1.Parse(inputFlag)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		err = garblerMode(circ, input)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -171,7 +178,7 @@ func loadCircuit(file string) (*circuit.Circuit, error) {
 	return circuit.Parse(f)
 }
 
-func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
+func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -188,7 +195,7 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 		bio := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 		ccon := circuit.NewConn(bio)
 
-		result, err := circuit.Garbler(ccon, circ, input, key[:], verbose)
+		result, err := circuit.Evaluator(ccon, circ, input, key[:], verbose)
 
 		conn.Close()
 
@@ -200,7 +207,7 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 	}
 }
 
-func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
+func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
@@ -210,7 +217,7 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 	bio := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
 	conn := circuit.NewConn(bio)
 
-	result, err := circuit.Evaluator(conn, circ, input, key[:], verbose)
+	result, err := circuit.Garbler(conn, circ, input, key[:], verbose)
 	if err != nil {
 		return err
 	}
@@ -223,7 +230,11 @@ func printResult(results []*big.Int) {
 	for idx, result := range results {
 		fmt.Printf("Result[%d]: %v\n", idx, result)
 		fmt.Printf("Result[%d]: 0b%s\n", idx, result.Text(2))
-		fmt.Printf("Result[%d]: 0x%x\n", idx, result.Bytes())
+		bytes := result.Bytes()
+		if len(bytes) == 0 {
+			bytes = []byte{0}
+		}
+		fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
 	}
 }
 
