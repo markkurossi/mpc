@@ -11,6 +11,7 @@ package ast
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
@@ -372,6 +373,8 @@ func (ast *Constant) String() string {
 	switch val := ast.Value.(type) {
 	case uint64:
 		return fmt.Sprintf("$%d", val)
+	case *big.Int:
+		return fmt.Sprintf("$%s", val)
 	case bool:
 		return fmt.Sprintf("$%v", val)
 	default:
@@ -398,6 +401,19 @@ func (ast *Constant) Variable() (ssa.Variable, error) {
 			Type: types.Uint,
 			Bits: bits,
 		}
+
+	case *big.Int:
+		v.Name = fmt.Sprintf("$%s", val.String())
+		if val.Sign() == -1 {
+			v.Type = types.Info{
+				Type: types.Int,
+			}
+		} else {
+			v.Type = types.Info{
+				Type: types.Uint,
+			}
+		}
+		v.Type.Bits = val.BitLen()
 
 	case bool:
 		v.Name = fmt.Sprintf("$%v", val)

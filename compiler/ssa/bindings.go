@@ -23,7 +23,7 @@ func (bindings *Bindings) Set(v Variable) {
 	for idx, b := range *bindings {
 		if b.Name == v.Name && b.Scope == v.Scope {
 			b.Type = v.Type
-			b.value = &v
+			b.Bound = &v
 			(*bindings)[idx] = b
 			return
 		}
@@ -32,7 +32,7 @@ func (bindings *Bindings) Set(v Variable) {
 		Name:  v.Name,
 		Scope: v.Scope,
 		Type:  v.Type,
-		value: &v,
+		Bound: &v,
 	})
 }
 
@@ -77,18 +77,18 @@ func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
 		} else if err2 != nil {
 			result = append(result, bTrue)
 		} else {
-			if bTrue.value.Equal(bFalse.value) {
+			if bTrue.Bound.Equal(bFalse.Bound) {
 				result = append(result, bTrue)
 			} else {
 				result = append(result, Binding{
 					Name:  name,
 					Scope: bTrue.Scope,
 					Type:  bTrue.Type,
-					value: &Select{
+					Bound: &Select{
 						Cond:  cond,
 						Type:  bTrue.Type,
-						True:  bTrue.value,
-						False: bFalse.value,
+						True:  bTrue.Bound,
+						False: bFalse.Bound,
 					},
 				})
 			}
@@ -101,15 +101,15 @@ type Binding struct {
 	Name  string
 	Scope int
 	Type  types.Info
-	value BindingValue
+	Bound BindingValue
 }
 
 func (b Binding) String() string {
-	return fmt.Sprintf("%s@%d/%s=%s", b.Name, b.Scope, b.Type, b.value)
+	return fmt.Sprintf("%s@%d/%s=%s", b.Name, b.Scope, b.Type, b.Bound)
 }
 
 func (b Binding) Value(block *Block, gen *Generator) Variable {
-	return b.value.Value(block, gen)
+	return b.Bound.Value(block, gen)
 }
 
 type BindingValue interface {

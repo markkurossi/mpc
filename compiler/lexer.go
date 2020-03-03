@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math/big"
 	"regexp"
 	"strconv"
 	"unicode"
@@ -31,6 +32,7 @@ const (
 	T_SymElse
 	T_SymReturn
 	T_SymVar
+	T_SymConst
 	T_Type
 	T_Assign
 	T_Mult
@@ -75,6 +77,7 @@ var tokenTypes = map[TokenType]string{
 	T_SymElse:    "else",
 	T_SymReturn:  "return",
 	T_SymVar:     "var",
+	T_SymConst:   "const",
 	T_Type:       "type",
 	T_Assign:     "=",
 	T_Mult:       "*",
@@ -147,6 +150,7 @@ var symbols = map[string]TokenType{
 	"else":    T_SymElse,
 	"return":  T_SymReturn,
 	"var":     T_SymVar,
+	"const":   T_SymConst,
 }
 
 var reType = regexp.MustCompilePOSIX(`^(uint|int|float)([[:digit:]]*)$`)
@@ -170,6 +174,8 @@ func (t *Token) String() string {
 			str = strconv.FormatUint(val, 10)
 		case bool:
 			str = fmt.Sprintf("%v", val)
+		case *big.Int:
+			str = val.String()
 		default:
 			str = t.Type.String()
 		}
@@ -503,8 +509,54 @@ func (l *Lexer) Get() (*Token, error) {
 				return token, nil
 			}
 			if unicode.IsDigit(r) {
-				// XXX 0b, 0x, etc.
-				input := string(r)
+				var input string
+
+				if r == '0' {
+					// XXX 0b, 0x, etc.
+					r, _, err := l.ReadRune()
+					if err != nil {
+						return nil, err
+					}
+					if r == 'x' {
+						for {
+							r, _, err := l.ReadRune()
+							if err != nil {
+								if err != io.EOF {
+									return nil, err
+								}
+								break
+							}
+							if !unicode.Is(unicode.ASCII_Hex_Digit, r) {
+								l.UnreadRune()
+								break
+							}
+							input += string(r)
+						}
+						token := l.Token(T_Constant)
+						if len(input) > 16 {
+							val := new(big.Int)
+							_, ok := val.SetString(input, 16)
+							if !ok {
+								return nil,
+									fmt.Errorf("malformed constant '%s'", input)
+							}
+							token.ConstVal = val
+						} else {
+							u, err := strconv.ParseUint(input, 16, 64)
+							if err != nil {
+								return nil, err
+							}
+							token.ConstVal = u
+						}
+						return token, nil
+					} else {
+						l.UnreadRune()
+					}
+					input += "0"
+				} else {
+					input += string(r)
+				}
+
 				for {
 					r, _, err := l.ReadRune()
 					if err != nil {

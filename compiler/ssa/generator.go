@@ -84,21 +84,6 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 	return v, nil
 }
 
-func (gen *Generator) Lookup(name string, scope int, assign bool) (
-	Variable, error) {
-
-	key := fmtKey(name, scope)
-	v, ok := gen.versions[key]
-	if !ok {
-		return Variable{}, fmt.Errorf("undefined variable '%s'", name)
-	}
-	if assign {
-		v.Version = v.Version + 1
-		gen.versions[key] = v
-	}
-	return v, nil
-}
-
 func (gen *Generator) AddConstant(c Variable) {
 	_, ok := gen.constants[c.Name]
 	if !ok {

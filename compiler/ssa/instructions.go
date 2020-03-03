@@ -9,6 +9,7 @@ package ssa
 import (
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/types"
 )
@@ -367,8 +368,14 @@ func (v *Variable) Bit(bit int) bool {
 	case uint64:
 		return (val & (1 << bit)) != 0
 
+	case *big.Int:
+		if bit > val.BitLen() {
+			return false
+		}
+		return val.Bit(bit) != 0
+
 	default:
-		panic(fmt.Sprintf("Variable.Bit called for a non variable %v", v))
+		panic(fmt.Sprintf("Variable.Bit called for a non const %v (%T)", v, v))
 	}
 }
 

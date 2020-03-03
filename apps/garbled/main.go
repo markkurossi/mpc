@@ -21,6 +21,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
@@ -74,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	params := &compiler.Params{
+	params := &utils.Params{
 		Verbose: *fVerbose,
 	}
 

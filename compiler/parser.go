@@ -16,11 +16,6 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-type Unit struct {
-	Package   string
-	Functions map[string]*ast.Func
-}
-
 type Parser struct {
 	logger *utils.Logger
 	lexer  *Lexer
@@ -33,13 +28,13 @@ func NewParser(logger *utils.Logger, in io.Reader) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (*Unit, error) {
+func (p *Parser) Parse() (*ast.Package, error) {
 	pkg, err := p.parsePackage()
 	if err != nil {
 		return nil, err
 	}
 
-	unit := &Unit{
+	unit := &ast.Package{
 		Package:   pkg,
 		Functions: make(map[string]*ast.Func),
 	}
@@ -121,12 +116,15 @@ func (p *Parser) parsePackage() (string, error) {
 	return t.StrVal, nil
 }
 
-func (p *Parser) parseToplevel(unit *Unit) error {
+func (p *Parser) parseToplevel(unit *ast.Package) error {
 	token, err := p.lexer.Get()
 	if err != nil {
 		return err
 	}
 	switch token.Type {
+	case T_SymConst:
+		return p.parseConst(unit)
+
 	case T_SymFunc:
 		f, err := p.parseFunc()
 		if err != nil {
@@ -143,6 +141,63 @@ func (p *Parser) parseToplevel(unit *Unit) error {
 	}
 
 	return nil
+}
+
+func (p *Parser) parseConst(unit *ast.Package) error {
+	token, err := p.lexer.Get()
+	if err != nil {
+		return err
+	}
+	switch token.Type {
+	case T_Identifier:
+		t, err := p.lexer.Get()
+		if err != nil {
+			return err
+		}
+		var constType types.Info
+		if t.Type == T_Type {
+			constType = t.TypeInfo
+			t, err = p.lexer.Get()
+			if err != nil {
+				return err
+			}
+		} else {
+			p.lexer.Unget(t)
+		}
+		_, err = p.needToken(T_Assign)
+		if err != nil {
+			return err
+		}
+		value, err := p.parseExprPrimary()
+		if err != nil {
+			return err
+		}
+
+		constVal, ok := value.(*ast.Constant)
+		if !ok {
+			return p.err(value.Location(), "value %s used as constant", value)
+		}
+		constVar, err := constVal.Variable()
+		if err != nil {
+			return err
+		}
+
+		// XXX Check type compatibility
+		_ = constType
+
+		_, err = unit.Bindings.Get(token.StrVal)
+		if err == nil {
+			return p.err(token.From, "constant %s already defined",
+				token.StrVal)
+		}
+		constVar.Name = token.StrVal
+		unit.Bindings.Set(constVar)
+
+		return nil
+
+	default:
+		return p.err(token.From, "unexpected token '%s'", token.Type)
+	}
 }
 
 func (p *Parser) parseFunc() (*ast.Func, error) {
