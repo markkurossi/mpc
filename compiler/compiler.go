@@ -85,7 +85,7 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 
 	// Compile main.
 	ctx.Func = main
-	_, err := main.SSA(ctx.Start(), ctx, gen)
+	_, returnVars, err := main.SSA(ctx.Start(), ctx, gen)
 	ctx.Func = nil
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 		if !ok {
 			return nil, fmt.Errorf("return value %s not bound", rt.Name)
 		}
-		v := ctx.Target(len(main.Return) - idx - 1)
+		v := returnVars[idx]
 		r = append(r, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type.String(),

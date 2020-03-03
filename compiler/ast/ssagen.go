@@ -16,7 +16,7 @@ import (
 )
 
 func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
 	var err error
 
@@ -25,17 +25,17 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			ctx.logger.Warningf(b.Location(), "unreachable code")
 			break
 		}
-		block, err = b.SSA(block, ctx, gen)
+		block, _, err = b.SSA(block, ctx, gen)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return block, nil
+	return block, nil, nil
 }
 
 func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
 	ctx.Start().Name = fmt.Sprintf("%s#%d", ast.Name, ast.NumInstances)
 	ctx.Return().Name = fmt.Sprintf("%s.ret#%d", ast.Name, ast.NumInstances)
@@ -45,7 +45,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	for idx, arg := range ast.Args {
 		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		block.Bindings.Set(a)
 		if ctx.Verbose {
@@ -60,7 +60,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		r, err := gen.NewVar(ret.Name, ret.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		block.Bindings.Set(r)
 		if ctx.Verbose {
@@ -69,9 +69,9 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ast.Bindings[ret.Name] = r
 	}
 
-	block, err := ast.Body.SSA(block, ctx, gen)
+	block, _, err := ast.Body.SSA(block, ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Select return variables.
@@ -79,11 +79,9 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	for _, ret := range ast.Return {
 		v, err := ctx.Start().ReturnBinding(ret.Name, ctx.Return(), gen)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		vars = append(vars, v)
-
-		ctx.Push(v)
 	}
 
 	caller := ctx.Caller()
@@ -96,77 +94,84 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ctx.Return().AddInstr(ssa.NewRetInstr(vars))
 	}
 
-	return block, nil
+	return block, vars, nil
 }
 
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	for _, n := range ast.Names {
 		v, err := gen.NewVar(n, ast.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		block.Bindings.Set(v)
 		if ctx.Verbose {
 			fmt.Printf("var %s\n", v)
 		}
 	}
-	return block, nil
+	return block, nil, nil
 }
 
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
-		return nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}
-	v, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
+	lValue, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	ctx.Push(v)
-	block, err = ast.Expr.SSA(block, ctx, gen)
+	block, v, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	v, err = ctx.Pop()
-	if err != nil {
-		return nil, err
+	// XXX 0, 1, n return values.
+	if len(v) != 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
+			"assignment mismatch: %d variables but %d value", 1, len(v))
 	}
-	block.Bindings.Set(v)
+	block.AddInstr(ssa.NewMovInstr(lValue, v[0]))
+	block.Bindings.Set(lValue)
 
-	return block, nil
+	return block, v, nil
 }
 
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
-	ctx.Push(gen.AnonVar(types.BoolType()))
-	block, err := ast.Expr.SSA(block, ctx, gen)
+	block, e, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	e, err := ctx.Pop()
-	if err != nil {
-		return nil, err
+	if len(e) == 0 {
+		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			"%s used as value", ast.Expr)
+	} else if len(e) > 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			"multiple-value %s used in single-value context", ast.Expr)
+	}
+	if e[0].Type.Type != types.Bool {
+		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			"non-bool %s (type %s) used as if condition", ast.Expr, e[0].Type)
 	}
 
 	branchBlock := gen.NextBlock(block)
-	branchBlock.BranchCond = e
+	branchBlock.BranchCond = e[0]
 	block.AddInstr(ssa.NewJumpInstr(branchBlock))
 
 	block = branchBlock
 
 	// Branch.
 	tBlock := gen.BranchBlock(block)
-	block.AddInstr(ssa.NewIfInstr(e, tBlock))
+	block.AddInstr(ssa.NewIfInstr(e[0], tBlock))
 
 	// True branch.
-	tNext, err := ast.True.SSA(tBlock, ctx, gen)
+	tNext, _, err := ast.True.SSA(tBlock, ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// False (else) branch.
@@ -176,33 +181,33 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// True branch terminated.
 			tNext = gen.NextBlock(block)
 		} else {
-			tNext.Bindings = tNext.Bindings.Merge(e, block.Bindings)
+			tNext.Bindings = tNext.Bindings.Merge(e[0], block.Bindings)
 			block.SetNext(tNext)
 		}
 		block.AddInstr(ssa.NewJumpInstr(tNext))
 
-		return tNext, nil
+		return tNext, nil, nil
 	}
 
 	fBlock := gen.NextBlock(block)
 	block.AddInstr(ssa.NewJumpInstr(fBlock))
 
-	fNext, err := ast.False.SSA(fBlock, ctx, gen)
+	fNext, _, err := ast.False.SSA(fBlock, ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if fNext.Dead && tNext.Dead {
 		// Both branches terminate.
 		next := gen.Block()
 		next.Dead = true
-		return next, nil
+		return next, nil, nil
 	} else if fNext.Dead {
 		// False-branch terminates.
-		return tNext, nil
+		return tNext, nil, nil
 	} else if tNext.Dead {
 		// True-branch terminates.
-		return fNext, nil
+		return fNext, nil, nil
 	}
 
 	// Both branches continue.
@@ -214,34 +219,31 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	fNext.SetNext(next)
 	fNext.AddInstr(ssa.NewJumpInstr(next))
 
-	next.Bindings = tNext.Bindings.Merge(e, fNext.Bindings)
+	next.Bindings = tNext.Bindings.Merge(e[0], fNext.Bindings)
 
-	return next, nil
+	return next, nil, nil
 }
 
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
 	called, ok := ctx.Functions[ast.Name]
 	if !ok {
-		return nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
 			ast.Name)
 	}
 
 	var args []ssa.Variable
+	var v []ssa.Variable
 	var err error
 
 	for _, expr := range ast.Exprs {
-		ctx.Push(gen.UndefVar())
-		block, err = expr.SSA(block, ctx, gen)
+		block, v, err = expr.SSA(block, ctx, gen)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		v, err := ctx.Pop()
-		if err != nil {
-			return nil, err
-		}
-		args = append(args, v)
+		// XXX 0, 1, n values
+		args = append(args, v[0])
 	}
 
 	// Return block.
@@ -249,15 +251,15 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	rblock.Bindings = block.Bindings.Clone()
 
 	ctx.PushCompilation(gen.Block(), gen.Block(), rblock)
-	_, err = called.SSA(ctx.Start(), ctx, gen)
+	_, returnValues, err := called.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for idx, arg := range called.Args {
 		b, err := ctx.Start().Bindings.Get(arg.Name)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		bv := b.Value(block, gen)
 		block.AddInstr(ssa.NewMovInstr(args[idx], bv))
@@ -268,79 +270,85 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	ctx.Return().SetNext(rblock)
 	block = rblock
-	returnValues := make([]ssa.Variable, len(called.Return))
-	for i := 0; i < len(called.Return); i++ {
-		v, err := ctx.Pop()
-		if err != nil {
-			return nil, err
-		}
-		returnValues[len(returnValues)-1-i] = v
-	}
-
-	// Assign return values to lvalues.
-	for i := 0; i < len(returnValues); i++ {
-		lValue := ctx.Target(i)
-		if lValue.Type.Undefined() {
-			ctx.SetTarget(i, returnValues[i])
-		} else {
-			block.AddInstr(ssa.NewMovInstr(returnValues[i], lValue))
-		}
-	}
 
 	ctx.PopCompilation()
 
-	return block, nil
+	return block, returnValues, nil
 }
 
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
 	if ctx.Func == nil {
-		return nil, ctx.logger.Errorf(ast.Loc, "return outside function")
-	}
-	var cardinality int
-	if len(ast.Exprs) == 1 {
-		cardinality = ctx.Cardinality(ast.Exprs[0])
-	} else {
-		for _, expr := range ast.Exprs {
-			c := ctx.Cardinality(expr)
-			if c == 0 {
-				return nil, ctx.logger.Errorf(ast.Loc, "%s used as value", expr)
-			}
-			if c > 1 {
-				return nil, ctx.logger.Errorf(ast.Loc,
-					"multiple-value %s in single-value context", expr)
-			}
-			cardinality++
-		}
-	}
-	// return values.
-	if cardinality > len(ctx.Func.Return) {
-		// TODO \thave (nil, error)
-		// TODO \twant (error)
-		return nil, ctx.logger.Errorf(ast.Loc, "too many aruments to return")
-	} else if cardinality < len(ctx.Func.Return) {
-		// TODO \thave ()
-		// TODO \twant (error)
-		return nil, ctx.logger.Errorf(ast.Loc, "not enough arguments to return")
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "return outside function")
 	}
 
-	for idx, expr := range ast.Exprs {
-		r := ctx.Func.Return[idx]
+	var rValues [][]ssa.Variable
+	var result []ssa.Variable
+	var v []ssa.Variable
+	var err error
+
+	for _, expr := range ast.Exprs {
+		block, v, err = expr.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		rValues = append(rValues, v)
+	}
+	if len(rValues) == 0 {
+		if len(ctx.Func.Return) != 0 {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments to return")
+			// TODO \thave ()
+			// TODO \twant (error)
+		}
+	} else if len(rValues) == 1 {
+		if len(rValues[0]) < len(ctx.Func.Return) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments to return")
+			// TODO \thave ()
+			// TODO \twant (error)
+		} else if len(rValues[0]) > len(ctx.Func.Return) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"too many aruments to return")
+			// TODO \thave (nil, error)
+			// TODO \twant (error)
+		}
+		result = rValues[0]
+	} else {
+		if len(rValues) < len(ctx.Func.Return) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments to return")
+			// TODO \thave ()
+			// TODO \twant (error)
+		} else if len(rValues) > len(ctx.Func.Return) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"too many aruments to return")
+			// TODO \thave (nil, error)
+			// TODO \twant (error)
+		} else {
+			for idx, rv := range rValues {
+				if len(rv) == 0 {
+					return nil, nil,
+						ctx.logger.Errorf(ast.Exprs[idx].Location(),
+							"%s used as value", ast.Exprs[idx])
+				} else if len(rv) > 1 {
+					return nil, nil,
+						ctx.logger.Errorf(ast.Exprs[idx].Location(),
+							"multiple-value %s in single-value context",
+							ast.Exprs[idx])
+				}
+				result = append(result, rv[0])
+			}
+		}
+	}
+
+	for idx, r := range ctx.Func.Return {
 		v, err := gen.NewVar(r.Name, r.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-
-		ctx.Push(v)
-		block, err = expr.SSA(block, ctx, gen)
-		if err != nil {
-			return nil, err
-		}
-		v, err = ctx.Pop()
-		if err != nil {
-			return nil, err
-		}
+		block.AddInstr(ssa.NewMovInstr(result[idx], v))
 		block.Bindings.Set(v)
 	}
 
@@ -348,43 +356,49 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	block.SetNext(ctx.Return())
 	block.Dead = true
 
-	return block, nil
+	return block, nil, nil
 }
 
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, error) {
+	*ssa.Block, []ssa.Variable, error) {
 
-	ctx.Push(gen.UndefVar())
-	block, err := ast.Left.SSA(block, ctx, gen)
+	block, lArr, err := ast.Left.SSA(block, ctx, gen)
 	if err != nil {
-		return nil, err
-	}
-	l, err := ctx.Pop()
-	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	ctx.Push(gen.UndefVar())
-	block, err = ast.Right.SSA(block, ctx, gen)
+	block, rArr, err := ast.Right.SSA(block, ctx, gen)
 	if err != nil {
-		return nil, err
-	}
-	r, err := ctx.Pop()
-	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	// Check that l and r are of same type
+	// Check that l and r are of same type.
+	if len(lArr) == 0 {
+		return nil, nil, ctx.logger.Errorf(ast.Left.Location(),
+			"%s used as value", ast.Left)
+	}
+	if len(lArr) > 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Left.Location(),
+			"multiple-value %s in single-value context", ast.Left)
+	}
+	if len(rArr) == 0 {
+		return nil, nil, ctx.logger.Errorf(ast.Right.Location(),
+			"%s used as value", ast.Right)
+	}
+	if len(rArr) > 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Right.Location(),
+			"multiple-value %s in single-value context", ast.Right)
+	}
+	l := lArr[0]
+	r := rArr[0]
+
 	if !l.TypeCompatible(r) {
-		return nil, ctx.logger.Errorf(ast.Loc, "invalid types: %s %s %s",
-			l.Type, ast.Op, r.Type)
+		return nil, nil,
+			ctx.logger.Errorf(ast.Loc, "invalid types: %s %s %s",
+				l.Type, ast.Op, r.Type)
 	}
 
-	// Check that target is of correct type
-	t, err := ctx.Peek()
-	if err != nil {
-		return nil, err
-	}
+	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
 	case BinaryPlus, BinaryMinus, BinaryMult:
@@ -396,18 +410,10 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, ctx.logger.Errorf(ast.Loc,
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
 			"Binary.SSA '%s' not implemented yet", ast.Op)
 	}
-	if t.Type.Undefined() {
-		// Target undefined, use expression type.
-		ctx.Pop()
-		t.Type = resultType
-		ctx.Push(t)
-	} else if !t.Type.Equal(resultType) {
-		return nil, ctx.logger.Errorf(ast.Loc,
-			"cannot assign value of type %s to type %s", resultType, t.Type)
-	}
+	t := gen.AnonVar(resultType)
 
 	var instr ssa.Instr
 	switch ast.Op {
@@ -429,74 +435,43 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewAndInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, ctx.logger.Errorf(ast.Loc,
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
 			"Binary.SSA '%s' not implemented yet", ast.Op)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	block.AddInstr(instr)
 
-	return block, nil
+	return block, []ssa.Variable{t}, nil
 }
 
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
-		return nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}
 
 	v := b.Value(block, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	block.Bindings.Set(v)
 
-	t, err := ctx.Peek()
-	if err != nil {
-		return nil, err
-	}
-
-	if t.Type.Undefined() {
-		// Replace undefined variable with referenced one.
-		ctx.Pop()
-		ctx.Push(v)
-		return block, nil
-	}
-	// TODO: check assignment is valid.
-	block.AddInstr(ssa.NewMovInstr(v, t))
-	return block, nil
+	return block, []ssa.Variable{v}, nil
 }
 
 func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	v, err := ast.Variable()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	gen.AddConstant(v)
 
-	t, err := ctx.Peek()
-	if err != nil {
-		return nil, err
-	}
-	if t.Type.Undefined() {
-		// Replace undefined variable with constant.
-		ctx.Pop()
-		ctx.Push(v)
-		return block, nil
-	}
-	// Check that the assignment is valid.
-	if v.Type.Bits > t.Type.Bits {
-		return nil, ctx.logger.Errorf(ast.Loc,
-			"constant overflow when assigning %s to %s", v.Type, t.Type)
-	}
-
-	// XXX signed vs. unsigned
-	block.AddInstr(ssa.NewMovInstr(v, t))
-	return block, nil
+	return block, []ssa.Variable{v}, nil
 }

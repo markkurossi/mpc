@@ -174,10 +174,11 @@ func add2(val int) int {
 }
 
 func TestFixed(t *testing.T) {
-	for _, test := range fixedTests {
+	for idx, test := range fixedTests {
 		circ, err := Compile(test.Code, &Params{})
 		if err != nil {
-			t.Fatalf("Failed to compile test: %s", err)
+			t.Errorf("Failed to compile test %d: %s", idx, err)
+			continue
 		}
 		var n1 = []uint64{test.N1}
 		if test.Zero {
@@ -185,7 +186,8 @@ func TestFixed(t *testing.T) {
 		}
 		results, err := circ.Compute(n1, []uint64{test.N2})
 		if err != nil {
-			t.Fatalf("compute failed: %s", err)
+			t.Errorf("compute failed: %s", err)
+			continue
 		}
 		if results[0] != test.N3 {
 			t.Errorf("test failed: got %d, expected %d", results[0], test.N3)

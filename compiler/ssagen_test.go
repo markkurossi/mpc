@@ -22,6 +22,16 @@ type SSAGenTest struct {
 var ssagenTests = []SSAGenTest{
 	SSAGenTest{
 		Enabled: true,
+		Name:    "constant",
+		Code: `
+package main
+func main(a, b int) int {
+    return 42
+}
+`,
+	},
+	SSAGenTest{
+		Enabled: true,
 		Name:    "add",
 		Code: `
 package main
@@ -194,7 +204,7 @@ func TestSSAGen(t *testing.T) {
 			SSAOut: ssaOut,
 		})
 		if err != nil {
-			t.Fatalf("SSA test %d failed: %s", idx, err)
+			t.Fatalf("SSA test %s (%d) failed: %s", test.Name, idx, err)
 		}
 	}
 }
