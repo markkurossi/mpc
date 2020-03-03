@@ -17,7 +17,6 @@ type Codegen struct {
 	logger    *utils.Logger
 	Verbose   bool
 	Functions map[string]*Func
-	Func      *Func
 	Stack     []Compilation
 }
 
@@ -28,18 +27,28 @@ func NewCodegen(logger *utils.Logger, functions map[string]*Func) *Codegen {
 	}
 }
 
+func (ctx *Codegen) Func() *Func {
+	if len(ctx.Stack) == 0 {
+		return nil
+	}
+	return ctx.Stack[len(ctx.Stack)-1].Called
+}
+
 func (ctx *Codegen) Scope() int {
-	if ctx.Func != nil {
+	if ctx.Func() != nil {
 		return 1
 	}
 	return 0
 }
 
-func (ctx *Codegen) PushCompilation(start, ret, caller *ssa.Block) {
+func (ctx *Codegen) PushCompilation(start, ret, caller *ssa.Block,
+	called *Func) {
+
 	ctx.Stack = append(ctx.Stack, Compilation{
 		Start:  start,
 		Return: ret,
 		Caller: caller,
+		Called: called,
 	})
 }
 
@@ -66,4 +75,5 @@ type Compilation struct {
 	Start  *ssa.Block
 	Return *ssa.Block
 	Caller *ssa.Block
+	Called *Func
 }

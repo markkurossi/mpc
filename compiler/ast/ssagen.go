@@ -233,6 +233,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			ast.Name)
 	}
 
+	var callValues [][]ssa.Variable
 	var args []ssa.Variable
 	var v []ssa.Variable
 	var err error
@@ -242,15 +243,61 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		// XXX 0, 1, n values
-		args = append(args, v[0])
+		callValues = append(callValues, v)
+	}
+	if len(callValues) == 0 {
+		if len(called.Args) != 0 {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments in call to %s", ast.Name)
+			// TODO \thave ()
+			// TODO \twant (int, int)
+		}
+	} else if len(callValues) == 1 {
+		if len(callValues[0]) < len(called.Args) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments in call to %s", ast.Name)
+			// TODO \thave ()
+			// TODO \twant (int, int)
+		} else if len(callValues[0]) > len(called.Args) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"too many arguments in call to %s", ast.Name)
+			// TODO \thave (int, int)
+			// TODO \twant ()
+		}
+		args = callValues[0]
+	} else {
+		if len(callValues) < len(called.Args) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"not enough arguments in call to %s", ast.Name)
+			// TODO \thave ()
+			// TODO \twant (int, int)
+		} else if len(callValues) > len(called.Args) {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"too many arguments in call to %s", ast.Name)
+			// TODO \thave (int, int)
+			// TODO \twant ()
+		} else {
+			for idx, ca := range callValues {
+				expr := ast.Exprs[idx]
+				if len(ca) == 0 {
+					return nil, nil,
+						ctx.logger.Errorf(expr.Location(),
+							"%s used as value", expr)
+				} else if len(ca) > 1 {
+					return nil, nil,
+						ctx.logger.Errorf(expr.Location(),
+							"multiple-value %s in single-value context", expr)
+				}
+				args = append(args, ca[0])
+			}
+		}
 	}
 
 	// Return block.
 	rblock := gen.Block()
 	rblock.Bindings = block.Bindings.Clone()
 
-	ctx.PushCompilation(gen.Block(), gen.Block(), rblock)
+	ctx.PushCompilation(gen.Block(), gen.Block(), rblock, called)
 	_, returnValues, err := called.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
 		return nil, nil, err
@@ -279,7 +326,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
-	if ctx.Func == nil {
+	if ctx.Func() == nil {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "return outside function")
 	}
 
@@ -296,19 +343,19 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		rValues = append(rValues, v)
 	}
 	if len(rValues) == 0 {
-		if len(ctx.Func.Return) != 0 {
+		if len(ctx.Func().Return) != 0 {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
 				"not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
 		}
 	} else if len(rValues) == 1 {
-		if len(rValues[0]) < len(ctx.Func.Return) {
+		if len(rValues[0]) < len(ctx.Func().Return) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
 				"not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
-		} else if len(rValues[0]) > len(ctx.Func.Return) {
+		} else if len(rValues[0]) > len(ctx.Func().Return) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
 				"too many aruments to return")
 			// TODO \thave (nil, error)
@@ -316,34 +363,34 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		result = rValues[0]
 	} else {
-		if len(rValues) < len(ctx.Func.Return) {
+		if len(rValues) < len(ctx.Func().Return) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
 				"not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
-		} else if len(rValues) > len(ctx.Func.Return) {
+		} else if len(rValues) > len(ctx.Func().Return) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
 				"too many aruments to return")
 			// TODO \thave (nil, error)
 			// TODO \twant (error)
 		} else {
 			for idx, rv := range rValues {
+				expr := ast.Exprs[idx]
 				if len(rv) == 0 {
 					return nil, nil,
-						ctx.logger.Errorf(ast.Exprs[idx].Location(),
-							"%s used as value", ast.Exprs[idx])
+						ctx.logger.Errorf(expr.Location(),
+							"%s used as value", expr)
 				} else if len(rv) > 1 {
 					return nil, nil,
-						ctx.logger.Errorf(ast.Exprs[idx].Location(),
-							"multiple-value %s in single-value context",
-							ast.Exprs[idx])
+						ctx.logger.Errorf(expr.Location(),
+							"multiple-value %s in single-value context", expr)
 				}
 				result = append(result, rv[0])
 			}
 		}
 	}
 
-	for idx, r := range ctx.Func.Return {
+	for idx, r := range ctx.Func().Return {
 		v, err := gen.NewVar(r.Name, r.Type, ctx.Scope())
 		if err != nil {
 			return nil, nil, err

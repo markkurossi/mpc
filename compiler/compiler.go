@@ -81,12 +81,10 @@ func (unit *Unit) Compile(logger *utils.Logger, params *Params) (
 	gen := ssa.NewGenerator(params.Verbose)
 	ctx := ast.NewCodegen(logger, unit.Functions)
 
-	ctx.PushCompilation(gen.Block(), gen.Block(), nil)
+	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
 
 	// Compile main.
-	ctx.Func = main
 	_, returnVars, err := main.SSA(ctx.Start(), ctx, gen)
-	ctx.Func = nil
 	if err != nil {
 		return nil, err
 	}

@@ -184,6 +184,25 @@ func max(a, b int) int {
 }
 `,
 	},
+	SSAGenTest{
+		Enabled: true,
+		Name:    "Multiple-value-call",
+		Code: `
+package main
+func main(a, b int) int {
+    return Sum2(MinMax(a, b))
+}
+func Sum2(a, b int) int {
+    return a + b
+}
+func MinMax(a, b int) (int, int) {
+    if a > b {
+        return b, a
+    }
+    return a, b
+}
+`,
+	},
 }
 
 func TestSSAGen(t *testing.T) {
