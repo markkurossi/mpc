@@ -4,7 +4,7 @@
 
 The following circuit files are from the [SCALE-MAMBA Software](https://homes.esat.kuleuven.be/~nsmart/SCALE/):
 
- - sha256.circ
+ - [sha256.circ](sha256.circ)
 
 The SCALE-MAMBA license is as follows:
 

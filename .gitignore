@@ -14,7 +14,6 @@
 *.dot
 *.svg
 *.pdf
-*.circ
 *.ssa
 *.prof
 apps/circuit/circuit
