@@ -152,3 +152,41 @@ func TestArithmetics(t *testing.T) {
 		}
 	}
 }
+
+var mult512 = `
+package main
+func main(a, b int512) int512 {
+    return a * b
+}
+`
+
+func BenchmarkMult(b *testing.B) {
+	circ, err := Compile(mult512, &Params{})
+	if err != nil {
+		b.Fatalf("failed to compile test: %s", err)
+	}
+	var key [32]byte
+
+	gr, ew := io.Pipe()
+	er, gw := io.Pipe()
+
+	gio := bufio.NewReadWriter(bufio.NewReader(gr), bufio.NewWriter(gw))
+	eio := bufio.NewReadWriter(bufio.NewReader(er), bufio.NewWriter(ew))
+
+	gInput := []*big.Int{big.NewInt(int64(11))}
+	eInput := []*big.Int{big.NewInt(int64(13))}
+
+	go func() {
+		_, err := circuit.Garbler(circuit.NewConn(gio), circ,
+			gInput, key[:], false)
+		if err != nil {
+			b.Fatalf("Garbler failed: %s\n", err)
+		}
+	}()
+
+	_, err = circuit.Evaluator(circuit.NewConn(eio), circ,
+		eInput, key[:], false)
+	if err != nil {
+		b.Fatalf("Evaluator failed: %s\n", err)
+	}
+}

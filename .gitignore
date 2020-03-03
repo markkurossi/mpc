@@ -16,6 +16,7 @@
 *.pdf
 *.circ
 *.ssa
+*.prof
 apps/circuit/circuit
 apps/garbled/garbled
 apps/ot/ot
