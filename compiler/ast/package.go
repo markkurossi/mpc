@@ -18,6 +18,7 @@ import (
 
 type Package struct {
 	Package   string
+	Imports   []string
 	Bindings  ssa.Bindings
 	Functions map[string]*Func
 }

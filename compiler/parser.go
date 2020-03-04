@@ -39,6 +39,41 @@ func (p *Parser) Parse() (*ast.Package, error) {
 		Functions: make(map[string]*ast.Func),
 	}
 
+	token, err := p.lexer.Get()
+	if err != nil {
+		if err != io.EOF {
+			return nil, err
+		}
+		return unit, nil
+	}
+	if token.Type == T_SymImport {
+		var imports []string
+		_, err = p.needToken(T_LParen)
+		if err != nil {
+			return nil, err
+		}
+		for {
+			t, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if t.Type == T_RParen {
+				break
+			}
+			if t.Type != T_Constant {
+				return nil, p.errUnexpected(t, T_Constant)
+			}
+			str, ok := t.ConstVal.(string)
+			if !ok {
+				return nil, p.errUnexpected(t, T_Constant)
+			}
+			imports = append(imports, str)
+		}
+		unit.Imports = imports
+	} else {
+		p.lexer.Unget(token)
+	}
+
 	for {
 		err = p.parseToplevel(unit)
 		if err == io.EOF {
@@ -615,6 +650,28 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 		}
 	}
 }
+
+// PrimaryExpr =
+//     Operand |
+//     Conversion |
+//     MethodExpr |
+//     PrimaryExpr Selector |
+//     PrimaryExpr Index |
+//     PrimaryExpr Slice |
+//     PrimaryExpr TypeAssertion |
+//     PrimaryExpr Arguments .
+//
+// Selector       = "." identifier .
+// Index          = "[" Expression "]" .
+// Slice          = "[" [ Expression ] ":" [ Expression ] "]" |
+//                  "[" [ Expression ] ":" Expression ":" Expression "]" .
+// TypeAssertion  = "." "(" Type ")" .
+// Arguments      = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
+
+// Operand     = Literal | OperandName | "(" Expression ")" .
+// Literal     = BasicLit | CompositeLit | FunctionLit .
+// BasicLit    = int_lit | float_lit | imaginary_lit | rune_lit | string_lit .
+// OperandName = identifier | QualifiedIdent .
 
 func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	t, err := p.lexer.Get()

@@ -122,7 +122,7 @@ func TestParser(t *testing.T) {
 		parser := NewParser(logger, bytes.NewReader([]byte(test)))
 		unit, err := parser.Parse()
 		if err != nil {
-			t.Fatalf("Parse failed: %v", err)
+			t.Fatalf("Parse test %d failed: %v", idx, err)
 		}
 		if verbose {
 			fmt.Printf("package %s\n", unit.Package)

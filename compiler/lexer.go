@@ -27,6 +27,7 @@ const (
 	T_Constant
 	T_Symbol
 	T_SymPackage
+	T_SymImport
 	T_SymFunc
 	T_SymIf
 	T_SymElse
@@ -53,6 +54,7 @@ const (
 	T_LBrace
 	T_RBrace
 	T_Comma
+	T_Dot
 	T_Lt
 	T_Le
 	T_Gt
@@ -72,6 +74,7 @@ var tokenTypes = map[TokenType]string{
 	T_Constant:   "constant",
 	T_Symbol:     "symbol",
 	T_SymPackage: "package",
+	T_SymImport:  "import",
 	T_SymFunc:    "func",
 	T_SymIf:      "if",
 	T_SymElse:    "else",
@@ -98,6 +101,7 @@ var tokenTypes = map[TokenType]string{
 	T_LBrace:     "{",
 	T_RBrace:     "}",
 	T_Comma:      ",",
+	T_Dot:        ".",
 	T_Lt:         "<",
 	T_Le:         "<=",
 	T_Gt:         ">",
@@ -144,13 +148,14 @@ func (t TokenType) BinaryType() ast.BinaryType {
 }
 
 var symbols = map[string]TokenType{
-	"package": T_SymPackage,
+	"import":  T_SymImport,
+	"const":   T_SymConst,
+	"else":    T_SymElse,
 	"func":    T_SymFunc,
 	"if":      T_SymIf,
-	"else":    T_SymElse,
+	"package": T_SymPackage,
 	"return":  T_SymReturn,
 	"var":     T_SymVar,
-	"const":   T_SymConst,
 }
 
 var reType = regexp.MustCompilePOSIX(`^(uint|int|float)([[:digit:]]*)$`)
@@ -361,6 +366,8 @@ func (l *Lexer) Get() (*Token, error) {
 			return l.Token(T_RBrace), nil
 		case ',':
 			return l.Token(T_Comma), nil
+		case '.':
+			return l.Token(T_Dot), nil
 
 		case '<':
 			r, _, err := l.ReadRune()
@@ -441,6 +448,23 @@ func (l *Lexer) Get() (*Token, error) {
 				l.UnreadRune()
 				return l.Token(T_BitAnd), nil
 			}
+
+		case '"':
+			var val string
+			for {
+				r, _, err := l.ReadRune()
+				if err != nil {
+					return nil, err
+				}
+				if r == '"' {
+					break
+				}
+				// XXX escapes
+				val += string(r)
+			}
+			token := l.Token(T_Constant)
+			token.ConstVal = val
+			return token, nil
 
 		default:
 			if unicode.IsLetter(r) {
