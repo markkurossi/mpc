@@ -82,7 +82,7 @@ func main(a, b uint6) uint6 {
 
 func TestIterator(t *testing.T) {
 	for _, test := range iteratorTests {
-		circ, err := Compile(test.Code, &utils.Params{})
+		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
@@ -197,7 +197,7 @@ func MinMax(a, b int) (int, int) {
 
 func TestFixed(t *testing.T) {
 	for idx, test := range fixedTests {
-		circ, err := Compile(test.Code, &utils.Params{})
+		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
 			t.Errorf("Failed to compile test %d: %s", idx, err)
 			continue

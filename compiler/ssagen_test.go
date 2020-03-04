@@ -226,6 +226,21 @@ func main(a, b int) uint256 {
 package main
 
 import (
+    "math"
+)
+
+func main(a, b uint64) uint64 {
+    return math.MaxUint64(a, b)
+}
+`,
+	},
+	SSAGenTest{
+		Enabled: false,
+		Name:    "Packages",
+		Code: `
+package main
+
+import (
     "crypto/sha256"
 )
 
@@ -250,9 +265,9 @@ func TestSSAGen(t *testing.T) {
 `,
 				test.Name, test.Code)
 		}
-		_, err := Compile(test.Code, &utils.Params{
+		_, err := NewCompiler(&utils.Params{
 			SSAOut: ssaOut,
-		})
+		}).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("SSA test %s (%d) failed: %s", test.Name, idx, err)
 		}

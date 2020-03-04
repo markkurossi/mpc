@@ -227,7 +227,8 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
-	called, ok := ctx.Functions[ast.Name]
+	// XXX packages
+	called, ok := ctx.Functions[ast.Name.Name]
 	if !ok {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
 			ast.Name)
@@ -497,7 +498,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	b, err := block.Bindings.Get(ast.Name)
+	// XXX package
+	b, err := block.Bindings.Get(ast.Name.Name)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}

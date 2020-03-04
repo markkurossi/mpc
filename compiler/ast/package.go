@@ -17,10 +17,18 @@ import (
 )
 
 type Package struct {
-	Package   string
-	Imports   []string
+	Name      string
+	Imports   map[string]string
 	Bindings  ssa.Bindings
 	Functions map[string]*Func
+}
+
+func NewPackage(name string) *Package {
+	return &Package{
+		Name:      name,
+		Imports:   make(map[string]string),
+		Functions: make(map[string]*Func),
+	}
 }
 
 func (unit *Package) Compile(logger *utils.Logger, params *utils.Params) (

@@ -37,6 +37,18 @@ func indent(w io.Writer, indent int) {
 	}
 }
 
+type Identifier struct {
+	Package string
+	Name    string
+}
+
+func (i Identifier) String() string {
+	if len(i.Package) == 0 {
+		return i.Name
+	}
+	return fmt.Sprintf("%s.%s", i.Package, i.Name)
+}
+
 type AST interface {
 	String() string
 	Location() utils.Point
@@ -223,7 +235,7 @@ func (ast *If) Fprint(w io.Writer, ind int) {
 
 type Call struct {
 	Loc   utils.Point
-	Name  string
+	Name  Identifier
 	Exprs []AST
 }
 
@@ -347,12 +359,11 @@ func (ast *Binary) FprintDebug(w io.Writer, ind int) {
 
 type VariableRef struct {
 	Loc  utils.Point
-	Name string
-	Var  *Variable
+	Name Identifier
 }
 
 func (ast *VariableRef) String() string {
-	return ast.Name
+	return ast.Name.String()
 }
 
 func (ast *VariableRef) Location() utils.Point {

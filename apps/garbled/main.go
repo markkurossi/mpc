@@ -117,7 +117,7 @@ func main() {
 				}
 			}
 
-			circ, err = compiler.CompileFile(arg, params)
+			circ, err = compiler.NewCompiler(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				os.Exit(1)

@@ -17,37 +17,37 @@ import (
 )
 
 type Parser struct {
-	logger *utils.Logger
-	lexer  *Lexer
+	compiler *Compiler
+	logger   *utils.Logger
+	lexer    *Lexer
+	pkg      *ast.Package
 }
 
-func NewParser(logger *utils.Logger, in io.Reader) *Parser {
+func NewParser(compiler *Compiler, logger *utils.Logger, in io.Reader) *Parser {
 	return &Parser{
-		logger: logger,
-		lexer:  NewLexer(in),
+		compiler: compiler,
+		logger:   logger,
+		lexer:    NewLexer(in),
 	}
 }
 
 func (p *Parser) Parse() (*ast.Package, error) {
-	pkg, err := p.parsePackage()
+	name, err := p.parsePackage()
 	if err != nil {
 		return nil, err
 	}
 
-	unit := &ast.Package{
-		Package:   pkg,
-		Functions: make(map[string]*ast.Func),
-	}
+	p.pkg = ast.NewPackage(name)
 
 	token, err := p.lexer.Get()
 	if err != nil {
 		if err != io.EOF {
 			return nil, err
 		}
-		return unit, nil
+		return p.pkg, nil
 	}
 	if token.Type == T_SymImport {
-		var imports []string
+		imports := make(map[string]string)
 		_, err = p.needToken(T_LParen)
 		if err != nil {
 			return nil, err
@@ -67,15 +67,21 @@ func (p *Parser) Parse() (*ast.Package, error) {
 			if !ok {
 				return nil, p.errUnexpected(t, T_Constant)
 			}
-			imports = append(imports, str)
+			_, ok = imports[str]
+			if ok {
+				return nil, p.errf(t.From,
+					"package %s imported more than once", str)
+			}
+			// XXX alias = package
+			imports[str] = str
 		}
-		unit.Imports = imports
+		p.pkg.Imports = imports
 	} else {
 		p.lexer.Unget(token)
 	}
 
 	for {
-		err = p.parseToplevel(unit)
+		err = p.parseToplevel()
 		if err == io.EOF {
 			break
 		} else if err != nil {
@@ -83,10 +89,10 @@ func (p *Parser) Parse() (*ast.Package, error) {
 		}
 	}
 
-	return unit, nil
+	return p.pkg, nil
 }
 
-func (p *Parser) err(loc utils.Point, format string, a ...interface{}) error {
+func (p *Parser) errf(loc utils.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
 
 	p.lexer.FlushEOL()
@@ -114,7 +120,7 @@ func (p *Parser) err(loc utils.Point, format string, a ...interface{}) error {
 }
 
 func (p *Parser) errUnexpected(offending *Token, expected TokenType) error {
-	return p.err(offending.From, "unexpected token '%s': expected '%s'",
+	return p.errf(offending.From, "unexpected token '%s': expected '%s'",
 		offending, expected)
 }
 
@@ -151,34 +157,34 @@ func (p *Parser) parsePackage() (string, error) {
 	return t.StrVal, nil
 }
 
-func (p *Parser) parseToplevel(unit *ast.Package) error {
+func (p *Parser) parseToplevel() error {
 	token, err := p.lexer.Get()
 	if err != nil {
 		return err
 	}
 	switch token.Type {
 	case T_SymConst:
-		return p.parseConst(unit)
+		return p.parseConst()
 
 	case T_SymFunc:
 		f, err := p.parseFunc()
 		if err != nil {
 			return err
 		}
-		_, ok := unit.Functions[f.Name]
+		_, ok := p.pkg.Functions[f.Name]
 		if ok {
-			return p.err(f.Loc, "function %s already defined", f.Name)
+			return p.errf(f.Loc, "function %s already defined", f.Name)
 		}
-		unit.Functions[f.Name] = f
+		p.pkg.Functions[f.Name] = f
 
 	default:
-		return p.err(token.From, "unexpected token '%s'", token.Type)
+		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
 
 	return nil
 }
 
-func (p *Parser) parseConst(unit *ast.Package) error {
+func (p *Parser) parseConst() error {
 	token, err := p.lexer.Get()
 	if err != nil {
 		return err
@@ -210,7 +216,7 @@ func (p *Parser) parseConst(unit *ast.Package) error {
 
 		constVal, ok := value.(*ast.Constant)
 		if !ok {
-			return p.err(value.Location(), "value %s used as constant", value)
+			return p.errf(value.Location(), "value %s used as constant", value)
 		}
 		constVar, err := constVal.Variable()
 		if err != nil {
@@ -220,18 +226,18 @@ func (p *Parser) parseConst(unit *ast.Package) error {
 		// XXX Check type compatibility
 		_ = constType
 
-		_, err = unit.Bindings.Get(token.StrVal)
+		_, err = p.pkg.Bindings.Get(token.StrVal)
 		if err == nil {
-			return p.err(token.From, "constant %s already defined",
+			return p.errf(token.From, "constant %s already defined",
 				token.StrVal)
 		}
 		constVar.Name = token.StrVal
-		unit.Bindings.Set(constVar)
+		p.pkg.Bindings.Set(constVar)
 
 		return nil
 
 	default:
-		return p.err(token.From, "unexpected token '%s'", token.Type)
+		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
 }
 
@@ -490,10 +496,10 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 
 		default:
 			p.lexer.Unget(t)
-			return nil, p.err(t.From, "syntax error")
+			return nil, p.errf(t.From, "syntax error")
 		}
 	}
-	return nil, p.err(tStmt.From, "syntax error")
+	return nil, p.errf(tStmt.From, "syntax error")
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {
@@ -668,24 +674,24 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 // TypeAssertion  = "." "(" Type ")" .
 // Arguments      = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
 
-// Operand     = Literal | OperandName | "(" Expression ")" .
-// Literal     = BasicLit | CompositeLit | FunctionLit .
-// BasicLit    = int_lit | float_lit | imaginary_lit | rune_lit | string_lit .
-// OperandName = identifier | QualifiedIdent .
-
 func (p *Parser) parseExprPrimary() (ast.AST, error) {
-	t, err := p.lexer.Get()
+	primary, err := p.parseOperand()
 	if err != nil {
 		return nil, err
 	}
-	switch t.Type {
-	case T_Identifier:
-		n, err := p.lexer.Get()
+
+	for {
+		t, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		if n.Type == T_LParen {
-			// Function call.
+		switch t.Type {
+		case T_Dot:
+			// Selector.
+			return nil, fmt.Errorf("Selector not implemented yet")
+
+		case T_LParen:
+			// Arguments.
 			var arguments []ast.AST
 			for {
 				expr, err := p.parseExpr()
@@ -698,30 +704,95 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				if n.Type == T_RParen {
 					break
 				} else if n.Type != T_Comma {
-					return nil, p.err(n.From, "unexpected token %s", n)
+					return nil, p.errf(n.From, "unexpected token %s", n)
 				}
 			}
+			vr, ok := primary.(*ast.VariableRef)
+			if !ok {
+				return nil, p.errf(primary.Location(),
+					"non-function %s used as function", primary)
+			}
 			return &ast.Call{
-				Loc:   t.From,
-				Name:  t.StrVal,
+				Loc:   primary.Location(),
+				Name:  vr.Name,
 				Exprs: arguments,
 			}, nil
-		} else {
-			// Variable reference.
-			p.lexer.Unget(n)
-			return &ast.VariableRef{
-				Loc:  t.From,
-				Name: t.StrVal,
-			}, nil
-		}
 
-	case T_Constant:
+		default:
+			p.lexer.Unget(t)
+			return primary, nil
+		}
+	}
+}
+
+// Operand     = Literal | OperandName | "(" Expression ")" .
+// Literal     = BasicLit | CompositeLit | FunctionLit .
+// BasicLit    = int_lit | float_lit | imaginary_lit | rune_lit | string_lit .
+// OperandName = identifier | QualifiedIdent .
+//
+// QualifiedIdent = PackageName "." identifier .
+
+func (p *Parser) parseOperand() (ast.AST, error) {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_Constant: // Literal
 		return &ast.Constant{
 			Loc:   t.From,
 			Value: t.ConstVal,
 		}, nil
+
+	case T_Identifier: // OperandName
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == T_Dot {
+			// Check that package is imported.
+			_, ok := p.pkg.Imports[t.StrVal]
+			if !ok {
+				return nil, p.errf(t.From, "undefined: %s", t.StrVal)
+			}
+
+			id, err := p.needToken(T_Identifier)
+			if err != nil {
+				return nil, err
+			}
+			// QualifiedIdent.
+			return &ast.VariableRef{
+				Loc: t.From,
+				Name: ast.Identifier{
+					Package: t.StrVal,
+					Name:    id.StrVal,
+				},
+			}, nil
+		} else {
+			// Identifier.
+			p.lexer.Unget(n)
+			return &ast.VariableRef{
+				Loc: t.From,
+				Name: ast.Identifier{
+					Name: t.StrVal,
+				},
+			}, nil
+		}
+
+	case T_LParen: // '(' Expression ')'
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_RParen)
+		if err != nil {
+			return nil, err
+		}
+		return expr, nil
+
+	default:
+		p.lexer.Unget(t)
+		return nil, p.errf(t.From,
+			"unexpected token '%s' while parsing expression", t)
 	}
-	p.lexer.Unget(t)
-	return nil, p.err(t.From, "unexpected token '%s' while parsing expression",
-		t)
 }

@@ -15,26 +15,38 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func Compile(data string, params *utils.Params) (*circuit.Circuit, error) {
-	return compile("{data}", strings.NewReader(data), params)
+type Compiler struct {
+	params *utils.Params
 }
 
-func CompileFile(file string, params *utils.Params) (*circuit.Circuit, error) {
+func NewCompiler(params *utils.Params) *Compiler {
+	return &Compiler{
+		params: params,
+	}
+}
+
+func (c *Compiler) Compile(data string) (*circuit.Circuit, error) {
+	return c.compile("{data}", strings.NewReader(data))
+}
+
+func (c *Compiler) CompileFile(file string) (*circuit.Circuit, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
-	return compile(file, f, params)
+	defer f.Close()
+	return c.compile(file, f)
 }
 
-func compile(name string, in io.Reader, params *utils.Params) (
+func (c *Compiler) compile(name string, in io.Reader) (
 	*circuit.Circuit, error) {
 
 	logger := utils.NewLogger(name, os.Stdout)
-	parser := NewParser(logger, in)
+
+	parser := NewParser(c, logger, in)
 	unit, err := parser.Parse()
 	if err != nil {
 		return nil, err
 	}
-	return unit.Compile(logger, params)
+	return unit.Compile(logger, c.params)
 }
