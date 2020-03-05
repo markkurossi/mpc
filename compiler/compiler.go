@@ -47,12 +47,12 @@ func (c *Compiler) compile(name string, in io.Reader) (
 	*circuit.Circuit, error) {
 
 	logger := utils.NewLogger(name, os.Stdout)
-	unit, err := c.parse(name, in, logger, nil)
+	pkg, err := c.parse(name, in, logger, ast.NewPackage("main"))
 	if err != nil {
 		return nil, err
 	}
 
-	return unit.Compile(c.packages, logger, c.params)
+	return pkg.Compile(c.packages, logger, c.params)
 }
 
 func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger,
@@ -77,6 +77,7 @@ func (c *Compiler) parsePkg(name string) (*ast.Package, error) {
 	if ok {
 		return pkg, nil
 	}
+	pkg = ast.NewPackage(name)
 
 	if c.params.Verbose {
 		fmt.Printf("looking for package %s\n", name)
