@@ -1,0 +1,15 @@
+// -*- go -*-
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package math
+
+func MaxUint64(a, b uint64) uint64 {
+	if a > b {
+		return a
+	}
+	return b
+}

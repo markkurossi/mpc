@@ -17,22 +17,24 @@ import (
 )
 
 type Package struct {
-	Name      string
-	Imports   map[string]string
-	Bindings  ssa.Bindings
-	Functions map[string]*Func
+	Name       string
+	Imports    map[string]string
+	Bindings   ssa.Bindings
+	Functions  map[string]*Func
+	References map[string]string
 }
 
 func NewPackage(name string) *Package {
 	return &Package{
-		Name:      name,
-		Imports:   make(map[string]string),
-		Functions: make(map[string]*Func),
+		Name:       name,
+		Imports:    make(map[string]string),
+		Functions:  make(map[string]*Func),
+		References: make(map[string]string),
 	}
 }
 
-func (unit *Package) Compile(logger *utils.Logger, params *utils.Params) (
-	*circuit.Circuit, error) {
+func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
+	params *utils.Params) (*circuit.Circuit, error) {
 
 	main, ok := unit.Functions["main"]
 	if !ok {
@@ -40,7 +42,7 @@ func (unit *Package) Compile(logger *utils.Logger, params *utils.Params) (
 	}
 
 	gen := ssa.NewGenerator(params.Verbose)
-	ctx := NewCodegen(logger, unit.Functions)
+	ctx := NewCodegen(logger, packages)
 
 	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
 	ctx.Start().Bindings = unit.Bindings.Clone()

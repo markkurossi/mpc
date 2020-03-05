@@ -227,8 +227,12 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
-	// XXX packages
-	called, ok := ctx.Functions[ast.Name.Name]
+	pkg, ok := ctx.Packages[ast.Name.Package]
+	if !ok {
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+			ast.Name.Package)
+	}
+	called, ok := pkg.Functions[ast.Name.Name]
 	if !ok {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
 			ast.Name)

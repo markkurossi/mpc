@@ -7,21 +7,26 @@
 package compiler
 
 import (
+	"fmt"
 	"io"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Compiler struct {
-	params *utils.Params
+	params   *utils.Params
+	packages map[string]*ast.Package
 }
 
 func NewCompiler(params *utils.Params) *Compiler {
 	return &Compiler{
-		params: params,
+		params:   params,
+		packages: make(map[string]*ast.Package),
 	}
 }
 
@@ -42,11 +47,49 @@ func (c *Compiler) compile(name string, in io.Reader) (
 	*circuit.Circuit, error) {
 
 	logger := utils.NewLogger(name, os.Stdout)
-
-	parser := NewParser(c, logger, in)
-	unit, err := parser.Parse()
+	unit, err := c.parse(name, in, logger)
 	if err != nil {
 		return nil, err
 	}
-	return unit.Compile(logger, c.params)
+
+	return unit.Compile(c.packages, logger, c.params)
+}
+
+func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger) (
+	*ast.Package, error) {
+	parser := NewParser(c, logger, in)
+	pkg, err := parser.Parse()
+	if err != nil {
+		return nil, err
+	}
+	c.packages[pkg.Name] = pkg
+
+	for _, ref := range pkg.References {
+		c.parsePkg(ref)
+	}
+
+	return pkg, nil
+}
+
+func (c *Compiler) parsePkg(name string) error {
+	_, ok := c.packages[name]
+	if ok {
+		return nil
+	}
+
+	fmt.Printf("Looking for package %s\n", name)
+	prefix := "go/src/github.com/markkurossi/mpc/pkg"
+	expanded := path.Join(os.Getenv("HOME"), prefix,
+		fmt.Sprintf("%s/integer.mpcl", name))
+	fmt.Printf("=> %s\n", expanded)
+
+	f, err := os.Open(expanded)
+	if err != nil {
+		fmt.Printf("pkg not found: %s\n", err)
+		return fmt.Errorf("package %s not found", name)
+	}
+	defer f.Close()
+
+	_, err = c.parse(expanded, f, utils.NewLogger(expanded, os.Stdout))
+	return err
 }

@@ -1,0 +1,11 @@
+// -*- go -*-
+
+package main
+
+import (
+	"math"
+)
+
+func main(a, b uint64) uint64 {
+	return math.MaxUint64(a, b)
+}

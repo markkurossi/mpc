@@ -220,7 +220,7 @@ func main(a, b int) uint256 {
 `,
 	},
 	SSAGenTest{
-		Enabled: false,
+		Enabled: true,
 		Name:    "Packages",
 		Code: `
 package main

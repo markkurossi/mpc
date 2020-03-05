@@ -751,10 +751,11 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		}
 		if n.Type == T_Dot {
 			// Check that package is imported.
-			_, ok := p.pkg.Imports[t.StrVal]
+			name, ok := p.pkg.Imports[t.StrVal]
 			if !ok {
 				return nil, p.errf(t.From, "undefined: %s", t.StrVal)
 			}
+			p.pkg.References[name] = name
 
 			id, err := p.needToken(T_Identifier)
 			if err != nil {
@@ -769,12 +770,13 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 				},
 			}, nil
 		} else {
-			// Identifier.
+			// Identifier in current package.
 			p.lexer.Unget(n)
 			return &ast.VariableRef{
 				Loc: t.From,
 				Name: ast.Identifier{
-					Name: t.StrVal,
+					Package: p.pkg.Name,
+					Name:    t.StrVal,
 				},
 			}, nil
 		}
