@@ -31,13 +31,20 @@ func NewParser(compiler *Compiler, logger *utils.Logger, in io.Reader) *Parser {
 	}
 }
 
-func (p *Parser) Parse() (*ast.Package, error) {
+func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 	name, err := p.parsePackage()
 	if err != nil {
 		return nil, err
 	}
-
-	p.pkg = ast.NewPackage(name)
+	if pkg == nil {
+		p.pkg = ast.NewPackage(name)
+	} else {
+		// This source file must be in the same package.
+		if name != pkg.Name {
+			return nil, fmt.Errorf("found packages %s and %s", name, pkg.Name)
+		}
+		p.pkg = pkg
+	}
 
 	token, err := p.lexer.Get()
 	if err != nil {

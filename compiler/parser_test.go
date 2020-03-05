@@ -120,7 +120,7 @@ func TestParser(t *testing.T) {
 		}
 		logger := utils.NewLogger(fmt.Sprintf("{test %d}", idx), os.Stdout)
 		parser := NewParser(nil, logger, bytes.NewReader([]byte(test)))
-		pkg, err := parser.Parse()
+		pkg, err := parser.Parse(nil)
 		if err != nil {
 			t.Fatalf("Parse test %d failed: %v", idx, err)
 		}

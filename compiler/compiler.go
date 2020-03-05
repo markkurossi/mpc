@@ -47,7 +47,7 @@ func (c *Compiler) compile(name string, in io.Reader) (
 	*circuit.Circuit, error) {
 
 	logger := utils.NewLogger(name, os.Stdout)
-	unit, err := c.parse(name, in, logger)
+	unit, err := c.parse(name, in, logger, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -55,10 +55,11 @@ func (c *Compiler) compile(name string, in io.Reader) (
 	return unit.Compile(c.packages, logger, c.params)
 }
 
-func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger) (
-	*ast.Package, error) {
+func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger,
+	pkg *ast.Package) (*ast.Package, error) {
+
 	parser := NewParser(c, logger, in)
-	pkg, err := parser.Parse()
+	pkg, err := parser.Parse(pkg)
 	if err != nil {
 		return nil, err
 	}
@@ -71,25 +72,56 @@ func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger) (
 	return pkg, nil
 }
 
-func (c *Compiler) parsePkg(name string) error {
-	_, ok := c.packages[name]
+func (c *Compiler) parsePkg(name string) (*ast.Package, error) {
+	pkg, ok := c.packages[name]
 	if ok {
-		return nil
+		return pkg, nil
 	}
 
-	fmt.Printf("Looking for package %s\n", name)
+	if c.params.Verbose {
+		fmt.Printf("looking for package %s\n", name)
+	}
 	prefix := "go/src/github.com/markkurossi/mpc/pkg"
-	expanded := path.Join(os.Getenv("HOME"), prefix,
-		fmt.Sprintf("%s/integer.mpcl", name))
-	fmt.Printf("=> %s\n", expanded)
 
-	f, err := os.Open(expanded)
+	dir := path.Join(os.Getenv("HOME"), prefix, name)
+	df, err := os.Open(dir)
 	if err != nil {
-		fmt.Printf("pkg not found: %s\n", err)
-		return fmt.Errorf("package %s not found", name)
+		return nil, fmt.Errorf("package %s not found: %s", name, err)
 	}
-	defer f.Close()
+	defer df.Close()
 
-	_, err = c.parse(expanded, f, utils.NewLogger(expanded, os.Stdout))
-	return err
+	files, err := df.Readdirnames(-1)
+	if err != nil {
+		return nil, fmt.Errorf("package %s not found: %s", name, err)
+	}
+	var mpcls []string
+	for _, f := range files {
+		if strings.HasSuffix(f, ".mpcl") {
+			mpcls = append(mpcls, f)
+		}
+	}
+	if len(mpcls) == 0 {
+		return nil, fmt.Errorf("package %s is empty", name)
+	}
+
+	for _, mpcl := range mpcls {
+		fp := path.Join(dir, mpcl)
+
+		if c.params.Verbose {
+			fmt.Printf(" - parsing %v\n", fp)
+		}
+
+		f, err := os.Open(fp)
+		if err != nil {
+			fmt.Printf("pkg not found: %s\n", err)
+			return nil, fmt.Errorf("error reading package %s: %s", name, err)
+		}
+		defer f.Close()
+
+		pkg, err = c.parse(fp, f, utils.NewLogger(fp, os.Stdout), pkg)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return pkg, nil
 }
