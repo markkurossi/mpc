@@ -502,19 +502,35 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	// XXX package
-	b, err := block.Bindings.Get(ast.Name.Name)
+	var b ssa.Binding
+	var err error
+
+	if len(ast.Name.Package) > 0 {
+		pkg, ok := ctx.Packages[ast.Name.Package]
+		if !ok {
+			return nil, nil,
+				ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+					ast.Name.Package)
+		}
+		b, err = pkg.Bindings.Get(ast.Name.Name)
+	} else {
+		b, err = block.Bindings.Get(ast.Name.Name)
+	}
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
 	}
 
-	v := b.Value(block, gen)
+	value := b.Value(block, gen)
 	if err != nil {
 		return nil, nil, err
 	}
-	block.Bindings.Set(v)
+	block.Bindings.Set(value)
 
-	return block, []ssa.Variable{v}, nil
+	if value.Const {
+		gen.AddConstant(value)
+	}
+
+	return block, []ssa.Variable{value}, nil
 }
 
 func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,

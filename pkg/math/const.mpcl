@@ -1,0 +1,13 @@
+// -*- go -*-
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package math
+
+const MaxUint8 = 0xff
+const MaxUint16 = 0xffff
+const MaxUint32 = 0xffffffff
+const MaxUint64 = 0xffffffffffffffff

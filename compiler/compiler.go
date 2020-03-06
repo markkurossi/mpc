@@ -65,22 +65,25 @@ func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger,
 	}
 	c.packages[pkg.Name] = pkg
 
-	for _, ref := range pkg.References {
-		c.parsePkg(ref)
+	for alias, name := range pkg.References {
+		_, err := c.parsePkg(alias, name)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return pkg, nil
 }
 
-func (c *Compiler) parsePkg(name string) (*ast.Package, error) {
-	pkg, ok := c.packages[name]
+func (c *Compiler) parsePkg(alias, name string) (*ast.Package, error) {
+	pkg, ok := c.packages[alias]
 	if ok {
 		return pkg, nil
 	}
-	pkg = ast.NewPackage(name)
+	pkg = ast.NewPackage(alias)
 
 	if c.params.Verbose {
-		fmt.Printf("looking for package %s\n", name)
+		fmt.Printf("looking for package %s (%s)\n", alias, name)
 	}
 	prefix := "go/src/github.com/markkurossi/mpc/pkg"
 

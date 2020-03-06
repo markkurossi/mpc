@@ -112,14 +112,6 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 	cc := circuits.NewCompiler(g, e, r)
 
-	for _, bind := range unit.Bindings {
-		v, ok := bind.Bound.(*ssa.Variable)
-		if !ok || !v.Const {
-			continue
-		}
-		gen.AddConstant(*v)
-	}
-
 	err = gen.DefineConstants(cc)
 	if err != nil {
 		return nil, err

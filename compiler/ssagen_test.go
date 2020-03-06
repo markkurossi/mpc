@@ -235,7 +235,7 @@ func main(a, b uint64) uint64 {
 `,
 	},
 	SSAGenTest{
-		Enabled: false,
+		Enabled: true,
 		Name:    "Packages",
 		Code: `
 package main
@@ -244,7 +244,7 @@ import (
     "crypto/sha256"
 )
 
-func main(data uint512) uint256 {
+func main(data, a uint512) uint256 {
     return sha256.Compress(data, sha256.H0)
 }
 `,
@@ -257,8 +257,10 @@ func TestSSAGen(t *testing.T) {
 			continue
 		}
 		var ssaOut io.WriteCloser
+		var verbose bool
 		if testing.Verbose() {
 			ssaOut = os.Stdout
+			verbose = true
 			fmt.Printf(`==================================================
 // Test '%s':
 %s--------------------------------------------------
@@ -266,7 +268,8 @@ func TestSSAGen(t *testing.T) {
 				test.Name, test.Code)
 		}
 		_, err := NewCompiler(&utils.Params{
-			SSAOut: ssaOut,
+			Verbose: verbose,
+			SSAOut:  ssaOut,
 		}).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("SSA test %s (%d) failed: %s", test.Name, idx, err)

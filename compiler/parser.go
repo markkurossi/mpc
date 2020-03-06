@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/types"
@@ -67,6 +68,15 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 			if t.Type == T_RParen {
 				break
 			}
+
+			var alias string
+			if t.Type == T_Identifier {
+				alias = t.StrVal
+				t, err = p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+			}
 			if t.Type != T_Constant {
 				return nil, p.errUnexpected(t, T_Constant)
 			}
@@ -79,8 +89,13 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 				return nil, p.errf(t.From,
 					"package %s imported more than once", str)
 			}
-			// XXX alias = package
-			imports[str] = str
+
+			if len(alias) == 0 {
+				parts := strings.Split(str, "/")
+				alias = parts[len(parts)-1]
+			}
+
+			imports[alias] = str
 		}
 		p.pkg.Imports = imports
 	} else {
@@ -161,7 +176,8 @@ func (p *Parser) parsePackage() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return t.StrVal, nil
+	parts := strings.Split(t.StrVal, "/")
+	return parts[len(parts)-1], nil
 }
 
 func (p *Parser) parseToplevel() error {
@@ -690,6 +706,9 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
+			if err == io.EOF {
+				return primary, nil
+			}
 			return nil, err
 		}
 		switch t.Type {
@@ -718,6 +737,9 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			if !ok {
 				return nil, p.errf(primary.Location(),
 					"non-function %s used as function", primary)
+			}
+			if len(vr.Name.Package) == 0 {
+				vr.Name.Package = p.pkg.Name
 			}
 			return &ast.Call{
 				Loc:   primary.Location(),
@@ -762,7 +784,7 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 			if !ok {
 				return nil, p.errf(t.From, "undefined: %s", t.StrVal)
 			}
-			p.pkg.References[name] = name
+			p.pkg.References[t.StrVal] = name
 
 			id, err := p.needToken(T_Identifier)
 			if err != nil {
@@ -782,8 +804,7 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 			return &ast.VariableRef{
 				Loc: t.From,
 				Name: ast.Identifier{
-					Package: p.pkg.Name,
-					Name:    t.StrVal,
+					Name: t.StrVal,
 				},
 			}, nil
 		}
