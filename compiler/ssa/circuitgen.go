@@ -210,7 +210,6 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			var circOut []*circuits.Wire
 
 			for _, r := range instr.Ret {
-				fmt.Printf("*** %s: %d\n", r.String(), r.Type.Bits)
 				o, err := cc.Wires(r.String(), r.Type.Bits)
 				if err != nil {
 					return err
@@ -220,15 +219,12 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 
 			// Add intermediate wires.
 			nint := instr.Circ.NumWires - len(circWires) - len(circOut)
-			fmt.Printf("*** %d intermediate wires\n", nint)
 			for i := 0; i < nint; i++ {
 				circWires = append(circWires, circuits.NewWire())
 			}
 
 			// Append output wires.
 			circWires = append(circWires, circOut...)
-			fmt.Printf("*** NumWires=%d (%d)\n", len(circWires),
-				instr.Circ.NumWires)
 
 			// Add gates.
 			for _, gate := range instr.Circ.Gates {

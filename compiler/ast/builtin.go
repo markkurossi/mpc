@@ -43,7 +43,6 @@ var builtins = []Builtin{
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
-	fmt.Printf("args: %v\n", args)
 
 	if len(args) < 1 {
 		return nil, nil, ctx.logger.Errorf(loc,
