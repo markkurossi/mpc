@@ -14,14 +14,12 @@ import (
 )
 
 type Logger struct {
-	input string
-	out   io.Writer
+	out io.Writer
 }
 
-func NewLogger(input string, out io.Writer) *Logger {
+func NewLogger(out io.Writer) *Logger {
 	return &Logger{
-		input: input,
-		out:   out,
+		out: out,
 	}
 }
 
@@ -31,9 +29,9 @@ func (l *Logger) Errorf(loc Point, format string, a ...interface{}) error {
 		msg += "\n"
 	}
 	if loc.Undefined() {
-		fmt.Fprintf(l.out, "%s: %s", l.input, msg)
+		fmt.Fprintf(l.out, "%s: %s", loc.Source, msg)
 	} else {
-		fmt.Fprintf(l.out, "%s:%s: %s", l.input, loc, msg)
+		fmt.Fprintf(l.out, "%s: %s", loc, msg)
 	}
 
 	idx := strings.IndexRune(msg, '\n')
@@ -49,8 +47,8 @@ func (l *Logger) Warningf(loc Point, format string, a ...interface{}) {
 		msg += "\n"
 	}
 	if loc.Undefined() {
-		fmt.Fprintf(l.out, "%s: warning: %s", l.input, msg)
+		fmt.Fprintf(l.out, "%s: warning: %s", loc.Source, msg)
 	} else {
-		fmt.Fprintf(l.out, "%s:%s: warning: %s", l.input, loc, msg)
+		fmt.Fprintf(l.out, "%s: warning: %s", loc, msg)
 	}
 }

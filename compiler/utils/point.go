@@ -11,12 +11,13 @@ import (
 )
 
 type Point struct {
-	Line int // 1-based
-	Col  int // 0-based
+	Source string
+	Line   int // 1-based
+	Col    int // 0-based
 }
 
 func (p Point) String() string {
-	return fmt.Sprintf("%d:%d", p.Line, p.Col)
+	return fmt.Sprintf("%s:%d:%d", p.Source, p.Line, p.Col)
 }
 
 func (p Point) Undefined() bool {

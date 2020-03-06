@@ -43,11 +43,11 @@ func (c *Compiler) CompileFile(file string) (*circuit.Circuit, error) {
 	return c.compile(file, f)
 }
 
-func (c *Compiler) compile(name string, in io.Reader) (
+func (c *Compiler) compile(source string, in io.Reader) (
 	*circuit.Circuit, error) {
 
-	logger := utils.NewLogger(name, os.Stdout)
-	pkg, err := c.parse(name, in, logger, ast.NewPackage("main"))
+	logger := utils.NewLogger(os.Stdout)
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
 	if err != nil {
 		return nil, err
 	}
@@ -55,10 +55,10 @@ func (c *Compiler) compile(name string, in io.Reader) (
 	return pkg.Compile(c.packages, logger, c.params)
 }
 
-func (c *Compiler) parse(name string, in io.Reader, logger *utils.Logger,
+func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
 	pkg *ast.Package) (*ast.Package, error) {
 
-	parser := NewParser(c, logger, in)
+	parser := NewParser(source, c, logger, in)
 	pkg, err := parser.Parse(pkg)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func (c *Compiler) parsePkg(alias, name string) (*ast.Package, error) {
 		}
 		defer f.Close()
 
-		pkg, err = c.parse(fp, f, utils.NewLogger(fp, os.Stdout), pkg)
+		pkg, err = c.parse(fp, f, utils.NewLogger(os.Stdout), pkg)
 		if err != nil {
 			return nil, err
 		}

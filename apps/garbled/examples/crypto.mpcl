@@ -6,6 +6,6 @@ import (
 	"crypto/sha256"
 )
 
-func main(a, b uint64) uint64 {
-	return sha256.H0
+func main(block uint512) uint256 {
+	return sha256.Compress(block, sha256.H0)
 }

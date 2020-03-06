@@ -24,11 +24,11 @@ type Parser struct {
 	pkg      *ast.Package
 }
 
-func NewParser(compiler *Compiler, logger *utils.Logger, in io.Reader) *Parser {
+func NewParser(source string, compiler *Compiler, logger *utils.Logger, in io.Reader) *Parser {
 	return &Parser{
 		compiler: compiler,
 		logger:   logger,
-		lexer:    NewLexer(in),
+		lexer:    NewLexer(source, in),
 	}
 }
 

@@ -433,6 +433,13 @@ func (ast *Constant) Variable() (ssa.Variable, error) {
 			Bits: 1,
 		}
 
+	case string:
+		v.Name = fmt.Sprintf("$%q", val)
+		v.Type = types.Info{
+			Type: types.String,
+			Bits: len([]byte(val)) * 8,
+		}
+
 	default:
 		return v, fmt.Errorf("ast.Constant.Variable(): %v not implemented yet",
 			ast)

@@ -1,6 +1,4 @@
 //
-// ssagen.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -227,19 +225,9 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
-	pkg, ok := ctx.Packages[ast.Name.Package]
-	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-			ast.Name.Package)
-	}
-	called, ok := pkg.Functions[ast.Name.Name]
-	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
-			ast.Name)
-	}
+	// Generate call values.
 
 	var callValues [][]ssa.Variable
-	var args []ssa.Variable
 	var v []ssa.Variable
 	var err error
 
@@ -250,6 +238,36 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		callValues = append(callValues, v)
 	}
+
+	// Resolve called.
+	pkg, ok := ctx.Packages[ast.Name.Package]
+	if !ok {
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+			ast.Name.Package)
+	}
+	called, ok := pkg.Functions[ast.Name.Name]
+	if !ok {
+		// Check builtin functions.
+		for _, bi := range builtins {
+			if bi.Name == ast.Name.Name {
+				if bi.Type != BuiltinFunc {
+					return nil, nil, ctx.logger.Errorf(ast.Loc,
+						"builtin %s used as function", bi.Name)
+				}
+				// Flatten arguments.
+				var args []ssa.Variable
+				for _, arg := range callValues {
+					args = append(args, arg...)
+				}
+				return bi.SSA(block, ctx, gen, args, ast.Loc)
+			}
+		}
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
+			ast.Name)
+	}
+
+	var args []ssa.Variable
+
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,

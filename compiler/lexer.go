@@ -158,7 +158,7 @@ var symbols = map[string]TokenType{
 	"var":     T_SymVar,
 }
 
-var reType = regexp.MustCompilePOSIX(`^(uint|int|float)([[:digit:]]*)$`)
+var reType = regexp.MustCompilePOSIX(`^(uint|int|float|string)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
@@ -189,6 +189,7 @@ func (t *Token) String() string {
 }
 
 type Lexer struct {
+	source      string
 	in          *bufio.Reader
 	point       utils.Point
 	tokenStart  utils.Point
@@ -200,12 +201,13 @@ type Lexer struct {
 	history     map[int][]rune
 }
 
-func NewLexer(in io.Reader) *Lexer {
+func NewLexer(source string, in io.Reader) *Lexer {
 	return &Lexer{
 		in: bufio.NewReader(in),
 		point: utils.Point{
-			Line: 1,
-			Col:  0,
+			Source: source,
+			Line:   1,
+			Col:    0,
 		},
 		history: make(map[int][]rune),
 	}

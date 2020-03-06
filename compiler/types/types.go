@@ -37,6 +37,7 @@ const (
 	Int
 	Uint
 	Float
+	String
 )
 
 var Types = map[string]Type{
@@ -45,6 +46,7 @@ var Types = map[string]Type{
 	"int":         Int,
 	"uint":        Uint,
 	"float":       Float,
+	"string":      String,
 }
 
 var shortTypes = map[Type]string{
@@ -53,6 +55,7 @@ var shortTypes = map[Type]string{
 	Int:       "i",
 	Uint:      "u",
 	Float:     "f",
+	String:    "str",
 }
 
 type Info struct {
