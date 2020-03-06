@@ -11,8 +11,13 @@ import (
 )
 
 func (c *Circuit) Compute(n1, n2 []uint64) ([]uint64, error) {
-	if len(n1) != len(c.N1) || len(n2) != len(c.N2) {
-		return nil, fmt.Errorf("invalid amount of arguments")
+	if len(n1) != len(c.N1) {
+		return nil, fmt.Errorf("invalid n1 arguments: got %d, expected %d\n",
+			len(n1), len(c.N1))
+	}
+	if len(n2) != len(c.N2) {
+		return nil, fmt.Errorf("invalid n2 arguments: got %d, expected %d\n",
+			len(n2), len(c.N2))
 	}
 
 	wires := make([]byte, c.NumWires)

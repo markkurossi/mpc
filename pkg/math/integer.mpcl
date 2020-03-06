@@ -7,6 +7,22 @@
 
 package math
 
+func AddUint64(a, b uint64) uint64 {
+	return native("add64.circ", a, b)
+}
+
+func SubUint64(a, b uint64) uint64 {
+	return native("sub64.circ", a, b)
+}
+
+func MulUint64(a, b uint64) uint64 {
+	return native("mul64.circ", a, b)
+}
+
+func DivUint64(a, b uint64) uint64 {
+	return native("div64.circ", a, b)
+}
+
 func MaxUint64(a, b uint64) uint64 {
 	if a > b {
 		return a

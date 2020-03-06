@@ -3,6 +3,10 @@
 
 package main
 
-func main(a, b int8) int8 {
-	return a + b
+import (
+	"math"
+)
+
+func main(a, b int64) int64 {
+	return math.AddUint64(a, b)
 }

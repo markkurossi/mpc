@@ -7,6 +7,8 @@
 package compiler
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"testing"
 
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -193,9 +195,28 @@ func MinMax(a, b int) (int, int) {
 }
 `,
 	},
+	FixedTest{
+		N1:   0,
+		N2:   0,
+		N3:   0x88a0ad05470770fb,
+		Zero: true,
+		Code: `
+package main
+import (
+    "crypto/sha256"
+)
+func main(a, b uint512) uint256 {
+    return sha256.Compress(a, sha256.H0)
+}
+`,
+	},
 }
 
 func TestFixed(t *testing.T) {
+	var input [64]byte
+	digest := sha256.Sum256(input[:])
+	fmt.Printf("sha256(0) = %x\n", digest[:])
+
 	for idx, test := range fixedTests {
 		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
@@ -212,7 +233,8 @@ func TestFixed(t *testing.T) {
 			continue
 		}
 		if results[0] != test.N3 {
-			t.Errorf("test failed: got %d, expected %d", results[0], test.N3)
+			t.Errorf("test failed: got %d (%x), expected %d (%x)",
+				results[0], results[0], test.N3, test.N3)
 		}
 	}
 }

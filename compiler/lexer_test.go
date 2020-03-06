@@ -24,7 +24,7 @@ func main(a, b int4) int5 {
 `
 
 func TestLexer(t *testing.T) {
-	lexer := NewLexer(bytes.NewReader([]byte(input)))
+	lexer := NewLexer("{data}", bytes.NewReader([]byte(input)))
 	for {
 		token, err := lexer.Get()
 		if err != nil {
