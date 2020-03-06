@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
@@ -195,6 +196,65 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 			for _, o := range cc.Outputs {
 				o.Output = true
+			}
+
+		case Circ:
+			var circWires []*circuits.Wire
+
+			// Flatten input wires.
+			for _, w := range wires {
+				circWires = append(circWires, w...)
+			}
+
+			// Flatten output wires.
+			var circOut []*circuits.Wire
+
+			for _, r := range instr.Ret {
+				fmt.Printf("*** %s: %d\n", r.String(), r.Type.Bits)
+				o, err := cc.Wires(r.String(), r.Type.Bits)
+				if err != nil {
+					return err
+				}
+				circOut = append(circOut, o...)
+			}
+
+			// Add intermediate wires.
+			nint := instr.Circ.NumWires - len(circWires) - len(circOut)
+			fmt.Printf("*** %d intermediate wires\n", nint)
+			for i := 0; i < nint; i++ {
+				circWires = append(circWires, circuits.NewWire())
+			}
+
+			// Append output wires.
+			circWires = append(circWires, circOut...)
+			fmt.Printf("*** NumWires=%d (%d)\n", len(circWires),
+				instr.Circ.NumWires)
+
+			// Add gates.
+			for _, gate := range instr.Circ.Gates {
+				switch gate.Op {
+				case circuit.XOR:
+					cc.AddGate(circuits.NewBinary(circuit.XOR,
+						circWires[gate.Inputs[0]],
+						circWires[gate.Inputs[1]],
+						circWires[gate.Outputs[0]]))
+				case circuit.AND:
+					cc.AddGate(circuits.NewBinary(circuit.AND,
+						circWires[gate.Inputs[0]],
+						circWires[gate.Inputs[1]],
+						circWires[gate.Outputs[0]]))
+				case circuit.OR:
+					cc.AddGate(circuits.NewBinary(circuit.OR,
+						circWires[gate.Inputs[0]],
+						circWires[gate.Inputs[1]],
+						circWires[gate.Outputs[0]]))
+				case circuit.INV:
+					cc.AddGate(circuits.NewINV(
+						circWires[gate.Inputs[0]],
+						circWires[gate.Outputs[0]]))
+				default:
+					return fmt.Errorf("Unknown gate %s", gate)
+				}
 			}
 
 		default:

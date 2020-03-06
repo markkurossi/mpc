@@ -11,6 +11,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
@@ -50,6 +51,7 @@ const (
 	Mov
 	Phi
 	Ret
+	Circ
 )
 
 var operands = map[Operand]string{
@@ -86,6 +88,7 @@ var operands = map[Operand]string{
 	Mov:   "mov",
 	Phi:   "phi",
 	Ret:   "ret",
+	Circ:  "circ",
 }
 
 var maxOperandLength int
@@ -111,6 +114,8 @@ type Instr struct {
 	In    []Variable
 	Out   *Variable
 	Label *Block
+	Circ  *circuit.Circuit
+	Ret   []Variable
 }
 
 func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
@@ -293,6 +298,16 @@ func NewRetInstr(ret []Variable) Instr {
 	}
 }
 
+func NewCircInstr(args []Variable, circ *circuit.Circuit,
+	ret []Variable) Instr {
+	return Instr{
+		Op:   Circ,
+		In:   args,
+		Circ: circ,
+		Ret:  ret,
+	}
+}
+
 func (i Instr) String() string {
 	result := i.Op.String()
 
@@ -314,6 +329,13 @@ func (i Instr) String() string {
 	if i.Label != nil {
 		result += " "
 		result += i.Label.ID
+	}
+	if i.Circ != nil {
+		result += fmt.Sprintf(" {G=%d, W=%d}", i.Circ.NumGates, i.Circ.NumWires)
+	}
+	for _, r := range i.Ret {
+		result += " "
+		result += r.String()
 	}
 	return result
 }
@@ -373,6 +395,15 @@ func (v *Variable) Bit(bit int) bool {
 			return false
 		}
 		return val.Bit(bit) != 0
+
+	case string:
+		bytes := []byte(val)
+		idx := bit / 8
+		mod := bit % 8
+		if idx >= len(bytes) {
+			return false
+		}
+		return bytes[idx]&(1<<mod) != 0
 
 	default:
 		panic(fmt.Sprintf("Variable.Bit called for a non const %v (%T)", v, v))

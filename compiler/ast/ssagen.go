@@ -40,15 +40,12 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	ast.NumInstances++
 
 	// Define arguments.
-	for idx, arg := range ast.Args {
+	for _, arg := range ast.Args {
 		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
 		block.Bindings.Set(a)
-		if ctx.Verbose {
-			fmt.Printf("args[%d]=%s\n", idx, a)
-		}
 		ast.Bindings[arg.Name] = a
 	}
 	// Define return variables.
@@ -61,9 +58,6 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		block.Bindings.Set(r)
-		if ctx.Verbose {
-			fmt.Printf("ret[%d]=%s\n", idx, r)
-		}
 		ast.Bindings[ret.Name] = r
 	}
 

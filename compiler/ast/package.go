@@ -42,7 +42,7 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	}
 
 	gen := ssa.NewGenerator(params.Verbose)
-	ctx := NewCodegen(logger, packages)
+	ctx := NewCodegen(logger, packages, params.Verbose)
 
 	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
 	ctx.Start().Bindings = unit.Bindings.Clone()

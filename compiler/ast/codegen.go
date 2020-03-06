@@ -20,10 +20,12 @@ type Codegen struct {
 	Stack    []Compilation
 }
 
-func NewCodegen(logger *utils.Logger, packages map[string]*Package) *Codegen {
+func NewCodegen(logger *utils.Logger, packages map[string]*Package,
+	verbose bool) *Codegen {
 	return &Codegen{
 		logger:   logger,
 		Packages: packages,
+		Verbose:  verbose,
 	}
 }
 
