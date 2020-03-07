@@ -195,10 +195,12 @@ func MinMax(a, b int) (int, int) {
 }
 `,
 	},
+	// For raw sha256 without padding, the digest is as follow:
+	// da5698be17b9b46962335799779fbeca8ce5d491c0d26243bafef9ea1837a9d8
 	FixedTest{
 		N1:   0,
 		N2:   0,
-		N3:   0x88a0ad05470770fb,
+		N3:   0xbafef9ea1837a9d8,
 		Zero: true,
 		Code: `
 package main
