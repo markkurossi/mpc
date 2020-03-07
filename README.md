@@ -9,17 +9,18 @@ two-party computation with [Garbled circuit](https://en.wikipedia.org/wiki/Garbl
 ## Getting started
 
 The easiest way to experiment with the system is to compile the
-[garbled](apps/garbled/) application and using it to evaluate
-programs. The _garbled_ application takes the following command line
+[garbled](apps/garbled/) application and use it to evaluate
+programs. The `garbled` application takes the following command line
 options:
 
  - `-e`: specifies circuit _evaluator_ / _garbler_ mode. The circuit evaluator creates a TCP listener and waits for garblers to connect with computation.
  - `-i`: specifies comma-separated input values for the circuit.
  - `-v`: enabled verbose output.
 
-The [examples](apps/garbled/examples/) contains various MPCL example
-files which can be executed with the _garbled_ application. For
-example, here's how you can run the [Yao's Millionaires'
+The [examples](apps/garbled/examples/) directory contains various MPCL
+example programs which can be executed with the `garbled`
+application. For example, here's how you can run the [Yao's
+Millionaires'
 Problem](https://en.wikipedia.org/wiki/Yao%27s_Millionaires%27_Problem)
 which can be found from the
 [millionaire.mpcl](apps/garbled/examples/millionaire.mpcl) file:
@@ -36,8 +37,8 @@ func main(a, b int64) bool {
 }
 ```
 
-First, start evaluator (these examples are run in the `apps/garbled`
-directory):
+First, start the evaluator (these examples are run in the
+`apps/garbled` directory):
 
 ```sh
 $ ./garbled -e -i 800000 examples/millionaire.mpcl
@@ -49,7 +50,9 @@ Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
 Listening for connections at :8080
 ```
 
-The _evaluator_'s input is 800000 and it is set to the circuit inputs `N2`. The evaluator is now waiting for garblers to connect to the TCP port `:8080`.
+The evaluator's input is 800000 and it is set to the circuit inputs
+`N2`. The evaluator is now waiting for garblers to connect to the TCP
+port `:8080`.
 
 Next, let's start the garbler:
 
@@ -62,7 +65,11 @@ Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
  - In: [750000 0]
 ```
 
-The _garbler_'s input is 750000 and it is set to the circuit inputs `N1`. The garbler connects to the evaluator's TCP port and they run the garbled circuit protocol. At the end, garbler (and evaluator) print the result of the circuit, which is this case is single `bool` value `N2`:
+The garbler's input is 750000 and it is set to the circuit inputs
+`N1`. The garbler connects to the evaluator's TCP port and they run
+the garbled circuit protocol. At the end, garbler (and evaluator)
+print the result of the circuit, which is this case is single `bool`
+value `N3`:
 
 ```
 Result[0]: 0
@@ -70,12 +77,29 @@ Result[0]: 0b0
 Result[0]: 0x00
 ```
 
-In our example, the evaluator's argument N2 is bound to the MPCL program's `b int64` argument, and garblers' N1 to `a int64`. Therefore, the result of the computation is `false` (0) because N2=800000 > N1=750000 (`a > b`).
+In our example, the evaluator's argument N2 is bound to the MPCL
+program's `b int64` argument, and garblers' N1 to `a
+int64`. Therefore, the result of the computation is `false` because
+N1=750000 <= N2=800000. If we increase the garbler's input to 900000,
+we see that the result is now `true` since the garbler's input is now
+bigger than the evaluator's input:
+
+```sh
+$ ./garbled -i 900000,0 examples/millionaire.mpcl
+Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
+ + N1: a{1,0}i64:int64, %0:uint1
+ - N2: b{1,0}i64:int64
+ - N3: %_{0,1}b1:bool1
+ - In: [900000 0]
+Result[0]: 1
+Result[0]: 0b1
+Result[0]: 0x01
+```
 
 
 # Multi-Party Computation Language (MPCL)
 
-The multi-party computation language is heavily inspired Go
+The multi-party computation language is heavily inspired by the Go
 programming language, however it is not using the Go's compiler or any
 other related components. The compiler is an independent
 implementation of the relevant parts of the Go syntax.
@@ -85,11 +109,11 @@ implementation of the relevant parts of the Go syntax.
 The parser parses the MPCL input files, including any referenced
 packages, and creates an abstract syntax tree (AST).
 
-The AST is next converted into _Static Single Assignment_ form (SSA)
+The AST is then converted into _Static Single Assignment_ form (SSA)
 where each variable is defined and assigned only once. The SSA
 transformation does also type checks so that all variable assignments
-and call arguments and return values are checked (or converted) to be
-or correct type.
+and function call arguments and return values are checked (or
+converted) to be or correct type.
 
 ### Types
 
