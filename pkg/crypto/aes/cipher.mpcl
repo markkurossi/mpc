@@ -1,0 +1,22 @@
+// -*- go -*-
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package aes
+
+const BlockSize = 16
+
+func Block128(key uint128, block uint128) uint128 {
+	return native("aes_128.circ", key, block)
+}
+
+func Block192(key uint192, block uint128) uint128 {
+	return native("aes_192.circ", key, block)
+}
+
+func Block256(key uint256, block uint128) uint128 {
+	return native("aes_256.circ", key, block)
+}
