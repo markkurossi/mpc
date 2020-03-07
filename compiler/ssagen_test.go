@@ -245,7 +245,7 @@ import (
 )
 
 func main(data, a uint512) uint256 {
-    return sha256.Compress(data, sha256.H0)
+    return sha256.Block(data, sha256.H0)
 }
 `,
 	},

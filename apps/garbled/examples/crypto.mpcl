@@ -7,5 +7,5 @@ import (
 )
 
 func main(block1, block2 uint512) uint256 {
-	return sha256.Compress(block1, sha256.H0)
+	return sha256.Block(block1, sha256.H0)
 }

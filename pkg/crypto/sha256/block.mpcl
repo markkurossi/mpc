@@ -9,6 +9,6 @@ package sha256
 
 const H0 = 0x6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19
 
-func Compress(block uint512, state uint256) uint256 {
+func Block(block uint512, state uint256) uint256 {
 	return native("sha256.circ", block, state)
 }

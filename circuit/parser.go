@@ -74,7 +74,7 @@ func (io IO) Parse(inputs []string) ([]*big.Int, error) {
 	for idx, _ := range io {
 		i := new(big.Int)
 		// XXX Type checks
-		_, ok := i.SetString(inputs[idx], 10)
+		_, ok := i.SetString(inputs[idx], 0)
 		if !ok {
 			return nil, fmt.Errorf("Invalid input: %s", inputs[idx])
 		}

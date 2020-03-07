@@ -208,7 +208,7 @@ import (
     "crypto/sha256"
 )
 func main(a, b uint512) uint256 {
-    return sha256.Compress(a, sha256.H0)
+    return sha256.Block(a, sha256.H0)
 }
 `,
 	},
