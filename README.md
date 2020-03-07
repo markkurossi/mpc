@@ -40,7 +40,7 @@ func main(a, b int64) bool {
 First, start the evaluator (these examples are run in the
 `apps/garbled` directory):
 
-```sh
+```
 $ ./garbled -e -i 800000 examples/millionaire.mpcl
 Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
  - N1: a{1,0}i64:int64, %0:uint1
@@ -56,7 +56,7 @@ port `:8080`.
 
 Next, let's start the garbler:
 
-```sh
+```
 $ ./garbled -i 750000,0 examples/millionaire.mpcl
 Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
  + N1: a{1,0}i64:int64, %0:uint1
@@ -84,7 +84,7 @@ N1=750000 <= N2=800000. If we increase the garbler's input to 900000,
 we see that the result is now `true` since the garbler's input is now
 bigger than the evaluator's input:
 
-```sh
+```
 $ ./garbled -i 900000,0 examples/millionaire.mpcl
 Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
  + N1: a{1,0}i64:int64, %0:uint1
