@@ -5,6 +5,7 @@
 The following circuit files are from the [SCALE-MAMBA Software](https://homes.esat.kuleuven.be/~nsmart/SCALE/):
 
  - [crypto/sha256/sha256.circ](crypto/sha256/sha256.circ)
+ - [crypto/sha512/sha512.circ](crypto/sha512/sha512.circ)
  - [math/add64.circ](math/add64.circ)
  - [math/div64.circ](math/div64.circ)
  - [math/mul64.circ](math/mul64.circ)

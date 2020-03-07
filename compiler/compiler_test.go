@@ -7,8 +7,6 @@
 package compiler
 
 import (
-	"crypto/sha256"
-	"fmt"
 	"testing"
 
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -212,13 +210,26 @@ func main(a, b uint512) uint256 {
 }
 `,
 	},
+	// For raw sha512 without padding, the digest is as follow:
+	// 0xcf7881d5774acbe8533362e0fbc780700267639d87460eda3086cb40e85931b0717dc95288a023a396bab2c14ce0b5e06fc4fe04eae33e0b91f4d80cbd668bee
+	FixedTest{
+		N1:   0,
+		N2:   0,
+		N3:   0x91f4d80cbd668bee,
+		Zero: true,
+		Code: `
+package main
+import (
+    "crypto/sha512"
+)
+func main(a, b uint1024) uint512 {
+    return sha512.Block(a, sha512.H0)
+}
+`,
+	},
 }
 
 func TestFixed(t *testing.T) {
-	var input [64]byte
-	digest := sha256.Sum256(input[:])
-	fmt.Printf("sha256(0) = %x\n", digest[:])
-
 	for idx, test := range fixedTests {
 		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
