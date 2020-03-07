@@ -91,7 +91,7 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 
 	if ctx.Verbose {
-		fmt.Printf("native %s: %v\n", name, circ)
+		fmt.Printf(" - native %s: %v\n", name, circ)
 	}
 
 	var result []ssa.Variable
