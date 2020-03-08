@@ -195,12 +195,40 @@ form assembly:
 
 # TODO
 
- - [ ] Free XOR
+ - [X] Free XOR
  - [ ] TLS for garbler-evaluator protocol
  - [ ] Session-specific circuit encryption key
  - [ ] For-loop unrolling
  - [ ] Signed / unsigned arithmetics
  - [ ] MODP circuit
+
+## Free XOR
+
+SHA-256, before: 3.936451044s
+
+┏━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op      ┃         Time ┃      % ┃ Xfer ┃
+┣━━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━┫
+┃ Garble  ┃ 161.871045ms ┃  4.25% ┃      ┃
+┃ Xfer    ┃  65.838224ms ┃  1.73% ┃ 11MB ┃
+┃ OT Init ┃  67.703136ms ┃  1.78% ┃ 264B ┃
+┃ Eval    ┃ 3.509030323s ┃ 92.24% ┃ 11MB ┃
+┃ OT      ┃ 3.479226123s ┃ 99.15% ┃      ┃
+┃ Total   ┃ 3.804442728s ┃        ┃      ┃
+┗━━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━┛
+
+After: 3.727278622s
+
+┏━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op      ┃         Time ┃      % ┃ Xfer ┃
+┣━━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━┫
+┃ Garble  ┃  98.590262ms ┃  2.65% ┃      ┃
+┃ Xfer    ┃  13.978017ms ┃  0.38% ┃  2MB ┃
+┃ OT Init ┃ 101.184332ms ┃  2.71% ┃ 264B ┃
+┃ Eval    ┃ 3.513526011s ┃ 94.27% ┃  3MB ┃
+┃ OT      ┃ 3.482825234s ┃ 99.13% ┃      ┃
+┃ Total   ┃ 3.727278622s ┃        ┃      ┃
+┗━━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━┛
 
 # Develoment ideas
 

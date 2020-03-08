@@ -12,17 +12,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot/mpint"
 	"github.com/markkurossi/mpc/pkcs1"
-)
-
-var (
-	UnknownInput = errors.New("Unknown input")
 )
 
 func RandomData(size int) ([]byte, error) {
@@ -167,7 +162,7 @@ func (s *Sender) PublicKey() *rsa.PublicKey {
 func (s *Sender) NewTransfer(input int) (*SenderXfer, error) {
 	w, ok := s.inputs[input]
 	if !ok {
-		return nil, UnknownInput
+		return nil, fmt.Errorf("unknown input %d", input)
 	}
 	x0, err := RandomData(s.MessageSize())
 	if err != nil {

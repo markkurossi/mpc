@@ -14,7 +14,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -123,47 +122,32 @@ func makeK(a, b *ot.Label, t uint32) *ot.Label {
 	return k
 }
 
+func makeLabels(r *ot.Label) (ot.Wire, error) {
+	l0, err := ot.NewLabel(rand.Reader)
+	if err != nil {
+		return ot.Wire{}, err
+	}
+	l1 := l0.Copy()
+	l1.Xor(r)
+
+	return ot.Wire{
+		Label0: l0,
+		Label1: l1,
+	}, nil
+}
+
 type Garbled struct {
 	Wires ot.Inputs
 	Gates [][][]byte
 }
 
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
-	// Assign labels to wires.
-	start := time.Now()
-	wires := make(ot.Inputs)
-	for w := 0; w < c.NumWires; w++ {
-		l0, err := ot.NewLabel(rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-		l1, err := ot.NewLabel(rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-
-		// Point-and-permutate
-
-		var s [1]byte
-		if _, err := rand.Read(s[:]); err != nil {
-			return nil, err
-		}
-
-		ws := (s[0] & 0x80) != 0
-
-		l0.SetS(ws)
-		l1.SetS(!ws)
-
-		wires[w] = ot.Wire{
-			Label0: l0,
-			Label1: l1,
-		}
+	// Create R.
+	r, err := ot.NewLabel(rand.Reader)
+	if err != nil {
+		return nil, err
 	}
-	t := time.Now()
-	if verbose {
-		fmt.Printf(".Labels:\t%s\n", t.Sub(start))
-	}
-	start = t
+	r.SetS(true)
 
 	garbled := make([][][]byte, c.NumGates)
 
@@ -176,18 +160,29 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return encrypt(alg, a, b, c, t)
 	}
 
+	// Assign labels to wires.
+	wires := make(ot.Inputs)
+
 	for idx, gate := range c.Gates {
-		data, err := gate.Garble(wires, enc)
+		data, err := gate.Garble(wires, enc, r)
 		if err != nil {
 			return nil, err
 		}
 		garbled[idx] = data
 	}
-	t = time.Now()
-	if verbose {
-		fmt.Printf(".Garble:\t%s\n", t.Sub(start))
+
+	// Assign unset wires. Wire can be unset if one of the inputs is
+	// not used in the computation
+	for i := 0; i < c.NumWires; i++ {
+		_, ok := wires[i]
+		if !ok {
+			w, err := makeLabels(r)
+			if err != nil {
+				return nil, err
+			}
+			wires[i] = w
+		}
 	}
-	start = t
 
 	return &Garbled{
 		Wires: wires,
@@ -195,23 +190,47 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
+func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 	var in []ot.Wire
 	var out []ot.Wire
+	var err error
 
 	for _, i := range g.Inputs {
 		w, ok := wires[i.ID()]
 		if !ok {
-			return nil, fmt.Errorf("Unknown input wire %d", i)
+			w, err = makeLabels(r)
+			if err != nil {
+				return nil, err
+			}
+			wires[i.ID()] = w
 		}
 		in = append(in, w)
 	}
 
 	for _, o := range g.Outputs {
 		w, ok := wires[o.ID()]
-		if !ok {
-			return nil, fmt.Errorf("Unknown output wire %d", o)
+		if ok {
+			return nil, fmt.Errorf("gate output already set %d", o)
 		}
+
+		if g.Op == XOR {
+			l0 := in[0].Label0.Copy()
+			l0.Xor(in[1].Label0)
+
+			l1 := in[0].Label0.Copy()
+			l1.Xor(in[1].Label1)
+			w = ot.Wire{
+				Label0: l0,
+				Label1: l1,
+			}
+		} else {
+			w, err = makeLabels(r)
+			if err != nil {
+				return nil, err
+			}
+		}
+		wires[o.ID()] = w
+
 		out = append(out, w)
 	}
 
@@ -219,19 +238,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc) ([][]byte, error) {
 
 	switch g.Op {
 	case XOR:
-		// a b c
-		// -----
-		// 0 0 0
-		// 0 1 1
-		// 1 0 1
-		// 1 1 0
-		a := in[0]
-		b := in[1]
-		c := out[0]
-		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
-		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label1, c.Label0, g.ID))
+		// Free XOR.
 
 	case AND:
 		// a b c

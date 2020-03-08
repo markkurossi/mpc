@@ -67,6 +67,12 @@ func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
 		return nil, fmt.Errorf("No input for wire b found")
 	}
 
+	if g.Op == XOR {
+		result := a.Copy()
+		result.Xor(b)
+		return result.Bytes(), nil
+	}
+
 	i := idx(a, b)
 	if i >= len(garbled) {
 		return nil, fmt.Errorf("corrupted circuit: index %d >= len garbled %d",
