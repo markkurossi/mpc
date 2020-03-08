@@ -193,6 +193,15 @@ form assembly:
 
 <img align="center" width="500" height="660" src="max.png">
 
+# TODO
+
+ - [ ] Free XOR
+ - [ ] TLS for garbler-evaluator protocol
+ - [ ] Session-specific circuit encryption key
+ - [ ] For-loop unrolling
+ - [ ] Signed / unsigned arithmetics
+ - [ ] MODP circuit
+
 # Develoment ideas
 
 ## Mathematical operations
