@@ -195,7 +195,10 @@ form assembly:
 
 # TODO
 
- - [X] Free XOR
+ - Garbling:
+   - [X] Free XOR
+   - [ ] Row reduction
+   - [ ] Half AND
  - [ ] TLS for garbler-evaluator protocol
  - [ ] Session-specific circuit encryption key
  - [ ] For-loop unrolling
