@@ -18,7 +18,7 @@ import (
 func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 	var consts []Variable
 	for _, c := range gen.constants {
-		consts = append(consts, c)
+		consts = append(consts, c.Const)
 	}
 	sort.Slice(consts, func(i, j int) bool {
 		return strings.Compare(consts[i].Name, consts[j].Name) == -1

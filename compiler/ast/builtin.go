@@ -53,6 +53,10 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, nil, ctx.logger.Errorf(loc,
 			"not enought argument in call to native")
 	}
+	// Our circuit name constant is not needed in the circuit
+	// computation, it is here only as a reference to the circuit
+	// file.
+	gen.RemoveConstant(args[0])
 
 	dir := path.Dir(loc.Source)
 	fp := path.Join(dir, name)

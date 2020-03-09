@@ -20,14 +20,19 @@ type Generator struct {
 	verbose   bool
 	versions  map[string]Variable
 	blockID   int
-	constants map[string]Variable
+	constants map[string]ConstantInst
+}
+
+type ConstantInst struct {
+	Count int
+	Const Variable
 }
 
 func NewGenerator(verbose bool) *Generator {
 	return &Generator{
 		verbose:   verbose,
 		versions:  make(map[string]Variable),
-		constants: make(map[string]Variable),
+		constants: make(map[string]ConstantInst),
 	}
 }
 
@@ -85,9 +90,28 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 }
 
 func (gen *Generator) AddConstant(c Variable) {
-	_, ok := gen.constants[c.Name]
+	inst, ok := gen.constants[c.Name]
 	if !ok {
-		gen.constants[c.Name] = c
+		inst = ConstantInst{
+			Count: 1,
+			Const: c,
+		}
+	} else {
+		inst.Count++
+	}
+	gen.constants[c.Name] = inst
+}
+
+func (gen *Generator) RemoveConstant(c Variable) {
+	inst, ok := gen.constants[c.Name]
+	if !ok {
+		return
+	}
+	inst.Count--
+	if inst.Count == 0 {
+		delete(gen.constants, c.Name)
+	} else {
+		gen.constants[c.Name] = inst
 	}
 }
 
