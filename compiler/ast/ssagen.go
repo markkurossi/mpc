@@ -536,6 +536,9 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Bind variable with the name it was referenced.
+	value.Name = ast.Name.String()
 	block.Bindings.Set(value)
 
 	if value.Const {
