@@ -221,6 +221,22 @@ func main(a, b int) uint256 {
 	},
 	SSAGenTest{
 		Enabled: true,
+		Name:    "Constants block",
+		Code: `
+package main
+
+const (
+    One = 1
+    H0 = 0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667
+)
+
+func main(a, b int) uint256 {
+    return H0
+}
+`,
+	},
+	SSAGenTest{
+		Enabled: true,
 		Name:    "Packages",
 		Code: `
 package main

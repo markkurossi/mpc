@@ -214,54 +214,76 @@ func (p *Parser) parseConst() error {
 	}
 	switch token.Type {
 	case T_Identifier:
-		t, err := p.lexer.Get()
-		if err != nil {
-			return err
-		}
-		var constType types.Info
-		if t.Type == T_Type {
-			constType = t.TypeInfo
-			t, err = p.lexer.Get()
+		return p.parseConstDef(token)
+
+	case T_LParen:
+		for {
+			t, err := p.lexer.Get()
 			if err != nil {
 				return err
 			}
-		} else {
-			p.lexer.Unget(t)
+			if t.Type == T_RParen {
+				return nil
+			}
+			err = p.parseConstDef(t)
+			if err != nil {
+				return err
+			}
 		}
-		_, err = p.needToken(T_Assign)
-		if err != nil {
-			return err
-		}
-		value, err := p.parseExprPrimary()
-		if err != nil {
-			return err
-		}
-
-		constVal, ok := value.(*ast.Constant)
-		if !ok {
-			return p.errf(value.Location(), "value %s used as constant", value)
-		}
-		constVar, err := constVal.Variable()
-		if err != nil {
-			return err
-		}
-
-		// XXX Check type compatibility
-		_ = constType
-
-		_, err = p.pkg.Bindings.Get(token.StrVal)
-		if err == nil {
-			return p.errf(token.From, "constant %s already defined",
-				token.StrVal)
-		}
-		constVar.Name = token.StrVal
-		p.pkg.Bindings.Set(constVar)
-
-		return nil
 
 	default:
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
+}
+
+func (p *Parser) parseConstDef(token *Token) error {
+	if token.Type != T_Identifier {
+		return p.errf(token.From, "unexpected token '%s'", token.Type)
+	}
+
+	t, err := p.lexer.Get()
+	if err != nil {
+		return err
+	}
+	var constType types.Info
+	if t.Type == T_Type {
+		constType = t.TypeInfo
+		t, err = p.lexer.Get()
+		if err != nil {
+			return err
+		}
+	} else {
+		p.lexer.Unget(t)
+	}
+	_, err = p.needToken(T_Assign)
+	if err != nil {
+		return err
+	}
+	value, err := p.parseExprPrimary()
+	if err != nil {
+		return err
+	}
+
+	constVal, ok := value.(*ast.Constant)
+	if !ok {
+		return p.errf(value.Location(), "value %s used as constant", value)
+	}
+	constVar, err := constVal.Variable()
+	if err != nil {
+		return err
+	}
+
+	// XXX Check type compatibility
+	_ = constType
+
+	_, err = p.pkg.Bindings.Get(token.StrVal)
+	if err == nil {
+		return p.errf(token.From, "constant %s already defined", token.StrVal)
+	}
+	constVar.Name = token.StrVal
+	p.pkg.Bindings.Set(constVar)
+
+	return nil
 }
 
 func (p *Parser) parseFunc() (*ast.Func, error) {

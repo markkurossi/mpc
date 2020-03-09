@@ -7,7 +7,9 @@
 
 package math
 
-const MaxUint8 = 0xff
-const MaxUint16 = 0xffff
-const MaxUint32 = 0xffffffff
-const MaxUint64 = 0xffffffffffffffff
+const (
+	MaxUint8  = 0xff
+	MaxUint16 = 0xffff
+	MaxUint32 = 0xffffffff
+	MaxUint64 = 0xffffffffffffffff
+)
