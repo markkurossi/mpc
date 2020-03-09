@@ -495,6 +495,10 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 	case BinaryGe:
 		instr, err = ssa.NewGeInstr(l.Type, l, r, t)
+	case BinaryEq:
+		instr, err = ssa.NewEqInstr(l, r, t)
+	case BinaryNeq:
+		instr, err = ssa.NewNeqInstr(l, r, t)
 	case BinaryAnd:
 		instr, err = ssa.NewAndInstr(l, r, t)
 	case BinaryOr:

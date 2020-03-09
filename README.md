@@ -201,6 +201,13 @@ form assembly:
    - [ ] Signed / unsigned arithmetics
    - [X] `const (sym=val,sym=val)` syntax
    - [ ] Variable assignment with _n_ values
+   - [ ] logical not
+   - [ ] binary divide
+   - [ ] BitAnd
+   - [ ] BitOr
+   - [ ] BitXor
+   - [ ] BitClear
+   - [ ] BitShift
  - Garbling:
    - [X] Free XOR
    - [ ] Row reduction

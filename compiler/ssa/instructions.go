@@ -44,6 +44,8 @@ const (
 	Ige
 	Uge
 	Fge
+	Eq
+	Neq
 	And
 	Or
 	If
@@ -81,6 +83,8 @@ var operands = map[Operand]string{
 	Ige:   "ige",
 	Uge:   "uge",
 	Fge:   "fge",
+	Eq:    "eq",
+	Neq:   "neq",
 	And:   "and",
 	Or:    "or",
 	If:    "if",
@@ -247,6 +251,22 @@ func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewEqInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Eq,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewNeqInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Neq,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil

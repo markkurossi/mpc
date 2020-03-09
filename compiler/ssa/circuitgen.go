@@ -146,6 +146,26 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Eq:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewEqComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Neq:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewNeqComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
 		case And:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {

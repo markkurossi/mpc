@@ -71,7 +71,7 @@ func NewLtComparator(compiler *Compiler, x, y, r []*Wire) error {
 func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != 1 {
-		return fmt.Errorf("Invalid le comparator arguments: r=%d", len(r))
+		return fmt.Errorf("invalid le comparator arguments: r=%d", len(r))
 	}
 
 	// w = y < x
@@ -81,6 +81,52 @@ func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
 		return err
 	}
 
+	// r = !w
+	compiler.AddGate(NewINV(w, r[0]))
+	return nil
+}
+
+func NewNeqComparator(compiler *Compiler, x, y, r []*Wire) error {
+	x, y = compiler.ZeroPad(x, y)
+	if len(r) != 1 {
+		return fmt.Errorf("invalid neq comparator arguments: r=%d", len(r))
+	}
+
+	if len(x) == 1 {
+		compiler.AddGate(NewBinary(circuit.XOR, x[0], y[0], r[0]))
+		return nil
+	}
+
+	c := NewWire()
+	compiler.AddGate(NewBinary(circuit.XOR, x[0], y[0], c))
+
+	for i := 1; i < len(x); i++ {
+		xor := NewWire()
+		compiler.AddGate(NewBinary(circuit.XOR, x[i], y[i], xor))
+
+		var out *Wire
+		if i+1 >= len(x) {
+			out = r[0]
+		} else {
+			out = NewWire()
+		}
+		compiler.AddGate(NewBinary(circuit.OR, c, xor, out))
+		c = out
+	}
+	return nil
+}
+
+func NewEqComparator(compiler *Compiler, x, y, r []*Wire) error {
+	if len(r) != 1 {
+		return fmt.Errorf("invalid eq comparator arguments: r=%d", len(r))
+	}
+
+	// w = x == y
+	w := NewWire()
+	err := NewNeqComparator(compiler, x, y, []*Wire{w})
+	if err != nil {
+		return err
+	}
 	// r = !w
 	compiler.AddGate(NewINV(w, r[0]))
 	return nil

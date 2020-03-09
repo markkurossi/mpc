@@ -63,6 +63,7 @@ const (
 	T_Neq
 	T_And
 	T_Or
+	T_Not
 	T_BitAnd
 	T_BitOr
 	T_BitXor
@@ -110,6 +111,7 @@ var tokenTypes = map[TokenType]string{
 	T_Neq:        "!=",
 	T_And:        "&&",
 	T_Or:         "||",
+	T_Not:        "!",
 	T_BitAnd:     "&",
 	T_BitOr:      "|",
 	T_BitXor:     "^",
@@ -467,6 +469,22 @@ func (l *Lexer) Get() (*Token, error) {
 			token := l.Token(T_Constant)
 			token.ConstVal = val
 			return token, nil
+
+		case '!':
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Not), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(T_Neq), nil
+			default:
+				l.UnreadRune()
+				return l.Token(T_Not), nil
+			}
 
 		default:
 			if unicode.IsLetter(r) {
