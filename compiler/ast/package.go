@@ -110,7 +110,10 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		})
 	}
 
-	cc := circuits.NewCompiler(g, e, r)
+	cc, err := circuits.NewCompiler(g, e, r)
+	if err != nil {
+		return nil, err
+	}
 
 	err = gen.DefineConstants(cc)
 	if err != nil {

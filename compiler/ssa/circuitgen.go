@@ -200,7 +200,6 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 
 		case Ret:
 			// Assign output wires.
-			cc.Outputs = nil // XXX check cc constructor
 			for _, w := range wires {
 				cc.Outputs = append(cc.Outputs, w...)
 			}

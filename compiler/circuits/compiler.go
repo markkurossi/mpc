@@ -34,7 +34,7 @@ func NewIO(size int) circuit.IO {
 	return circuit.IO{circuit.IOArg{Size: size}}
 }
 
-func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
+func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
 	result := &Compiler{
 		N1:    n1,
 		N2:    n2,
@@ -49,7 +49,7 @@ func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
 		}
 		wires, err := result.Wires(n.Name, n.Size)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		result.Inputs = append(result.Inputs, wires...)
 	}
@@ -59,12 +59,12 @@ func NewCompiler(n1, n2, n3 circuit.IO) *Compiler {
 		}
 		wires, err := result.Wires(n.Name, n.Size)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		result.Inputs = append(result.Inputs, wires...)
 	}
 
-	return result
+	return result, nil
 }
 
 func (c *Compiler) ZeroWire() *Wire {

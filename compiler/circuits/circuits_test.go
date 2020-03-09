@@ -30,7 +30,10 @@ func TestAdd4(t *testing.T) {
 	bits := 4
 
 	// 2xbits inputs, bits+1 outputs
-	c := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits+1))
+	c, err := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits+1))
+	if err != nil {
+		t.Fatalf("NewCompiler: %s", err)
+	}
 
 	outputs := makeWires(bits + 1)
 
@@ -58,7 +61,11 @@ func TestAdd4(t *testing.T) {
 }
 
 func TestFullSubtractor(t *testing.T) {
-	c := NewCompiler(NewIO(1), NewIO(2), NewIO(2))
+	c, err := NewCompiler(NewIO(1), NewIO(2), NewIO(2))
+	if err != nil {
+		t.Fatalf("NewCompiler: %s", err)
+	}
+
 	outputs := makeWires(2)
 
 	NewFullSubtractor(c, c.Inputs[0], c.Inputs[1], c.Inputs[2],
@@ -75,7 +82,11 @@ func TestSub4(t *testing.T) {
 	bits := 4
 
 	// 2xbits inputs, bits+1 outputs
-	c := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits+1))
+	c, err := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits+1))
+	if err != nil {
+		t.Fatalf("NewCompiler: %s", err)
+	}
+
 	outputs := makeWires(bits + 1)
 
 	bin := NewWire()
@@ -103,10 +114,14 @@ func TestSub4(t *testing.T) {
 }
 
 func TestMultiply1(t *testing.T) {
-	c := NewCompiler(NewIO(1), NewIO(1), NewIO(2))
+	c, err := NewCompiler(NewIO(1), NewIO(1), NewIO(2))
+	if err != nil {
+		t.Fatalf("NewCompiler: %s", err)
+	}
+
 	outputs := makeWires(2)
 
-	err := NewMultiplier(c, c.Inputs[0:1], c.Inputs[1:2], outputs)
+	err = NewMultiplier(c, c.Inputs[0:1], c.Inputs[1:2], outputs)
 	if err != nil {
 		t.Error(err)
 	}
@@ -115,10 +130,14 @@ func TestMultiply1(t *testing.T) {
 func TestMultiply(t *testing.T) {
 	bits := 64
 
-	c := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits*2))
+	c, err := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits*2))
+	if err != nil {
+		t.Fatalf("NewCompiler: %s", err)
+	}
+
 	outputs := makeWires(bits * 2)
 
-	err := NewMultiplier(c, c.Inputs[0:bits], c.Inputs[bits:2*bits], outputs)
+	err = NewMultiplier(c, c.Inputs[0:bits], c.Inputs[bits:2*bits], outputs)
 	if err != nil {
 		t.Error(err)
 	}
