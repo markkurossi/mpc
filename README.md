@@ -199,6 +199,8 @@ form assembly:
    - [ ] Constant folding
    - [ ] For-loop unrolling
    - [ ] Signed / unsigned arithmetics
+   - [ ] `const (sym=val,sym=val)` syntax
+   - [ ] Variable assignment with _n_ values
  - Garbling:
    - [X] Free XOR
    - [ ] Row reduction
