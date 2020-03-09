@@ -497,6 +497,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewGeInstr(l.Type, l, r, t)
 	case BinaryAnd:
 		instr, err = ssa.NewAndInstr(l, r, t)
+	case BinaryOr:
+		instr, err = ssa.NewOrInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, nil, ctx.logger.Errorf(ast.Loc,

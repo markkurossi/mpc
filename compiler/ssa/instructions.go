@@ -260,6 +260,14 @@ func NewAndInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+func NewOrInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Or,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
 func NewIfInstr(c Variable, t *Block) Instr {
 	return Instr{
 		Op:    If,

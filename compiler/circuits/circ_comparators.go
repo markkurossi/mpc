@@ -86,11 +86,20 @@ func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
-func NewLogicalAnd(compiler *Compiler, x, y, r []*Wire) error {
+func NewLogicalAND(compiler *Compiler, x, y, r []*Wire) error {
 	if len(x) != 1 || len(y) != 1 || len(r) != 1 {
 		return fmt.Errorf("invalid logical and arguments: x=%d, y=%d, r=%d",
 			len(x), len(y), len(r))
 	}
 	compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], r[0]))
+	return nil
+}
+
+func NewLogicalOR(compiler *Compiler, x, y, r []*Wire) error {
+	if len(x) != 1 || len(y) != 1 || len(r) != 1 {
+		return fmt.Errorf("invalid logical or arguments: x=%d, y=%d, r=%d",
+			len(x), len(y), len(r))
+	}
+	compiler.AddGate(NewBinary(circuit.OR, x[0], y[0], r[0]))
 	return nil
 }

@@ -151,7 +151,17 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewLogicalAnd(cc, wires[0], wires[1], o)
+			err = circuits.NewLogicalAND(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Or:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewLogicalOR(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
