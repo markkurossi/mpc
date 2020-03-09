@@ -10,6 +10,7 @@ package circuit
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"math/big"
 	"time"
@@ -33,17 +34,28 @@ func (s FileSize) String() string {
 	}
 }
 
-func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
-	verbose bool) ([]*big.Int, error) {
+func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+	[]*big.Int, error) {
 
 	timing := NewTiming()
 
-	garbled, err := circ.Garble(key)
+	var key [32]byte
+	_, err := rand.Read(key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	garbled, err := circ.Garble(key[:])
 	if err != nil {
 		return nil, err
 	}
 
 	timing.Sample("Garble", nil)
+
+	// Send program info.
+	if err := conn.SendData(key[:]); err != nil {
+		return nil, err
+	}
 
 	// Send garbled tables.
 	if err := conn.SendUint32(len(garbled.Gates)); err != nil {

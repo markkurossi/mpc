@@ -20,12 +20,18 @@ var (
 	debug = false
 )
 
-func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, key []byte,
-	verbose bool) ([]*big.Int, error) {
+func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+	[]*big.Int, error) {
 
 	timing := NewTiming()
 
 	garbled := make([][][]byte, circ.NumGates)
+
+	// Receive program info.
+	key, err := conn.ReceiveData()
+	if err != nil {
+		return nil, err
+	}
 
 	// Receive garbled tables.
 	count, err := conn.ReceiveUint32()

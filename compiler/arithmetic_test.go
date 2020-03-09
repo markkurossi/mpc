@@ -109,8 +109,6 @@ func TestArithmetics(t *testing.T) {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
 
-		var key [32]byte
-
 		limit := 1 << test.Bits
 
 		for g := 0; g < limit; g++ {
@@ -130,14 +128,14 @@ func TestArithmetics(t *testing.T) {
 
 				go func() {
 					_, err := circuit.Garbler(circuit.NewConn(gio), circ,
-						gInput, key[:], false)
+						gInput, false)
 					if err != nil {
 						t.Fatalf("Garbler failed: %s\n", err)
 					}
 				}()
 
 				result, err := circuit.Evaluator(circuit.NewConn(eio), circ,
-					eInput, key[:], false)
+					eInput, false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}
@@ -166,7 +164,6 @@ func BenchmarkMult(b *testing.B) {
 	if err != nil {
 		b.Fatalf("failed to compile test: %s", err)
 	}
-	var key [32]byte
 
 	gr, ew := io.Pipe()
 	er, gw := io.Pipe()
@@ -178,15 +175,13 @@ func BenchmarkMult(b *testing.B) {
 	eInput := []*big.Int{big.NewInt(int64(13))}
 
 	go func() {
-		_, err := circuit.Garbler(circuit.NewConn(gio), circ,
-			gInput, key[:], false)
+		_, err := circuit.Garbler(circuit.NewConn(gio), circ, gInput, false)
 		if err != nil {
 			b.Fatalf("Garbler failed: %s\n", err)
 		}
 	}()
 
-	_, err = circuit.Evaluator(circuit.NewConn(eio), circ,
-		eInput, key[:], false)
+	_, err = circuit.Evaluator(circuit.NewConn(eio), circ, eInput, false)
 	if err != nil {
 		b.Fatalf("Evaluator failed: %s\n", err)
 	}

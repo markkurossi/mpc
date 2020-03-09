@@ -195,15 +195,19 @@ form assembly:
 
 # TODO
 
+ - Compiler:
+   - [ ] Constant folding
+   - [ ] For-loop unrolling
+   - [ ] Signed / unsigned arithmetics
  - Garbling:
    - [X] Free XOR
    - [ ] Row reduction
    - [ ] Half AND
- - [ ] TLS for garbler-evaluator protocol
- - [ ] Session-specific circuit encryption key
- - [ ] For-loop unrolling
- - [ ] Signed / unsigned arithmetics
- - [ ] MODP circuit
+ - Packages:
+   - [ ] MODP circuit
+ - Misc:
+   - [ ] TLS for garbler-evaluator protocol
+   - [X] Session-specific circuit encryption key
 
 ## Free XOR
 

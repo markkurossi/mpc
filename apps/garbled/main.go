@@ -33,7 +33,6 @@ var (
 	port    = ":8080"
 	verbose = false
 	debug   = false
-	key     [32]byte // XXX
 )
 
 type input []string
@@ -196,7 +195,7 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 		bio := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 		ccon := circuit.NewConn(bio)
 
-		result, err := circuit.Evaluator(ccon, circ, input, key[:], verbose)
+		result, err := circuit.Evaluator(ccon, circ, input, verbose)
 
 		conn.Close()
 
@@ -218,7 +217,7 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 	bio := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
 	conn := circuit.NewConn(bio)
 
-	result, err := circuit.Garbler(conn, circ, input, key[:], verbose)
+	result, err := circuit.Garbler(conn, circ, input, verbose)
 	if err != nil {
 		return err
 	}
