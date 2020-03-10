@@ -26,6 +26,8 @@ const (
 	Fsub
 	Bor
 	Bxor
+	Band
+	Bclr
 	Imult
 	Umult
 	Fmult
@@ -63,8 +65,10 @@ var operands = map[Operand]string{
 	Isub:  "isub",
 	Usub:  "usub",
 	Fsub:  "fsub",
+	Band:  "band",
 	Bor:   "bor",
 	Bxor:  "bxor",
+	Bclr:  "bclr",
 	Imult: "imult",
 	Umult: "umult",
 	Fmult: "fmult",
@@ -283,6 +287,38 @@ func NewAndInstr(l, r, o Variable) (Instr, error) {
 func NewOrInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Or,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewBandInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Band,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewBclrInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Bclr,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewBorInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Bor,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewBxorInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Bxor,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil

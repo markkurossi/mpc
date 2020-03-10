@@ -186,6 +186,46 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Band:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewBinaryAND(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Bclr:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewBinaryClear(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Bor:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewBinaryOR(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Bxor:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewBinaryXOR(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
 		case If, Jump:
 			// Branch operations are no-ops in circuits.
 

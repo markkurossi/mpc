@@ -289,33 +289,42 @@ func (ast *Return) Fprint(w io.Writer, ind int) {
 type BinaryType int
 
 const (
-	BinaryPlus BinaryType = iota
-	BinaryMinus
-	BinaryMult
+	BinaryMult BinaryType = iota
 	BinaryDiv
+	// mod, <<, >>
+	BinaryBand
+	BinaryBclear
+	BinaryPlus
+	BinaryMinus
+	BinaryBor
+	BinaryBxor
+	BinaryEq
+	BinaryNeq
 	BinaryLt
 	BinaryLe
 	BinaryGt
 	BinaryGe
-	BinaryEq
-	BinaryNeq
 	BinaryAnd
 	BinaryOr
 )
 
 var binaryTypes = map[BinaryType]string{
-	BinaryPlus:  "+",
-	BinaryMinus: "-",
-	BinaryMult:  "*",
-	BinaryDiv:   "/",
-	BinaryLt:    "<",
-	BinaryLe:    "<=",
-	BinaryGt:    ">",
-	BinaryGe:    ">=",
-	BinaryEq:    "==",
-	BinaryNeq:   "!=",
-	BinaryAnd:   "&&",
-	BinaryOr:    "||",
+	BinaryMult:   "*",
+	BinaryDiv:    "/",
+	BinaryBand:   "&",
+	BinaryBclear: "&^",
+	BinaryPlus:   "+",
+	BinaryMinus:  "-",
+	BinaryBor:    "|",
+	BinaryBxor:   "^",
+	BinaryEq:     "==",
+	BinaryNeq:    "!=",
+	BinaryLt:     "<",
+	BinaryLe:     "<=",
+	BinaryGt:     ">",
+	BinaryGe:     ">=",
+	BinaryAnd:    "&&",
+	BinaryOr:     "||",
 }
 
 func (t BinaryType) String() string {

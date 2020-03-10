@@ -203,10 +203,7 @@ form assembly:
    - [ ] Variable assignment with _n_ values
    - [ ] logical not
    - [ ] binary divide
-   - [ ] BitAnd
-   - [ ] BitOr
-   - [ ] BitXor
-   - [ ] BitClear
+   - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
  - Garbling:
    - [X] Free XOR

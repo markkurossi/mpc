@@ -465,7 +465,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryPlus, BinaryMinus, BinaryMult:
+	case BinaryPlus, BinaryMinus, BinaryMult, BinaryBand, BinaryBclear,
+		BinaryBor, BinaryBxor:
 		resultType = l.Type
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
@@ -503,6 +504,14 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewAndInstr(l, r, t)
 	case BinaryOr:
 		instr, err = ssa.NewOrInstr(l, r, t)
+	case BinaryBand:
+		instr, err = ssa.NewBandInstr(l, r, t)
+	case BinaryBclear:
+		instr, err = ssa.NewBclrInstr(l, r, t)
+	case BinaryBor:
+		instr, err = ssa.NewBorInstr(l, r, t)
+	case BinaryBxor:
+		instr, err = ssa.NewBxorInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, nil, ctx.logger.Errorf(ast.Loc,

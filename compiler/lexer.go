@@ -127,18 +127,22 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	T_Mult:  ast.BinaryMult,
-	T_Plus:  ast.BinaryPlus,
-	T_Minus: ast.BinaryMinus,
-	T_Div:   ast.BinaryDiv,
-	T_Lt:    ast.BinaryLt,
-	T_Le:    ast.BinaryLe,
-	T_Gt:    ast.BinaryGt,
-	T_Ge:    ast.BinaryGe,
-	T_Eq:    ast.BinaryEq,
-	T_Neq:   ast.BinaryNeq,
-	T_And:   ast.BinaryAnd,
-	T_Or:    ast.BinaryOr,
+	T_Mult:     ast.BinaryMult,
+	T_Plus:     ast.BinaryPlus,
+	T_Minus:    ast.BinaryMinus,
+	T_Div:      ast.BinaryDiv,
+	T_Lt:       ast.BinaryLt,
+	T_Le:       ast.BinaryLe,
+	T_Gt:       ast.BinaryGt,
+	T_Ge:       ast.BinaryGe,
+	T_Eq:       ast.BinaryEq,
+	T_Neq:      ast.BinaryNeq,
+	T_And:      ast.BinaryAnd,
+	T_Or:       ast.BinaryOr,
+	T_BitAnd:   ast.BinaryBand,
+	T_BitOr:    ast.BinaryBor,
+	T_BitXor:   ast.BinaryBxor,
+	T_BitClear: ast.BinaryBclear,
 }
 
 func (t TokenType) BinaryType() ast.BinaryType {
@@ -448,6 +452,8 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '&':
 				return l.Token(T_And), nil
+			case '^':
+				return l.Token(T_BitClear), nil
 			default:
 				l.UnreadRune()
 				return l.Token(T_BitAnd), nil
@@ -485,6 +491,9 @@ func (l *Lexer) Get() (*Token, error) {
 				l.UnreadRune()
 				return l.Token(T_Not), nil
 			}
+
+		case '^':
+			return l.Token(T_BitXor), nil
 
 		default:
 			if unicode.IsLetter(r) {
