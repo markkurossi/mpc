@@ -465,8 +465,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryPlus, BinaryMinus, BinaryMult, BinaryBand, BinaryBclear,
-		BinaryBor, BinaryBxor:
+	case BinaryPlus, BinaryMinus, BinaryMult, BinaryDiv, BinaryBand,
+		BinaryBclear, BinaryBor, BinaryBxor:
 		resultType = l.Type
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
@@ -488,6 +488,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryMult:
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
+	case BinaryDiv:
+		instr, err = ssa.NewDivInstr(l.Type, l, r, t)
 	case BinaryLt:
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
 	case BinaryLe:

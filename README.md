@@ -220,6 +220,8 @@ form assembly:
    - [ ] Half AND
  - Packages:
    - [ ] MODP circuit
+     - [ ] variable definition with init value
+     - [ ] binary modulo operation
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key

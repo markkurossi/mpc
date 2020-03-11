@@ -184,6 +184,25 @@ func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Idiv
+	case types.Uint:
+		op = Udiv
+	case types.Float:
+		op = Fdiv
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
 func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
