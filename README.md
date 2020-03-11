@@ -131,10 +131,9 @@ converted) to be or correct type.
 
 The MPCL runtime defines the following builtin functions:
 
- - `native(_filename_, _args..._)`: calls a native circuit file
-   _filename_ with arguments _args..._. The native returns the
-   circuit's return values.
- - `size(_variable_)`: returns the bit size of the argument variable.
+ - `native(FILENAME, ARG...)`: calls a native circuit file _filename_
+   with arguments _arg..._. Returns the circuit's return values.
+ - `size(VARIABLE)`: returns the bit size of the argument _variable_.
 
 ## SSA (Static single assignment form)
 
