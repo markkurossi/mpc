@@ -22,6 +22,10 @@ func (f Fraction) String() string {
 	return fmt.Sprintf("%d[%d]", f.Size, len(f.Wires))
 }
 
+func (f Fraction) Has(i int) bool {
+	return f.Size-1-i < len(f.Wires)
+}
+
 func (f Fraction) Wire(i int) *Wire {
 	index := f.Size - 1 - i
 
@@ -36,11 +40,6 @@ func (f Fraction) Wire(i int) *Wire {
 }
 
 func NewDivider(compiler *Compiler, xa, da, qa, ra []*Wire) error {
-	if len(qa) < len(da) {
-		return fmt.Errorf("invalid divider arguments: d=%d, q=%d, r=%d",
-			len(da), len(qa), len(ra))
-	}
-
 	x := Fraction{
 		Wires: xa,
 		Size:  len(xa)*2 - 1,
@@ -56,11 +55,19 @@ func NewDivider(compiler *Compiler, xa, da, qa, ra []*Wire) error {
 		Size:  len(xa),
 		CC:    compiler,
 	}
+	r := Fraction{
+		Wires: ra,
+		Size:  len(xa),
+		CC:    compiler,
+	}
 
-	fmt.Printf("*** divider: x=%s, d=%s, q=%s, r=%d\n", x, d, q, len(ra))
+	fmt.Printf("*** divider: x=%s, d=%s, q=%s, r=%s\n", x, d, q, r)
+
+	invX0 := NewWire()
+	compiler.AddGate(NewINV(x.Wire(0), invX0))
 
 	t := NewWire()
-	compiler.One(t)
+	compiler.AddGate(NewBinary(circuit.XOR, invX0, d.Wire(0), t))
 
 	rIn := make([]*Wire, len(xa))
 	rOut := make([]*Wire, len(xa))
@@ -89,8 +96,8 @@ func NewDivider(compiler *Compiler, xa, da, qa, ra []*Wire) error {
 			c := NewWire()
 
 			var ro *Wire
-			if y+1 >= len(xa) && len(ra) > x {
-				ro = ra[x]
+			if y+1 >= len(xa) && r.Has(x) {
+				ro = r.Wire(x)
 			} else {
 				ro = NewWire()
 			}
@@ -100,17 +107,16 @@ func NewDivider(compiler *Compiler, xa, da, qa, ra []*Wire) error {
 		}
 
 		// Quotient y
-		w := NewWire()
-		compiler.AddGate(NewINV(t, w))
-		compiler.AddGate(NewINV(w, q.Wire(y)))
+		if q.Has(y) {
+			w := NewWire()
+			compiler.AddGate(NewINV(t, w))
+			compiler.AddGate(NewINV(w, q.Wire(y)))
+		}
 	}
 
 	// Extra output bits to zero.
 	for i := len(xa); i < len(qa); i++ {
 		compiler.Zero(qa[i])
-	}
-	for i := len(xa); i < len(ra); i++ {
-		compiler.Zero(ra[i])
 	}
 
 	return nil
