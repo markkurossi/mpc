@@ -165,10 +165,15 @@ type VariableDef struct {
 	Loc   utils.Point
 	Names []string
 	Type  types.Info
+	Init  AST
 }
 
 func (ast *VariableDef) String() string {
-	return fmt.Sprintf("var %v %s", ast.Names, ast.Type)
+	result := fmt.Sprintf("var %v %s", ast.Names, ast.Type)
+	if ast.Init != nil {
+		result += fmt.Sprintf(" = %s", ast.Init)
+	}
+	return result
 }
 
 func (ast *VariableDef) Location() utils.Point {
@@ -185,6 +190,9 @@ func (ast *VariableDef) Fprint(w io.Writer, ind int) {
 		}
 	}
 	fmt.Fprintf(w, " %s", ast.Type)
+	if ast.Init != nil {
+		fmt.Fprintf(w, " %s", ast.Init)
+	}
 }
 
 type Assign struct {

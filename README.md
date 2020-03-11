@@ -203,6 +203,7 @@ form assembly:
    - [ ] Variable assignment with _n_ values
    - [ ] logical not
    - [ ] binary divide
+   - [ ] unary expressions
    - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
  - Garbling:

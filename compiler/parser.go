@@ -450,10 +450,22 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			p.lexer.Unget(t)
 			return nil, p.errUnexpected(t, T_Type)
 		}
+		t, err = p.lexer.Get()
+
+		var expr ast.AST
+		if t.Type == T_Assign {
+			// Initializer.
+			expr, err = p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		return &ast.VariableDef{
 			Loc:   tStmt.From,
 			Names: names,
 			Type:  t.TypeInfo,
+			Init:  expr,
 		}, nil
 
 	case T_SymIf:

@@ -1,0 +1,27 @@
+// -*- go -*-
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package math
+
+// Exp computes b**e mod |m| (i.e. the sign of m is ignore).
+// TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
+func Exp(b, e, n uint64) uint64 {
+	var r uint64 = 1
+
+	for i := sizeof(b)*8 - 1; i >= 0; i-- {
+		r = r * r % m
+		// TODO: uint64(1)<<i is compile-time constant so we know we
+		// only test the status of one bit of e. Let's detect this and
+		// emit `bit e{0,0}u64 {i} %_{0,0}i1' instruction i.e. one AND
+		// gate.
+		if e&(uint64(1)<<i) != 0 {
+			r = r * b % m
+		}
+	}
+
+	return r
+}

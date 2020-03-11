@@ -34,6 +34,7 @@ const (
 	T_SymReturn
 	T_SymVar
 	T_SymConst
+	T_SymFor
 	T_Type
 	T_Assign
 	T_Mult
@@ -82,6 +83,7 @@ var tokenTypes = map[TokenType]string{
 	T_SymReturn:  "return",
 	T_SymVar:     "var",
 	T_SymConst:   "const",
+	T_SymFor:     "for",
 	T_Type:       "type",
 	T_Assign:     "=",
 	T_Mult:       "*",
@@ -156,6 +158,7 @@ func (t TokenType) BinaryType() ast.BinaryType {
 var symbols = map[string]TokenType{
 	"import":  T_SymImport,
 	"const":   T_SymConst,
+	"for":     T_SymFor,
 	"else":    T_SymElse,
 	"func":    T_SymFunc,
 	"if":      T_SymIf,
