@@ -127,6 +127,15 @@ converted) to be or correct type.
 | intN   | N    | yes    |        |
 | floatN | N    | yes    |        |
 
+### Builtin functions
+
+The MPCL runtime defines the following builtin functions:
+
+ - `native(_filename_, _args..._)`: calls a native circuit file
+   _filename_ with arguments _args..._. The native returns the
+   circuit's return values.
+ - `size(_variable_)`: returns the bit size of the argument variable.
+
 ## SSA (Static single assignment form)
 
 ```go
