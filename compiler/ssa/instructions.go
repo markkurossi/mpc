@@ -451,6 +451,9 @@ func (v *Variable) Bit(bit int) bool {
 		}
 		return false
 
+	case int:
+		return (val & (1 << bit)) != 0
+
 	case uint64:
 		return (val & (1 << bit)) != 0
 
@@ -470,7 +473,7 @@ func (v *Variable) Bit(bit int) bool {
 		return bytes[idx]&(1<<mod) != 0
 
 	default:
-		panic(fmt.Sprintf("Variable.Bit called for a non const %v (%T)", v, v))
+		panic(fmt.Sprintf("Variable.Bit called for non const %v (%T)", v, val))
 	}
 }
 

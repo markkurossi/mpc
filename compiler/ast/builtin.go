@@ -39,6 +39,11 @@ var builtins = []Builtin{
 		Type: BuiltinFunc,
 		SSA:  nativeSSA,
 	},
+	Builtin{
+		Name: "size",
+		Type: BuiltinFunc,
+		SSA:  sizeSSA,
+	},
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -110,4 +115,27 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	block.AddInstr(ssa.NewCircInstr(args[1:], circ, result))
 
 	return block, result, nil
+}
+
+func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+
+	if len(args) != 1 {
+		return nil, nil, ctx.logger.Errorf(loc,
+			"invalid amount of arguments in call to size")
+	}
+
+	val := args[0].Type.Bits
+	v := ssa.Variable{
+		Name: ConstantName(val),
+		Type: types.Info{
+			Type: types.Int,
+			Bits: val,
+		},
+		Const:      true,
+		ConstValue: val,
+	}
+	gen.AddConstant(v)
+
+	return block, []ssa.Variable{v}, nil
 }

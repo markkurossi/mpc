@@ -398,15 +398,19 @@ type Constant struct {
 }
 
 func (ast *Constant) String() string {
-	switch val := ast.Value.(type) {
-	case uint64:
+	return ConstantName(ast.Value)
+}
+
+func ConstantName(value interface{}) string {
+	switch val := value.(type) {
+	case int, uint64:
 		return fmt.Sprintf("$%d", val)
 	case *big.Int:
 		return fmt.Sprintf("$%s", val)
 	case bool:
 		return fmt.Sprintf("$%v", val)
 	default:
-		return fmt.Sprintf("{undefined constant %v}", ast.Value)
+		return fmt.Sprintf("{undefined constant %v}", val)
 	}
 }
 
