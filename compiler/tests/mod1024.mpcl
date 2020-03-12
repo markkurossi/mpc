@@ -1,9 +1,0 @@
-// -*- go -*-
-
-package main
-
-// @pprof
-// @Test 42 100  = 42
-func main(a, b uint1024) uint1024 {
-	return a % b
-}
