@@ -17,6 +17,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -61,6 +62,7 @@ func main() {
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDebug := flag.Bool("d", false, "debug output")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	flag.Parse()
 
 	verbose = *fVerbose
@@ -72,6 +74,18 @@ func main() {
 	if len(flag.Args()) == 0 {
 		fmt.Printf("No input files\n")
 		os.Exit(1)
+	}
+
+	if len(*cpuprofile) > 0 {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	params := &utils.Params{
@@ -116,7 +130,7 @@ func main() {
 				}
 			}
 
-			circ, err = compiler.NewCompiler(params).CompileFile(arg)
+			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				os.Exit(1)
