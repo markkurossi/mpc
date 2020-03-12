@@ -120,11 +120,21 @@ type Circuit struct {
 	N2       IO
 	N3       IO
 	Gates    []*Gate
+	Stats    map[Operation]int
 }
 
 func (c *Circuit) String() string {
-	return fmt.Sprintf("#gates=%d, #wires=%d n1=%d, n2=%d, n3=%d",
-		c.NumGates, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
+	var stats string
+
+	for k := XOR; k <= INV; k++ {
+		v := c.Stats[k]
+		if len(stats) > 0 {
+			stats += " "
+		}
+		stats += fmt.Sprintf("%s=%d", k, v)
+	}
+	return fmt.Sprintf("#gates=%d (%s), #wires=%d n1=%d, n2=%d, n3=%d",
+		c.NumGates, stats, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
 }
 
 func (c *Circuit) Dump() {
@@ -299,6 +309,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 	}
 
 	gates := make([]*Gate, numGates)
+	stats := make(map[Operation]int)
 	var gate int
 	for gate = 0; ; gate++ {
 		line, err = readLine(r)
@@ -384,6 +395,9 @@ func Parse(in io.Reader) (*Circuit, error) {
 			Outputs: outputs,
 			Op:      op,
 		}
+		count := stats[op]
+		count++
+		stats[op] = count
 	}
 	if gate != numGates {
 		return nil, fmt.Errorf("not enough gates: got %d, expected %d",
@@ -404,6 +418,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 		N2:       n2,
 		N3:       n3,
 		Gates:    gates,
+		Stats:    stats,
 	}, nil
 }
 

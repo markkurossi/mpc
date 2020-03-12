@@ -190,6 +190,13 @@ func (c *Compiler) Compile() *circuit.Circuit {
 		gate.Compile(c)
 	}
 
+	stats := make(map[circuit.Operation]int)
+	for _, g := range c.compiled {
+		count := stats[g.Op]
+		count++
+		stats[g.Op] = count
+	}
+
 	result := &circuit.Circuit{
 		NumGates: int(c.nextGateID),
 		NumWires: int(c.nextWireID),
@@ -197,6 +204,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 		N2:       c.N2,
 		N3:       c.N3,
 		Gates:    c.compiled,
+		Stats:    stats,
 	}
 
 	return result
