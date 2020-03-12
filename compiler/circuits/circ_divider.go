@@ -6,117 +6,72 @@
 
 package circuits
 
-import (
-	"fmt"
+func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
+	a, b = compiler.ZeroPad(a, b)
 
-	"github.com/markkurossi/mpc/circuit"
-)
+	rIn := make([]*Wire, len(b)+1)
+	rOut := make([]*Wire, len(b)+1)
 
-type Fraction struct {
-	Wires []*Wire
-	Size  int
-	CC    *Compiler
-}
-
-func (f Fraction) String() string {
-	return fmt.Sprintf("%d[%d]", f.Size, len(f.Wires))
-}
-
-func (f Fraction) Has(i int) bool {
-	return f.Size-1-i < len(f.Wires)
-}
-
-func (f Fraction) Wire(i int) *Wire {
-	index := f.Size - 1 - i
-
-	var w *Wire
-	if index < len(f.Wires) {
-		w = f.Wires[index]
-	} else {
-		w = NewWire()
-		f.CC.Zero(w)
+	// Init bINV.
+	bINV := make([]*Wire, len(b))
+	for i := 0; i < len(b); i++ {
+		bINV[i] = NewWire()
+		compiler.AddGate(NewINV(b[i], bINV[i]))
 	}
-	return w
-}
-
-func NewDivider(compiler *Compiler, xa, da, qa, ra []*Wire) error {
-	x := Fraction{
-		Wires: xa,
-		Size:  len(xa)*2 - 1,
-		CC:    compiler,
-	}
-	d := Fraction{
-		Wires: da,
-		Size:  len(xa),
-		CC:    compiler,
-	}
-	q := Fraction{
-		Wires: qa,
-		Size:  len(xa),
-		CC:    compiler,
-	}
-	r := Fraction{
-		Wires: ra,
-		Size:  len(xa),
-		CC:    compiler,
-	}
-
-	fmt.Printf("*** divider: x=%s, d=%s, q=%s, r=%s\n", x, d, q, r)
-
-	invX0 := NewWire()
-	compiler.AddGate(NewINV(x.Wire(0), invX0))
-
-	t := NewWire()
-	compiler.AddGate(NewBinary(circuit.XOR, invX0, d.Wire(0), t))
-
-	rIn := make([]*Wire, len(xa))
-	rOut := make([]*Wire, len(xa))
 
 	// Init for the first row.
-	for i := 1; i < len(xa); i++ {
-		rOut[i] = x.Wire(i - 1)
+	for i := 0; i < len(b); i++ {
+		rOut[i] = NewWire()
+		compiler.Zero(rOut[i])
 	}
 
 	// Generate matrix.
-	for y := 0; y < len(xa); y++ {
+	for y := 0; y < len(a); y++ {
 		// Init rIn.
-		copy(rIn, rOut[1:])
+		rIn[0] = a[len(a)-1-y]
+		copy(rIn[1:], rOut)
 
-		rIn[len(xa)-1] = x.Wire(len(xa) - 1 + y)
-
-		// XORs left-to-right.
-		for x := 0; x < len(xa); x++ {
-			rOut[x] = NewWire()
-
-			compiler.AddGate(NewBinary(circuit.XOR, t, d.Wire(x), rOut[x]))
+		// Adders from b{0} to b{n-1}, 0
+		cIn := NewWire()
+		compiler.One(cIn)
+		for x := 0; x < len(b)+1; x++ {
+			var bw *Wire
+			if x < len(b) {
+				bw = bINV[x]
+			} else {
+				bw = NewWire()
+				compiler.One(bw) // INV(0)
+			}
+			co := NewWire()
+			ro := NewWire()
+			NewFullAdder(compiler, rIn[x], bw, cIn, ro, co)
+			rOut[x] = ro
+			cIn = co
 		}
 
-		// Adders right-to-left.
-		for x := len(xa) - 1; x >= 0; x-- {
-			c := NewWire()
+		// Quotient y.
+		if len(a)-1-y < len(q) {
+			w := NewWire()
+			compiler.AddGate(NewINV(cIn, w))
+			compiler.AddGate(NewINV(w, q[len(a)-1-y]))
+		}
 
+		// MUXes from high to low bit.
+		for x := len(b); x >= 0; x-- {
 			var ro *Wire
-			if y+1 >= len(xa) && r.Has(x) {
-				ro = r.Wire(x)
+			if y+1 >= len(a) && x < len(r) {
+				ro = r[x]
 			} else {
 				ro = NewWire()
 			}
-			NewFullAdder(compiler, rOut[x], rIn[x], t, ro, c)
+
+			err := NewMux(compiler, []*Wire{cIn}, rOut[x:x+1], rIn[x:x+1],
+				[]*Wire{ro})
+			if err != nil {
+				return err
+			}
 			rOut[x] = ro
-			t = c
 		}
-
-		// Quotient y
-		if q.Has(y) {
-			w := NewWire()
-			compiler.AddGate(NewINV(t, w))
-			compiler.AddGate(NewINV(w, q.Wire(y)))
-		}
-	}
-
-	// Extra output bits to zero.
-	for i := len(xa); i < len(qa); i++ {
-		compiler.Zero(qa[i])
 	}
 
 	return nil

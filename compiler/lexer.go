@@ -133,6 +133,7 @@ var binaryTypes = map[TokenType]ast.BinaryType{
 	T_Plus:     ast.BinaryPlus,
 	T_Minus:    ast.BinaryMinus,
 	T_Div:      ast.BinaryDiv,
+	T_Mod:      ast.BinaryMod,
 	T_Lt:       ast.BinaryLt,
 	T_Le:       ast.BinaryLe,
 	T_Gt:       ast.BinaryGt,
@@ -366,7 +367,8 @@ func (l *Lexer) Get() (*Token, error) {
 				l.UnreadRune()
 				return l.Token(T_Div), nil
 			}
-
+		case '%':
+			return l.Token(T_Mod), nil
 		case '(':
 			return l.Token(T_LParen), nil
 		case ')':

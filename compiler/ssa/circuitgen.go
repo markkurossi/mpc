@@ -117,6 +117,17 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Imod, Umod:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+
+			err = circuits.NewDivider(cc, wires[0], wires[1], nil, o)
+			if err != nil {
+				return err
+			}
+
 		case Ilt, Ult:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {

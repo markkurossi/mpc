@@ -34,6 +34,9 @@ const (
 	Idiv
 	Udiv
 	Fdiv
+	Imod
+	Umod
+	Fmod
 	Ilt
 	Ult
 	Flt
@@ -75,6 +78,9 @@ var operands = map[Operand]string{
 	Idiv:  "idiv",
 	Udiv:  "udiv",
 	Fdiv:  "fdiv",
+	Imod:  "imod",
+	Umod:  "umod",
+	Fmod:  "fmod",
 	Ilt:   "ilt",
 	Ult:   "ult",
 	Flt:   "flt",
@@ -193,6 +199,25 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 		op = Udiv
 	case types.Float:
 		op = Fdiv
+	default:
+		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
+	}
+	return Instr{
+		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
+	var op Operand
+	switch t.Type {
+	case types.Int:
+		op = Imod
+	case types.Uint:
+		op = Umod
+	case types.Float:
+		op = Fmod
 	default:
 		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
 	}

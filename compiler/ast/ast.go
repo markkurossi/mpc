@@ -299,7 +299,8 @@ type BinaryType int
 const (
 	BinaryMult BinaryType = iota
 	BinaryDiv
-	// mod, <<, >>
+	BinaryMod
+	// <<, >>
 	BinaryBand
 	BinaryBclear
 	BinaryPlus
@@ -319,6 +320,7 @@ const (
 var binaryTypes = map[BinaryType]string{
 	BinaryMult:   "*",
 	BinaryDiv:    "/",
+	BinaryMod:    "%",
 	BinaryBand:   "&",
 	BinaryBclear: "&^",
 	BinaryPlus:   "+",
