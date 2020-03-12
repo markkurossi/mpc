@@ -210,7 +210,7 @@ form assembly:
    - [X] `const (sym=val,sym=val)` syntax
    - [ ] Variable assignment with _n_ values
    - [ ] logical not
-   - [ ] binary divide
+   - [X] binary divide
    - [ ] unary expressions
    - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
@@ -221,7 +221,7 @@ form assembly:
  - Packages:
    - [ ] MODP circuit
      - [ ] variable definition with init value
-     - [ ] binary modulo operation
+     - [X] binary modulo operation
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
