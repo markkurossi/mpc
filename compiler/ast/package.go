@@ -34,11 +34,12 @@ func NewPackage(name string) *Package {
 }
 
 func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
-	params *utils.Params) (*circuit.Circuit, error) {
+	params *utils.Params) (*circuit.Circuit, Annotations, error) {
 
 	main, ok := unit.Functions["main"]
 	if !ok {
-		return nil, logger.Errorf(utils.Point{}, "no main function defined\n")
+		return nil, nil, logger.Errorf(utils.Point{},
+			"no main function defined")
 	}
 
 	gen := ssa.NewGenerator(params.Verbose)
@@ -50,7 +51,7 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	// Compile main.
 	_, returnVars, err := main.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if params.SSAOut != nil {
@@ -65,7 +66,7 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	for _, arg := range main.Args {
 		v, ok := main.Bindings[arg.Name]
 		if !ok {
-			return nil, fmt.Errorf("argument %s not bound", arg.Name)
+			return nil, nil, fmt.Errorf("argument %s not bound", arg.Name)
 		}
 		args = append(args, circuit.IOArg{
 			Name: v.String(),
@@ -89,7 +90,7 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	}
 	if !separatorSeen {
 		if len(args) != 2 {
-			return nil, fmt.Errorf("can't split arguments: %s", args)
+			return nil, nil, fmt.Errorf("can't split arguments: %s", args)
 		}
 		g = circuit.IO{args[0]}
 		e = circuit.IO{args[1]}
@@ -100,7 +101,7 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	for idx, rt := range main.Return {
 		_, ok := main.Bindings[rt.Name]
 		if !ok {
-			return nil, fmt.Errorf("return value %s not bound", rt.Name)
+			return nil, nil, fmt.Errorf("return value %s not bound", rt.Name)
 		}
 		v := returnVars[idx]
 		r = append(r, circuit.IOArg{
@@ -112,17 +113,17 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 	cc, err := circuits.NewCompiler(g, e, r)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = gen.DefineConstants(cc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = ctx.Start().Circuit(gen, cc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	circ := cc.Compile()
@@ -133,5 +134,5 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		circ.Dot(params.CircDotOut)
 	}
 
-	return circ, nil
+	return circ, main.Annotations, nil
 }

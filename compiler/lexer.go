@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"regexp"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/markkurossi/mpc/compiler/ast"
@@ -209,6 +210,7 @@ type Lexer struct {
 	unreadSize  int
 	unreadPoint utils.Point
 	history     map[int][]rune
+	lastComment Comment
 }
 
 func NewLexer(source string, in io.Reader) *Lexer {
@@ -349,6 +351,8 @@ func (l *Lexer) Get() (*Token, error) {
 			}
 			switch r {
 			case '/':
+				var comment []rune
+				start := l.point
 				for {
 					r, _, err := l.ReadRune()
 					if err != nil {
@@ -357,7 +361,9 @@ func (l *Lexer) Get() (*Token, error) {
 					if r == '\n' {
 						break
 					}
+					comment = append(comment, r)
 				}
+				l.commentLine(string(comment), start)
 				continue
 
 			case '=':
@@ -655,4 +661,35 @@ func (l *Lexer) Token(t TokenType) *Token {
 		From: l.tokenStart,
 		To:   l.point,
 	}
+}
+
+type Comment struct {
+	Start utils.Point
+	End   utils.Point
+	Lines []string
+}
+
+func (c Comment) Empty() bool {
+	return len(c.Lines) == 0
+}
+
+func (l *Lexer) commentLine(line string, loc utils.Point) {
+	line = strings.TrimSpace(line)
+	if l.lastComment.Empty() || l.lastComment.End.Line+1 != loc.Line {
+		l.lastComment = Comment{
+			Start: loc,
+			End:   loc,
+			Lines: []string{line},
+		}
+	} else {
+		l.lastComment.End = loc
+		l.lastComment.Lines = append(l.lastComment.Lines, line)
+	}
+}
+
+func (l *Lexer) Annotations(loc utils.Point) ast.Annotations {
+	if l.lastComment.Empty() || l.lastComment.End.Line+1 != loc.Line {
+		return nil
+	}
+	return l.lastComment.Lines
 }

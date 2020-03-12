@@ -8,9 +8,10 @@ package circuit
 
 import (
 	"fmt"
+	"math/big"
 )
 
-func (c *Circuit) Compute(n1, n2 []uint64) ([]uint64, error) {
+func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
 	if len(n1) != len(c.N1) {
 		return nil, fmt.Errorf("invalid n1 arguments: got %d, expected %d\n",
 			len(n1), len(c.N1))
@@ -25,17 +26,14 @@ func (c *Circuit) Compute(n1, n2 []uint64) ([]uint64, error) {
 	ios = append(ios, c.N1...)
 	ios = append(ios, c.N2...)
 
-	var args []uint64
+	var args []*big.Int
 	args = append(args, n1...)
 	args = append(args, n2...)
 
 	var w int
 	for idx, io := range ios {
-		a := args[idx]
 		for bit := 0; bit < io.Size; bit++ {
-			if a&(1<<bit) != 0 {
-				wires[w] = 1
-			}
+			wires[w] = byte(args[idx].Bit(bit))
 			w++
 		}
 	}
@@ -70,12 +68,12 @@ func (c *Circuit) Compute(n1, n2 []uint64) ([]uint64, error) {
 
 	// Construct outputs
 	w = c.NumWires - c.N3.Size()
-	var result []uint64
+	var result []*big.Int
 	for _, io := range c.N3 {
-		var r uint64
+		r := new(big.Int)
 		for bit := 0; bit < io.Size; bit++ {
 			if wires[w] != 0 {
-				r |= 1 << bit
+				r.SetBit(r, bit, 1)
 			}
 			w++
 		}

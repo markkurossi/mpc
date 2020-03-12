@@ -54,6 +54,15 @@ type IOArg struct {
 
 type IO []IOArg
 
+func (io IO) NeedZero() bool {
+	for _, i := range io {
+		if i.Name == "%0" && i.Size == 1 {
+			return true
+		}
+	}
+	return false
+}
+
 func (io IO) Size() int {
 	var sum int
 	for _, a := range io {

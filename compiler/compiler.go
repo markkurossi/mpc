@@ -30,26 +30,29 @@ func NewCompiler(params *utils.Params) *Compiler {
 	}
 }
 
-func (c *Compiler) Compile(data string) (*circuit.Circuit, error) {
+func (c *Compiler) Compile(data string) (*circuit.Circuit, ast.Annotations,
+	error) {
 	return c.compile("{data}", strings.NewReader(data))
 }
 
-func (c *Compiler) CompileFile(file string) (*circuit.Circuit, error) {
+func (c *Compiler) CompileFile(file string) (*circuit.Circuit, ast.Annotations,
+	error) {
+
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
 	return c.compile(file, f)
 }
 
 func (c *Compiler) compile(source string, in io.Reader) (
-	*circuit.Circuit, error) {
+	*circuit.Circuit, ast.Annotations, error) {
 
 	logger := utils.NewLogger(os.Stdout)
 	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return pkg.Compile(c.packages, logger, c.params)

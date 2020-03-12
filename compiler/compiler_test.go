@@ -7,6 +7,7 @@
 package compiler
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -16,7 +17,7 @@ type IteratorTest struct {
 	Name    string
 	Operand string
 	Bits    int
-	Eval    func(a uint64, b uint64) uint64
+	Eval    func(a int64, b int64) int64
 	Code    string
 }
 
@@ -25,7 +26,7 @@ var iteratorTests = []IteratorTest{
 		Name:    "Add",
 		Operand: "+",
 		Bits:    2,
-		Eval: func(a uint64, b uint64) uint64 {
+		Eval: func(a int64, b int64) int64 {
 			return a + b
 		},
 		Code: `
@@ -40,7 +41,7 @@ func main(a, b uint3) uint3 {
 		Name:    "Multiply 1-bit",
 		Operand: "*",
 		Bits:    1,
-		Eval: func(a uint64, b uint64) uint64 {
+		Eval: func(a int64, b int64) int64 {
 			return a * b
 		},
 		Code: `
@@ -54,7 +55,7 @@ func main(a, b uint1) uint1 {
 		Name:    "Multiply 2-bits",
 		Operand: "*",
 		Bits:    2,
-		Eval: func(a uint64, b uint64) uint64 {
+		Eval: func(a int64, b int64) int64 {
 			return a * b
 		},
 		Code: `
@@ -68,7 +69,7 @@ func main(a, b uint4) uint4 {
 		Name:    "Multiply n-bits",
 		Operand: "*",
 		Bits:    2,
-		Eval: func(a uint64, b uint64) uint64 {
+		Eval: func(a int64, b int64) int64 {
 			return a * b
 		},
 		Code: `
@@ -82,26 +83,27 @@ func main(a, b uint6) uint6 {
 
 func TestIterator(t *testing.T) {
 	for _, test := range iteratorTests {
-		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
+		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
 
-		limit := uint64(1 << test.Bits)
+		limit := int64(1 << test.Bits)
 
-		var g, e uint64
+		var g, e int64
 
 		for g = 0; g < limit; g++ {
 			for e = 0; e < limit; e++ {
 
-				results, err := circ.Compute([]uint64{g}, []uint64{e})
+				results, err := circ.Compute([]*big.Int{big.NewInt(g)},
+					[]*big.Int{big.NewInt(e)})
 				if err != nil {
 					t.Fatalf("compute failed: %s\n", err)
 				}
 
 				expected := test.Eval(g, e)
 
-				if expected != results[0] {
+				if expected != results[0].Int64() {
 					t.Errorf("%s failed: %d %s %d = %d, expected %d\n",
 						test.Name, g, test.Operand, e, results[0],
 						expected)
@@ -112,9 +114,9 @@ func TestIterator(t *testing.T) {
 }
 
 type FixedTest struct {
-	N1   uint64
-	N2   uint64
-	N3   uint64
+	N1   int64
+	N2   int64
+	N3   int64
 	Zero bool
 	Code string
 }
@@ -198,7 +200,7 @@ func MinMax(a, b int) (int, int) {
 	FixedTest{
 		N1:   0,
 		N2:   0,
-		N3:   0xbafef9ea1837a9d8,
+		N3:   -4972262154746484264,
 		Zero: true,
 		Code: `
 package main
@@ -215,7 +217,7 @@ func main(a, b uint512) uint256 {
 	FixedTest{
 		N1:   0,
 		N2:   0,
-		N3:   0x91f4d80cbd668bee,
+		N3:   -7929475494663779346,
 		Zero: true,
 		Code: `
 package main
@@ -231,23 +233,23 @@ func main(a, b uint1024) uint512 {
 
 func TestFixed(t *testing.T) {
 	for idx, test := range fixedTests {
-		circ, err := NewCompiler(&utils.Params{}).Compile(test.Code)
+		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
 			t.Errorf("Failed to compile test %d: %s", idx, err)
 			continue
 		}
-		var n1 = []uint64{test.N1}
+		var n1 = []*big.Int{big.NewInt(test.N1)}
 		if test.Zero {
-			n1 = append(n1, 0)
+			n1 = append(n1, big.NewInt(0))
 		}
-		results, err := circ.Compute(n1, []uint64{test.N2})
+		results, err := circ.Compute(n1, []*big.Int{big.NewInt(test.N2)})
 		if err != nil {
 			t.Errorf("compute failed: %s", err)
 			continue
 		}
-		if results[0] != test.N3 {
+		if results[0].Int64() != test.N3 {
 			t.Errorf("test failed: got %d (%x), expected %d (%x)",
-				results[0], results[0], test.N3, test.N3)
+				results[0].Int64(), results[0].Int64(), test.N3, test.N3)
 		}
 	}
 }

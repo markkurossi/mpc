@@ -98,17 +98,21 @@ type Func struct {
 	Body         List
 	Bindings     map[string]ssa.Variable
 	NumInstances int
+	Annotations  Annotations
 }
 
+type Annotations []string
+
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
-	body List) *Func {
+	body List, annotations Annotations) *Func {
 	return &Func{
-		Loc:      loc,
-		Name:     name,
-		Args:     args,
-		Return:   ret,
-		Body:     body,
-		Bindings: make(map[string]ssa.Variable),
+		Loc:         loc,
+		Name:        name,
+		Args:        args,
+		Return:      ret,
+		Body:        body,
+		Bindings:    make(map[string]ssa.Variable),
+		Annotations: annotations,
 	}
 }
 

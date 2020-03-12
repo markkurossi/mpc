@@ -190,7 +190,7 @@ func (p *Parser) parseToplevel() error {
 		return p.parseConst()
 
 	case T_SymFunc:
-		f, err := p.parseFunc()
+		f, err := p.parseFunc(p.lexer.Annotations(token.From))
 		if err != nil {
 			return err
 		}
@@ -286,11 +286,12 @@ func (p *Parser) parseConstDef(token *Token) error {
 	return nil
 }
 
-func (p *Parser) parseFunc() (*ast.Func, error) {
+func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 	name, err := p.needToken(T_Identifier)
 	if err != nil {
 		return nil, err
 	}
+
 	_, err = p.needToken(T_LParen)
 	if err != nil {
 		return nil, err
@@ -394,8 +395,8 @@ func (p *Parser) parseFunc() (*ast.Func, error) {
 		return nil, err
 	}
 
-	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body),
-		nil
+	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body,
+		annotations), nil
 }
 
 func (p *Parser) parseBlock() (ast.List, error) {

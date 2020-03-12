@@ -283,7 +283,7 @@ func TestSSAGen(t *testing.T) {
 `,
 				test.Name, test.Code)
 		}
-		_, err := NewCompiler(&utils.Params{
+		_, _, err := NewCompiler(&utils.Params{
 			Verbose: verbose,
 			SSAOut:  ssaOut,
 		}).Compile(test.Code)
