@@ -98,9 +98,6 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			return nil, nil, err
 		}
 		block.Bindings.Set(lValue, nil)
-		if ctx.Verbose {
-			fmt.Printf("var %s\n", lValue)
-		}
 
 		// XXX is init is nil, we must init the variable with type's zero.
 		if ast.Init != nil {
@@ -123,15 +120,6 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	// XXX check ast.Define
-	b, err := block.Bindings.Get(ast.Name)
-	if err != nil {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
-	}
-	lValue, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
-	if err != nil {
-		return nil, nil, err
-	}
 	block, v, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
@@ -141,6 +129,25 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		return nil, nil, ctx.logger.Errorf(ast.Loc,
 			"assignment mismatch: %d variables but %d value", 1, len(v))
 	}
+
+	var lValue ssa.Variable
+	if ast.Define {
+		lValue, err = gen.NewVar(ast.Name, v[0].Type, ctx.Scope())
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		// XXX check ast.Define
+		b, err := block.Bindings.Get(ast.Name)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
+		}
+		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	block.AddInstr(ssa.NewMovInstr(v[0], lValue))
 	block.Bindings.Set(lValue, nil)
 
@@ -446,7 +453,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	_, err := ast.Init.Eval(block, ctx, gen)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-			"not a compile-time constant init statement")
+			"not a compile-time constant init statement: %s", err)
 	}
 
 	// Expand body as long as condition is true.
@@ -476,7 +483,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		_, err = ast.Inc.Eval(block, ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-				"not a compile-time constant increment statement")
+				"not a compile-time constant increment statement: %s", err)
 		}
 	}
 

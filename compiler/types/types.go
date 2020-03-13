@@ -59,8 +59,9 @@ var shortTypes = map[Type]string{
 }
 
 type Info struct {
-	Type Type
-	Bits int
+	Type    Type
+	Bits    int
+	MinBits int
 }
 
 func (i Info) String() string {
@@ -90,10 +91,10 @@ func (i Info) Equal(o Info) bool {
 func (i Info) CanAssignConst(o Info) bool {
 	switch i.Type {
 	case Int:
-		return (o.Type == Int || o.Type == Uint) && i.Bits >= o.Bits
+		return (o.Type == Int || o.Type == Uint) && i.Bits >= o.MinBits
 
 	default:
-		return i.Type == o.Type && i.Bits >= o.Bits
+		return i.Type == o.Type && i.Bits >= o.MinBits
 	}
 }
 

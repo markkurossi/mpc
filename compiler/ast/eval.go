@@ -105,8 +105,16 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		switch ast.Op {
 		case BinaryPlus:
 			return lval + rval, nil
+		case BinaryMinus:
+			return lval - rval, nil
 		case BinaryLt:
 			return lval < rval, nil
+		case BinaryLe:
+			return lval <= rval, nil
+		case BinaryGt:
+			return lval > rval, nil
+		case BinaryGe:
+			return lval >= rval, nil
 		default:
 			return nil, ctx.logger.Errorf(ast.Right.Location(),
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)

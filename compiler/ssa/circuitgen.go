@@ -28,22 +28,23 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 		fmt.Printf("Defining constants:\n")
 	}
 	for _, c := range consts {
-		msg := fmt.Sprintf(" - %v(%d)\t", c, c.Type.Bits)
+		msg := fmt.Sprintf(" - %v(%d)", c, c.Type.MinBits)
 
 		var wires []*circuits.Wire
-		for bit := 0; bit < c.Type.Bits; bit++ {
+		var bitString string
+		for bit := 0; bit < c.Type.MinBits; bit++ {
 			w := circuits.NewWire()
 			if c.Bit(bit) {
-				msg += "1"
+				bitString = "1" + bitString
 				cc.One(w)
 			} else {
-				msg += "0"
+				bitString = "0" + bitString
 				cc.Zero(w)
 			}
 			wires = append(wires, w)
 		}
 		if gen.verbose {
-			fmt.Printf("%s\n", msg)
+			fmt.Printf("%s\t%s\n", msg, bitString)
 		}
 
 		err := cc.SetWires(c.String(), wires)

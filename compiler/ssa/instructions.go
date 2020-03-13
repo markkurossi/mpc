@@ -540,17 +540,26 @@ func Constant(value interface{}) (Variable, error) {
 	}
 	switch val := value.(type) {
 	case uint64:
-		var bits int
+		var minBits int
 		// Count minimum bits needed to represent the value.
-		for bits = 1; bits < 64; bits++ {
-			if (0xffffffffffffffff<<bits)&val == 0 {
+		for minBits = 1; minBits < 64; minBits++ {
+			if (0xffffffffffffffff<<minBits)&val == 0 {
 				break
 			}
 		}
+
+		var bits int
+		if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type: types.Uint,
-			Bits: bits,
+			Type:    types.Uint,
+			Bits:    bits,
+			MinBits: minBits,
 		}
 
 	case *big.Int:
@@ -564,7 +573,18 @@ func Constant(value interface{}) (Variable, error) {
 				Type: types.Uint,
 			}
 		}
-		v.Type.Bits = val.BitLen()
+		minBits := val.BitLen()
+		var bits int
+		if minBits > 64 {
+			bits = minBits
+		} else if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
+		v.Type.Bits = bits
+		v.Type.MinBits = minBits
 
 	case bool:
 		v.Name = fmt.Sprintf("$%v", val)
