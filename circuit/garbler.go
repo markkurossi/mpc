@@ -38,6 +38,9 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	timing := NewTiming()
+	if verbose {
+		fmt.Printf(" - Garbling...\n")
+	}
 
 	var key [32]byte
 	_, err := rand.Read(key[:])
@@ -53,6 +56,9 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	timing.Sample("Garble", nil)
 
 	// Send program info.
+	if verbose {
+		fmt.Printf(" - Sending garbled circuit...\n")
+	}
 	if err := conn.SendData(key[:]); err != nil {
 		return nil, err
 	}
@@ -106,6 +112,9 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 	ioStats := conn.Stats
 	timing.Sample("Xfer", []string{FileSize(ioStats.Sum()).String()})
+	if verbose {
+		fmt.Printf(" - Processing messages...\n")
+	}
 
 	// Init oblivious transfer.
 	sender, err := ot.NewSender(2048, garbled.Wires)

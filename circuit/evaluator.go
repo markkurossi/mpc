@@ -28,12 +28,19 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	garbled := make([][][]byte, circ.NumGates)
 
 	// Receive program info.
+	if verbose {
+		fmt.Printf(" - Waiting for circuit info...\n")
+	}
 	key, err := conn.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
 
 	// Receive garbled tables.
+	timing.Sample("Wait", nil)
+	if verbose {
+		fmt.Printf(" - Receiving garbled circuit...\n")
+	}
 	count, err := conn.ReceiveUint32()
 	if err != nil {
 		return nil, err
@@ -97,6 +104,9 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	timing.Sample("Recv", []string{FileSize(ioStats.Sum()).String()})
 
 	// Query our inputs.
+	if verbose {
+		fmt.Printf(" - Querying our inputs...\n")
+	}
 	var w int
 	for idx, io := range circ.N2 {
 		var input *big.Int
@@ -127,6 +137,9 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	timing.Sample("Inputs", []string{FileSize(xfer.Sum()).String()})
 
 	// Evaluate gates.
+	if verbose {
+		fmt.Printf(" - Evaluating circuit...\n")
+	}
 	err = circ.Eval(key[:], wires, garbled)
 	if err != nil {
 		return nil, err
