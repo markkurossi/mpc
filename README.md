@@ -209,9 +209,9 @@ form assembly:
    - [ ] Signed / unsigned arithmetics
    - [X] `const (sym=val,sym=val)` syntax
    - [ ] Variable assignment with _n_ values
-   - [ ] logical not
    - [X] binary divide
    - [ ] unary expressions
+     - [ ] logical not
    - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
  - Garbling:
