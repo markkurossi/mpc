@@ -443,16 +443,16 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				break
 			}
 		}
-		t, err := p.lexer.Get()
+		tType, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		if t.Type != T_Type {
-			p.lexer.Unget(t)
-			return nil, p.errUnexpected(t, T_Type)
+		if tType.Type != T_Type {
+			p.lexer.Unget(tType)
+			return nil, p.errUnexpected(tType, T_Type)
 		}
-		t, err = p.lexer.Get()
 
+		t, err := p.lexer.Get()
 		var expr ast.AST
 		if t.Type == T_Assign {
 			// Initializer.
@@ -460,12 +460,14 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
+		} else {
+			p.lexer.Unget(t)
 		}
 
 		return &ast.VariableDef{
 			Loc:   tStmt.From,
 			Names: names,
-			Type:  t.TypeInfo,
+			Type:  tType.TypeInfo,
 			Init:  expr,
 		}, nil
 

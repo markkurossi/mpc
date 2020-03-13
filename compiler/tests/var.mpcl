@@ -1,0 +1,13 @@
+// -*- go -*-
+
+package main
+
+// @Test 0 0 = 0
+// @Test 1 2 = 3
+func main(a, b int) int {
+	var r int
+
+	r = a + b
+
+	return r
+}

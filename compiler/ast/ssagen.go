@@ -93,14 +93,28 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	for _, n := range ast.Names {
-		v, err := gen.NewVar(n, ast.Type, ctx.Scope())
+		lValue, err := gen.NewVar(n, ast.Type, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
-		block.Bindings.Set(v)
+		block.Bindings.Set(lValue)
 		if ctx.Verbose {
-			fmt.Printf("var %s\n", v)
+			fmt.Printf("var %s\n", lValue)
 		}
+
+		if ast.Init != nil {
+			var v []ssa.Variable
+			block, v, err = ast.Init.SSA(block, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
+			if len(v) != 1 {
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"multiple-value %s used in single-value context", ast.Init)
+			}
+			block.AddInstr(ssa.NewMovInstr(v[0], lValue))
+		}
+
 	}
 	return block, nil, nil
 }
@@ -125,7 +139,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		return nil, nil, ctx.logger.Errorf(ast.Loc,
 			"assignment mismatch: %d variables but %d value", 1, len(v))
 	}
-	block.AddInstr(ssa.NewMovInstr(lValue, v[0]))
+	block.AddInstr(ssa.NewMovInstr(v[0], lValue))
 	block.Bindings.Set(lValue)
 
 	return block, v, nil
