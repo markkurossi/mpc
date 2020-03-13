@@ -38,6 +38,7 @@ const (
 	T_SymFor
 	T_Type
 	T_Assign
+	T_DefAssign
 	T_Mult
 	T_MultEq
 	T_Div
@@ -56,6 +57,8 @@ const (
 	T_LBrace
 	T_RBrace
 	T_Comma
+	T_Semicolon
+	T_Colon
 	T_Dot
 	T_Lt
 	T_Le
@@ -87,6 +90,7 @@ var tokenTypes = map[TokenType]string{
 	T_SymFor:     "for",
 	T_Type:       "type",
 	T_Assign:     "=",
+	T_DefAssign:  ":=",
 	T_Mult:       "*",
 	T_MultEq:     "*=",
 	T_Div:        "/",
@@ -105,6 +109,8 @@ var tokenTypes = map[TokenType]string{
 	T_LBrace:     "{",
 	T_RBrace:     "}",
 	T_Comma:      ",",
+	T_Semicolon:  ";",
+	T_Colon:      ":",
 	T_Dot:        ".",
 	T_Lt:         "<",
 	T_Le:         "<=",
@@ -147,6 +153,8 @@ var binaryTypes = map[TokenType]ast.BinaryType{
 	T_BitOr:    ast.BinaryBor,
 	T_BitXor:   ast.BinaryBxor,
 	T_BitClear: ast.BinaryBclear,
+	T_Lshift:   ast.BinaryLshift,
+	T_Rshift:   ast.BinaryRshift,
 }
 
 func (t TokenType) BinaryType() ast.BinaryType {
@@ -385,6 +393,8 @@ func (l *Lexer) Get() (*Token, error) {
 			return l.Token(T_RBrace), nil
 		case ',':
 			return l.Token(T_Comma), nil
+		case ';':
+			return l.Token(T_Semicolon), nil
 		case '.':
 			return l.Token(T_Dot), nil
 
@@ -399,6 +409,8 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '=':
 				return l.Token(T_Le), nil
+			case '<':
+				return l.Token(T_Lshift), nil
 			default:
 				l.UnreadRune()
 				return l.Token(T_Lt), nil
@@ -415,6 +427,8 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '=':
 				return l.Token(T_Ge), nil
+			case '>':
+				return l.Token(T_Rshift), nil
 			default:
 				l.UnreadRune()
 				return l.Token(T_Gt), nil
@@ -434,6 +448,21 @@ func (l *Lexer) Get() (*Token, error) {
 			default:
 				l.UnreadRune()
 				return l.Token(T_Assign), nil
+			}
+
+		case ':':
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token(T_Colon), nil
+				}
+			}
+			switch r {
+			case '=':
+				return l.Token(T_DefAssign), nil
+			default:
+				l.UnreadRune()
+				return l.Token(T_Colon), nil
 			}
 
 		case '|':

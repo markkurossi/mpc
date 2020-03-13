@@ -26,6 +26,7 @@ var (
 	_ AST = &If{}
 	_ AST = &Call{}
 	_ AST = &Return{}
+	_ AST = &For{}
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
 	_ AST = &Constant{}
@@ -200,13 +201,20 @@ func (ast *VariableDef) Fprint(w io.Writer, ind int) {
 }
 
 type Assign struct {
-	Loc  utils.Point
-	Name string
-	Expr AST
+	Loc    utils.Point
+	Name   string
+	Expr   AST
+	Define bool
 }
 
 func (ast *Assign) String() string {
-	return fmt.Sprintf("%s = %s", ast.Name, ast.Expr)
+	var op string
+	if ast.Define {
+		op = ":="
+	} else {
+		op = "="
+	}
+	return fmt.Sprintf("%s %s %s", ast.Name, op, ast.Expr)
 }
 
 func (ast *Assign) Location() utils.Point {
@@ -298,13 +306,45 @@ func (ast *Return) Fprint(w io.Writer, ind int) {
 	}
 }
 
+type For struct {
+	Loc  utils.Point
+	Init AST
+	Cond AST
+	Inc  AST
+	Body List
+}
+
+func (ast *For) String() string {
+	return fmt.Sprintf("for %s; %s; %s %s",
+		ast.Init, ast.Cond, ast.Inc, ast.Body)
+}
+
+func (ast *For) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *For) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "for ")
+	ast.Init.Fprint(w, ind)
+	fmt.Fprintf(w, "; ")
+	ast.Cond.Fprint(w, ind)
+	fmt.Fprintf(w, "; ")
+	ast.Inc.Fprint(w, ind)
+	fmt.Fprintf(w, "{\n")
+
+	ast.Body.Fprint(w, ind+1)
+	fmt.Fprintf(w, "}\n")
+}
+
 type BinaryType int
 
 const (
 	BinaryMult BinaryType = iota
 	BinaryDiv
 	BinaryMod
-	// <<, >>
+	BinaryLshift
+	BinaryRshift
 	BinaryBand
 	BinaryBclear
 	BinaryPlus
@@ -325,6 +365,8 @@ var binaryTypes = map[BinaryType]string{
 	BinaryMult:   "*",
 	BinaryDiv:    "/",
 	BinaryMod:    "%",
+	BinaryLshift: "<<",
+	BinaryRshift: ">>",
 	BinaryBand:   "&",
 	BinaryBclear: "&^",
 	BinaryPlus:   "+",

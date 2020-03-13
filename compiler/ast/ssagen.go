@@ -437,6 +437,11 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Variable, error) {
+	return nil, nil, fmt.Errorf("For.SSA not implemented yet")
+}
+
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 

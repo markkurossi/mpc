@@ -537,21 +537,59 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			Exprs: exprs,
 		}, nil
 
+	case T_SymFor:
+		init, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_Semicolon)
+		if err != nil {
+			return nil, err
+		}
+		cond, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_Semicolon)
+		if err != nil {
+			return nil, err
+		}
+		inc, err := p.parseStatement()
+		if err != nil {
+			return nil, err
+		}
+		_, err = p.needToken(T_LBrace)
+		if err != nil {
+			return nil, err
+		}
+		body, err := p.parseBlock()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.For{
+			Loc:  tStmt.From,
+			Init: init,
+			Cond: cond,
+			Inc:  inc,
+			Body: body,
+		}, nil
+
 	case T_Identifier:
 		t, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Assign:
+		case T_Assign, T_DefAssign:
 			expr, err := p.parseExpr()
 			if err != nil {
 				return nil, err
 			}
 			return &ast.Assign{
-				Loc:  tStmt.From,
-				Name: tStmt.StrVal,
-				Expr: expr,
+				Loc:    tStmt.From,
+				Name:   tStmt.StrVal,
+				Expr:   expr,
+				Define: t.Type == T_DefAssign,
 			}, nil
 
 		default:
