@@ -39,6 +39,7 @@ func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
 		N1:    n1,
 		N2:    n2,
 		N3:    n3,
+		Gates: make([]Gate, 0, 65536),
 		wires: make(map[string][]*Wire),
 	}
 
@@ -168,6 +169,19 @@ func (c *Compiler) SetWires(v string, w []*Wire) error {
 }
 
 func (c *Compiler) Compile() *circuit.Circuit {
+	if len(c.pending) != 0 {
+		panic("Compile: pending set")
+	}
+	c.pending = make([]Gate, 0, len(c.Gates))
+	if len(c.assigned) != 0 {
+		panic("Compile: assigned set")
+	}
+	c.assigned = make([]Gate, 0, len(c.Gates))
+	if len(c.compiled) != 0 {
+		panic("Compile: compiled set")
+	}
+	c.compiled = make([]*circuit.Gate, 0, len(c.Gates))
+
 	for _, w := range c.Inputs {
 		w.Assign(c)
 	}
@@ -219,7 +233,9 @@ type Wire struct {
 }
 
 func NewWire() *Wire {
-	return &Wire{}
+	return &Wire{
+		Outputs: make([]Gate, 0, 1),
+	}
 }
 
 func NewOutputWire() *Wire {
