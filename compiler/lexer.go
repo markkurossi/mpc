@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -670,7 +671,14 @@ func (l *Lexer) Get() (*Token, error) {
 					return nil, err
 				}
 				token := l.Token(T_Constant)
-				token.ConstVal = u
+
+				if u <= math.MaxInt32 {
+					token.ConstVal = int32(u)
+				} else if u <= math.MaxInt64 {
+					token.ConstVal = int64(u)
+				} else {
+					token.ConstVal = u
+				}
 				return token, nil
 			}
 			l.UnreadRune()

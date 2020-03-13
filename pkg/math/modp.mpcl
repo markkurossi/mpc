@@ -9,7 +9,7 @@ package math
 
 // Exp computes b**e mod |m| (i.e. the sign of m is ignore).
 // TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
-func Exp(b, e, n uint64) uint64 {
+func Exp(b, e, m uint64) uint64 {
 	var r uint64 = 1
 
 	for i := size(b) - 1; i >= 0; i = i - 1 {

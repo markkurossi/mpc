@@ -67,8 +67,33 @@ func (ast *If) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 func (ast *Call) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, error) {
-	// XXX builtin.
-	return nil, fmt.Errorf("Call.Eval not implemented yet")
+
+	// Resolve called.
+	pkg, ok := ctx.Packages[ast.Name.Package]
+	if !ok {
+		return nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+			ast.Name.Package)
+	}
+	called, ok := pkg.Functions[ast.Name.Name]
+	if ok {
+		return nil, ctx.logger.Errorf(ast.Loc, "%s is not constant", called)
+	}
+	// Check builtin functions.
+	for _, bi := range builtins {
+		if bi.Name != ast.Name.Name {
+			continue
+		}
+		if bi.Type != BuiltinFunc {
+			return nil, fmt.Errorf("builtin %s used as function", bi.Name)
+		}
+		if bi.Eval == nil {
+			return nil, ctx.logger.Errorf(ast.Loc, "%s() is not constant",
+				bi.Name)
+		}
+		return bi.Eval(ast.Exprs, block, ctx, gen, ast.Location())
+	}
+
+	return nil, fmt.Errorf("%s() is not constant", ast.Name.Name)
 }
 
 func (ast *Return) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
@@ -93,6 +118,53 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch lval := l.(type) {
+	case int32:
+		var rval int32
+		switch rv := r.(type) {
+		case int32:
+			rval = rv
+		default:
+			return nil, ctx.logger.Errorf(ast.Right.Location(),
+				"invalid r-value %T %s %T", lval, ast.Op, rv)
+		}
+		switch ast.Op {
+		case BinaryMult:
+			return lval * rval, nil
+		case BinaryDiv:
+			return lval / rval, nil
+		case BinaryMod:
+			return lval % rval, nil
+		case BinaryLshift:
+			if rval > 31 {
+				return nil, fmt.Errorf("int32 overflow in %T %s %v",
+					lval, ast.Op, rval)
+			}
+			return lval << rval, nil
+		case BinaryRshift:
+			return lval << rval, nil
+
+		case BinaryPlus:
+			return lval + rval, nil
+		case BinaryMinus:
+			return lval - rval, nil
+
+		case BinaryEq:
+			return lval == rval, nil
+		case BinaryNeq:
+			return lval != rval, nil
+		case BinaryLt:
+			return lval < rval, nil
+		case BinaryLe:
+			return lval <= rval, nil
+		case BinaryGt:
+			return lval > rval, nil
+		case BinaryGe:
+			return lval >= rval, nil
+		default:
+			return nil, ctx.logger.Errorf(ast.Right.Location(),
+				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
+		}
+
 	case uint64:
 		var rval uint64
 		switch rv := r.(type) {
@@ -100,13 +172,29 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			rval = rv
 		default:
 			return nil, ctx.logger.Errorf(ast.Right.Location(),
-				"invalid value %v (%T)", rv, rv)
+				"%T: invalid r-value %v (%T)", lval, rv, rv)
 		}
 		switch ast.Op {
+		case BinaryMult:
+			return lval * rval, nil
+		case BinaryDiv:
+			return lval / rval, nil
+		case BinaryMod:
+			return lval % rval, nil
+		case BinaryLshift:
+			return lval << rval, nil
+		case BinaryRshift:
+			return lval << rval, nil
+
 		case BinaryPlus:
 			return lval + rval, nil
 		case BinaryMinus:
 			return lval - rval, nil
+
+		case BinaryEq:
+			return lval == rval, nil
+		case BinaryNeq:
+			return lval != rval, nil
 		case BinaryLt:
 			return lval < rval, nil
 		case BinaryLe:
@@ -122,7 +210,7 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	default:
 		return nil, ctx.logger.Errorf(ast.Left.Location(),
-			"invalid value %v (%T)", lval, lval)
+			"invalid l-value %v (%T)", lval, lval)
 	}
 }
 
@@ -159,8 +247,7 @@ func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
 
 	val, ok := b.Bound.(*ssa.Variable)
 	if !ok || !val.Const {
-		return nil, ctx.logger.Errorf(ast.Loc, "value %v is not constant",
-			b.Bound)
+		return nil, fmt.Errorf("value %v is not constant", b.Bound)
 	}
 
 	return val.ConstValue, nil

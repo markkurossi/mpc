@@ -495,7 +495,7 @@ func (v *Variable) Bit(bit int) bool {
 		}
 		return false
 
-	case int:
+	case int32:
 		return (val & (1 << bit)) != 0
 
 	case uint64:
@@ -539,6 +539,22 @@ func Constant(value interface{}) (Variable, error) {
 		ConstValue: value,
 	}
 	switch val := value.(type) {
+	case int32:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 32; minBits++ {
+			if (0xffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.Uint,
+			Bits:    32,
+			MinBits: minBits,
+		}
+
 	case uint64:
 		var minBits int
 		// Count minimum bits needed to represent the value.
@@ -601,7 +617,7 @@ func Constant(value interface{}) (Variable, error) {
 		}
 
 	default:
-		return v, fmt.Errorf("Constant(): %v not implemented yet", val)
+		return v, fmt.Errorf("Constant(): %T not implemented yet", val)
 	}
 	return v, nil
 }

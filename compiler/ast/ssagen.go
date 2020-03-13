@@ -266,18 +266,19 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if !ok {
 		// Check builtin functions.
 		for _, bi := range builtins {
-			if bi.Name == ast.Name.Name {
-				if bi.Type != BuiltinFunc {
-					return nil, nil, ctx.logger.Errorf(ast.Loc,
-						"builtin %s used as function", bi.Name)
-				}
-				// Flatten arguments.
-				var args []ssa.Variable
-				for _, arg := range callValues {
-					args = append(args, arg...)
-				}
-				return bi.SSA(block, ctx, gen, args, ast.Loc)
+			if bi.Name != ast.Name.Name {
+				continue
 			}
+			if bi.Type != BuiltinFunc {
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"builtin %s used as function", bi.Name)
+			}
+			// Flatten arguments.
+			var args []ssa.Variable
+			for _, arg := range callValues {
+				args = append(args, arg...)
+			}
+			return bi.SSA(block, ctx, gen, args, ast.Loc)
 		}
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
 			ast.Name)
@@ -453,7 +454,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	_, err := ast.Init.Eval(block, ctx, gen)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-			"not a compile-time constant init statement: %s", err)
+			"init statement is not compile-time constant: %s", err)
 	}
 
 	// Expand body as long as condition is true.
@@ -461,7 +462,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		constVal, err := ast.Cond.Eval(block, ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
-				"not a compile-time constant expression: %s", err)
+				"condition is not compile-time constant: %s", err)
 		}
 		val, ok := constVal.(bool)
 		if !ok {
@@ -483,7 +484,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		_, err = ast.Inc.Eval(block, ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-				"not a compile-time constant increment statement: %s", err)
+				"increment statement is not compile-time constant: %s", err)
 		}
 	}
 
@@ -492,6 +493,12 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
+
+	// Check constant folding.
+	constVal, err := ast.Eval(block, ctx, gen)
+	if err == nil {
+		fmt.Printf("*** constant folding gives %b\n", constVal)
+	}
 
 	block, lArr, err := ast.Left.SSA(block, ctx, gen)
 	if err != nil {

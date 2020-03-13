@@ -21,6 +21,7 @@ type Builtin struct {
 	Name string
 	Type BuiltinType
 	SSA  SSA
+	Eval Eval
 }
 
 type BuiltinType int
@@ -31,6 +32,9 @@ const (
 
 type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error)
+
+type Eval func(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (interface{}, error)
 
 // Predeclared identifiers.
 var builtins = []Builtin{
@@ -43,6 +47,7 @@ var builtins = []Builtin{
 		Name: "size",
 		Type: BuiltinFunc,
 		SSA:  sizeSSA,
+		Eval: sizeEval,
 	},
 }
 
@@ -138,4 +143,38 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	gen.AddConstant(v)
 
 	return block, []ssa.Variable{v}, nil
+}
+
+func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (interface{}, error) {
+
+	if len(args) != 1 {
+		return nil, ctx.logger.Errorf(loc,
+			"invalid amount of arguments in call to size")
+	}
+
+	switch arg := args[0].(type) {
+	case *VariableRef:
+		var b ssa.Binding
+		var err error
+
+		if len(arg.Name.Package) > 0 {
+			pkg, ok := ctx.Packages[arg.Name.Package]
+			if !ok {
+				return nil, ctx.logger.Errorf(loc,
+					"package '%s' not found", arg.Name.Package)
+			}
+			b, err = pkg.Bindings.Get(arg.Name.Name)
+		} else {
+			b, err = block.Bindings.Get(arg.Name.Name)
+		}
+		if err != nil {
+			return nil, ctx.logger.Errorf(loc, "%s", err.Error())
+		}
+		return int32(b.Type.Bits), nil
+
+	default:
+		return nil, ctx.logger.Errorf(loc,
+			"size(%v/%T) is not constant", arg, arg)
+	}
 }
