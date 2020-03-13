@@ -28,12 +28,10 @@ func (c *Circuit) Render() {
 		placements[g.ID] = &Placement{
 			G: g,
 		}
-		for _, w := range g.Inputs {
+		for _, w := range g.Inputs() {
 			to[w.ID()] = g
 		}
-		for _, w := range g.Outputs {
-			from[w.ID()] = g
-		}
+		from[g.Output.ID()] = g
 	}
 
 	// Assign columns
@@ -41,7 +39,7 @@ func (c *Circuit) Render() {
 	columns := make(map[int][]*Placement)
 	for _, g := range c.Gates {
 		place := placements[g.ID]
-		for _, w := range g.Inputs {
+		for _, w := range g.Inputs() {
 			src, ok := from[w.ID()]
 			if ok {
 				srcPlace := placements[src.ID]
@@ -93,12 +91,10 @@ func (c *Circuit) Dot(out io.Writer) {
 	}
 
 	for idx, gate := range c.Gates {
-		for _, i := range gate.Inputs {
+		for _, i := range gate.Inputs() {
 			fmt.Fprintf(out, "  w%d -> g%d;\n", i, idx)
 		}
-		for _, o := range gate.Outputs {
-			fmt.Fprintf(out, "  g%d -> w%d;\n", idx, o)
-		}
+		fmt.Fprintf(out, "  g%d -> w%d;\n", idx, gate.Output)
 	}
 	fmt.Fprintf(out, "}\n")
 }

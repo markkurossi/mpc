@@ -188,26 +188,36 @@ func (c *Circuit) Marshal(out io.Writer) {
 
 	for _, gate := range gates {
 		g := gate.Value
-		fmt.Fprintf(out, "%d %d", len(g.Inputs), len(g.Outputs))
-		for _, w := range g.Inputs {
+		fmt.Fprintf(out, "%d 1", len(g.Inputs()))
+		for _, w := range g.Inputs() {
 			fmt.Fprintf(out, " %d", w)
 		}
-		for _, w := range g.Outputs {
-			fmt.Fprintf(out, " %d", w)
-		}
+		fmt.Fprintf(out, " %d", g.Output)
 		fmt.Fprintf(out, " %s\n", g.Op)
 	}
 }
 
 type Gate struct {
-	ID      uint32
-	Inputs  []Wire
-	Outputs []Wire
-	Op      Operation
+	ID     uint32
+	Input0 Wire
+	Input1 Wire
+	Output Wire
+	Op     Operation
 }
 
 func (g *Gate) String() string {
-	return fmt.Sprintf("G%4d %v %v %v", g.ID, g.Inputs, g.Op, g.Outputs)
+	return fmt.Sprintf("G%4d %v %v %v", g.ID, g.Inputs(), g.Op, g.Output)
+}
+
+func (g *Gate) Inputs() []Wire {
+	switch g.Op {
+	case XOR, AND, OR:
+		return []Wire{g.Input0, g.Input1}
+	case INV:
+		return []Wire{g.Input0}
+	default:
+		panic(fmt.Sprintf("unsupported gate type %s", g.Op))
+	}
 }
 
 type Wire uint32
@@ -398,11 +408,17 @@ func Parse(in io.Reader) (*Circuit, error) {
 				len(outputs), op)
 		}
 
+		var input1 Wire
+		if len(inputs) > 1 {
+			input1 = inputs[1]
+		}
+
 		gates[gate] = &Gate{
-			ID:      uint32(gate),
-			Inputs:  inputs,
-			Outputs: outputs,
-			Op:      op,
+			ID:     uint32(gate),
+			Input0: inputs[0],
+			Input1: input1,
+			Output: outputs[0],
+			Op:     op,
 		}
 		count := stats[op]
 		count++

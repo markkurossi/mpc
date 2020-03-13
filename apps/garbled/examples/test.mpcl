@@ -1,0 +1,7 @@
+// -*- go -*-
+
+package main
+
+func main(a, b uint1024) uint1024 {
+	return b / a
+}

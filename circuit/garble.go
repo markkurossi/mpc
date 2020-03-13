@@ -195,7 +195,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 	var out []ot.Wire
 	var err error
 
-	for _, i := range g.Inputs {
+	for _, i := range g.Inputs() {
 		w, ok := wires[i.ID()]
 		if !ok {
 			w, err = makeLabels(r)
@@ -207,32 +207,29 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 		in = append(in, w)
 	}
 
-	for _, o := range g.Outputs {
-		w, ok := wires[o.ID()]
-		if ok {
-			return nil, fmt.Errorf("gate output already set %d", o)
-		}
-
-		if g.Op == XOR {
-			l0 := in[0].Label0.Copy()
-			l0.Xor(in[1].Label0)
-
-			l1 := in[0].Label0.Copy()
-			l1.Xor(in[1].Label1)
-			w = ot.Wire{
-				Label0: l0,
-				Label1: l1,
-			}
-		} else {
-			w, err = makeLabels(r)
-			if err != nil {
-				return nil, err
-			}
-		}
-		wires[o.ID()] = w
-
-		out = append(out, w)
+	// Output
+	w, ok := wires[g.Output.ID()]
+	if ok {
+		return nil, fmt.Errorf("gate output already set %d", g.Output)
 	}
+	if g.Op == XOR {
+		l0 := in[0].Label0.Copy()
+		l0.Xor(in[1].Label0)
+
+		l1 := in[0].Label0.Copy()
+		l1.Xor(in[1].Label1)
+		w = ot.Wire{
+			Label0: l0,
+			Label1: l1,
+		}
+	} else {
+		w, err = makeLabels(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+	wires[g.Output.ID()] = w
+	out = append(out, w)
 
 	var table []TableEntry
 

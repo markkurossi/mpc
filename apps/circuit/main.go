@@ -68,12 +68,10 @@ func main() {
 		}
 
 		for idx, gate := range c.Gates {
-			for _, i := range gate.Inputs {
+			for _, i := range gate.Inputs() {
 				fmt.Printf("  w%d -> g%d;\n", i, idx)
 			}
-			for _, o := range gate.Outputs {
-				fmt.Printf("  g%d -> w%d;\n", idx, o)
-			}
+			fmt.Printf("  g%d -> w%d;\n", idx, gate.Output)
 		}
 		fmt.Printf("}\n")
 	}

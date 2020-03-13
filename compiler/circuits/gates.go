@@ -57,15 +57,11 @@ func (g *Binary) Compile(c *Compiler) {
 	}
 	g.Compiled = true
 	c.compiled = append(c.compiled, &circuit.Gate{
-		ID: c.NextGateID(),
-		Inputs: []circuit.Wire{
-			circuit.Wire(g.A.ID),
-			circuit.Wire(g.B.ID),
-		},
-		Outputs: []circuit.Wire{
-			circuit.Wire(g.O.ID),
-		},
-		Op: g.Op,
+		ID:     c.NextGateID(),
+		Input0: circuit.Wire(g.A.ID),
+		Input1: circuit.Wire(g.B.ID),
+		Output: circuit.Wire(g.O.ID),
+		Op:     g.Op,
 	})
 }
 
@@ -102,13 +98,9 @@ func (g *INV) Assign(c *Compiler) {
 
 func (g *INV) Compile(c *Compiler) {
 	c.compiled = append(c.compiled, &circuit.Gate{
-		ID: c.NextGateID(),
-		Inputs: []circuit.Wire{
-			circuit.Wire(g.I.ID),
-		},
-		Outputs: []circuit.Wire{
-			circuit.Wire(g.O.ID),
-		},
-		Op: circuit.INV,
+		ID:     c.NextGateID(),
+		Input0: circuit.Wire(g.I.ID),
+		Output: circuit.Wire(g.O.ID),
+		Op:     circuit.INV,
 	})
 }

@@ -32,7 +32,7 @@ func (c *Circuit) Eval(key []byte, wires map[Wire]*ot.Label,
 		if err != nil {
 			return err
 		}
-		wires[gate.Outputs[0]] = ot.LabelFromData(output)
+		wires[gate.Output] = ot.LabelFromData(output)
 	}
 
 	return nil
@@ -48,11 +48,11 @@ func (g *Gate) Eval(wires map[Wire]*ot.Label, dec Dec, garbled [][]byte) (
 
 	switch g.Op {
 	case XOR, AND, OR:
-		a, aOK = wires[g.Inputs[0]]
-		b, bOK = wires[g.Inputs[1]]
+		a, aOK = wires[g.Input0]
+		b, bOK = wires[g.Input1]
 
 	case INV:
-		a, aOK = wires[g.Inputs[0]]
+		a, aOK = wires[g.Input0]
 		b = nil
 		bOK = true
 

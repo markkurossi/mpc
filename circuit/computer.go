@@ -44,16 +44,16 @@ func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
 
 		switch gate.Op {
 		case XOR:
-			result = wires[gate.Inputs[0]] ^ wires[gate.Inputs[1]]
+			result = wires[gate.Input0] ^ wires[gate.Input1]
 
 		case AND:
-			result = wires[gate.Inputs[0]] & wires[gate.Inputs[1]]
+			result = wires[gate.Input0] & wires[gate.Input1]
 
 		case OR:
-			result = wires[gate.Inputs[0]] | wires[gate.Inputs[1]]
+			result = wires[gate.Input0] | wires[gate.Input1]
 
 		case INV:
-			if wires[gate.Inputs[0]] == 0 {
+			if wires[gate.Input0] == 0 {
 				result = 1
 			} else {
 				result = 0
@@ -63,7 +63,7 @@ func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
 			return nil, fmt.Errorf("invalid gate %s", gate.Op)
 		}
 
-		wires[gate.Outputs[0]] = result
+		wires[gate.Output] = result
 	}
 
 	// Construct outputs
