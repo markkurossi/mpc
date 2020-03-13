@@ -205,7 +205,7 @@ form assembly:
 
  - Compiler:
    - [ ] Constant folding
-   - [ ] For-loop unrolling
+   - [X] For-loop unrolling
    - [ ] Signed / unsigned arithmetics
    - [X] `const (sym=val,sym=val)` syntax
    - [ ] Variable assignment with _n_ values
