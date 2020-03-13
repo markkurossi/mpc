@@ -69,7 +69,7 @@ func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		garbled[i] = values
 	}
 
-	wires := make(map[Wire]*ot.Label)
+	wires := make([]*ot.Label, circ.NumWires)
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1.Size(); i++ {

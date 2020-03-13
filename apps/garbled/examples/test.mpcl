@@ -2,6 +2,6 @@
 
 package main
 
-func main(a, b uint1024) uint1024 {
-	return b / a
+func main(a, b uint1024) (uint1024, uint1024) {
+	return b * a, b % a
 }

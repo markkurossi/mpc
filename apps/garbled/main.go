@@ -168,7 +168,7 @@ func main() {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
-		err = evaluatorMode(circ, input)
+		err = evaluatorMode(circ, input, len(*cpuprofile) > 0)
 	} else {
 		input, err = circ.N1.Parse(inputFlag)
 		if err != nil {
@@ -192,7 +192,7 @@ func loadCircuit(file string) (*circuit.Circuit, error) {
 	return circuit.Parse(f)
 }
 
-func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
+func evaluatorMode(circ *circuit.Circuit, input []*big.Int, once bool) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -218,6 +218,9 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int) error {
 		}
 
 		printResult(result)
+		if once {
+			return nil
+		}
 	}
 }
 
