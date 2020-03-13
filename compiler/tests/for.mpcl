@@ -2,7 +2,8 @@
 
 package main
 
-func main(a, b uint1) uint8 {
+// @Test 0 0 = 10
+func main(a, b uint8) uint8 {
 	var sum uint8 = 0
 
 	for i := 0; i < 5; i = i + 1 {

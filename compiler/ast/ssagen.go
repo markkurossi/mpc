@@ -45,7 +45,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		block.Bindings.Set(a)
+		block.Bindings.Set(a, nil)
 		ast.Bindings[arg.Name] = a
 	}
 	// Define return variables.
@@ -57,7 +57,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		block.Bindings.Set(r)
+		block.Bindings.Set(r, nil)
 		ast.Bindings[ret.Name] = r
 	}
 
@@ -97,11 +97,12 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		if err != nil {
 			return nil, nil, err
 		}
-		block.Bindings.Set(lValue)
+		block.Bindings.Set(lValue, nil)
 		if ctx.Verbose {
 			fmt.Printf("var %s\n", lValue)
 		}
 
+		// XXX is init is nil, we must init the variable with type's zero.
 		if ast.Init != nil {
 			var v []ssa.Variable
 			block, v, err = ast.Init.SSA(block, ctx, gen)
@@ -122,6 +123,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
+	// XXX check ast.Define
 	b, err := block.Bindings.Get(ast.Name)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
@@ -140,7 +142,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			"assignment mismatch: %d variables but %d value", 1, len(v))
 	}
 	block.AddInstr(ssa.NewMovInstr(v[0], lValue))
-	block.Bindings.Set(lValue)
+	block.Bindings.Set(lValue, nil)
 
 	return block, v, nil
 }
@@ -427,7 +429,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		block.AddInstr(ssa.NewMovInstr(result[idx], v))
-		block.Bindings.Set(v)
+		block.Bindings.Set(v, nil)
 	}
 
 	block.AddInstr(ssa.NewJumpInstr(ctx.Return()))
@@ -439,7 +441,46 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
-	return nil, nil, fmt.Errorf("For.SSA not implemented yet")
+
+	// Init loop.
+	_, err := ast.Init.Eval(block, ctx, gen)
+	if err != nil {
+		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+			"not a compile-time constant init statement")
+	}
+
+	// Expand body as long as condition is true.
+	for {
+		constVal, err := ast.Cond.Eval(block, ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
+				"not a compile-time constant expression: %s", err)
+		}
+		val, ok := constVal.(bool)
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
+				"condition is not a boolean expression")
+		}
+		if !val {
+			// Loop completed.
+			break
+		}
+
+		// Expand block.
+		block, _, err = ast.Body.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Increment.
+		_, err = ast.Inc.Eval(block, ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+				"not a compile-time constant increment statement")
+		}
+	}
+
+	return block, nil, nil
 }
 
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
@@ -576,8 +617,9 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	// Bind variable with the name it was referenced.
-	value.Name = ast.Name.String()
-	block.Bindings.Set(value)
+	lValue := value
+	lValue.Name = ast.Name.String()
+	block.Bindings.Set(lValue, &value)
 
 	if value.Const {
 		gen.AddConstant(value)
@@ -589,7 +631,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	v, err := ast.Variable()
+	v, err := ssa.Constant(ast.Value)
 	if err != nil {
 		return nil, nil, err
 	}

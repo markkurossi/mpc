@@ -19,21 +19,32 @@ var (
 
 type Bindings []Binding
 
-func (bindings *Bindings) Set(v Variable) {
+func (bindings *Bindings) Set(v Variable, val *Variable) {
 	for idx, b := range *bindings {
 		if b.Name == v.Name && b.Scope == v.Scope {
 			b.Type = v.Type
-			b.Bound = &v
+			if val != nil {
+				b.Bound = val
+			} else {
+				b.Bound = &v
+			}
 			(*bindings)[idx] = b
 			return
 		}
 	}
-	*bindings = append(*bindings, Binding{
+
+	b := Binding{
 		Name:  v.Name,
 		Scope: v.Scope,
 		Type:  v.Type,
-		Bound: &v,
-	})
+	}
+	if val != nil {
+		b.Bound = val
+	} else {
+		b.Bound = &v
+	}
+
+	*bindings = append(*bindings, b)
 }
 
 func (bindings Bindings) Get(name string) (ret Binding, err error) {

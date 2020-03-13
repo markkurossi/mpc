@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
@@ -268,7 +269,7 @@ func (p *Parser) parseConstDef(token *Token) error {
 	if !ok {
 		return p.errf(value.Location(), "value %s used as constant", value)
 	}
-	constVar, err := constVal.Variable()
+	constVar, err := ssa.Constant(constVal.Value)
 	if err != nil {
 		return err
 	}
@@ -280,8 +281,9 @@ func (p *Parser) parseConstDef(token *Token) error {
 	if err == nil {
 		return p.errf(token.From, "constant %s already defined", token.StrVal)
 	}
-	constVar.Name = token.StrVal
-	p.pkg.Bindings.Set(constVar)
+	lValue := constVar
+	lValue.Name = token.StrVal
+	p.pkg.Bindings.Set(lValue, &constVar)
 
 	return nil
 }

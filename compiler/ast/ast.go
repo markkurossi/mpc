@@ -60,6 +60,8 @@ type AST interface {
 	// terminates i.e. all following AST nodes are dead code.
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		*ssa.Block, []ssa.Variable, error)
+	Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+		interface{}, error)
 }
 
 type List []AST
@@ -460,60 +462,6 @@ func ConstantName(value interface{}) string {
 	default:
 		return fmt.Sprintf("{undefined constant %v}", val)
 	}
-}
-
-func (ast *Constant) Variable() (ssa.Variable, error) {
-	v := ssa.Variable{
-		Const:      true,
-		ConstValue: ast.Value,
-	}
-	switch val := ast.Value.(type) {
-	case uint64:
-		var bits int
-		// Count minimum bits needed to represent the value.
-		for bits = 1; bits < 64; bits++ {
-			if (0xffffffffffffffff<<bits)&val == 0 {
-				break
-			}
-		}
-		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Type: types.Uint,
-			Bits: bits,
-		}
-
-	case *big.Int:
-		v.Name = fmt.Sprintf("$%s", val.String())
-		if val.Sign() == -1 {
-			v.Type = types.Info{
-				Type: types.Int,
-			}
-		} else {
-			v.Type = types.Info{
-				Type: types.Uint,
-			}
-		}
-		v.Type.Bits = val.BitLen()
-
-	case bool:
-		v.Name = fmt.Sprintf("$%v", val)
-		v.Type = types.Info{
-			Type: types.Bool,
-			Bits: 1,
-		}
-
-	case string:
-		v.Name = fmt.Sprintf("$%q", val)
-		v.Type = types.Info{
-			Type: types.String,
-			Bits: len([]byte(val)) * 8,
-		}
-
-	default:
-		return v, fmt.Errorf("ast.Constant.Variable(): %v not implemented yet",
-			ast)
-	}
-	return v, nil
 }
 
 func (ast *Constant) Location() utils.Point {

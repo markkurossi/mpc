@@ -532,3 +532,56 @@ func (v Variable) TypeCompatible(o Variable) bool {
 		return v.Type.Equal(o.Type)
 	}
 }
+
+func Constant(value interface{}) (Variable, error) {
+	v := Variable{
+		Const:      true,
+		ConstValue: value,
+	}
+	switch val := value.(type) {
+	case uint64:
+		var bits int
+		// Count minimum bits needed to represent the value.
+		for bits = 1; bits < 64; bits++ {
+			if (0xffffffffffffffff<<bits)&val == 0 {
+				break
+			}
+		}
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type: types.Uint,
+			Bits: bits,
+		}
+
+	case *big.Int:
+		v.Name = fmt.Sprintf("$%s", val.String())
+		if val.Sign() == -1 {
+			v.Type = types.Info{
+				Type: types.Int,
+			}
+		} else {
+			v.Type = types.Info{
+				Type: types.Uint,
+			}
+		}
+		v.Type.Bits = val.BitLen()
+
+	case bool:
+		v.Name = fmt.Sprintf("$%v", val)
+		v.Type = types.Info{
+			Type: types.Bool,
+			Bits: 1,
+		}
+
+	case string:
+		v.Name = fmt.Sprintf("$%q", val)
+		v.Type = types.Info{
+			Type: types.String,
+			Bits: len([]byte(val)) * 8,
+		}
+
+	default:
+		return v, fmt.Errorf("Constant(): %v not implemented yet", val)
+	}
+	return v, nil
+}

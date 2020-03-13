@@ -15,10 +15,10 @@ func TestBindings(t *testing.T) {
 
 	a.Set(Variable{
 		Name: "a",
-	})
+	}, nil)
 	b.Set(Variable{
 		Name: "a",
-	})
+	}, nil)
 	merged := a.Merge(Variable{
 		Name: "c",
 	}, b)
