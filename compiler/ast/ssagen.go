@@ -511,9 +511,17 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, nil, err
 	}
-	if ok && ctx.Verbose {
-		fmt.Printf("eval: %v %s %v => %v\n",
-			ast.Left, ast.Op, ast.Right, constVal)
+	if ok {
+		if ctx.Verbose {
+			fmt.Printf("ConstFold: %v %s %v => %v\n",
+				ast.Left, ast.Op, ast.Right, constVal)
+		}
+		v, err := ssa.Constant(constVal)
+		if err != nil {
+			return nil, nil, err
+		}
+		gen.AddConstant(v)
+		return block, []ssa.Variable{v}, nil
 	}
 
 	block, lArr, err := ast.Left.SSA(block, ctx, gen)

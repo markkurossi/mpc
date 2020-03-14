@@ -625,15 +625,19 @@ func Constant(value interface{}) (Variable, error) {
 	case bool:
 		v.Name = fmt.Sprintf("$%v", val)
 		v.Type = types.Info{
-			Type: types.Bool,
-			Bits: 1,
+			Type:    types.Bool,
+			Bits:    1,
+			MinBits: 1,
 		}
 
 	case string:
 		v.Name = fmt.Sprintf("$%q", val)
+		bits := len([]byte(val)) * 8
+
 		v.Type = types.Info{
-			Type: types.String,
-			Bits: len([]byte(val)) * 8,
+			Type:    types.String,
+			Bits:    bits,
+			MinBits: bits,
 		}
 
 	default:
