@@ -133,6 +133,9 @@ func main() {
 			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
+				if len(*cpuprofile) > 0 {
+					return
+				}
 				os.Exit(1)
 			}
 			params.Close()
