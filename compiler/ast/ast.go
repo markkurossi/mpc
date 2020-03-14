@@ -453,14 +453,14 @@ func (ast *Constant) String() string {
 
 func ConstantName(value interface{}) string {
 	switch val := value.(type) {
-	case int, uint64:
+	case int, int32, uint64:
 		return fmt.Sprintf("$%d", val)
 	case *big.Int:
 		return fmt.Sprintf("$%s", val)
 	case bool:
 		return fmt.Sprintf("$%v", val)
 	default:
-		return fmt.Sprintf("{undefined constant %v}", val)
+		return fmt.Sprintf("{undefined constant %v (%T)}", val, val)
 	}
 }
 
