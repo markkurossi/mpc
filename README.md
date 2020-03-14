@@ -205,6 +205,8 @@ form assembly:
 
  - Compiler:
    - [ ] Constant folding
+     - [X] binary expressions
+     - [ ] if-blocks
    - [X] For-loop unrolling
    - [ ] Signed / unsigned arithmetics
    - [X] `const (sym=val,sym=val)` syntax
