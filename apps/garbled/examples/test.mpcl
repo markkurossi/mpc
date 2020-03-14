@@ -2,12 +2,16 @@
 
 package main
 
-func main(a, b uint4) int {
-	sum := 0
+func main(a, b int) (int, int) {
+	odds := 0
+	evens := 0
 
-	for i := size(a) - 1; i >= 0; i = i - 1 {
-		sum = sum + i
+	for i := 0; i <= 10; i = i + 1 {
+		if i%2 == 0 {
+			evens = evens + 1
+		} else {
+			odds = odds + 1
+		}
 	}
-
-	return sum
+	return odds, evens
 }

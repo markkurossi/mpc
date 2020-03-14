@@ -1,0 +1,10 @@
+// -*- go -*-
+
+package main
+
+func main(a, b int) int2 {
+	if 1/1 == 0 {
+		return 0
+	}
+	return 1
+}

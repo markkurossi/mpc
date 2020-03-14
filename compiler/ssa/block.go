@@ -66,7 +66,8 @@ func (b *Block) AddInstr(instr Instr) {
 func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 	v Variable, ok bool) {
 
-	if b.Branch == nil {
+	// XXX Check if the if-ssagen could omit branch in this case?
+	if b.Branch == nil || b.Next == b.Branch {
 		// Sequential block, return latest value
 		if b.Next != nil {
 			v, ok = b.Next.ReturnBinding(name, retBlock, gen)

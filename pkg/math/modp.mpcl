@@ -14,11 +14,23 @@ func Exp(b, e, m uint64) uint64 {
 
 	for i := size(b) - 1; i >= 0; i = i - 1 {
 		r = r * r % m
-		// TODO: uint64(1)<<i is compile-time constant so we know we
-		// only test the status of one bit of e. Let's detect this and
-		// emit `bit e{0,0}u64 {i} %_{0,0}i1' instruction i.e. one AND
-		// gate.
-		if e&(1<<i) != 0 {
+		// TODO: peephole optimizer can detect:
+		//
+		//   rshift  e{1,0}u64 $7 %_{0,451}u64
+		//   band    %_{0,451}u64 $1 %_{0,452}u64
+		//   neq     %_{0,452}u64 $0 %_{0,453}b1
+		//
+		// as:
+		//
+		//   rshift V1 Const1 V2
+		//   band   V2 $1 V3
+		//   neq    V3 $0 V4
+		//
+		// and replace it as:
+		//
+		//   test1  V1 Const1 V4
+		//
+		if e>>i&1 != 0 {
 			r = r * b % m
 		}
 	}

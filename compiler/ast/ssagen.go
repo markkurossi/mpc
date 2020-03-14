@@ -509,7 +509,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Check constant folding.
 	constVal, ok, err := ast.Eval(block, ctx, gen)
 	if err == nil && ok {
-		fmt.Printf("*** constant folding gives %b\n", constVal)
+		fmt.Printf("*** constant folding gives %v\n", constVal)
 	}
 
 	block, lArr, err := ast.Left.SSA(block, ctx, gen)

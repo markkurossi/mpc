@@ -74,5 +74,17 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 		}
 	}
 
+	// Set extra quotient bits to zero.
+	for y := len(a); y < len(q); y++ {
+		q[y] = NewWire()
+		compiler.Zero(q[y])
+	}
+
+	// Set extra remainder bits to zero.
+	for x := len(b); x < len(r); x++ {
+		r[x] = NewWire()
+		compiler.Zero(r[x])
+	}
+
 	return nil
 }
