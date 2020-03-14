@@ -47,7 +47,7 @@ func (bindings *Bindings) Set(v Variable, val *Variable) {
 	*bindings = append(*bindings, b)
 }
 
-func (bindings Bindings) Get(name string) (ret Binding, err error) {
+func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
 	for _, b := range bindings {
 		if b.Name == name {
 			if len(ret.Name) == 0 || b.Scope > ret.Scope {
@@ -56,9 +56,9 @@ func (bindings Bindings) Get(name string) (ret Binding, err error) {
 		}
 	}
 	if len(ret.Name) == 0 {
-		return ret, fmt.Errorf("undefined variable '%s'", name)
+		return ret, false
 	}
-	return
+	return ret, true
 }
 
 func (b Bindings) Clone() Bindings {
@@ -79,13 +79,13 @@ func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
 
 	var result Bindings
 	for name, _ := range names {
-		bTrue, err1 := tBindings.Get(name)
-		bFalse, err2 := fBindings.Get(name)
-		if err1 != nil && err2 != nil {
+		bTrue, ok1 := tBindings.Get(name)
+		bFalse, ok2 := fBindings.Get(name)
+		if !ok1 && !ok2 {
 			continue
-		} else if err1 != nil {
+		} else if !ok1 {
 			result = append(result, bFalse)
-		} else if err2 != nil {
+		} else if !ok2 {
 			result = append(result, bTrue)
 		} else {
 			if bTrue.Bound.Equal(bFalse.Bound) {

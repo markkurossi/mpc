@@ -34,7 +34,7 @@ type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error)
 
 type Eval func(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, error)
+	loc utils.Point) (interface{}, bool, error)
 
 // Predeclared identifiers.
 var builtins = []Builtin{
@@ -146,35 +146,36 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 }
 
 func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, error) {
+	loc utils.Point) (interface{}, bool, error) {
 
 	if len(args) != 1 {
-		return nil, ctx.logger.Errorf(loc,
+		return nil, false, ctx.logger.Errorf(loc,
 			"invalid amount of arguments in call to size")
 	}
 
 	switch arg := args[0].(type) {
 	case *VariableRef:
 		var b ssa.Binding
-		var err error
+		var ok bool
 
 		if len(arg.Name.Package) > 0 {
 			pkg, ok := ctx.Packages[arg.Name.Package]
 			if !ok {
-				return nil, ctx.logger.Errorf(loc,
+				return nil, false, ctx.logger.Errorf(loc,
 					"package '%s' not found", arg.Name.Package)
 			}
-			b, err = pkg.Bindings.Get(arg.Name.Name)
+			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
-			b, err = block.Bindings.Get(arg.Name.Name)
+			b, ok = block.Bindings.Get(arg.Name.Name)
 		}
-		if err != nil {
-			return nil, ctx.logger.Errorf(loc, "%s", err.Error())
+		if !ok {
+			return nil, false, ctx.logger.Errorf(loc,
+				"undefined variable '%s'", arg.Name.String())
 		}
-		return int32(b.Type.Bits), nil
+		return int32(b.Type.Bits), true, nil
 
 	default:
-		return nil, ctx.logger.Errorf(loc,
+		return nil, false, ctx.logger.Errorf(loc,
 			"size(%v/%T) is not constant", arg, arg)
 	}
 }

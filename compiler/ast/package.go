@@ -49,9 +49,15 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	ctx.Start().Bindings = unit.Bindings.Clone()
 
 	// Compile main.
+	if params.Verbose {
+		fmt.Printf("main.SSA()...\n")
+	}
 	_, returnVars, err := main.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
 		return nil, nil, err
+	}
+	if params.Verbose {
+		fmt.Printf("main.SSA() done\n")
 	}
 
 	if params.SSAOut != nil {

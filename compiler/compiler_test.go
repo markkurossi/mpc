@@ -248,7 +248,7 @@ func TestFixed(t *testing.T) {
 			continue
 		}
 		if results[0].Int64() != test.N3 {
-			t.Errorf("test failed: got %d (%x), expected %d (%x)",
+			t.Errorf("test %d failed: got %d (%x), expected %d (%x)", idx,
 				results[0].Int64(), results[0].Int64(), test.N3, test.N3)
 		}
 	}

@@ -277,8 +277,8 @@ func (p *Parser) parseConstDef(token *Token) error {
 	// XXX Check type compatibility
 	_ = constType
 
-	_, err = p.pkg.Bindings.Get(token.StrVal)
-	if err == nil {
+	_, ok = p.pkg.Bindings.Get(token.StrVal)
+	if ok {
 		return p.errf(token.From, "constant %s already defined", token.StrVal)
 	}
 	lValue := constVar

@@ -69,9 +69,10 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Select return variables.
 	var vars []ssa.Variable
 	for _, ret := range ast.Return {
-		v, err := ctx.Start().ReturnBinding(ret.Name, ctx.Return(), gen)
-		if err != nil {
-			return nil, nil, err
+		v, ok := ctx.Start().ReturnBinding(ret.Name, ctx.Return(), gen)
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"undefined variable '%s'", ret.Name)
 		}
 		vars = append(vars, v)
 	}
@@ -138,9 +139,10 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		}
 	} else {
 		// XXX check ast.Define
-		b, err := block.Bindings.Get(ast.Name)
-		if err != nil {
-			return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
+		b, ok := block.Bindings.Get(ast.Name)
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"undefined varialbe '%s'", ast.Name)
 		}
 		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 		if err != nil {
@@ -345,9 +347,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	for idx, arg := range called.Args {
-		b, err := ctx.Start().Bindings.Get(arg.Name)
-		if err != nil {
-			return nil, nil, err
+		b, ok := ctx.Start().Bindings.Get(arg.Name)
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"undefined variable '%s'", arg.Name)
 		}
 		bv := b.Value(block, gen)
 		block.AddInstr(ssa.NewMovInstr(args[idx], bv))
@@ -451,16 +454,22 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
 	// Init loop.
-	_, err := ast.Init.Eval(block, ctx, gen)
+	_, ok, err := ast.Init.Eval(block, ctx, gen)
 	if err != nil {
+		return nil, nil, err
+	}
+	if !ok {
 		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
 			"init statement is not compile-time constant: %s", err)
 	}
 
 	// Expand body as long as condition is true.
 	for {
-		constVal, err := ast.Cond.Eval(block, ctx, gen)
+		constVal, ok, err := ast.Cond.Eval(block, ctx, gen)
 		if err != nil {
+			return nil, nil, err
+		}
+		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
 				"condition is not compile-time constant: %s", err)
 		}
@@ -481,8 +490,11 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// Increment.
-		_, err = ast.Inc.Eval(block, ctx, gen)
+		_, ok, err = ast.Inc.Eval(block, ctx, gen)
 		if err != nil {
+			return nil, nil, err
+		}
+		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
 				"increment statement is not compile-time constant: %s", err)
 		}
@@ -495,8 +507,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
 	// Check constant folding.
-	constVal, err := ast.Eval(block, ctx, gen)
-	if err == nil {
+	constVal, ok, err := ast.Eval(block, ctx, gen)
+	if err == nil && ok {
 		fmt.Printf("*** constant folding gives %b\n", constVal)
 	}
 
@@ -539,8 +551,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryPlus, BinaryMinus, BinaryMult, BinaryDiv, BinaryMod, BinaryBand,
-		BinaryBclear, BinaryBor, BinaryBxor:
+	case BinaryMult, BinaryDiv, BinaryMod, BinaryLshift, BinaryRshift,
+		BinaryBand, BinaryBclear,
+		BinaryPlus, BinaryMinus, BinaryBor, BinaryBxor:
 		resultType = l.Type
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
@@ -556,16 +569,32 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	var instr ssa.Instr
 	switch ast.Op {
-	case BinaryPlus:
-		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
-	case BinaryMinus:
-		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryMult:
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryDiv:
 		instr, err = ssa.NewDivInstr(l.Type, l, r, t)
 	case BinaryMod:
 		instr, err = ssa.NewModInstr(l.Type, l, r, t)
+	case BinaryLshift:
+		instr, err = ssa.NewLshiftInstr(l, r, t)
+	case BinaryRshift:
+		instr, err = ssa.NewRshiftInstr(l, r, t)
+	case BinaryBand:
+		instr, err = ssa.NewBandInstr(l, r, t)
+	case BinaryBclear:
+		instr, err = ssa.NewBclrInstr(l, r, t)
+	case BinaryPlus:
+		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
+	case BinaryMinus:
+		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
+	case BinaryBor:
+		instr, err = ssa.NewBorInstr(l, r, t)
+	case BinaryBxor:
+		instr, err = ssa.NewBxorInstr(l, r, t)
+	case BinaryEq:
+		instr, err = ssa.NewEqInstr(l, r, t)
+	case BinaryNeq:
+		instr, err = ssa.NewNeqInstr(l, r, t)
 	case BinaryLt:
 		instr, err = ssa.NewLtInstr(l.Type, l, r, t)
 	case BinaryLe:
@@ -574,22 +603,10 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewGtInstr(l.Type, l, r, t)
 	case BinaryGe:
 		instr, err = ssa.NewGeInstr(l.Type, l, r, t)
-	case BinaryEq:
-		instr, err = ssa.NewEqInstr(l, r, t)
-	case BinaryNeq:
-		instr, err = ssa.NewNeqInstr(l, r, t)
 	case BinaryAnd:
 		instr, err = ssa.NewAndInstr(l, r, t)
 	case BinaryOr:
 		instr, err = ssa.NewOrInstr(l, r, t)
-	case BinaryBand:
-		instr, err = ssa.NewBandInstr(l, r, t)
-	case BinaryBclear:
-		instr, err = ssa.NewBclrInstr(l, r, t)
-	case BinaryBor:
-		instr, err = ssa.NewBorInstr(l, r, t)
-	case BinaryBxor:
-		instr, err = ssa.NewBxorInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
 		return nil, nil, ctx.logger.Errorf(ast.Loc,
@@ -608,27 +625,26 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	var b ssa.Binding
-	var err error
+	var ok bool
 
 	if len(ast.Name.Package) > 0 {
-		pkg, ok := ctx.Packages[ast.Name.Package]
+		var pkg *Package
+		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
 			return nil, nil,
 				ctx.logger.Errorf(ast.Loc, "package '%s' not found",
 					ast.Name.Package)
 		}
-		b, err = pkg.Bindings.Get(ast.Name.Name)
+		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
-		b, err = block.Bindings.Get(ast.Name.Name)
+		b, ok = block.Bindings.Get(ast.Name.Name)
 	}
-	if err != nil {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err.Error())
+	if !ok {
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined variable '%s'",
+			ast.Name.String())
 	}
 
 	value := b.Value(block, gen)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	// Bind variable with the name it was referenced.
 	lValue := value

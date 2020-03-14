@@ -61,7 +61,7 @@ type AST interface {
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		*ssa.Block, []ssa.Variable, error)
 	Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-		interface{}, error)
+		interface{}, bool, error)
 }
 
 type List []AST

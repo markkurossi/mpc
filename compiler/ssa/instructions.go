@@ -37,6 +37,8 @@ const (
 	Imod
 	Umod
 	Fmod
+	Lshift
+	Rshift
 	Ilt
 	Ult
 	Flt
@@ -62,47 +64,49 @@ const (
 )
 
 var operands = map[Operand]string{
-	Iadd:  "iadd",
-	Uadd:  "uadd",
-	Fadd:  "fadd",
-	Isub:  "isub",
-	Usub:  "usub",
-	Fsub:  "fsub",
-	Band:  "band",
-	Bor:   "bor",
-	Bxor:  "bxor",
-	Bclr:  "bclr",
-	Imult: "imult",
-	Umult: "umult",
-	Fmult: "fmult",
-	Idiv:  "idiv",
-	Udiv:  "udiv",
-	Fdiv:  "fdiv",
-	Imod:  "imod",
-	Umod:  "umod",
-	Fmod:  "fmod",
-	Ilt:   "ilt",
-	Ult:   "ult",
-	Flt:   "flt",
-	Ile:   "ile",
-	Ule:   "ule",
-	Fle:   "fle",
-	Igt:   "igt",
-	Ugt:   "ugt",
-	Fgt:   "fgt",
-	Ige:   "ige",
-	Uge:   "uge",
-	Fge:   "fge",
-	Eq:    "eq",
-	Neq:   "neq",
-	And:   "and",
-	Or:    "or",
-	If:    "if",
-	Jump:  "jump",
-	Mov:   "mov",
-	Phi:   "phi",
-	Ret:   "ret",
-	Circ:  "circ",
+	Iadd:   "iadd",
+	Uadd:   "uadd",
+	Fadd:   "fadd",
+	Isub:   "isub",
+	Usub:   "usub",
+	Fsub:   "fsub",
+	Band:   "band",
+	Bor:    "bor",
+	Bxor:   "bxor",
+	Bclr:   "bclr",
+	Imult:  "imult",
+	Umult:  "umult",
+	Fmult:  "fmult",
+	Idiv:   "idiv",
+	Udiv:   "udiv",
+	Fdiv:   "fdiv",
+	Imod:   "imod",
+	Umod:   "umod",
+	Fmod:   "fmod",
+	Lshift: "lshift",
+	Rshift: "rshift",
+	Ilt:    "ilt",
+	Ult:    "ult",
+	Flt:    "flt",
+	Ile:    "ile",
+	Ule:    "ule",
+	Fle:    "fle",
+	Igt:    "igt",
+	Ugt:    "ugt",
+	Fgt:    "fgt",
+	Ige:    "ige",
+	Uge:    "uge",
+	Fge:    "fge",
+	Eq:     "eq",
+	Neq:    "neq",
+	And:    "and",
+	Or:     "or",
+	If:     "if",
+	Jump:   "jump",
+	Mov:    "mov",
+	Phi:    "phi",
+	Ret:    "ret",
+	Circ:   "circ",
 }
 
 var maxOperandLength int
@@ -223,6 +227,22 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewLshiftInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Lshift,
+		In:  []Variable{l, r},
+		Out: &o,
+	}, nil
+}
+
+func NewRshiftInstr(l, r, o Variable) (Instr, error) {
+	return Instr{
+		Op:  Rshift,
 		In:  []Variable{l, r},
 		Out: &o,
 	}, nil

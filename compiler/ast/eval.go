@@ -15,25 +15,25 @@ import (
 )
 
 func (ast List) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return nil, fmt.Errorf("List.Eval not implemented yet")
+	interface{}, bool, error) {
+	return nil, false, fmt.Errorf("List.Eval not implemented yet")
 }
 
 func (ast *Func) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return nil, fmt.Errorf("Func is not constant")
+	interface{}, bool, error) {
+	return nil, false, nil
 }
 
 func (ast *VariableDef) Eval(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, error) {
-	return nil, fmt.Errorf("VariableDef is not constant")
+	gen *ssa.Generator) (interface{}, bool, error) {
+	return nil, false, nil
 }
 
 func (ast *Assign) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	val, err := ast.Expr.Eval(block, ctx, gen)
-	if err != nil {
-		return nil, err
+	interface{}, bool, error) {
+	val, ok, err := ast.Expr.Eval(block, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
 	}
 
 	constVal, err := ssa.Constant(val)
@@ -43,40 +43,41 @@ func (ast *Assign) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if ast.Define {
 		lValue, err = gen.NewVar(ast.Name, constVal.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	} else {
-		b, err := block.Bindings.Get(ast.Name)
-		if err != nil {
-			return nil, err
+		b, ok := block.Bindings.Get(ast.Name)
+		if !ok {
+			return nil, false, ctx.logger.Errorf(ast.Loc,
+				"undefined variable '%s'", ast.Name)
 		}
 		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 	block.Bindings.Set(lValue, &constVal)
 
-	return constVal.ConstValue, nil
+	return constVal.ConstValue, true, nil
 }
 
 func (ast *If) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return nil, fmt.Errorf("If is not constant")
+	interface{}, bool, error) {
+	return nil, false, nil
 }
 
 func (ast *Call) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
+	interface{}, bool, error) {
 
 	// Resolve called.
 	pkg, ok := ctx.Packages[ast.Name.Package]
 	if !ok {
-		return nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+		return nil, false, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
 			ast.Name.Package)
 	}
-	called, ok := pkg.Functions[ast.Name.Name]
+	_, ok = pkg.Functions[ast.Name.Name]
 	if ok {
-		return nil, ctx.logger.Errorf(ast.Loc, "%s is not constant", called)
+		return nil, false, nil
 	}
 	// Check builtin functions.
 	for _, bi := range builtins {
@@ -84,37 +85,37 @@ func (ast *Call) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			continue
 		}
 		if bi.Type != BuiltinFunc {
-			return nil, fmt.Errorf("builtin %s used as function", bi.Name)
+			return nil, false, fmt.Errorf("builtin %s used as function",
+				bi.Name)
 		}
 		if bi.Eval == nil {
-			return nil, ctx.logger.Errorf(ast.Loc, "%s() is not constant",
-				bi.Name)
+			return nil, false, nil
 		}
 		return bi.Eval(ast.Exprs, block, ctx, gen, ast.Location())
 	}
 
-	return nil, fmt.Errorf("%s() is not constant", ast.Name.Name)
+	return nil, false, nil
 }
 
 func (ast *Return) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return nil, fmt.Errorf("Return is not constant")
+	interface{}, bool, error) {
+	return nil, false, nil
 }
 
 func (ast *For) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return nil, fmt.Errorf("For is not constant")
+	interface{}, bool, error) {
+	return nil, false, nil
 }
 
 func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	l, err := ast.Left.Eval(block, ctx, gen)
-	if err != nil {
-		return nil, err
+	interface{}, bool, error) {
+	l, ok, err := ast.Left.Eval(block, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
 	}
-	r, err := ast.Right.Eval(block, ctx, gen)
-	if err != nil {
-		return nil, err
+	r, ok, err := ast.Right.Eval(block, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
 	}
 
 	switch lval := l.(type) {
@@ -124,44 +125,40 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		case int32:
 			rval = rv
 		default:
-			return nil, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
 				"invalid r-value %T %s %T", lval, ast.Op, rv)
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return lval * rval, nil
+			return lval * rval, true, nil
 		case BinaryDiv:
-			return lval / rval, nil
+			return lval / rval, true, nil
 		case BinaryMod:
-			return lval % rval, nil
+			return lval % rval, true, nil
 		case BinaryLshift:
-			if rval > 31 {
-				return nil, fmt.Errorf("int32 overflow in %T %s %v",
-					lval, ast.Op, rval)
-			}
-			return lval << rval, nil
+			return lval << rval, true, nil
 		case BinaryRshift:
-			return lval << rval, nil
+			return lval >> rval, true, nil
 
 		case BinaryPlus:
-			return lval + rval, nil
+			return lval + rval, true, nil
 		case BinaryMinus:
-			return lval - rval, nil
+			return lval - rval, true, nil
 
 		case BinaryEq:
-			return lval == rval, nil
+			return lval == rval, true, nil
 		case BinaryNeq:
-			return lval != rval, nil
+			return lval != rval, true, nil
 		case BinaryLt:
-			return lval < rval, nil
+			return lval < rval, true, nil
 		case BinaryLe:
-			return lval <= rval, nil
+			return lval <= rval, true, nil
 		case BinaryGt:
-			return lval > rval, nil
+			return lval > rval, true, nil
 		case BinaryGe:
-			return lval >= rval, nil
+			return lval >= rval, true, nil
 		default:
-			return nil, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
@@ -171,45 +168,45 @@ func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		case uint64:
 			rval = rv
 		default:
-			return nil, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
 				"%T: invalid r-value %v (%T)", lval, rv, rv)
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return lval * rval, nil
+			return lval * rval, true, nil
 		case BinaryDiv:
-			return lval / rval, nil
+			return lval / rval, true, nil
 		case BinaryMod:
-			return lval % rval, nil
+			return lval % rval, true, nil
 		case BinaryLshift:
-			return lval << rval, nil
+			return lval << rval, true, nil
 		case BinaryRshift:
-			return lval << rval, nil
+			return lval >> rval, true, nil
 
 		case BinaryPlus:
-			return lval + rval, nil
+			return lval + rval, true, nil
 		case BinaryMinus:
-			return lval - rval, nil
+			return lval - rval, true, nil
 
 		case BinaryEq:
-			return lval == rval, nil
+			return lval == rval, true, nil
 		case BinaryNeq:
-			return lval != rval, nil
+			return lval != rval, true, nil
 		case BinaryLt:
-			return lval < rval, nil
+			return lval < rval, true, nil
 		case BinaryLe:
-			return lval <= rval, nil
+			return lval <= rval, true, nil
 		case BinaryGt:
-			return lval > rval, nil
+			return lval > rval, true, nil
 		case BinaryGe:
-			return lval >= rval, nil
+			return lval >= rval, true, nil
 		default:
-			return nil, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	default:
-		return nil, ctx.logger.Errorf(ast.Left.Location(),
+		return nil, false, ctx.logger.Errorf(ast.Left.Location(),
 			"invalid l-value %v (%T)", lval, lval)
 	}
 }
@@ -226,34 +223,35 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 }
 
 func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, error) {
+	gen *ssa.Generator) (interface{}, bool, error) {
 
 	var b ssa.Binding
-	var err error
+	var ok bool
 
 	if len(ast.Name.Package) > 0 {
 		pkg, ok := ctx.Packages[ast.Name.Package]
 		if !ok {
-			return nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-				ast.Name.Package)
+			return nil, false, ctx.logger.Errorf(ast.Loc,
+				"package '%s' not found", ast.Name.Package)
 		}
-		b, err = pkg.Bindings.Get(ast.Name.Name)
+		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
-		b, err = block.Bindings.Get(ast.Name.Name)
+		b, ok = block.Bindings.Get(ast.Name.Name)
 	}
-	if err != nil {
-		return nil, err
+	if !ok {
+		return nil, false, ctx.logger.Errorf(ast.Loc,
+			"undefined variable '%s'", ast.Name.String())
 	}
 
 	val, ok := b.Bound.(*ssa.Variable)
 	if !ok || !val.Const {
-		return nil, fmt.Errorf("value %v is not constant", b.Bound)
+		return nil, false, nil
 	}
 
-	return val.ConstValue, nil
+	return val.ConstValue, true, nil
 }
 
 func (ast *Constant) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, error) {
-	return ast.Value, nil
+	interface{}, bool, error) {
+	return ast.Value, true, nil
 }

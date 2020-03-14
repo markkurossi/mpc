@@ -64,39 +64,39 @@ func (b *Block) AddInstr(instr Instr) {
 }
 
 func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
-	v Variable, err error) {
+	v Variable, ok bool) {
 
 	if b.Branch == nil {
 		// Sequential block, return latest value
 		if b.Next != nil {
-			v, err = b.Next.ReturnBinding(name, retBlock, gen)
-			if err == nil {
-				return v, nil
+			v, ok = b.Next.ReturnBinding(name, retBlock, gen)
+			if ok {
+				return v, true
 			}
 			// Next didn't have value, take ours below.
 		}
-		bind, err := b.Bindings.Get(name)
-		if err != nil {
-			return v, err
+		bind, ok := b.Bindings.Get(name)
+		if !ok {
+			return v, false
 		}
-		return bind.Value(retBlock, gen), nil
+		return bind.Value(retBlock, gen), true
 	}
-	vTrue, err := b.Branch.ReturnBinding(name, retBlock, gen)
-	if err != nil {
-		return v, err
+	vTrue, ok := b.Branch.ReturnBinding(name, retBlock, gen)
+	if !ok {
+		return v, false
 	}
-	vFalse, err := b.Next.ReturnBinding(name, retBlock, gen)
-	if err != nil {
-		return v, err
+	vFalse, ok := b.Next.ReturnBinding(name, retBlock, gen)
+	if !ok {
+		return v, false
 	}
 	if vTrue.Equal(&vFalse) {
-		return vTrue, nil
+		return vTrue, true
 	}
 
 	v = gen.AnonVar(vTrue.Type)
 	retBlock.AddInstr(NewPhiInstr(b.BranchCond, vTrue, vFalse, v))
 
-	return v, nil
+	return v, true
 }
 
 func (b *Block) PP(out io.Writer, seen map[string]bool) {
