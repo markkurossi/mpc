@@ -220,8 +220,9 @@ form assembly:
    - [ ] Half AND
  - Packages:
    - [ ] MODP circuit
-     - [ ] variable definition with init value
+     - [X] variable definition with init value
      - [X] binary modulo operation
+     - [ ] peephole optimizer for creating bit test instructions
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
