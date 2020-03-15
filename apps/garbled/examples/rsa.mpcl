@@ -4,7 +4,7 @@
 package main
 
 import (
-	"math"
+	"crypto/rsa"
 )
 
 // d: 0x321af139
@@ -23,17 +23,8 @@ func main(mode bool, msg, gD, pubN, pubE, eD uint64) uint64 {
 	d = gD + eD
 
 	if mode {
-		return encrypt(msg, pubE, pubN)
+		return rsa.Encrypt(msg, pubE, pubN)
 	} else {
-		return decrypt(msg, d, pubN)
+		return rsa.Decrypt(msg, d, pubN)
 	}
-}
-
-// c = m**e mod n
-func encrypt(msg, e, n uint64) uint64 {
-	return math.Exp(msg, e, n)
-}
-
-func decrypt(cipher, d, n uint64) uint64 {
-	return math.Exp(cipher, d, n)
 }

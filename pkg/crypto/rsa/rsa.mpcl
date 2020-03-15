@@ -1,0 +1,22 @@
+// -*- go -*-
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package rsa
+
+import (
+	"math"
+)
+
+// c = m**e mod n
+func Encrypt(msg, e, n uint64) uint64 {
+	return math.Exp(msg, e, n)
+}
+
+// m = c**d mod n
+func Decrypt(cipher, d, n uint64) uint64 {
+	return math.Exp(cipher, d, n)
+}
