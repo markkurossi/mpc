@@ -216,7 +216,9 @@ form assembly:
      - [ ] logical not
    - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
- - Garbling:
+ - Circuit & Garbling:
+   - [X] store gates by value, not by pointer
+   - [X] remove `Gate.ID`
    - [X] Free XOR
    - [ ] Row reduction
    - [ ] Half AND

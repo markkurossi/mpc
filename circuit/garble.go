@@ -164,7 +164,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	wires := make(ot.Inputs)
 
 	for idx, gate := range c.Gates {
-		data, err := gate.Garble(wires, enc, r)
+		data, err := gate.Garble(wires, enc, r, uint32(idx))
 		if err != nil {
 			return nil, err
 		}
@@ -190,7 +190,9 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
+func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
+	[][]byte, error) {
+
 	var in []ot.Wire
 	var out []ot.Wire
 	var err error
@@ -247,10 +249,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
-		table = append(table, entry(enc, a.Label0, b.Label1, c.Label0, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, id))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label0, id))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label0, id))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, id))
 
 	case OR:
 		// a b c
@@ -262,10 +264,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 		a := in[0]
 		b := in[1]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, g.ID))
-		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1, g.ID))
-		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, g.ID))
+		table = append(table, entry(enc, a.Label0, b.Label0, c.Label0, id))
+		table = append(table, entry(enc, a.Label0, b.Label1, c.Label1, id))
+		table = append(table, entry(enc, a.Label1, b.Label0, c.Label1, id))
+		table = append(table, entry(enc, a.Label1, b.Label1, c.Label1, id))
 
 	case INV:
 		// a b c
@@ -274,8 +276,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label) ([][]byte, error) {
 		// 1   0
 		a := in[0]
 		c := out[0]
-		table = append(table, entry(enc, a.Label0, nil, c.Label1, g.ID))
-		table = append(table, entry(enc, a.Label1, nil, c.Label0, g.ID))
+		table = append(table, entry(enc, a.Label0, nil, c.Label1, id))
+		table = append(table, entry(enc, a.Label1, nil, c.Label0, id))
 
 	default:
 		return nil, fmt.Errorf("Invalid operand %s", g.Op)

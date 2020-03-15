@@ -28,7 +28,7 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 	}
 
 	for idx, gate := range c.Gates {
-		output, err := gate.Eval(wires, dec, garbled[idx])
+		output, err := gate.Eval(wires, dec, garbled[idx], uint32(idx))
 		if err != nil {
 			return err
 		}
@@ -38,7 +38,7 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 	return nil
 }
 
-func (g *Gate) Eval(wires []*ot.Label, dec Dec, garbled [][]byte) (
+func (g *Gate) Eval(wires []*ot.Label, dec Dec, garbled [][]byte, id uint32) (
 	[]byte, error) {
 
 	var a *ot.Label
@@ -69,5 +69,5 @@ func (g *Gate) Eval(wires []*ot.Label, dec Dec, garbled [][]byte) (
 			i, len(garbled))
 	}
 
-	return dec(a, b, g.ID, garbled[i])
+	return dec(a, b, id, garbled[i])
 }

@@ -15,7 +15,6 @@ import (
 	"io"
 	"math/big"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -128,7 +127,7 @@ type Circuit struct {
 	N1       IO
 	N2       IO
 	N3       IO
-	Gates    []*Gate
+	Gates    []Gate
 	Stats    map[Operation]int
 }
 
@@ -170,24 +169,7 @@ func (c *Circuit) Marshal(out io.Writer) {
 	fmt.Fprintln(out)
 	fmt.Fprintln(out)
 
-	type kv struct {
-		Key   uint32
-		Value *Gate
-	}
-	var gates []kv
-
-	for _, gate := range c.Gates {
-		gates = append(gates, kv{
-			Key:   gate.ID,
-			Value: gate,
-		})
-	}
-	sort.Slice(gates, func(i, j int) bool {
-		return gates[i].Key < gates[j].Key
-	})
-
-	for _, gate := range gates {
-		g := gate.Value
+	for _, g := range c.Gates {
 		fmt.Fprintf(out, "%d 1", len(g.Inputs()))
 		for _, w := range g.Inputs() {
 			fmt.Fprintf(out, " %d", w)
@@ -198,18 +180,17 @@ func (c *Circuit) Marshal(out io.Writer) {
 }
 
 type Gate struct {
-	ID     uint32
 	Input0 Wire
 	Input1 Wire
 	Output Wire
 	Op     Operation
 }
 
-func (g *Gate) String() string {
-	return fmt.Sprintf("G%4d %v %v %v", g.ID, g.Inputs(), g.Op, g.Output)
+func (g Gate) String() string {
+	return fmt.Sprintf("%v %v %v", g.Inputs(), g.Op, g.Output)
 }
 
-func (g *Gate) Inputs() []Wire {
+func (g Gate) Inputs() []Wire {
 	switch g.Op {
 	case XOR, AND, OR:
 		return []Wire{g.Input0, g.Input1}
@@ -327,7 +308,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 		})
 	}
 
-	gates := make([]*Gate, numGates)
+	gates := make([]Gate, numGates)
 	stats := make(map[Operation]int)
 	var gate int
 	for gate = 0; ; gate++ {
@@ -413,8 +394,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 			input1 = inputs[1]
 		}
 
-		gates[gate] = &Gate{
-			ID:     uint32(gate),
+		gates[gate] = Gate{
 			Input0: inputs[0],
 			Input1: input1,
 			Output: outputs[0],

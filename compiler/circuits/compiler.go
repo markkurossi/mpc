@@ -22,10 +22,9 @@ type Compiler struct {
 	Outputs    []*Wire
 	Gates      []Gate
 	nextWireID uint32
-	nextGateID uint32
 	pending    []Gate
 	assigned   []Gate
-	compiled   []*circuit.Gate
+	compiled   []circuit.Gate
 	wires      map[string][]*Wire
 	zeroWire   *Wire
 }
@@ -138,12 +137,6 @@ func (c *Compiler) NextWireID() uint32 {
 	return ret
 }
 
-func (c *Compiler) NextGateID() uint32 {
-	ret := c.nextGateID
-	c.nextGateID++
-	return ret
-}
-
 func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
 	if bits == 0 {
 		return nil, fmt.Errorf("size not set for variable %v", v)
@@ -180,7 +173,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	if len(c.compiled) != 0 {
 		panic("Compile: compiled set")
 	}
-	c.compiled = make([]*circuit.Gate, 0, len(c.Gates))
+	c.compiled = make([]circuit.Gate, 0, len(c.Gates))
 
 	for _, w := range c.Inputs {
 		w.Assign(c)
@@ -212,7 +205,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	}
 
 	result := &circuit.Circuit{
-		NumGates: int(c.nextGateID),
+		NumGates: len(c.compiled),
 		NumWires: int(c.nextWireID),
 		N1:       c.N1,
 		N2:       c.N2,

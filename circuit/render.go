@@ -14,18 +14,18 @@ import (
 type Placement struct {
 	Col int
 	Row float64
-	G   *Gate
+	G   Gate
 }
 
 func (c *Circuit) Render() {
-	from := make(map[int]*Gate)
-	to := make(map[int]*Gate)
+	from := make(map[int]Gate)
+	to := make(map[int]Gate)
 
 	placements := make(map[uint32]*Placement)
 
 	// Create wire mappings.
-	for _, g := range c.Gates {
-		placements[g.ID] = &Placement{
+	for idx, g := range c.Gates {
+		placements[uint32(idx)] = &Placement{
 			G: g,
 		}
 		for _, w := range g.Inputs() {
@@ -37,12 +37,12 @@ func (c *Circuit) Render() {
 	// Assign columns
 	var maxCol int
 	columns := make(map[int][]*Placement)
-	for _, g := range c.Gates {
-		place := placements[g.ID]
+	for idx, g := range c.Gates {
+		place := placements[uint32(idx)]
 		for _, w := range g.Inputs() {
-			src, ok := from[w.ID()]
+			_, ok := from[w.ID()]
 			if ok {
-				srcPlace := placements[src.ID]
+				srcPlace := placements[0] // XXX broken
 				if srcPlace.Col >= place.Col {
 					place.Col = srcPlace.Col + 1
 				}
