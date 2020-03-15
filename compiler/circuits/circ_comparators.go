@@ -149,3 +149,18 @@ func NewLogicalOR(compiler *Compiler, x, y, r []*Wire) error {
 	compiler.AddGate(NewBinary(circuit.OR, x[0], y[0], r[0]))
 	return nil
 }
+
+func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
+	if len(r) != 1 {
+		return fmt.Errorf("invalid bit set test arguments: x=%d, r=%d",
+			len(x), len(r))
+	}
+	if index < len(x) {
+		w := NewWire()
+		compiler.Zero(w)
+		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
+	} else {
+		compiler.Zero(r[0])
+	}
+	return nil
+}

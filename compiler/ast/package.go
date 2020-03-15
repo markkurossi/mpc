@@ -53,6 +53,10 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	if err != nil {
 		return nil, nil, err
 	}
+	err = ssa.Peephole(ctx.Start())
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if params.SSAOut != nil {
 		ssa.PP(params.SSAOut, ctx.Start())

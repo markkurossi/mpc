@@ -28,6 +28,7 @@ const (
 	Bxor
 	Band
 	Bclr
+	Bts
 	Imult
 	Umult
 	Fmult
@@ -74,6 +75,7 @@ var operands = map[Operand]string{
 	Bor:    "bor",
 	Bxor:   "bxor",
 	Bclr:   "bclr",
+	Bts:    "bts",
 	Imult:  "imult",
 	Umult:  "umult",
 	Fmult:  "fmult",

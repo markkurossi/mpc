@@ -189,6 +189,23 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Bts:
+			if !instr.In[1].Const {
+				return fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var index int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				index = int(val)
+			default:
+				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			err = circuits.NewBitSetTest(cc, wires[0], index, o)
+			if err != nil {
+				return err
+			}
+
 		case And:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
