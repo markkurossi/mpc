@@ -17,14 +17,13 @@ import (
 // msg: 0x6d7472
 // ciper: 0x61f9ef88
 
-func main(mode bool, msg, gD, pubN, pubE, eD uint64) uint64 {
+func main(msg, gD, pubN, pubE, eD uint64) (uint64, uint64) {
 	var d uint64 = 0
 
 	d = gD + eD
 
-	if mode {
-		return rsa.Encrypt(msg, pubE, pubN)
-	} else {
-		return rsa.Decrypt(msg, d, pubN)
-	}
+	cipher := rsa.Encrypt(msg, pubE, pubN)
+	plain := rsa.Decrypt(cipher, d, pubN)
+
+	return cipher, plain
 }

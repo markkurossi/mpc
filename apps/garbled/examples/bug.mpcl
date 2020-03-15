@@ -2,14 +2,19 @@
 
 package main
 
-func main(a, b int) int {
-	var sum int = 0
+func main(a, msg, e int1) (int1, int1) {
+	var key uint1 = 0
 
-	for i := 0; i <= 10; i = i + 1 {
-		if i%2 == 0 {
-			sum = sum + 1
-		}
-	}
+	cipher := key + 1
+	plain := cipher - 1
 
-	return sum
+	return cipher, plain
+}
+
+func encrypt(msg, key int2) int2 {
+	return msg + key
+}
+
+func decrypt(msg, key int2) int2 {
+	return msg - key
 }

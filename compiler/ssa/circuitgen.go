@@ -300,8 +300,14 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 
 		case Ret:
 			// Assign output wires.
-			for _, w := range wires {
-				cc.Outputs = append(cc.Outputs, w...)
+			for _, wg := range wires {
+				for _, w := range wg {
+					t := circuits.NewWire()
+					cc.AddGate(circuits.NewINV(w, t))
+					o := circuits.NewWire()
+					cc.AddGate(circuits.NewINV(t, o))
+					cc.Outputs = append(cc.Outputs, o)
+				}
 			}
 			for _, o := range cc.Outputs {
 				o.Output = true

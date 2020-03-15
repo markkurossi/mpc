@@ -231,15 +231,9 @@ func NewWire() *Wire {
 	}
 }
 
-func NewOutputWire() *Wire {
-	return &Wire{
-		Output: true,
-	}
-}
-
 func (w *Wire) String() string {
-	return fmt.Sprintf("Wire{Output:%v, ID:%d, Input:%v, Outputs:%d}",
-		w.Output, w.ID, w.Input, len(w.Outputs))
+	return fmt.Sprintf("Wire{%p, Input:%v, Outputs:%d}",
+		w, w.Input, len(w.Outputs))
 }
 
 func (w *Wire) Assign(c *Compiler) {
