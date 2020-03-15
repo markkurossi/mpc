@@ -221,10 +221,10 @@ form assembly:
    - [ ] Row reduction
    - [ ] Half AND
  - Packages:
-   - [ ] MODP circuit
+   - [X] MODP circuit
      - [X] variable definition with init value
      - [X] binary modulo operation
-     - [ ] peephole optimizer for creating bit test instructions
+     - [X] peephole optimizer for creating bit test instructions
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
@@ -301,6 +301,32 @@ Wires in slice:
 ┃ Result ┃     1.22263ms ┃  0.00% ┃  41kB ┃
 ┃ Total  ┃ 38.204484018s ┃        ┃       ┃
 ┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
+## 32-bit RSA encryption (64-bit modp)
+
+```
+Circuit: #gates=14707672 (XOR=6292351 AND=6267581 OR=2064702 INV=83038), #wires=14707994 n1=258, n2=64, n3=64
+ + N1: mode{1,0}b1:bool1, msg{1,0}u64:uint64, gD{1,0}u64:uint64, pubN{1,0}u64:uint64, pubE{1,0}u64:uint64, %0:uint1
+ - N2: eD{1,0}u64:uint64
+ - N3: %_{0,1025}u64:uint64
+ - In: [1 0x6d7472 0x321af130 0xd60b2b09 0x10001 0]
+ - Garbling...
+ - Sending garbled circuit...
+ - Processing messages...
+┏━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op      ┃          Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Garble  ┃ 21.301538337s ┃ 71.07% ┃       ┃
+┃ Xfer    ┃  6.031901951s ┃ 20.13% ┃ 728MB ┃
+┃ OT Init ┃  270.099382ms ┃  0.90% ┃  264B ┃
+┃ Eval    ┃  2.367941121s ┃  7.90% ┃ 728MB ┃
+┃ OT      ┃  495.455402ms ┃ 20.92% ┃       ┃
+┃ Total   ┃ 29.971480791s ┃        ┃       ┃
+┗━━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+Result[0]: 1643769736
+Result[0]: 0b1100001111110011110111110001000
+Result[0]: 0x61f9ef88
 ```
 
 # Develoment ideas

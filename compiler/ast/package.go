@@ -125,13 +125,22 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		return nil, nil, err
 	}
 
+	if params.Verbose {
+		fmt.Printf("Creating circuit...\n")
+	}
 	err = ctx.Start().Circuit(gen, cc)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	if params.Verbose {
+		fmt.Printf("Compiling circuit...\n")
+	}
 	circ := cc.Compile()
 	if params.CircOut != nil {
+		if params.Verbose {
+			fmt.Printf("Serializing circuit...\n")
+		}
 		circ.Marshal(params.CircOut)
 	}
 	if params.CircDotOut != nil {

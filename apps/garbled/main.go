@@ -258,7 +258,7 @@ func printResult(results []*big.Int) {
 	}
 }
 
-func makeOutput(base, suffix string) (*os.File, error) {
+func makeOutput(base, suffix string) (io.WriteCloser, error) {
 	var path string
 
 	idx := strings.LastIndexByte(base, '.')
@@ -267,5 +267,28 @@ func makeOutput(base, suffix string) (*os.File, error) {
 	} else {
 		path = base[:idx+1] + suffix
 	}
-	return os.Create(path)
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return &OutputFile{
+		File:     f,
+		Buffered: bufio.NewWriter(f),
+	}, nil
+}
+
+type OutputFile struct {
+	File     *os.File
+	Buffered *bufio.Writer
+}
+
+func (out *OutputFile) Write(p []byte) (nn int, err error) {
+	return out.Buffered.Write(p)
+}
+
+func (out *OutputFile) Close() error {
+	if err := out.Buffered.Flush(); err != nil {
+		return err
+	}
+	return out.File.Close()
 }
