@@ -219,6 +219,7 @@ form assembly:
  - Circuit & Garbling:
    - [X] store gates by value, not by pointer
    - [X] remove `Gate.ID`
+   - [ ] identity gate
    - [X] Free XOR
    - [ ] Row reduction
    - [ ] Half AND

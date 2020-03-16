@@ -163,12 +163,13 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Assign labels to wires.
 	wires := make(ot.Inputs)
 
-	for idx, gate := range c.Gates {
-		data, err := gate.Garble(wires, enc, r, uint32(idx))
+	for i := 0; i < len(c.Gates); i++ {
+		gate := &c.Gates[i]
+		data, err := gate.Garble(wires, enc, r, uint32(i))
 		if err != nil {
 			return nil, err
 		}
-		garbled[idx] = data
+		garbled[i] = data
 	}
 
 	// Assign unset wires. Wire can be unset if one of the inputs is
