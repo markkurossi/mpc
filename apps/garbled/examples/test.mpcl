@@ -2,9 +2,34 @@
 
 package main
 
-func main(a, b int4) int4 {
-	if a>>3&1 != 0 {
-		return 1
+func main(msg, gD, pubN, pubE, eD uint32) (uint32, uint32) {
+	var d uint32 = 0
+
+	d = gD + eD
+
+	cipher := Encrypt32(msg, pubE, pubN)
+	plain := Decrypt32(cipher, d, pubN)
+
+	return cipher, plain
+}
+
+func Encrypt32(msg, e, n uint32) uint32 {
+	return Exp32(msg, e, n)
+}
+
+func Decrypt32(cipher, d, n uint32) uint32 {
+	return Exp32(cipher, d, n)
+}
+
+func Exp32(b, e, m uint32) uint32 {
+	var r uint64 = 1
+
+	for i := size(e) - 1; i >= 0; i = i - 1 {
+		r = r * r % uint64(m)
+		if e>>i&1 != 0 {
+			r = r * uint64(b) % uint64(m)
+		}
 	}
-	return 0
+
+	return uint32(r)
 }
