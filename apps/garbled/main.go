@@ -91,26 +91,27 @@ func main() {
 	params := &utils.Params{
 		Verbose: *fVerbose,
 	}
+	defer params.Close()
 
 	for _, arg := range flag.Args() {
 		if strings.HasSuffix(arg, ".circ") {
 			circ, err = loadCircuit(arg)
 			if err != nil {
 				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
-				os.Exit(1)
+				return
 			}
 		} else if strings.HasSuffix(arg, ".mpcl") {
 			if *ssa {
 				params.SSAOut, err = makeOutput(arg, "ssa")
 				if err != nil {
 					fmt.Printf("Failed to create SSA file: %s\n", err)
-					os.Exit(1)
+					return
 				}
 				if *dot {
 					params.SSADotOut, err = makeOutput(arg, "ssa.dot")
 					if err != nil {
 						fmt.Printf("Failed to create SSA DOT file: %s\n", err)
-						os.Exit(1)
+						return
 					}
 				}
 			}
@@ -118,14 +119,14 @@ func main() {
 				params.CircOut, err = makeOutput(arg, "circ")
 				if err != nil {
 					fmt.Printf("Failed to create circuit file: %s\n", err)
-					os.Exit(1)
+					return
 				}
 				if *dot {
 					params.CircDotOut, err = makeOutput(arg, "circ.dot")
 					if err != nil {
 						fmt.Printf("Failed to create circuit DOT file: %s\n",
 							err)
-						os.Exit(1)
+						return
 					}
 				}
 			}
@@ -133,15 +134,11 @@ func main() {
 			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
-				if len(*cpuprofile) > 0 {
-					return
-				}
-				os.Exit(1)
+				return
 			}
-			params.Close()
 		} else {
 			fmt.Printf("Unknown file type '%s'\n", arg)
-			os.Exit(1)
+			return
 		}
 	}
 
