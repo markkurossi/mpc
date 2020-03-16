@@ -844,6 +844,35 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
+	case T_Type:
+		_, err = p.needToken(T_LParen)
+		if err != nil {
+			return nil, err
+		}
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == T_Comma {
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+		}
+		if n.Type != T_RParen {
+			return nil, p.errf(n.From, "syntax error")
+		}
+
+		return &ast.Conversion{
+			Loc:  t.From,
+			Type: t.TypeInfo,
+			Expr: expr,
+		}, nil
+
 	case T_Constant: // Literal
 		return &ast.Constant{
 			Loc:   t.From,

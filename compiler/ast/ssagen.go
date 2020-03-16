@@ -681,3 +681,26 @@ func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 
 	return block, []ssa.Variable{v}, nil
 }
+
+func (ast *Conversion) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+
+	block, val, err := ast.Expr.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(val) == 0 {
+		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			"%s used as value", ast.Expr)
+	}
+	if len(val) > 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			"multiple-value %s in single-value context", ast.Expr)
+	}
+
+	t := gen.AnonVar(ast.Type)
+
+	block.AddInstr(ssa.NewMovInstr(val[0], t))
+
+	return block, []ssa.Variable{t}, nil
+}

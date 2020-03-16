@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2020 Markku Rossi
 //
 // All rights reserved.
 //
@@ -254,4 +254,16 @@ func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
 func (ast *Constant) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
+}
+
+func (ast *Conversion) Eval(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (interface{}, bool, error) {
+
+	val, ok, err := ast.Expr.Eval(block, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+
+	return nil, false, ctx.logger.Errorf(ast.Location(),
+		"Conversion.Eval '%s(%s)' not implemented yet", ast.Type, val)
 }

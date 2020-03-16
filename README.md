@@ -332,6 +332,35 @@ Result[0]: 0b1100001111110011110111110001000
 Result[0]: 0x61f9ef88
 ```
 
+## 64-bit RSA encryption (128-bit modp)
+
+```
+Circuit: #gates=58821912 (XOR=25166591 AND=25117309 OR=8323390 INV=214622), #wires=58822233 n1=257, n2=64, n3=128
+ + N1: msg{1,0}u64:uint64, gD{1,0}u64:uint64, pubN{1,0}u64:uint64, pubE{1,0}u64:uint64, %0:uint1
+ - N2: eD{1,0}u64:uint64
+ - N3: %ret0{1,9}u64:uint64, %ret1{1,1}u64:uint64
+ - In: [0x6d7472 0x321af130 0xd60b2b09 0x10001 0]
+ - Garbling...
+ - Sending garbled circuit...
+ - Processing messages...
+┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op      ┃            Time ┃      % ┃ Xfer ┃
+┣━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━┫
+┃ Garble  ┃ 3m38.029198671s ┃ 48.48% ┃      ┃
+┃ Xfer    ┃ 2m12.133617292s ┃ 29.38% ┃  2GB ┃
+┃ OT Init ┃    170.307866ms ┃  0.04% ┃ 264B ┃
+┃ Eval    ┃ 1m39.353739395s ┃ 22.09% ┃  2GB ┃
+┃ OT      ┃    1.540024033s ┃  1.55% ┃      ┃
+┃ Total   ┃ 7m29.686863224s ┃        ┃      ┃
+┗━━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━┛
+Result[0]: 1643769736
+Result[0]: 0b1100001111110011110111110001000
+Result[0]: 0x61f9ef88
+Result[1]: 7173234
+Result[1]: 0b11011010111010001110010
+Result[1]: 0x6d7472
+```
+
 # Develoment ideas
 
 ## Mathematical operations

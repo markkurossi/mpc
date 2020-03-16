@@ -10,14 +10,29 @@ package math
 // Exp computes b**e mod |m| (i.e. the sign of m is ignore).
 // TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
 func Exp(b, e, m uint64) uint64 {
-	var r uint64 = 1
+	var r uint128 = 1
 
-	for i := size(b) - 1; i >= 0; i = i - 1 {
-		r = r * r % m
+	for i := size(e) - 1; i >= 0; i = i - 1 {
+		r = r * r % uint128(m)
 		if e>>i&1 != 0 {
-			r = r * b % m
+			r = r * uint128(b) % uint128(m)
 		}
 	}
 
-	return r
+	return uint64(r)
+}
+
+// Exp computes b**e mod |m| (i.e. the sign of m is ignore).
+// TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
+func Exp32(b, e, m uint32) uint32 {
+	var r uint64 = 1
+
+	for i := size(e) - 1; i >= 0; i = i - 1 {
+		r = r * r % uint64(m)
+		if e>>i&1 != 0 {
+			r = r * uint64(b) % uint64(m)
+		}
+	}
+
+	return uint32(r)
 }

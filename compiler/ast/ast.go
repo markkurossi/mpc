@@ -30,6 +30,7 @@ var (
 	_ AST = &Binary{}
 	_ AST = &VariableRef{}
 	_ AST = &Constant{}
+	_ AST = &Conversion{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -471,4 +472,23 @@ func (ast *Constant) Location() utils.Point {
 func (ast *Constant) Fprint(w io.Writer, ind int) {
 	indent(w, ind)
 	fmt.Fprintf(w, "%v", ast.Value)
+}
+
+type Conversion struct {
+	Loc  utils.Point
+	Type types.Info
+	Expr AST
+}
+
+func (ast *Conversion) String() string {
+	return fmt.Sprintf("%s(%s)", ast.Type, ast.Expr)
+}
+
+func (ast *Conversion) Location() utils.Point {
+	return ast.Loc
+}
+
+func (ast *Conversion) Fprint(w io.Writer, ind int) {
+	indent(w, ind)
+	fmt.Fprintf(w, "%s(%s)", ast.Type, ast.Expr)
 }
