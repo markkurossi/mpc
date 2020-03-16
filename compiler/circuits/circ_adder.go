@@ -49,7 +49,7 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 
 func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(z) < len(x) || len(z) > len(x)+1 {
+	if len(z) < len(x) {
 		return fmt.Errorf("Invalid adder arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
@@ -82,5 +82,11 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 			cin = cout
 		}
 	}
+
+	// Set all leftover bits to zero.
+	for i := len(x) + 1; i < len(z); i++ {
+		compiler.Zero(z[i])
+	}
+
 	return nil
 }

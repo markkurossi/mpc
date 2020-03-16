@@ -164,3 +164,18 @@ func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 	}
 	return nil
 }
+
+func NewBitClrTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
+	if len(r) != 1 {
+		return fmt.Errorf("invalid bit clear test arguments: x=%d, r=%d",
+			len(x), len(r))
+	}
+	if index < len(x) {
+		w := NewWire()
+		compiler.One(w)
+		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
+	} else {
+		compiler.One(r[0])
+	}
+	return nil
+}

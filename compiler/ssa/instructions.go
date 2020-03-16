@@ -12,6 +12,7 @@ import (
 	"math/big"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
@@ -29,6 +30,7 @@ const (
 	Band
 	Bclr
 	Bts
+	Btc
 	Imult
 	Umult
 	Fmult
@@ -62,53 +64,56 @@ const (
 	Phi
 	Ret
 	Circ
+	Builtin
 )
 
 var operands = map[Operand]string{
-	Iadd:   "iadd",
-	Uadd:   "uadd",
-	Fadd:   "fadd",
-	Isub:   "isub",
-	Usub:   "usub",
-	Fsub:   "fsub",
-	Band:   "band",
-	Bor:    "bor",
-	Bxor:   "bxor",
-	Bclr:   "bclr",
-	Bts:    "bts",
-	Imult:  "imult",
-	Umult:  "umult",
-	Fmult:  "fmult",
-	Idiv:   "idiv",
-	Udiv:   "udiv",
-	Fdiv:   "fdiv",
-	Imod:   "imod",
-	Umod:   "umod",
-	Fmod:   "fmod",
-	Lshift: "lshift",
-	Rshift: "rshift",
-	Ilt:    "ilt",
-	Ult:    "ult",
-	Flt:    "flt",
-	Ile:    "ile",
-	Ule:    "ule",
-	Fle:    "fle",
-	Igt:    "igt",
-	Ugt:    "ugt",
-	Fgt:    "fgt",
-	Ige:    "ige",
-	Uge:    "uge",
-	Fge:    "fge",
-	Eq:     "eq",
-	Neq:    "neq",
-	And:    "and",
-	Or:     "or",
-	If:     "if",
-	Jump:   "jump",
-	Mov:    "mov",
-	Phi:    "phi",
-	Ret:    "ret",
-	Circ:   "circ",
+	Iadd:    "iadd",
+	Uadd:    "uadd",
+	Fadd:    "fadd",
+	Isub:    "isub",
+	Usub:    "usub",
+	Fsub:    "fsub",
+	Band:    "band",
+	Bor:     "bor",
+	Bxor:    "bxor",
+	Bclr:    "bclr",
+	Bts:     "bts",
+	Btc:     "btc",
+	Imult:   "imult",
+	Umult:   "umult",
+	Fmult:   "fmult",
+	Idiv:    "idiv",
+	Udiv:    "udiv",
+	Fdiv:    "fdiv",
+	Imod:    "imod",
+	Umod:    "umod",
+	Fmod:    "fmod",
+	Lshift:  "lshift",
+	Rshift:  "rshift",
+	Ilt:     "ilt",
+	Ult:     "ult",
+	Flt:     "flt",
+	Ile:     "ile",
+	Ule:     "ule",
+	Fle:     "fle",
+	Igt:     "igt",
+	Ugt:     "ugt",
+	Fgt:     "fgt",
+	Ige:     "ige",
+	Uge:     "uge",
+	Fge:     "fge",
+	Eq:      "eq",
+	Neq:     "neq",
+	And:     "and",
+	Or:      "or",
+	If:      "if",
+	Jump:    "jump",
+	Mov:     "mov",
+	Phi:     "phi",
+	Ret:     "ret",
+	Circ:    "circ",
+	Builtin: "builtin",
 }
 
 var maxOperandLength int
@@ -130,12 +135,13 @@ func (op Operand) String() string {
 }
 
 type Instr struct {
-	Op    Operand
-	In    []Variable
-	Out   *Variable
-	Label *Block
-	Circ  *circuit.Circuit
-	Ret   []Variable
+	Op      Operand
+	In      []Variable
+	Out     *Variable
+	Label   *Block
+	Circ    *circuit.Circuit
+	Builtin circuits.Builtin
+	Ret     []Variable
 }
 
 func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
@@ -435,6 +441,15 @@ func NewCircInstr(args []Variable, circ *circuit.Circuit,
 		In:   args,
 		Circ: circ,
 		Ret:  ret,
+	}
+}
+
+func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
+	return Instr{
+		Op:      Builtin,
+		In:      []Variable{a, b},
+		Out:     &r,
+		Builtin: builtin,
 	}
 }
 

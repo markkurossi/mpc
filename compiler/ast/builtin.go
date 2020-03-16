@@ -12,6 +12,7 @@ import (
 	"path"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -48,6 +49,11 @@ var builtins = []Builtin{
 		Type: BuiltinFunc,
 		SSA:  sizeSSA,
 		Eval: sizeEval,
+	},
+	Builtin{
+		Name: "hamming",
+		Type: BuiltinFunc,
+		SSA:  hammingSSA,
 	},
 }
 
@@ -178,4 +184,19 @@ func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, false, ctx.logger.Errorf(loc,
 			"size(%v/%T) is not constant", arg, arg)
 	}
+}
+
+func hammingSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+
+	if len(args) != 2 {
+		return nil, nil, ctx.logger.Errorf(loc,
+			"invalid amount of arguments in call to hamming")
+	}
+
+	// XXX Check the largest type.
+	v := gen.AnonVar(args[0].Type)
+	block.AddInstr(ssa.NewBuiltinInstr(circuits.Hamming, args[0], args[1], v))
+
+	return block, []ssa.Variable{v}, nil
 }

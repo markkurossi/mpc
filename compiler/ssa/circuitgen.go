@@ -206,6 +206,23 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Btc:
+			if !instr.In[1].Const {
+				return fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var index int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				index = int(val)
+			default:
+				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			err = circuits.NewBitClrTest(cc, wires[0], index, o)
+			if err != nil {
+				return err
+			}
+
 		case And:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
@@ -366,6 +383,16 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				default:
 					return fmt.Errorf("Unknown gate %s", gate)
 				}
+			}
+
+		case Builtin:
+			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = instr.Builtin(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
 			}
 
 		default:

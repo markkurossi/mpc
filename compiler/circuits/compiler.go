@@ -14,6 +14,8 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+type Builtin func(cc *Compiler, a, b, r []*Wire) error
+
 type Compiler struct {
 	N1         circuit.IO
 	N2         circuit.IO
