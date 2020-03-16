@@ -24,7 +24,7 @@ func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 		var n [][]*Wire
 		for i := 0; i < len(arr); i += 2 {
 			if i+1 < len(arr) {
-				result := makeWires(len(arr[i]) + 1)
+				result := MakeWires(len(arr[i]) + 1)
 				err := NewAdder(compiler, arr[i], arr[i+1], result)
 				if err != nil {
 					return err
@@ -38,12 +38,4 @@ func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 	}
 
 	return NewAdder(compiler, arr[0], arr[1], r)
-}
-
-func makeWires(count int) []*Wire {
-	result := make([]*Wire, count)
-	for i := 0; i < count; i++ {
-		result[i] = NewWire()
-	}
-	return result
 }

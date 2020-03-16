@@ -145,10 +145,7 @@ func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
 	}
 	wires, ok := c.wires[v]
 	if !ok {
-		wires = make([]*Wire, bits)
-		for i := 0; i < bits; i++ {
-			wires[i] = NewWire()
-		}
+		wires = MakeWires(bits)
 		c.wires[v] = wires
 	}
 	return wires, nil
@@ -231,6 +228,14 @@ func NewWire() *Wire {
 	return &Wire{
 		Outputs: make([]Gate, 0, 1),
 	}
+}
+
+func MakeWires(bits int) []*Wire {
+	result := make([]*Wire, bits)
+	for i := 0; i < bits; i++ {
+		result[i] = NewWire()
+	}
+	return result
 }
 
 func (w *Wire) String() string {
