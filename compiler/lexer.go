@@ -57,6 +57,8 @@ const (
 	T_RParen
 	T_LBrace
 	T_RBrace
+	T_LBracket
+	T_RBracket
 	T_Comma
 	T_Semicolon
 	T_Colon
@@ -109,6 +111,8 @@ var tokenTypes = map[TokenType]string{
 	T_RParen:     ")",
 	T_LBrace:     "{",
 	T_RBrace:     "}",
+	T_LBracket:   "[",
+	T_RBracket:   "]",
 	T_Comma:      ",",
 	T_Semicolon:  ";",
 	T_Colon:      ":",
@@ -393,6 +397,10 @@ func (l *Lexer) Get() (*Token, error) {
 			return l.Token(T_LBrace), nil
 		case '}':
 			return l.Token(T_RBrace), nil
+		case '[':
+			return l.Token(T_LBracket), nil
+		case ']':
+			return l.Token(T_RBracket), nil
 		case ',':
 			return l.Token(T_Comma), nil
 		case ';':

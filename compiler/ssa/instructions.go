@@ -42,6 +42,7 @@ const (
 	Fmod
 	Lshift
 	Rshift
+	Slice
 	Ilt
 	Ult
 	Flt
@@ -91,6 +92,7 @@ var operands = map[Operand]string{
 	Fmod:    "fmod",
 	Lshift:  "lshift",
 	Rshift:  "rshift",
+	Slice:   "slice",
 	Ilt:     "ilt",
 	Ult:     "ult",
 	Flt:     "flt",
@@ -240,20 +242,28 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
-func NewLshiftInstr(l, r, o Variable) (Instr, error) {
+func NewLshiftInstr(l, r, o Variable) Instr {
 	return Instr{
 		Op:  Lshift,
 		In:  []Variable{l, r},
 		Out: &o,
-	}, nil
+	}
 }
 
-func NewRshiftInstr(l, r, o Variable) (Instr, error) {
+func NewRshiftInstr(l, r, o Variable) Instr {
 	return Instr{
 		Op:  Rshift,
 		In:  []Variable{l, r},
 		Out: &o,
-	}, nil
+	}
+}
+
+func NewSliceInstr(v, from, to, o Variable) Instr {
+	return Instr{
+		Op:  Slice,
+		In:  []Variable{v, from, to},
+		Out: &o,
+	}
 }
 
 func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
@@ -658,7 +668,7 @@ func Constant(value interface{}) (Variable, error) {
 		}
 
 	default:
-		return v, fmt.Errorf("Constant(): %T not implemented yet", val)
+		return v, fmt.Errorf("Constant: %v (%T) not implemented yet", val, val)
 	}
 	return v, nil
 }

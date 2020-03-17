@@ -141,6 +141,13 @@ var rules = []*Rule{
               =>
                  btc    V1 C1 V4`,
 	},
+	&Rule{
+		Name: "Slice-cast => slice",
+		Source: `slice V1 V2 V3 V4
+                 mov   V4 V5
+              =>
+                 slice V1 V2 V3 V5`,
+	},
 }
 
 var reSpace = regexp.MustCompilePOSIX(`[[:space:]]+`)

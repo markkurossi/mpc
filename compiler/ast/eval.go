@@ -8,6 +8,7 @@ package ast
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
@@ -219,6 +220,70 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 	default:
 		return nil, ctx.logger.Errorf(loc,
 			"invalid value %v (%T)", val, val)
+	}
+}
+
+func (ast *Slice) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	interface{}, bool, error) {
+
+	expr, ok, err := ast.Expr.Eval(block, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+
+	from := 0
+	to := math.MaxInt32
+
+	if ast.From != nil {
+		val, ok, err := ast.From.Eval(block, ctx, gen)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		from, err = intVal(val)
+		if err != nil {
+			return nil, false,
+				ctx.logger.Errorf(ast.From.Location(), err.Error())
+		}
+	}
+	if ast.To != nil {
+		val, ok, err := ast.To.Eval(block, ctx, gen)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		to, err = intVal(val)
+		if err != nil {
+			return nil, false,
+				ctx.logger.Errorf(ast.To.Location(), err.Error())
+		}
+	}
+	if to <= from {
+		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
+			"invalid slice range %d:%d", from, to)
+	}
+	switch val := expr.(type) {
+	case int32:
+		if from >= 32 {
+			return nil, false,
+				ctx.logger.Errorf(ast.From.Location(),
+					"slice bounds out of range [%d:32]", from)
+		}
+		tmp := uint32(val)
+		tmp >>= from
+		tmp &^= 0xffffffff << (to - from)
+		return int32(tmp), ok, nil
+
+	default:
+		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
+			"Slice.Eval: expr %T not implemented yet", val)
+	}
+}
+
+func intVal(val interface{}) (int, error) {
+	switch v := val.(type) {
+	case int32:
+		return int(v), nil
+	default:
+		return 0, fmt.Errorf("invalid slice index: %T", v)
 	}
 }
 

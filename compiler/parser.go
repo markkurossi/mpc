@@ -594,6 +594,32 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				Define: t.Type == T_DefAssign,
 			}, nil
 
+		case T_PlusPlus, T_MinusMinus:
+			var op ast.BinaryType
+			if t.Type == T_PlusPlus {
+				op = ast.BinaryPlus
+			} else {
+				op = ast.BinaryMinus
+			}
+			return &ast.Assign{
+				Loc:  tStmt.From,
+				Name: tStmt.StrVal,
+				Expr: &ast.Binary{
+					Loc: t.From,
+					Left: &ast.VariableRef{
+						Loc: t.From,
+						Name: ast.Identifier{
+							Name: tStmt.StrVal,
+						},
+					},
+					Op: op,
+					Right: &ast.Constant{
+						Loc:   t.From,
+						Value: int32(1),
+					},
+				},
+			}, nil
+
 		default:
 			p.lexer.Unget(t)
 			return nil, p.errf(t.From, "syntax error")
@@ -792,6 +818,46 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 		case T_Dot:
 			// Selector.
 			return nil, fmt.Errorf("Selector not implemented yet")
+
+		case T_LBracket:
+			var expr1, expr2 ast.AST
+
+			n, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type != T_Colon {
+				p.lexer.Unget(n)
+				expr1, err = p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				_, err = p.needToken(T_Colon)
+				if err != nil {
+					return nil, err
+				}
+			}
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type != T_RBracket {
+				p.lexer.Unget(n)
+				expr2, err = p.parseExpr()
+				if err != nil {
+					return nil, err
+				}
+				_, err = p.needToken(T_RBracket)
+				if err != nil {
+					return nil, err
+				}
+			}
+			return &ast.Slice{
+				Loc:  primary.Location(),
+				Expr: primary,
+				From: expr1,
+				To:   expr2,
+			}, nil
 
 		case T_LParen:
 			// Arguments.

@@ -588,9 +588,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case BinaryMod:
 		instr, err = ssa.NewModInstr(l.Type, l, r, t)
 	case BinaryLshift:
-		instr, err = ssa.NewLshiftInstr(l, r, t)
+		instr = ssa.NewLshiftInstr(l, r, t)
 	case BinaryRshift:
-		instr, err = ssa.NewRshiftInstr(l, r, t)
+		instr = ssa.NewRshiftInstr(l, r, t)
 	case BinaryBand:
 		instr, err = ssa.NewBandInstr(l, r, t)
 	case BinaryBclear:
@@ -629,6 +629,83 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	block.AddInstr(instr)
+
+	return block, []ssa.Variable{t}, nil
+}
+
+func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Variable, error) {
+
+	block, expr, err := ast.Expr.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(expr) != 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "invalid expression")
+	}
+
+	var val []ssa.Variable
+	var from int32
+	if ast.From == nil {
+		from = 0
+	} else {
+		block, val, err = ast.From.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(val) != 1 || !val[0].Const {
+			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
+				"invalid from index")
+		}
+		switch v := val[0].ConstValue.(type) {
+		case int32:
+			from = v
+		default:
+			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
+				"invalid from index: %T", v)
+		}
+	}
+	var to int32
+	if ast.To == nil {
+		to = int32(expr[0].Type.Bits)
+	} else {
+		block, val, err = ast.To.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(val) != 1 || !val[0].Const {
+			return nil, nil, ctx.logger.Errorf(ast.To.Location(),
+				"invalid to index")
+		}
+		switch v := val[0].ConstValue.(type) {
+		case int32:
+			to = v
+		default:
+			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
+				"invalid to index: %T", v)
+		}
+	}
+	if from >= int32(expr[0].Type.Bits) || from >= to {
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
+			"slice bounds out of range [%d:%d]", from, to)
+	}
+
+	t := gen.AnonVar(types.Info{
+		Type:    expr[0].Type.Type,
+		Bits:    int(to - from),
+		MinBits: int(to - from),
+	})
+
+	fromConst, err := ssa.Constant(from)
+	if err != nil {
+		return nil, nil, err
+	}
+	toConst, err := ssa.Constant(to)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
 
 	return block, []ssa.Variable{t}, nil
 }

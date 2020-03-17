@@ -129,6 +129,49 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Slice:
+			if !instr.In[1].Const {
+				return fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var from int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				from = int(val)
+			default:
+				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+
+			if !instr.In[2].Const {
+				return fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var to int
+			switch val := instr.In[2].ConstValue.(type) {
+			case int32:
+				to = int(val)
+			default:
+				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+			if from >= to {
+				return fmt.Errorf("%s bounds out of range [%d:%d]",
+					instr.Op, from, to)
+			}
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+
+			for bit := from; bit < to; bit++ {
+				var w *circuits.Wire
+				if bit < len(wires[0]) {
+					w = wires[0][bit]
+				} else {
+					w = circuits.NewWire()
+					cc.Zero(w)
+				}
+				o[bit-from] = w
+			}
+			err := cc.SetWires(instr.Out.String(), o)
+			if err != nil {
+				return err
+			}
+
 		case Ilt, Ult:
 			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {

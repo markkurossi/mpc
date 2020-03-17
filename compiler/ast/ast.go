@@ -28,6 +28,7 @@ var (
 	_ AST = &Return{}
 	_ AST = &For{}
 	_ AST = &Binary{}
+	_ AST = &Slice{}
 	_ AST = &VariableRef{}
 	_ AST = &Constant{}
 	_ AST = &Conversion{}
@@ -54,7 +55,6 @@ func (i Identifier) String() string {
 type AST interface {
 	String() string
 	Location() utils.Point
-	Fprint(w io.Writer, indent int)
 	// SSA generates SSA code from the AST node. The code is appended
 	// into the basic block `block'. The function returns the next
 	// sequential basic. The `ssa.Dead' is set to `true' if the code
@@ -76,17 +76,6 @@ func (ast List) Location() utils.Point {
 		return ast[0].Location()
 	}
 	return utils.Point{}
-}
-
-func (ast List) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "{\n")
-	for _, el := range ast {
-		el.Fprint(w, ind+4)
-		fmt.Fprintf(w, ",\n")
-	}
-	indent(w, ind)
-	fmt.Fprintf(w, "}")
 }
 
 type Variable struct {
@@ -128,47 +117,6 @@ func (ast *Func) Location() utils.Point {
 	return ast.Loc
 }
 
-func (ast *Func) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "func %s(", ast.Name)
-	for idx, arg := range ast.Args {
-		if idx > 0 {
-			fmt.Fprintf(w, ", ")
-		}
-		fmt.Fprintf(w, "%s %s", arg.Name, arg.Type)
-	}
-
-	fmt.Fprintf(w, ")")
-
-	if len(ast.Return) > 0 {
-		fmt.Fprintf(w, " ")
-		if len(ast.Return) > 1 {
-			fmt.Fprintf(w, "(")
-		}
-		for idx, ret := range ast.Return {
-			if idx > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%s", ret.Type)
-		}
-		if len(ast.Return) > 1 {
-			fmt.Fprintf(w, ")")
-		}
-	}
-
-	if len(ast.Body) > 0 {
-		fmt.Fprintf(w, " {\n")
-		for _, b := range ast.Body {
-			b.Fprint(w, ind+4)
-			fmt.Fprintf(w, "\n")
-		}
-		indent(w, ind)
-		fmt.Fprintf(w, "}")
-	} else {
-		fmt.Fprintf(w, " {}")
-	}
-}
-
 type VariableDef struct {
 	Loc   utils.Point
 	Names []string
@@ -186,21 +134,6 @@ func (ast *VariableDef) String() string {
 
 func (ast *VariableDef) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *VariableDef) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "var ")
-	for idx, name := range ast.Names {
-		if idx > 0 {
-			fmt.Fprintf(w, ", ")
-			fmt.Fprintf(w, "%s", name)
-		}
-	}
-	fmt.Fprintf(w, " %s", ast.Type)
-	if ast.Init != nil {
-		fmt.Fprintf(w, " %s", ast.Init)
-	}
 }
 
 type Assign struct {
@@ -224,12 +157,6 @@ func (ast *Assign) Location() utils.Point {
 	return ast.Loc
 }
 
-func (ast *Assign) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "%s = ", ast.Name)
-	ast.Expr.Fprint(w, ind)
-}
-
 type If struct {
 	Loc   utils.Point
 	Expr  AST
@@ -243,17 +170,6 @@ func (ast *If) String() string {
 
 func (ast *If) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *If) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "if ")
-	ast.Expr.Fprint(w, 0)
-	ast.True.Fprint(w, ind)
-	if ast.False != nil {
-		fmt.Fprintf(w, "else ")
-		ast.False.Fprint(w, ind)
-	}
 }
 
 type Call struct {
@@ -270,18 +186,6 @@ func (ast *Call) Location() utils.Point {
 	return ast.Loc
 }
 
-func (ast *Call) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "%s(", ast.Name)
-	for idx, arg := range ast.Exprs {
-		if idx > 0 {
-			fmt.Fprint(w, ", ")
-		}
-		arg.Fprint(w, ind)
-	}
-	fmt.Fprint(w, ")")
-}
-
 type Return struct {
 	Loc   utils.Point
 	Exprs []AST
@@ -293,20 +197,6 @@ func (ast *Return) String() string {
 
 func (ast *Return) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *Return) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "return")
-	if len(ast.Exprs) > 0 {
-		fmt.Fprintf(w, " ")
-		for idx, expr := range ast.Exprs {
-			if idx > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			expr.Fprint(w, 0)
-		}
-	}
 }
 
 type For struct {
@@ -324,20 +214,6 @@ func (ast *For) String() string {
 
 func (ast *For) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *For) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "for ")
-	ast.Init.Fprint(w, ind)
-	fmt.Fprintf(w, "; ")
-	ast.Cond.Fprint(w, ind)
-	fmt.Fprintf(w, "; ")
-	ast.Inc.Fprint(w, ind)
-	fmt.Fprintf(w, "{\n")
-
-	ast.Body.Fprint(w, ind+1)
-	fmt.Fprintf(w, "}\n")
 }
 
 type BinaryType int
@@ -409,20 +285,26 @@ func (ast *Binary) Location() utils.Point {
 	return ast.Loc
 }
 
-func (ast *Binary) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	ast.Left.Fprint(w, ind)
-	fmt.Fprintf(w, " %s ", ast.Op)
-	ast.Right.Fprint(w, ind)
+type Slice struct {
+	Loc  utils.Point
+	Expr AST
+	From AST
+	To   AST
 }
 
-func (ast *Binary) FprintDebug(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "(%s ", ast.Op)
-	ast.Left.Fprint(w, ind)
-	fmt.Fprintf(w, " ")
-	ast.Right.Fprint(w, ind)
-	fmt.Fprintf(w, ")")
+func (ast *Slice) String() string {
+	var fromStr, toStr string
+	if ast.From != nil {
+		fromStr = ast.From.String()
+	}
+	if ast.To != nil {
+		toStr = ast.To.String()
+	}
+	return fmt.Sprintf("%s[%s:%s]", ast.Expr, fromStr, toStr)
+}
+
+func (ast *Slice) Location() utils.Point {
+	return ast.Loc
 }
 
 type VariableRef struct {
@@ -436,11 +318,6 @@ func (ast *VariableRef) String() string {
 
 func (ast *VariableRef) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *VariableRef) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "%s", ast.Name)
 }
 
 type Constant struct {
@@ -469,11 +346,6 @@ func (ast *Constant) Location() utils.Point {
 	return ast.Loc
 }
 
-func (ast *Constant) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "%v", ast.Value)
-}
-
 type Conversion struct {
 	Loc  utils.Point
 	Type types.Info
@@ -486,9 +358,4 @@ func (ast *Conversion) String() string {
 
 func (ast *Conversion) Location() utils.Point {
 	return ast.Loc
-}
-
-func (ast *Conversion) Fprint(w io.Writer, ind int) {
-	indent(w, ind)
-	fmt.Fprintf(w, "%s(%s)", ast.Type, ast.Expr)
 }
