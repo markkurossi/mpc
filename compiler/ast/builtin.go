@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -50,11 +51,6 @@ var builtins = []Builtin{
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},
-	Builtin{
-		Name: "hamming",
-		Type: BuiltinFunc,
-		SSA:  hammingSSA,
-	},
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -69,17 +65,48 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, nil, ctx.logger.Errorf(loc,
 			"not enought argument in call to native")
 	}
-	// Our circuit name constant is not needed in the circuit
-	// computation, it is here only as a reference to the circuit
-	// file.
+	// Our native name constant is not needed in the implementation.
 	gen.RemoveConstant(args[0])
+	args = args[1:]
+
+	switch name {
+	case "hamming":
+		if len(args) != 2 {
+			return nil, nil, ctx.logger.Errorf(loc,
+				"invalid amount of arguments in call to '%s'", name)
+		}
+
+		var typeInfo types.Info
+		for _, arg := range args {
+			if arg.Type.Bits > typeInfo.Bits {
+				typeInfo = arg.Type
+			}
+		}
+
+		v := gen.AnonVar(typeInfo)
+		block.AddInstr(ssa.NewBuiltinInstr(circuits.Hamming, args[0], args[1],
+			v))
+
+		return block, []ssa.Variable{v}, nil
+
+	default:
+		if strings.HasSuffix(name, ".circ") {
+			return nativeCircuit(name, block, ctx, gen, args, loc)
+		}
+		return nil, nil, ctx.logger.Errorf(loc, "unknown native '%s'", name)
+	}
+}
+
+func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator, args []ssa.Variable, loc utils.Point) (
+	*ssa.Block, []ssa.Variable, error) {
 
 	dir := path.Dir(loc.Source)
 	fp := path.Join(dir, name)
 	file, err := os.Open(fp)
 	if err != nil {
-		return nil, nil, ctx.logger.Errorf(loc,
-			"failed to open circuit: %s", err)
+		return nil, nil, ctx.logger.Errorf(loc, "failed to open circuit: %s",
+			err)
 	}
 	defer file.Close()
 	circ, err := circuit.Parse(file)
@@ -92,16 +119,16 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	inputs = append(inputs, circ.N1...)
 	inputs = append(inputs, circ.N2...)
 
-	if len(inputs) < len(args)-1 {
+	if len(inputs) < len(args) {
 		return nil, nil, ctx.logger.Errorf(loc,
 			"not enought argument in call to native")
-	} else if len(inputs) < len(args)-1 {
+	} else if len(inputs) < len(args) {
 		return nil, nil, ctx.logger.Errorf(loc,
 			"too many argument in call to native")
 	}
 	// Check that the argument types match.
 	for idx, io := range inputs {
-		arg := args[idx+1]
+		arg := args[idx]
 		if io.Size != arg.Type.Bits {
 			// Check if arg is const and smaller, can type convert.
 			return nil, nil, ctx.logger.Errorf(loc,
@@ -123,7 +150,7 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		}))
 	}
 
-	block.AddInstr(ssa.NewCircInstr(args[1:], circ, result))
+	block.AddInstr(ssa.NewCircInstr(args, circ, result))
 
 	return block, result, nil
 }
@@ -184,19 +211,4 @@ func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, false, ctx.logger.Errorf(loc,
 			"size(%v/%T) is not constant", arg, arg)
 	}
-}
-
-func hammingSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
-
-	if len(args) != 2 {
-		return nil, nil, ctx.logger.Errorf(loc,
-			"invalid amount of arguments in call to hamming")
-	}
-
-	// XXX Check the largest type.
-	v := gen.AnonVar(args[0].Type)
-	block.AddInstr(ssa.NewBuiltinInstr(circuits.Hamming, args[0], args[1], v))
-
-	return block, []ssa.Variable{v}, nil
 }

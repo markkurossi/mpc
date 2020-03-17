@@ -8,7 +8,7 @@
 package math
 
 // Exp computes b**e mod |m| (i.e. the sign of m is ignore).
-// TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
+// TODO, use wildcard types: Exp(b, e, n uint_n) uint_n
 func Exp(b, e, m uint64) uint64 {
 	var r uint128 = 1
 
@@ -22,8 +22,6 @@ func Exp(b, e, m uint64) uint64 {
 	return uint64(r)
 }
 
-// Exp computes b**e mod |m| (i.e. the sign of m is ignore).
-// TODO, use wildcard types: Exp(b, e, n uint<T>) uint<T>
 func Exp32(b, e, m uint32) uint32 {
 	var r uint64 = 1
 
