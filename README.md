@@ -131,8 +131,10 @@ converted) to be or correct type.
 
 The MPCL runtime defines the following builtin functions:
 
- - `native(FILENAME, ARG...)`: calls a native circuit file _filename_
-   with arguments _arg..._. Returns the circuit's return values.
+ - `native(NAME, ARG...)`: calls a builtin function _name_ with
+   arguments _arg..._. The _name_ can specify a circuit file (*.circ)
+   of one of the following builtin functions:
+   - `hamming(a, b uint_)` computes the bitwise hamming distance between argument values
  - `size(VARIABLE)`: returns the bit size of the argument _variable_.
 
 ## SSA (Static single assignment form)
