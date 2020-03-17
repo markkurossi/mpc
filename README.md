@@ -134,7 +134,7 @@ The MPCL runtime defines the following builtin functions:
  - `native(NAME, ARG...)`: calls a builtin function _name_ with
    arguments _arg..._. The _name_ can specify a circuit file (*.circ)
    of one of the following builtin functions:
-   - `hamming(a, b uint_)` computes the bitwise hamming distance between argument values
+   - `hamming(a, b uint_)` computes 2the bitwise hamming distance between argument values
  - `size(VARIABLE)`: returns the bit size of the argument _variable_.
 
 ## SSA (Static single assignment form)
@@ -218,13 +218,14 @@ form assembly:
      - [ ] logical not
    - [X] Bit{And,Or,Xor,Clear}
    - [ ] BitShift
- - Circuit & Garbling:
+ - Circuit & garbling:
    - [X] store gates by value, not by pointer
    - [X] remove `Gate.ID`
    - [ ] identity gate
    - [X] Free XOR
    - [ ] Row reduction
    - [ ] Half AND
+   - [ ] Oblivious transfer extensions
  - Packages:
    - [X] MODP circuit
      - [X] variable definition with init value
