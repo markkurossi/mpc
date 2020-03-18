@@ -19,6 +19,7 @@ type Binary struct {
 	A        *Wire
 	B        *Wire
 	O        *Wire
+	Visited  bool
 	Compiled bool
 }
 
@@ -41,7 +42,8 @@ func (g *Binary) String() string {
 }
 
 func (g *Binary) Visit(c *Compiler) {
-	if g.A.Assigned && g.B.Assigned {
+	if !g.Visited && g.A.Assigned && g.B.Assigned {
+		g.Visited = true
 		c.pending = append(c.pending, g)
 	}
 }
@@ -65,8 +67,9 @@ func (g *Binary) Compile(c *Compiler) {
 }
 
 type INV struct {
-	I *Wire
-	O *Wire
+	I       *Wire
+	O       *Wire
+	Visited bool
 }
 
 func NewINV(i, o *Wire) *INV {
@@ -85,7 +88,8 @@ func (g *INV) String() string {
 }
 
 func (g *INV) Visit(c *Compiler) {
-	if g.I.Assigned {
+	if !g.Visited && g.I.Assigned {
+		g.Visited = true
 		c.pending = append(c.pending, g)
 	}
 }

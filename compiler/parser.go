@@ -594,6 +594,33 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				Define: t.Type == T_DefAssign,
 			}, nil
 
+		case T_PlusEq, T_MinusEq:
+			var op ast.BinaryType
+			if t.Type == T_PlusEq {
+				op = ast.BinaryPlus
+			} else {
+				op = ast.BinaryMinus
+			}
+			expr, err := p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			return &ast.Assign{
+				Loc:  tStmt.From,
+				Name: tStmt.StrVal,
+				Expr: &ast.Binary{
+					Loc: t.From,
+					Left: &ast.VariableRef{
+						Loc: tStmt.From,
+						Name: ast.Identifier{
+							Name: tStmt.StrVal,
+						},
+					},
+					Op:    op,
+					Right: expr,
+				},
+			}, nil
+
 		case T_PlusPlus, T_MinusMinus:
 			var op ast.BinaryType
 			if t.Type == T_PlusPlus {
@@ -607,7 +634,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				Expr: &ast.Binary{
 					Loc: t.From,
 					Left: &ast.VariableRef{
-						Loc: t.From,
+						Loc: tStmt.From,
 						Name: ast.Identifier{
 							Name: tStmt.StrVal,
 						},

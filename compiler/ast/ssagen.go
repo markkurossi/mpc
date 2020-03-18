@@ -87,8 +87,26 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 		block.Bindings.Set(lValue, nil)
 
-		// XXX is init is nil, we must init the variable with type's zero.
-		if ast.Init != nil {
+		var init ssa.Variable
+		if ast.Init == nil {
+			var initVal interface{}
+			switch lValue.Type.Type {
+			case types.Bool:
+				initVal = false
+			case types.Int, types.Uint:
+				initVal = int32(0)
+			case types.String:
+				initVal = ""
+			default:
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"unsupported variable type %s", lValue.Type.Type)
+			}
+			init, err = ssa.Constant(initVal)
+			if err != nil {
+				return nil, nil, err
+			}
+			gen.AddConstant(init)
+		} else {
 			var v []ssa.Variable
 			block, v, err = ast.Init.SSA(block, ctx, gen)
 			if err != nil {
@@ -98,9 +116,9 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.logger.Errorf(ast.Loc,
 					"multiple-value %s used in single-value context", ast.Init)
 			}
-			block.AddInstr(ssa.NewMovInstr(v[0], lValue))
+			init = v[0]
 		}
-
+		block.AddInstr(ssa.NewMovInstr(init, lValue))
 	}
 	return block, nil, nil
 }
