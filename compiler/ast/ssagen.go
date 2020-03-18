@@ -49,7 +49,6 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		block.Bindings.Set(r, nil)
-		ast.Bindings[ret.Name] = r
 	}
 
 	block, _, err := ast.Body.SSA(block, ctx, gen)
@@ -72,9 +71,6 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if caller != nil {
 		ctx.Return().AddInstr(ssa.NewJumpInstr(caller))
 	} else {
-		for idx, ret := range ast.Return {
-			ast.Bindings[ret.Name] = vars[idx]
-		}
 		ctx.Return().AddInstr(ssa.NewRetInstr(vars))
 	}
 

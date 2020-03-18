@@ -568,6 +568,15 @@ func (v *Variable) Bit(bit int) bool {
 	}
 }
 
+// LValueFor checks if the value `o` can be assigned for lvalue of type `l`.
+func LValueFor(l types.Info, o Variable) bool {
+	if o.Const {
+		return l.CanAssignConst(o.Type)
+	} else {
+		return l.Equal(o.Type)
+	}
+}
+
 func (v Variable) TypeCompatible(o Variable) bool {
 	if v.Const && o.Const {
 		return v.Type.Type == o.Type.Type

@@ -89,7 +89,6 @@ type Func struct {
 	Args         []*Variable
 	Return       []*Variable
 	Body         List
-	Bindings     map[string]ssa.Variable
 	NumInstances int
 	Annotations  Annotations
 }
@@ -104,7 +103,6 @@ func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 		Args:        args,
 		Return:      ret,
 		Body:        body,
-		Bindings:    make(map[string]ssa.Variable),
 		Annotations: annotations,
 	}
 }

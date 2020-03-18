@@ -13,6 +13,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -111,10 +112,22 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	// Return values
 	var r circuit.IO
 	for idx, rt := range main.Return {
-		_, ok := main.Bindings[rt.Name]
-		if !ok {
-			return nil, nil, fmt.Errorf("return value %s not bound", rt.Name)
+		if idx >= len(returnVars) {
+			return nil, nil, fmt.Errorf("too few values for %s", main)
 		}
+		typeInfo := rt.Type
+		if typeInfo.Bits == 0 {
+			typeInfo.Bits = returnVars[idx].Type.Bits
+		}
+		if returnVars[idx].Type.Type == types.Undefined {
+			returnVars[idx].Type.Type = rt.Type.Type
+		}
+		if !ssa.LValueFor(typeInfo, returnVars[idx]) {
+			return nil, nil,
+				fmt.Errorf("invalid value %v for return value %d of %s",
+					returnVars[idx].Type, idx, main)
+		}
+
 		v := returnVars[idx]
 		r = append(r, circuit.IOArg{
 			Name: v.String(),
