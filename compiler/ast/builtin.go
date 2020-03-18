@@ -35,7 +35,7 @@ const (
 type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error)
 
-type Eval func(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error)
 
 // Predeclared identifiers.
@@ -177,7 +177,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	return block, []ssa.Variable{v}, nil
 }
 
-func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error) {
 
 	if len(args) != 1 {
@@ -198,7 +198,7 @@ func sizeEval(args []AST, block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			}
 			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
-			b, ok = block.Bindings.Get(arg.Name.Name)
+			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
 			return nil, false, ctx.logger.Errorf(loc,

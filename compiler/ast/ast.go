@@ -61,8 +61,26 @@ type AST interface {
 	// terminates i.e. all following AST nodes are dead code.
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		*ssa.Block, []ssa.Variable, error)
-	Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		interface{}, bool, error)
+}
+
+func NewEnv(block *ssa.Block) *Env {
+	return &Env{
+		Bindings: block.Bindings.Clone(),
+	}
+}
+
+type Env struct {
+	Bindings ssa.Bindings
+}
+
+func (env *Env) Get(name string) (ssa.Binding, bool) {
+	return env.Bindings.Get(name)
+}
+
+func (env *Env) Set(v ssa.Variable, val *ssa.Variable) {
+	env.Bindings.Set(v, val)
 }
 
 type List []AST

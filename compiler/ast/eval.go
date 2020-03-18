@@ -15,24 +15,24 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func (ast List) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, fmt.Errorf("List.Eval not implemented yet")
 }
 
-func (ast *Func) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
-func (ast *VariableDef) Eval(block *ssa.Block, ctx *Codegen,
+func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 	return nil, false, nil
 }
 
-func (ast *Assign) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
-	val, ok, err := ast.Expr.Eval(block, ctx, gen)
+	val, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return nil, ok, err
 	}
@@ -47,7 +47,7 @@ func (ast *Assign) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, false, err
 		}
 	} else {
-		b, ok := block.Bindings.Get(ast.Name)
+		b, ok := env.Get(ast.Name)
 		if !ok {
 			return nil, false, ctx.logger.Errorf(ast.Loc,
 				"undefined variable '%s'", ast.Name)
@@ -57,17 +57,17 @@ func (ast *Assign) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, false, err
 		}
 	}
-	block.Bindings.Set(lValue, &constVal)
+	env.Set(lValue, &constVal)
 
 	return constVal.ConstValue, true, nil
 }
 
-func (ast *If) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
-func (ast *Call) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
 	// Resolve called.
@@ -92,29 +92,29 @@ func (ast *Call) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if bi.Eval == nil {
 			return nil, false, nil
 		}
-		return bi.Eval(ast.Exprs, block, ctx, gen, ast.Location())
+		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
 	}
 
 	return nil, false, nil
 }
 
-func (ast *Return) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Return) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
-func (ast *For) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *For) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
-func (ast *Binary) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
-	l, ok, err := ast.Left.Eval(block, ctx, gen)
+	l, ok, err := ast.Left.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return nil, ok, err
 	}
-	r, ok, err := ast.Right.Eval(block, ctx, gen)
+	r, ok, err := ast.Right.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return nil, ok, err
 	}
@@ -223,10 +223,10 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 	}
 }
 
-func (ast *Slice) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
-	expr, ok, err := ast.Expr.Eval(block, ctx, gen)
+	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return nil, ok, err
 	}
@@ -235,7 +235,7 @@ func (ast *Slice) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	to := math.MaxInt32
 
 	if ast.From != nil {
-		val, ok, err := ast.From.Eval(block, ctx, gen)
+		val, ok, err := ast.From.Eval(env, ctx, gen)
 		if err != nil || !ok {
 			return nil, ok, err
 		}
@@ -246,7 +246,7 @@ func (ast *Slice) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	}
 	if ast.To != nil {
-		val, ok, err := ast.To.Eval(block, ctx, gen)
+		val, ok, err := ast.To.Eval(env, ctx, gen)
 		if err != nil || !ok {
 			return nil, ok, err
 		}
@@ -287,7 +287,7 @@ func intVal(val interface{}) (int, error) {
 	}
 }
 
-func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
+func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 
 	var b ssa.Binding
@@ -301,7 +301,7 @@ func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
-		b, ok = block.Bindings.Get(ast.Name.Name)
+		b, ok = env.Get(ast.Name.Name)
 	}
 	if !ok {
 		return nil, false, ctx.logger.Errorf(ast.Loc,
@@ -316,15 +316,15 @@ func (ast *VariableRef) Eval(block *ssa.Block, ctx *Codegen,
 	return val.ConstValue, true, nil
 }
 
-func (ast *Constant) Eval(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+func (ast *Constant) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
 }
 
-func (ast *Conversion) Eval(block *ssa.Block, ctx *Codegen,
+func (ast *Conversion) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 
-	val, ok, err := ast.Expr.Eval(block, ctx, gen)
+	val, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return nil, ok, err
 	}

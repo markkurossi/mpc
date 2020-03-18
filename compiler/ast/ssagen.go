@@ -137,17 +137,21 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	var lValue ssa.Variable
+
+	b, ok := block.Bindings.Get(ast.Name)
 	if ast.Define {
+		if ok {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"no new variables on left side of :=")
+		}
 		lValue, err = gen.NewVar(ast.Name, v[0].Type, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		// XXX check ast.Define
-		b, ok := block.Bindings.Get(ast.Name)
 		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"undefined varialbe '%s'", ast.Name)
+				"undefined: %s", ast.Name)
 		}
 		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 		if err != nil {
@@ -156,7 +160,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	block.AddInstr(ssa.NewMovInstr(v[0], lValue))
-	block.Bindings.Set(lValue, nil)
+	block.Bindings.Set(lValue, &v[0])
 
 	return block, v, nil
 }
@@ -484,8 +488,11 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
+	// Use the same env for the whole for-loop unrolling.
+	env := NewEnv(block)
+
 	// Init loop.
-	_, ok, err := ast.Init.Eval(block, ctx, gen)
+	_, ok, err := ast.Init.Eval(env, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -496,7 +503,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	// Expand body as long as condition is true.
 	for {
-		constVal, ok, err := ast.Cond.Eval(block, ctx, gen)
+		constVal, ok, err := ast.Cond.Eval(env, ctx, gen)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -513,6 +520,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// Loop completed.
 			break
 		}
+		block.Bindings = env.Bindings
 
 		// Expand block.
 		block, _, err = ast.Body.SSA(block, ctx, gen)
@@ -521,13 +529,14 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// Increment.
-		_, ok, err = ast.Inc.Eval(block, ctx, gen)
+		env = NewEnv(block)
+		_, ok, err = ast.Inc.Eval(env, ctx, gen)
 		if err != nil {
 			return nil, nil, err
 		}
 		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-				"increment statement is not compile-time constant: %s", err)
+				"increment statement is not compile-time constant: %s", ast.Inc)
 		}
 	}
 
@@ -538,7 +547,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
 	// Check constant folding.
-	constVal, ok, err := ast.Eval(block, ctx, gen)
+	constVal, ok, err := ast.Eval(NewEnv(block), ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}

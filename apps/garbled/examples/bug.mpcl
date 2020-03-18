@@ -2,10 +2,13 @@
 
 package main
 
-import (
-	"crypto/sha256"
-)
+func main(a, b uint8) int32 {
+	var sum int32 = 0
 
-func main(a, b uint512) uint256 {
-	return sha256.Block(a, sha256.H0)
+	for i := 0; i < 5; i++ {
+		sum = sum + i
+		j = 3
+	}
+
+	return sum
 }
