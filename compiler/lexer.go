@@ -183,7 +183,7 @@ var symbols = map[string]TokenType{
 }
 
 var reType = regexp.MustCompilePOSIX(
-	`^(uint|int|float|string)([[:digit:]]*|_)$`)
+	`^(uint|int|float|string)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
@@ -573,22 +573,13 @@ func (l *Lexer) Get() (*Token, error) {
 						token := l.Token(T_Type)
 						var bits int
 						if len(matches[2]) > 0 {
-							if matches[2] == "_" {
-								bits = -1
-							} else {
-								bits, err = strconv.Atoi(matches[2])
-								if err != nil {
-									return nil, err
-								}
+							bits, err = strconv.Atoi(matches[2])
+							if err != nil {
+								return nil, err
 							}
 						} else {
-							// Default size for types.
-							switch tt {
-							case types.Int, types.Uint:
-								bits = 32
-							case types.Float:
-								return nil, fmt.Errorf("invalid type %s", tt)
-							}
+							// Undefined size.
+							bits = 0
 						}
 						token.TypeInfo = types.Info{
 							Type: tt,

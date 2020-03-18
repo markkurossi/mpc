@@ -39,15 +39,6 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	ctx.Return().Name = fmt.Sprintf("%s.ret#%d", ast.Name, ast.NumInstances)
 	ast.NumInstances++
 
-	// Define arguments.
-	for _, arg := range ast.Args {
-		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
-		block.Bindings.Set(a, nil)
-		ast.Bindings[arg.Name] = a
-	}
 	// Define return variables.
 	for idx, ret := range ast.Return {
 		if len(ret.Name) == 0 {
@@ -341,19 +332,31 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	rblock.Bindings = block.Bindings.Clone()
 
 	ctx.PushCompilation(gen.Block(), gen.Block(), rblock, called)
+
+	// Define arguments.
+	for idx, arg := range called.Args {
+		typeInfo := arg.Type
+		if typeInfo.Bits == 0 {
+			typeInfo.Bits = args[idx].Type.Bits
+		}
+		a, err := gen.NewVar(arg.Name, typeInfo, ctx.Scope())
+		if err != nil {
+			return nil, nil, err
+		}
+		if !a.TypeCompatible(args[idx]) {
+			return nil, nil, ctx.logger.Errorf(ast.Location(),
+				"invalid value %v for argument %d of %s",
+				args[idx].Type, idx, called)
+		}
+		ctx.Start().Bindings.Set(a, &args[idx])
+
+		block.AddInstr(ssa.NewMovInstr(args[idx], a))
+	}
+
+	// Instantiate called function.
 	_, returnValues, err := called.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	for idx, arg := range called.Args {
-		b, ok := ctx.Start().Bindings.Get(arg.Name)
-		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"undefined variable '%s'", arg.Name)
-		}
-		bv := b.Value(block, gen)
-		block.AddInstr(ssa.NewMovInstr(args[idx], bv))
 	}
 
 	block.SetNext(ctx.Start())
@@ -435,10 +438,24 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	for idx, r := range ctx.Func().Return {
-		v, err := gen.NewVar(r.Name, r.Type, ctx.Scope())
+		typeInfo := r.Type
+		if typeInfo.Bits == 0 {
+			typeInfo.Bits = result[idx].Type.Bits
+		}
+		v, err := gen.NewVar(r.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
+
+		if result[idx].Type.Type == types.Undefined {
+			result[idx].Type.Type = r.Type.Type
+		}
+
+		if !v.TypeCompatible(result[idx]) {
+			return nil, nil, ctx.logger.Errorf(ast.Location(),
+				"invalid value %v for result value %d", result[idx].Type, idx)
+		}
+
 		block.AddInstr(ssa.NewMovInstr(result[idx], v))
 		block.Bindings.Set(v, nil)
 	}

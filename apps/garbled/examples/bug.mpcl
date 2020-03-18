@@ -2,19 +2,10 @@
 
 package main
 
-func main(a, msg, e int1) (int1, int1) {
-	var key uint1 = 0
+import (
+	"crypto/sha256"
+)
 
-	cipher := key + 1
-	plain := cipher - 1
-
-	return cipher, plain
-}
-
-func encrypt(msg, key int2) int2 {
-	return msg + key
-}
-
-func decrypt(msg, key int2) int2 {
-	return msg - key
+func main(a, b uint512) uint256 {
+	return sha256.Block(a, sha256.H0)
 }

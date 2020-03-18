@@ -65,18 +65,14 @@ type Info struct {
 }
 
 func (i Info) String() string {
-	if i.Bits == -1 {
-		return fmt.Sprintf("%s_", i.Type)
-	} else if i.Bits == 0 {
+	if i.Bits == 0 {
 		return i.Type.String()
 	}
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
 }
 
 func (i Info) ShortString() string {
-	if i.Bits == -1 {
-		return fmt.Sprintf("%s_", i.Type.ShortString())
-	} else if i.Bits == 0 {
+	if i.Bits == 0 {
 		return i.Type.ShortString()
 	}
 	return fmt.Sprintf("%s%d", i.Type.ShortString(), i.Bits)

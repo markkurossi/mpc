@@ -128,7 +128,7 @@ var fixedTests = []FixedTest{
 		N3: 5,
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int4) int4 {
     if a > b {
         return a
     }
@@ -143,7 +143,7 @@ func main(a, b int) int {
 		Zero: true,
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int4) int4 {
     if a > b {
         return add1(a)
     }
@@ -161,7 +161,7 @@ func add1(val int) int {
 		Zero: true,
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int4) int4 {
     if a > b {
         return add2(a)
     }
@@ -181,7 +181,7 @@ func add2(val int) int {
 		N3: 8,
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int4) int4 {
     return Sum2(MinMax(a, b))
 }
 func Sum2(a, b int) int {

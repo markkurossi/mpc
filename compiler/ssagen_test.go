@@ -27,7 +27,7 @@ var ssagenTests = []SSAGenTest{
 		Name:    "constant",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     return 42
 }
 `,
@@ -37,7 +37,7 @@ func main(a, b int) int {
 		Name:    "add",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     return a + b
 }
 `,
@@ -47,7 +47,7 @@ func main(a, b int) int {
 		Name:    "add3",
 		Code: `
 package main
-func main(a, b, e int) (int) {
+func main(a, b, e int32) (int32) {
     return a + b + e
 }
 `,
@@ -57,7 +57,7 @@ func main(a, b, e int) (int) {
 		Name:    "ret2",
 		Code: `
 package main
-func main(a, b int) (int, int) {
+func main(a, b int32) (int32, int32) {
     return a + b, a - b
 }
 `,
@@ -67,7 +67,7 @@ func main(a, b int) (int, int) {
 		Name:    "if",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     if a > b {
         return a
     }
@@ -80,7 +80,7 @@ func main(a, b int) int {
 		Name:    "ifelse",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     if a > b {
         return a
     } else {
@@ -94,8 +94,8 @@ func main(a, b int) int {
 		Name:    "if-else-assign",
 		Code: `
 package main
-func main(a, b int) (int, int) {
-    var max, min int
+func main(a, b int32) (int32, int32) {
+    var max, min int32
     if a > b {
         max = a
         min = b
@@ -114,8 +114,8 @@ func main(a, b int) (int, int) {
 		Name:    "max3",
 		Code: `
 package main
-func main(a, b, c int) int {
-    var max int
+func main(a, b, c int32) int32 {
+    var max int32
     if a > b {
         if a > c {
             max = a
@@ -138,7 +138,7 @@ func main(a, b, c int) int {
 		Name:    "Millionaire",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     if a > b {
         return 0
     } else {
@@ -152,7 +152,7 @@ func main(a, b int) int {
 		Name:    "Mult",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     return a * b
 }
 `,
@@ -162,7 +162,7 @@ func main(a, b int) int {
 		Name:    "Bool",
 		Code: `
 package main
-func main(a, b int) bool {
+func main(a, b int32) bool {
     if a > b {
         return true
     }
@@ -175,7 +175,7 @@ func main(a, b int) bool {
 		Name:    "Call",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     return max(a, b)
 }
 func max(a, b int) int {
@@ -191,7 +191,7 @@ func max(a, b int) int {
 		Name:    "Multiple-value-call",
 		Code: `
 package main
-func main(a, b int) int {
+func main(a, b int32) int32 {
     return Sum2(MinMax(a, b))
 }
 func Sum2(a, b int) int {
@@ -214,7 +214,7 @@ package main
 const One = 1
 const H0 = 0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667
 
-func main(a, b int) uint256 {
+func main(a, b int32) uint256 {
     return H0
 }
 `,
@@ -230,7 +230,7 @@ const (
     H0 = 0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667
 )
 
-func main(a, b int) uint256 {
+func main(a, b int32) uint256 {
     return H0
 }
 `,

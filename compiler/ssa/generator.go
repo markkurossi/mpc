@@ -81,10 +81,9 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 		}
 	} else {
 		v.Version = v.Version + 1
+		v.Type = t
 	}
 	gen.versions[key] = v
-
-	// TODO: check that v.type == t
 
 	return v, nil
 }

@@ -129,8 +129,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	// Check that the argument types match.
 	for idx, io := range inputs {
 		arg := args[idx]
-		if io.Size != arg.Type.Bits {
-			// Check if arg is const and smaller, can type convert.
+		if io.Size < arg.Type.Bits || io.Size > arg.Type.Bits && !arg.Const {
 			return nil, nil, ctx.logger.Errorf(loc,
 				"invalid argument %d for native circuit: got %s, need %d",
 				idx, arg.Type, io.Size)

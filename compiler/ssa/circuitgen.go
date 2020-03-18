@@ -376,9 +376,20 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 		case Circ:
 			var circWires []*circuits.Wire
 
+			// Flatten circuit inputs.
+			var inputs circuit.IO
+			inputs = append(inputs, instr.Circ.N1...)
+			inputs = append(inputs, instr.Circ.N2...)
+
 			// Flatten input wires.
-			for _, w := range wires {
+			for idx, w := range wires {
 				circWires = append(circWires, w...)
+				for i := len(w); i < inputs[idx].Size; i++ {
+					// Zeroes for unset input wires.
+					zw := circuits.NewWire()
+					cc.Zero(zw)
+					circWires = append(circWires, zw)
+				}
 			}
 
 			// Flatten output wires.

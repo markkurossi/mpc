@@ -48,6 +48,28 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
 	ctx.Start().Bindings = unit.Bindings.Clone()
 
+	// Arguments.
+	var args circuit.IO
+	for _, arg := range main.Args {
+		if arg.Type.Bits == 0 {
+			return nil, nil,
+				fmt.Errorf("argument %s of %s has unspecified type",
+					arg.Name, main)
+		}
+		// Define argument in block.
+		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
+		if err != nil {
+			return nil, nil, err
+		}
+		ctx.Start().Bindings.Set(a, nil)
+
+		args = append(args, circuit.IOArg{
+			Name: a.String(),
+			Type: a.Type.String(),
+			Size: a.Type.Bits,
+		})
+	}
+
 	// Compile main.
 	_, returnVars, err := main.SSA(ctx.Start(), ctx, gen)
 	if err != nil {
@@ -63,20 +85,6 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	}
 	if params.SSADotOut != nil {
 		ssa.Dot(params.SSADotOut, ctx.Start())
-	}
-
-	// Arguments.
-	var args circuit.IO
-	for _, arg := range main.Args {
-		v, ok := main.Bindings[arg.Name]
-		if !ok {
-			return nil, nil, fmt.Errorf("argument %s not bound", arg.Name)
-		}
-		args = append(args, circuit.IOArg{
-			Name: v.String(),
-			Type: v.Type.String(),
-			Size: v.Type.Bits,
-		})
 	}
 
 	// Split arguments into garbler and evaluator arguments.

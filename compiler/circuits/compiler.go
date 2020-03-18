@@ -140,7 +140,7 @@ func (c *Compiler) NextWireID() uint32 {
 }
 
 func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
-	if bits == 0 {
+	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for variable %v", v)
 	}
 	wires, ok := c.wires[v]
