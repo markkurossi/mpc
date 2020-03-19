@@ -7,6 +7,6 @@
 
 package binary
 
-func HammingDistance(a, b uint_) uint_ {
+func HammingDistance(a, b uint) uint {
 	return native("hamming", a, b)
 }
