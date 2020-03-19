@@ -211,6 +211,8 @@ form assembly:
      - [X] if-blocks
      - [X] For-loop unrolling
      - [ ] Function call and return
+   - [ ] sort blocks in topological order
+     - [ ] peephole optimization over block boundaries
    - [ ] Signed / unsigned arithmetics
    - [ ] unary expressions
      - [ ] logical not
@@ -219,6 +221,7 @@ form assembly:
    - [ ] identity gate
    - [ ] Row reduction
    - [ ] Half AND
+   - [ ] 3-input gates for full-adder carry
    - [ ] Oblivious transfer extensions
  - Packages:
    - [X] MODP circuit
