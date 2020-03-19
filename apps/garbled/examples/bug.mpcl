@@ -2,12 +2,22 @@
 
 package main
 
-func main(a, b uint8) int32 {
+func main(a, b int32) int32 {
 	var sum int32 = 0
 
 	for i := 0; i < 5; i++ {
-		sum = sum + i
+		for j := 0; j < 5; j++ {
+			sum += min(i, j)
+		}
 	}
 
 	return sum
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
 }

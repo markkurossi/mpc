@@ -168,6 +168,26 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
+	env := NewEnv(block)
+	constVal, ok, err := ast.Expr.Eval(env, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ok {
+		block.Bindings = env.Bindings
+		val, ok := constVal.(bool)
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+				"condition is not boolean expression")
+		}
+		if val {
+			return ast.True.SSA(block, ctx, gen)
+		} else if ast.False != nil {
+			return ast.False.SSA(block, ctx, gen)
+		}
+		return block, nil, nil
+	}
+
 	block, e, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
@@ -515,7 +535,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		val, ok := constVal.(bool)
 		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
-				"condition is not a boolean expression")
+				"condition is not boolean expression")
 		}
 		if !val {
 			// Loop completed.
