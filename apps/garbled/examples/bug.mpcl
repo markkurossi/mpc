@@ -7,7 +7,6 @@ func main(a, b uint8) int32 {
 
 	for i := 0; i < 5; i++ {
 		sum = sum + i
-		j = 3
 	}
 
 	return sum

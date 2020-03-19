@@ -471,7 +471,8 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		if !v.TypeCompatible(result[idx]) {
 			return nil, nil, ctx.logger.Errorf(ast.Location(),
-				"invalid value %v for result value %d", result[idx].Type, idx)
+				"invalid value %v for result value %v",
+				result[idx].Type, v.Type)
 		}
 
 		block.AddInstr(ssa.NewMovInstr(result[idx], v))
