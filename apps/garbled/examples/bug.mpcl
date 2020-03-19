@@ -2,9 +2,12 @@
 
 package main
 
-func main(a, b int32) (int, int) {
-	min, max := minMax(a, b)
-	return min, max
+func main(a, b bool) bool {
+	if a && b {
+		return true
+	} else {
+		return false
+	}
 }
 
 func minMax(a, b int) (int, int) {

@@ -117,15 +117,32 @@ converted) to be or correct type.
 
 ### Types
 
-| Name   | Size | Signed | Alias  |
-|:------:|:----:|:------:|:------:|
-| bool   | 1    | no     |        |
-| byte   | 8    | no     | uint8  |
-| uint   | 32   | no     | uint32 |
-| int    | 32   | yes    | int32  |
-| uintN  | N    | no     |        |
-| intN   | N    | yes    |        |
-| floatN | N    | yes    |        |
+| Name    | Size          | Signed |
+|:-------:|:-------------:|:------:|
+| bool    | 1             | no     |
+| uint    | unspecified   | no     |
+| int     | unspecified   | yes    |
+| uintN   | N    	  | no     |
+| intN    | N    	  | yes    |
+| floatN  | N    	  | yes    |
+| stringN | N    	  | no     |
+
+The unsized `uint` and `int` types can be used as function arguments
+and return values. Their are resolved during compilation time. The
+only exception is the `main` function. Its arguments must use fixed
+type sizes. The following example shows a `MinMax` function that
+returns the minimum and maximum arguments. This function works for all
+argument sizes.
+
+```go
+func MinMax(a, b int) (int, int) {
+    if a < b {
+        return a, b
+    } else {
+        return b, a
+    }
+}
+```
 
 ### Builtin functions
 

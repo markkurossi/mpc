@@ -182,7 +182,7 @@ var symbols = map[string]TokenType{
 	"var":     T_SymVar,
 }
 
-var reType = regexp.MustCompilePOSIX(
+var reSizedType = regexp.MustCompilePOSIX(
 	`^(uint|int|float|string)([[:digit:]]*)$`)
 
 type Token struct {
@@ -566,7 +566,7 @@ func (l *Lexer) Get() (*Token, error) {
 				if ok {
 					return l.Token(tt), nil
 				}
-				matches := reType.FindStringSubmatch(symbol)
+				matches := reSizedType.FindStringSubmatch(symbol)
 				if matches != nil {
 					tt, ok := types.Types[matches[1]]
 					if ok {
