@@ -2,8 +2,11 @@
 
 package main
 
+// @Test 1 7 = 1 7
+// @Test 7 1 = 1 7
 func main(a, b int32) (int, int) {
-	min, max := minMax(a, b)
+	min, max := 0, 1
+	min, max = minMax(a, b)
 	return min, max
 }
 

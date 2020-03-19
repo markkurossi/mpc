@@ -126,43 +126,61 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	block, v, err := ast.Expr.SSA(block, ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
-	// XXX 0, 1, n return values.
-	if len(v) != 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
-			"assignment mismatch: %d variables but %d value", 1, len(v))
-	}
+	var values, v []ssa.Variable
+	var err error
 
-	var lValue ssa.Variable
-
-	b, ok := block.Bindings.Get(ast.Name)
-	if ast.Define {
-		if ok {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"no new variables on left side of :=")
-		}
-		lValue, err = gen.NewVar(ast.Name, v[0].Type, ctx.Scope())
+	for _, expr := range ast.Exprs {
+		block, v, err = expr.SSA(block, ctx, gen)
 		if err != nil {
 			return nil, nil, err
 		}
-	} else {
+		if len(v) == 0 {
+			return nil, nil, ctx.logger.Errorf(expr.Location(),
+				"%s used as value", expr)
+		}
+		values = append(values, v...)
+	}
+	if len(ast.LValues) != len(values) {
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
+			"assignment mismatch: %d variables but %d value",
+			len(values), len(ast.LValues))
+	}
+
+	for idx, lv := range ast.LValues {
+		ref, ok := lv.(*VariableRef)
 		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"undefined: %s", ast.Name)
+				"cannot assign to %s", lv)
 		}
-		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
+		// XXX package.name below
+
+		var lValue ssa.Variable
+		b, ok := block.Bindings.Get(ref.Name.Name)
+		if ast.Define {
+			if ok {
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"no new variables on left side of :=")
+			}
+			lValue, err = gen.NewVar(ref.Name.Name, v[0].Type, ctx.Scope())
+			if err != nil {
+				return nil, nil, err
+			}
+		} else {
+			if !ok {
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"undefined: %s", ref.Name)
+			}
+			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+			if err != nil {
+				return nil, nil, err
+			}
 		}
+
+		block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
+		block.Bindings.Set(lValue, &values[idx])
 	}
 
-	block.AddInstr(ssa.NewMovInstr(v[0], lValue))
-	block.Bindings.Set(lValue, &v[0])
-
-	return block, v, nil
+	return block, values, nil
 }
 
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (

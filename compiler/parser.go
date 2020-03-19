@@ -576,52 +576,62 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			Body: body,
 		}, nil
 
-	case T_Identifier:
+	default:
+		p.lexer.Unget(tStmt)
+		lvalues, err := p.parseExprList()
+		if err != nil {
+			return nil, err
+		}
 		t, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
 		switch t.Type {
 		case T_Assign, T_DefAssign:
-			expr, err := p.parseExpr()
+			values, err := p.parseExprList()
 			if err != nil {
 				return nil, err
 			}
 			return &ast.Assign{
-				Loc:    tStmt.From,
-				Name:   tStmt.StrVal,
-				Expr:   expr,
-				Define: t.Type == T_DefAssign,
+				Loc:     t.From,
+				LValues: lvalues,
+				Exprs:   values,
+				Define:  t.Type == T_DefAssign,
 			}, nil
 
 		case T_PlusEq, T_MinusEq:
+			if len(lvalues) != 1 {
+				return nil, p.errf(tStmt.From, "expected 1 expression")
+			}
+
 			var op ast.BinaryType
 			if t.Type == T_PlusEq {
 				op = ast.BinaryPlus
 			} else {
 				op = ast.BinaryMinus
 			}
-			expr, err := p.parseExpr()
+			value, err := p.parseExpr()
 			if err != nil {
 				return nil, err
 			}
 			return &ast.Assign{
-				Loc:  tStmt.From,
-				Name: tStmt.StrVal,
-				Expr: &ast.Binary{
-					Loc: t.From,
-					Left: &ast.VariableRef{
-						Loc: tStmt.From,
-						Name: ast.Identifier{
-							Name: tStmt.StrVal,
-						},
+				Loc:     t.From,
+				LValues: lvalues,
+				Exprs: []ast.AST{
+					&ast.Binary{
+						Loc:   t.From,
+						Left:  lvalues[0],
+						Op:    op,
+						Right: value,
 					},
-					Op:    op,
-					Right: expr,
 				},
 			}, nil
 
 		case T_PlusPlus, T_MinusMinus:
+			if len(lvalues) != 1 {
+				return nil, p.errf(tStmt.From, "expected 1 expression")
+			}
+
 			var op ast.BinaryType
 			if t.Type == T_PlusPlus {
 				op = ast.BinaryPlus
@@ -629,20 +639,17 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				op = ast.BinaryMinus
 			}
 			return &ast.Assign{
-				Loc:  tStmt.From,
-				Name: tStmt.StrVal,
-				Expr: &ast.Binary{
-					Loc: t.From,
-					Left: &ast.VariableRef{
-						Loc: tStmt.From,
-						Name: ast.Identifier{
-							Name: tStmt.StrVal,
+				Loc:     t.From,
+				LValues: lvalues,
+				Exprs: []ast.AST{
+					&ast.Binary{
+						Loc:  t.From,
+						Left: lvalues[0],
+						Op:   op,
+						Right: &ast.Constant{
+							Loc:   t.From,
+							Value: int32(1),
 						},
-					},
-					Op: op,
-					Right: &ast.Constant{
-						Loc:   t.From,
-						Value: int32(1),
 					},
 				},
 			}, nil
@@ -652,7 +659,28 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			return nil, p.errf(t.From, "syntax error")
 		}
 	}
-	return nil, p.errf(tStmt.From, "syntax error")
+}
+
+func (p *Parser) parseExprList() ([]ast.AST, error) {
+	var list []ast.AST
+
+	for {
+		expr, err := p.parseExpr()
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, expr)
+		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if t.Type != T_Comma {
+			p.lexer.Unget(t)
+			break
+		}
+	}
+
+	return list, nil
 }
 
 func (p *Parser) parseExpr() (ast.AST, error) {

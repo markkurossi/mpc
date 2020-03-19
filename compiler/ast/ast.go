@@ -153,10 +153,10 @@ func (ast *VariableDef) Location() utils.Point {
 }
 
 type Assign struct {
-	Loc    utils.Point
-	Name   string
-	Expr   AST
-	Define bool
+	Loc     utils.Point
+	LValues []AST
+	Exprs   []AST
+	Define  bool
 }
 
 func (ast *Assign) String() string {
@@ -166,7 +166,7 @@ func (ast *Assign) String() string {
 	} else {
 		op = "="
 	}
-	return fmt.Sprintf("%s %s %s", ast.Name, op, ast.Expr)
+	return fmt.Sprintf("%v %s %v", ast.LValues, op, ast.Exprs)
 }
 
 func (ast *Assign) Location() utils.Point {

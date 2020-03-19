@@ -32,34 +32,56 @@ func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
 
 func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
-	val, ok, err := ast.Expr.Eval(env, ctx, gen)
-	if err != nil || !ok {
-		return nil, ok, err
+
+	var values []interface{}
+	for _, expr := range ast.Exprs {
+		val, ok, err := expr.Eval(env, ctx, gen)
+		if err != nil || !ok {
+			return nil, ok, err
+		}
+		// XXX multiple return values.
+		values = append(values, val)
 	}
 
-	constVal, err := ssa.Constant(val)
-	gen.AddConstant(constVal)
+	if len(ast.LValues) != len(values) {
+		return nil, false, ctx.logger.Errorf(ast.Loc,
+			"assignment mismatch: %d variables but %d values",
+			len(ast.LValues), len(values))
+	}
 
-	var lValue ssa.Variable
-	if ast.Define {
-		lValue, err = gen.NewVar(ast.Name, constVal.Type, ctx.Scope())
-		if err != nil {
-			return nil, false, err
-		}
-	} else {
-		b, ok := env.Get(ast.Name)
+	for idx, lv := range ast.LValues {
+
+		constVal, err := ssa.Constant(values[idx])
+		gen.AddConstant(constVal)
+
+		ref, ok := lv.(*VariableRef)
 		if !ok {
 			return nil, false, ctx.logger.Errorf(ast.Loc,
-				"undefined variable '%s'", ast.Name)
+				"cannot assign to %s", lv)
 		}
-		lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
-		if err != nil {
-			return nil, false, err
-		}
-	}
-	env.Set(lValue, &constVal)
+		// XXX package.name below
 
-	return constVal.ConstValue, true, nil
+		var lValue ssa.Variable
+		if ast.Define {
+			lValue, err = gen.NewVar(ref.Name.Name, constVal.Type, ctx.Scope())
+			if err != nil {
+				return nil, false, err
+			}
+		} else {
+			b, ok := env.Get(ref.Name.Name)
+			if !ok {
+				return nil, false, ctx.logger.Errorf(ast.Loc,
+					"undefined variable '%s'", ref.Name)
+			}
+			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+			if err != nil {
+				return nil, false, err
+			}
+		}
+		env.Set(lValue, &constVal)
+	}
+
+	return values, true, nil
 }
 
 func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
