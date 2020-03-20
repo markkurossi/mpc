@@ -9,28 +9,18 @@ package math
 
 // Exp computes b**e mod |m| (i.e. the sign of m is ignore).
 // TODO, use wildcard types: Exp(b, e, n uint_n) uint_n
-func Exp(b, e, m uint64) uint64 {
-	var r uint128 = 1
+func Exp(b, e, m uint) uint {
+	rType := make(uint, size(m))
+	mType := make(uint, size(m)*2)
+
+	var r mType = 1
 
 	for i := size(e) - 1; i >= 0; i = i - 1 {
-		r = r * r % uint128(m)
+		r = r * r % mType(m)
 		if e>>i&1 != 0 {
-			r = r * uint128(b) % uint128(m)
+			r = r * mType(b) % mType(m)
 		}
 	}
 
-	return uint64(r)
-}
-
-func Exp32(b, e, m uint32) uint32 {
-	var r uint64 = 1
-
-	for i := size(e) - 1; i >= 0; i = i - 1 {
-		r = r * r % uint64(m)
-		if e>>i&1 != 0 {
-			r = r * uint64(b) % uint64(m)
-		}
-	}
-
-	return uint32(r)
+	return rType(r)
 }

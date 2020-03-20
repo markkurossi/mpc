@@ -182,19 +182,34 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	var values, v []ssa.Variable
+	var values []ssa.Variable
 	var err error
 
 	for _, expr := range ast.Exprs {
-		block, v, err = expr.SSA(block, ctx, gen)
+		// Check if init value is constant.
+		env := NewEnv(block)
+		constVal, ok, err := expr.Eval(env, ctx, gen)
 		if err != nil {
 			return nil, nil, err
 		}
-		if len(v) == 0 {
-			return nil, nil, ctx.logger.Errorf(expr.Location(),
-				"%s used as value", expr)
+		if ok {
+			constVar, err := ssa.Constant(constVal)
+			if err != nil {
+				return nil, nil, err
+			}
+			values = append(values, constVar)
+		} else {
+			var v []ssa.Variable
+			block, v, err = expr.SSA(block, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
+			if len(v) == 0 {
+				return nil, nil, ctx.logger.Errorf(expr.Location(),
+					"%s used as value", expr)
+			}
+			values = append(values, v...)
 		}
-		values = append(values, v...)
 	}
 	if len(ast.LValues) != len(values) {
 		return nil, nil, ctx.logger.Errorf(ast.Loc,
@@ -217,7 +232,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.logger.Errorf(ast.Loc,
 					"no new variables on left side of :=")
 			}
-			lValue, err = gen.NewVar(ref.Name.Name, v[0].Type, ctx.Scope())
+			lValue, err = gen.NewVar(ref.Name.Name, values[0].Type, ctx.Scope())
 			if err != nil {
 				return nil, nil, err
 			}

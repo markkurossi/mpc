@@ -71,7 +71,6 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	switch ti.Type {
 	case TypeName:
 		// XXX package
-		// XXX dynamic types
 		matches := reSizedType.FindStringSubmatch(ti.Name.Name)
 		if matches != nil {
 			tt, ok := types.Types[matches[1]]
@@ -98,6 +97,14 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				Bits: 1,
 			}, nil
 		} else {
+			// Check dynamic types from the env.
+			b, ok := env.Get(ti.Name.Name)
+			if ok {
+				val, ok := b.Bound.(*ssa.Variable)
+				if ok && val.TypeRef {
+					return val.Type, nil
+				}
+			}
 			return result, fmt.Errorf("unknown type %s", ti)
 		}
 

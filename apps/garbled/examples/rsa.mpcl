@@ -22,8 +22,8 @@ func main(msg, gD, pubN, pubE, eD uint32) (uint32, uint32) {
 
 	d = gD + eD
 
-	cipher := rsa.Encrypt32(msg, pubE, pubN)
-	plain := rsa.Decrypt32(cipher, d, pubN)
+	cipher := rsa.Encrypt(msg, pubE, pubN)
+	plain := rsa.Decrypt(cipher, d, pubN)
 
 	return cipher, plain
 }

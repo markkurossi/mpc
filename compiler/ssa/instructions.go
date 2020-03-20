@@ -504,6 +504,7 @@ type Variable struct {
 	Scope      int
 	Version    int
 	Type       types.Info
+	TypeRef    bool
 	Const      bool
 	ConstValue interface{}
 }
@@ -511,6 +512,9 @@ type Variable struct {
 func (v Variable) String() string {
 	if v.Const {
 		return v.Name
+	}
+	if v.TypeRef {
+		return v.Type.String()
 	}
 	var version string
 	if v.Version >= 0 {
@@ -675,6 +679,10 @@ func Constant(value interface{}) (Variable, error) {
 			Bits:    bits,
 			MinBits: bits,
 		}
+
+	case types.Info:
+		v.Type = val
+		v.TypeRef = true
 
 	default:
 		return v, fmt.Errorf("Constant: %v (%T) not implemented yet", val, val)

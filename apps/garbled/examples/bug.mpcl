@@ -2,16 +2,12 @@
 
 package main
 
-import (
-	"math"
-)
+func main(a, b int32) int {
+	return mult(a, b)
+}
 
-const Truth uint32 = math.MaxUint32
+func mult(a, b int) int {
+	mType := make(int, size(a)*2)
 
-func main(a, b bool) uint16 {
-	if a && b {
-		return uint16(Truth)
-	} else {
-		return 0
-	}
+	return mType(a) * mType(b)
 }

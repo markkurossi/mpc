@@ -195,13 +195,15 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 		return nil
 	}
 	pkg.Initialized = true
-	fmt.Printf("Initializing %s\n", pkg.Name)
+	if ctx.Verbose {
+		fmt.Printf("Initializing %s\n", pkg.Name)
+	}
 
 	// Imported packages.
 	for alias, name := range pkg.Imports {
 		p, ok := packages[alias]
 		if !ok {
-			return fmt.Errorf("unknown package '%s'", name)
+			return fmt.Errorf("imported and not used: \"%s\"", name)
 		}
 		err := p.Init(packages, ctx, gen)
 		if err != nil {

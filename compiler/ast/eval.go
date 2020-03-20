@@ -98,10 +98,17 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
 	// Resolve called.
-	pkg, ok := ctx.Packages[ast.Name.Package]
-	if !ok {
-		return nil, false, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-			ast.Name.Package)
+	var pkg *Package
+	var ok bool
+	if len(ast.Name.Package) > 0 {
+		pkg, ok = ctx.Packages[ast.Name.Package]
+		if !ok {
+			return nil, false,
+				ctx.logger.Errorf(ast.Loc, "package '%s' not found",
+					ast.Name.Package)
+		}
+	} else {
+		pkg = ctx.Package
 	}
 	_, ok = pkg.Functions[ast.Name.Name]
 	if ok {

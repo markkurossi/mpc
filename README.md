@@ -245,7 +245,7 @@ form assembly:
      - [X] variable definition with init value
      - [X] binary modulo operation
      - [X] peephole optimizer for creating bit test instructions
-     - [ ] computed types: `multType := make(uint, size(a)*2)`
+     - [X] computed types: `multType := make(uint, size(a)*2)`
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key

@@ -16,21 +16,11 @@ const (
 )
 
 // c = m**e mod n
-func Encrypt(msg, e, n uint64) uint64 {
+func Encrypt(msg, e, n uint) uint {
 	return math.Exp(msg, e, n)
 }
 
 // m = c**d mod n
-func Decrypt(cipher, d, n uint64) uint64 {
+func Decrypt(cipher, d, n uint) uint {
 	return math.Exp(cipher, d, n)
-}
-
-// c = m**e mod n
-func Encrypt32(msg, e, n uint32) uint32 {
-	return math.Exp32(msg, e, n)
-}
-
-// m = c**d mod n
-func Decrypt32(cipher, d, n uint32) uint32 {
-	return math.Exp32(cipher, d, n)
 }
