@@ -13,8 +13,6 @@ import (
 	"strings"
 
 	"github.com/markkurossi/mpc/compiler/ast"
-	"github.com/markkurossi/mpc/compiler/ssa"
-	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -246,44 +244,29 @@ func (p *Parser) parseConstDef(token *Token) error {
 	if err != nil {
 		return err
 	}
-	var constType types.Info
-	if t.Type == T_Type {
-		constType = t.TypeInfo
-		t, err = p.lexer.Get()
+	var constType *ast.TypeInfo
+	if t.Type != T_Assign {
+		p.lexer.Unget(t)
+		constType, err = p.parseType()
 		if err != nil {
 			return err
 		}
-	} else {
-		p.lexer.Unget(t)
-	}
-	_, err = p.needToken(T_Assign)
-	if err != nil {
-		return err
+		_, err = p.needToken(T_Assign)
+		if err != nil {
+			return nil
+		}
 	}
 	value, err := p.parseExprPrimary()
 	if err != nil {
 		return err
 	}
 
-	constVal, ok := value.(*ast.Constant)
-	if !ok {
-		return p.errf(value.Location(), "value %s used as constant", value)
-	}
-	constVar, err := ssa.Constant(constVal.Value)
-	if err != nil {
-		return err
-	}
-
-	// XXX Check type compatibility
-	_ = constType
-
-	_, ok = p.pkg.Bindings.Get(token.StrVal)
-	if ok {
-		return p.errf(token.From, "constant %s already defined", token.StrVal)
-	}
-	lValue := constVar
-	lValue.Name = token.StrVal
-	p.pkg.Bindings.Set(lValue, &constVar)
+	p.pkg.Constants = append(p.pkg.Constants, &ast.ConstantDef{
+		Loc:  token.From,
+		Name: token.StrVal,
+		Type: constType,
+		Init: value,
+	})
 
 	return nil
 }
@@ -308,11 +291,14 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		return nil, err
 	}
 	if t.Type != T_RParen {
+		p.lexer.Unget(t)
 		for {
-			if t.Type != T_Identifier {
-				return nil, p.errUnexpected(t, T_Identifier)
+			t, err = p.needToken(T_Identifier)
+			if err != nil {
+				return nil, err
 			}
 			arg := &ast.Variable{
+				Loc:  t.From,
 				Name: t.StrVal,
 			}
 
@@ -320,34 +306,39 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == T_Type {
-				// Type.
-				arg.Type = t.TypeInfo
-				t, err = p.lexer.Get()
-				if err != nil {
-					return nil, err
-				}
+			if t.Type == T_Comma {
+				arguments = append(arguments, arg)
+				continue
 			}
+			p.lexer.Unget(t)
+
+			// Type.
+			typeInfo, err := p.parseType()
+			if err != nil {
+				return nil, err
+			}
+			arg.Type = typeInfo
+
 			// All untyped arguments get this type.
 			for i := len(arguments) - 1; i >= 0; i-- {
-				if arguments[i].Type.Type != types.Undefined {
+				if arguments[i].Type != nil {
 					break
 				}
-				arguments[i].Type = arg.Type
+				arguments[i].Type = typeInfo
 			}
 
 			// Append new argument.
 			arguments = append(arguments, arg)
 
+			t, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
 			if t.Type == T_RParen {
 				break
 			}
 			if t.Type != T_Comma {
 				return nil, p.errUnexpected(t, T_Comma)
-			}
-			t, err = p.lexer.Get()
-			if err != nil {
-				return nil, err
 			}
 		}
 	}
@@ -355,41 +346,50 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 	// Return values.
 	var returnValues []*ast.Variable
 
-	t, err = p.lexer.Get()
+	n, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
 	}
-	if t.Type == T_LParen {
+	switch n.Type {
+	case T_LParen:
 		for {
-			t, err = p.needToken(T_Type)
+			typeInfo, err := p.parseType()
 			if err != nil {
 				return nil, err
 			}
 			returnValues = append(returnValues, &ast.Variable{
-				Type: t.TypeInfo,
+				Loc:  n.From,
+				Type: typeInfo,
 			})
-			t, err = p.lexer.Get()
-			if t.Type == T_RParen {
+			n, err = p.lexer.Get()
+			if n.Type == T_RParen {
 				break
 			}
-			if t.Type != T_Comma {
-				return nil, p.errUnexpected(t, T_Comma)
+			if n.Type != T_Comma {
+				return nil, p.errUnexpected(n, T_Comma)
 			}
 		}
-	} else if t.Type == T_Type {
-		returnValues = append(returnValues, &ast.Variable{
-			Type: t.TypeInfo,
-		})
-	} else {
-		p.lexer.Unget(t)
-	}
+		_, err = p.needToken(T_LBrace)
+		if err != nil {
+			return nil, err
+		}
 
-	t, err = p.lexer.Get()
-	if err != nil {
-		return nil, err
-	}
-	if t.Type != T_LBrace {
-		return nil, p.errUnexpected(t, T_LBrace)
+	case T_LBrace:
+
+	default:
+		p.lexer.Unget(n)
+		typeInfo, err := p.parseType()
+		if err != nil {
+			return nil, err
+		}
+		returnValues = append(returnValues, &ast.Variable{
+			Loc:  n.From,
+			Type: typeInfo,
+		})
+		_, err = p.needToken(T_LBrace)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	body, err := p.parseBlock()
@@ -445,13 +445,9 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				break
 			}
 		}
-		tType, err := p.lexer.Get()
+		typeInfo, err := p.parseType()
 		if err != nil {
 			return nil, err
-		}
-		if tType.Type != T_Type {
-			p.lexer.Unget(tType)
-			return nil, p.errUnexpected(tType, T_Type)
 		}
 
 		t, err := p.lexer.Get()
@@ -469,7 +465,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		return &ast.VariableDef{
 			Loc:   tStmt.From,
 			Names: names,
-			Type:  tType.TypeInfo,
+			Type:  typeInfo,
 			Init:  expr,
 		}, nil
 
@@ -936,9 +932,6 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				return nil, p.errf(primary.Location(),
 					"non-function %s used as function", primary)
 			}
-			if len(vr.Name.Package) == 0 {
-				vr.Name.Package = p.pkg.Name
-			}
 			return &ast.Call{
 				Loc:   primary.Location(),
 				Name:  vr.Name,
@@ -965,35 +958,6 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case T_Type:
-		_, err = p.needToken(T_LParen)
-		if err != nil {
-			return nil, err
-		}
-		expr, err := p.parseExpr()
-		if err != nil {
-			return nil, err
-		}
-		n, err := p.lexer.Get()
-		if err != nil {
-			return nil, err
-		}
-		if n.Type == T_Comma {
-			n, err = p.lexer.Get()
-			if err != nil {
-				return nil, err
-			}
-		}
-		if n.Type != T_RParen {
-			return nil, p.errf(n.From, "syntax error")
-		}
-
-		return &ast.Conversion{
-			Loc:  t.From,
-			Type: t.TypeInfo,
-			Expr: expr,
-		}, nil
-
 	case T_Constant: // Literal
 		return &ast.Constant{
 			Loc:   t.From,
@@ -1051,5 +1015,86 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		p.lexer.Unget(t)
 		return nil, p.errf(t.From,
 			"unexpected token '%s' while parsing expression", t)
+	}
+}
+
+// Type      = TypeName | TypeLit | "(" Type ")" .
+// TypeName  = identifier | QualifiedIdent .
+// TypeLit   = ArrayType | StructType | SliceType .
+func (p *Parser) parseType() (*ast.TypeInfo, error) {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case T_Identifier:
+		var name string
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == T_Dot {
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type == T_Identifier {
+				name = n.StrVal
+			} else {
+				p.lexer.Unget(n)
+			}
+		} else {
+			p.lexer.Unget(n)
+		}
+		var pkg string
+		if len(name) > 0 {
+			pkg = t.StrVal
+		} else {
+			name = t.StrVal
+		}
+		return &ast.TypeInfo{
+			Type: ast.TypeName,
+			Name: ast.Identifier{
+				Package: pkg,
+				Name:    name,
+			},
+		}, nil
+
+	case T_LBracket:
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		var length ast.AST
+		if n.Type != T_RBracket {
+			p.lexer.Unget(n)
+			length, err = p.parseExpr()
+			if err != nil {
+				return nil, err
+			}
+			_, err := p.needToken(T_RBracket)
+			if err != nil {
+				return nil, err
+			}
+		}
+		elType, err := p.parseType()
+		if err != nil {
+			return nil, err
+		}
+		if length != nil {
+			return &ast.TypeInfo{
+				Type:        ast.TypeArray,
+				ElementType: elType,
+				ArrayLength: length,
+			}, nil
+		}
+		return &ast.TypeInfo{
+			Type:        ast.TypeSlice,
+			ElementType: elType,
+		}, nil
+
+	default:
+		return nil, p.errf(t.From,
+			"unexpected token '%s' while parsing type", t)
 	}
 }

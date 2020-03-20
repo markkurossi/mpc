@@ -44,7 +44,12 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if len(ret.Name) == 0 {
 			ret.Name = fmt.Sprintf("%%ret%d", idx)
 		}
-		r, err := gen.NewVar(ret.Name, ret.Type, ctx.Scope())
+		typeInfo, err := ret.Type.Resolve(NewEnv(block), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(ret.Loc,
+				"invalid return type: %s", err)
+		}
+		r, err := gen.NewVar(ret.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -77,11 +82,62 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, vars, nil
 }
 
+func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+
+	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	env := NewEnv(block)
+
+	constVal, ok, err := ast.Init.Eval(env, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !ok {
+		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+			"init value is not constant")
+	}
+	constVar, err := ssa.Constant(constVal)
+	if err != nil {
+		return nil, nil, err
+	}
+	if typeInfo.Type == types.Undefined {
+		typeInfo.Type = constVar.Type.Type
+	}
+	if typeInfo.Bits == 0 {
+		typeInfo.Bits = constVar.Type.Bits
+	}
+	if !typeInfo.CanAssignConst(constVar.Type) {
+		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+			"invalid init value %s for type %s", constVar.Type, typeInfo)
+	}
+
+	_, ok = block.Bindings.Get(ast.Name)
+	if ok {
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
+			"constant %s already defined", ast.Name)
+	}
+	lValue := constVar
+	lValue.Name = ast.Name
+	block.Bindings.Set(lValue, &constVar)
+
+	return block, nil, nil
+}
+
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
+	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
+	if err != nil {
+		return nil, nil, ctx.logger.Errorf(ast.Location(),
+			"invalid return type: %s", err)
+	}
+
 	for _, n := range ast.Names {
-		lValue, err := gen.NewVar(n, ast.Type, ctx.Scope())
+		lValue, err := gen.NewVar(n, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -306,10 +362,16 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Resolve called.
-	pkg, ok := ctx.Packages[ast.Name.Package]
-	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-			ast.Name.Package)
+	var pkg *Package
+	if len(ast.Name.Package) > 0 {
+		var ok bool
+		pkg, ok = ctx.Packages[ast.Name.Package]
+		if !ok {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"package '%s' not found", ast.Name.Package)
+		}
+	} else {
+		pkg = ctx.Package
 	}
 	called, ok := pkg.Functions[ast.Name.Name]
 	if !ok {
@@ -329,8 +391,35 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 			return bi.SSA(block, ctx, gen, args, ast.Loc)
 		}
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "function '%s' not defined",
-			ast.Name)
+
+		// Resolve name as type.
+		typeName := &TypeInfo{
+			Type: TypeName,
+			Name: ast.Name,
+		}
+		typeInfo, err := typeName.Resolve(NewEnv(block), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
+				ast.Name)
+		}
+		if len(callValues) != 1 {
+			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
+				ast.Name)
+		}
+		if len(callValues[0]) == 0 {
+			return nil, nil, ctx.logger.Errorf(ast.Exprs[0].Location(),
+				"%s used as value", ast.Exprs[0])
+		}
+		if len(callValues[0]) > 1 {
+			return nil, nil, ctx.logger.Errorf(ast.Exprs[0].Location(),
+				"multiple-value %s in single-value context", ast.Exprs[0])
+		}
+
+		// Convert value to type
+		t := gen.AnonVar(typeInfo)
+		block.AddInstr(ssa.NewMovInstr(callValues[0][0], t))
+
+		return block, []ssa.Variable{t}, nil
 	}
 
 	var args []ssa.Variable
@@ -391,7 +480,11 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	// Define arguments.
 	for idx, arg := range called.Args {
-		typeInfo := arg.Type
+		typeInfo, err := arg.Type.Resolve(NewEnv(block), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(arg.Loc,
+				"invalid argument type: %s", err)
+		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = args[idx].Type.Bits
 		}
@@ -494,7 +587,11 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	for idx, r := range ctx.Func().Return {
-		typeInfo := r.Type
+		typeInfo, err := r.Type.Resolve(NewEnv(block), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(r.Loc,
+				"invalid return type: %s", err)
+		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = result[idx].Type.Bits
 		}
@@ -504,7 +601,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		if result[idx].Type.Type == types.Undefined {
-			result[idx].Type.Type = r.Type.Type
+			result[idx].Type.Type = typeInfo.Type
 		}
 
 		if !v.TypeCompatible(result[idx]) {
@@ -836,27 +933,4 @@ func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 	gen.AddConstant(v)
 
 	return block, []ssa.Variable{v}, nil
-}
-
-func (ast *Conversion) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
-
-	block, val, err := ast.Expr.SSA(block, ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(val) == 0 {
-		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
-			"%s used as value", ast.Expr)
-	}
-	if len(val) > 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
-			"multiple-value %s in single-value context", ast.Expr)
-	}
-
-	t := gen.AnonVar(ast.Type)
-
-	block.AddInstr(ssa.NewMovInstr(val[0], t))
-
-	return block, []ssa.Variable{t}, nil
 }

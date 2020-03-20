@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"regexp"
+	"strconv"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
@@ -21,6 +23,7 @@ import (
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
+	_ AST = &ConstantDef{}
 	_ AST = &VariableDef{}
 	_ AST = &Assign{}
 	_ AST = &If{}
@@ -31,12 +34,91 @@ var (
 	_ AST = &Slice{}
 	_ AST = &VariableRef{}
 	_ AST = &Constant{}
-	_ AST = &Conversion{}
 )
 
 func indent(w io.Writer, indent int) {
 	for i := 0; i < indent; i++ {
 		fmt.Fprint(w, " ")
+	}
+}
+
+type Type int
+
+const (
+	TypeName Type = iota
+	TypeArray
+	TypeSlice
+)
+
+type TypeInfo struct {
+	Type        Type
+	Name        Identifier
+	ElementType *TypeInfo
+	ArrayLength AST
+}
+
+var reSizedType = regexp.MustCompilePOSIX(
+	`^(uint|int|float|string)([[:digit:]]*)$`)
+
+func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	types.Info, error) {
+
+	var result types.Info
+	var err error
+	if ti == nil {
+		return result, nil
+	}
+	switch ti.Type {
+	case TypeName:
+		// XXX package
+		// XXX dynamic types
+		matches := reSizedType.FindStringSubmatch(ti.Name.Name)
+		if matches != nil {
+			tt, ok := types.Types[matches[1]]
+			if ok {
+				var bits int
+				if len(matches[2]) > 0 {
+					bits, err = strconv.Atoi(matches[2])
+					if err != nil {
+						return result, err
+					}
+				} else {
+					// Undefined size.
+					bits = 0
+				}
+				return types.Info{
+					Type: tt,
+					Bits: bits,
+				}, nil
+			}
+		}
+		if ti.Name.Name == "bool" {
+			return types.Info{
+				Type: types.Bool,
+				Bits: 1,
+			}, nil
+		} else {
+			return result, fmt.Errorf("unknown type %s", ti)
+		}
+
+	default:
+		return result, fmt.Errorf("unsupported type %s", ti)
+	}
+}
+
+func (ti *TypeInfo) String() string {
+	switch ti.Type {
+	case TypeName:
+		return ti.Name.String()
+
+	case TypeArray:
+		return fmt.Sprintf("[%s]%s", ti.ArrayLength, ti.ElementType)
+
+	case TypeSlice:
+		return fmt.Sprintf("[]%s", ti.ElementType)
+
+	default:
+		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
 	}
 }
 
@@ -97,8 +179,9 @@ func (ast List) Location() utils.Point {
 }
 
 type Variable struct {
+	Loc  utils.Point
 	Name string
-	Type types.Info
+	Type *TypeInfo
 }
 
 type Func struct {
@@ -133,10 +216,32 @@ func (ast *Func) Location() utils.Point {
 	return ast.Loc
 }
 
+type ConstantDef struct {
+	Loc  utils.Point
+	Name string
+	Type *TypeInfo
+	Init AST
+}
+
+func (ast *ConstantDef) String() string {
+	result := fmt.Sprintf("const %s", ast.Name)
+	if ast.Type != nil {
+		result += fmt.Sprintf(" %s", ast.Type)
+	}
+	if ast.Init != nil {
+		result += fmt.Sprintf(" = %s", ast.Init)
+	}
+	return result
+}
+
+func (ast *ConstantDef) Location() utils.Point {
+	return ast.Loc
+}
+
 type VariableDef struct {
 	Loc   utils.Point
 	Names []string
-	Type  types.Info
+	Type  *TypeInfo
 	Init  AST
 }
 
@@ -359,19 +464,5 @@ func ConstantName(value interface{}) string {
 }
 
 func (ast *Constant) Location() utils.Point {
-	return ast.Loc
-}
-
-type Conversion struct {
-	Loc  utils.Point
-	Type types.Info
-	Expr AST
-}
-
-func (ast *Conversion) String() string {
-	return fmt.Sprintf("%s(%s)", ast.Type, ast.Expr)
-}
-
-func (ast *Conversion) Location() utils.Point {
 	return ast.Loc
 }

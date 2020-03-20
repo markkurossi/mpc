@@ -16,14 +16,16 @@ import (
 type Codegen struct {
 	logger   *utils.Logger
 	Verbose  bool
+	Package  *Package
 	Packages map[string]*Package
 	Stack    []Compilation
 }
 
-func NewCodegen(logger *utils.Logger, packages map[string]*Package,
-	verbose bool) *Codegen {
+func NewCodegen(logger *utils.Logger, pkg *Package,
+	packages map[string]*Package, verbose bool) *Codegen {
 	return &Codegen{
 		logger:   logger,
+		Package:  pkg,
 		Packages: packages,
 		Verbose:  verbose,
 	}

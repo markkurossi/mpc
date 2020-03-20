@@ -25,6 +25,11 @@ func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return nil, false, nil
 }
 
+func (ast *ConstantDef) Eval(env *Env, ctx *Codegen,
+	gen *ssa.Generator) (interface{}, bool, error) {
+	return nil, false, nil
+}
+
 func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 	return nil, false, nil
@@ -316,7 +321,8 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	var ok bool
 
 	if len(ast.Name.Package) > 0 {
-		pkg, ok := ctx.Packages[ast.Name.Package]
+		var pkg *Package
+		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
 			return nil, false, ctx.logger.Errorf(ast.Loc,
 				"package '%s' not found", ast.Name.Package)
@@ -327,7 +333,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	}
 	if !ok {
 		return nil, false, ctx.logger.Errorf(ast.Loc,
-			"undefined variable '%s'", ast.Name.String())
+			"undefined variable '%s' (%s)", ast.Name.String(), b)
 	}
 
 	val, ok := b.Bound.(*ssa.Variable)
@@ -341,16 +347,4 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 func (ast *Constant) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
-}
-
-func (ast *Conversion) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, bool, error) {
-
-	val, ok, err := ast.Expr.Eval(env, ctx, gen)
-	if err != nil || !ok {
-		return nil, ok, err
-	}
-
-	return nil, false, ctx.logger.Errorf(ast.Location(),
-		"Conversion.Eval '%s(%s)' not implemented yet", ast.Type, val)
 }

@@ -2,18 +2,16 @@
 
 package main
 
-func main(a, b bool) bool {
-	if a && b {
-		return true
-	} else {
-		return false
-	}
-}
+import (
+	"math"
+)
 
-func minMax(a, b int) (int, int) {
-	if a < b {
-		return a, b
+const Truth uint32 = math.MaxUint32
+
+func main(a, b bool) uint16 {
+	if a && b {
+		return uint16(Truth)
 	} else {
-		return b, a
+		return 0
 	}
 }

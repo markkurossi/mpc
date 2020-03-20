@@ -18,11 +18,13 @@ import (
 )
 
 type Package struct {
-	Name       string
-	Imports    map[string]string
-	Bindings   ssa.Bindings
-	Functions  map[string]*Func
-	References map[string]string
+	Name        string
+	Initialized bool
+	Imports     map[string]string
+	Bindings    ssa.Bindings
+	Constants   []*ConstantDef
+	Functions   map[string]*Func
+	References  map[string]string
 }
 
 func NewPackage(name string) *Package {
@@ -34,31 +36,42 @@ func NewPackage(name string) *Package {
 	}
 }
 
-func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
+func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	params *utils.Params) (*circuit.Circuit, Annotations, error) {
 
-	main, ok := unit.Functions["main"]
+	main, ok := pkg.Functions["main"]
 	if !ok {
 		return nil, nil, logger.Errorf(utils.Point{},
 			"no main function defined")
 	}
 
 	gen := ssa.NewGenerator(params.Verbose)
-	ctx := NewCodegen(logger, packages, params.Verbose)
+	ctx := NewCodegen(logger, pkg, packages, params.Verbose)
+
+	// Init package.
+	err := pkg.Init(packages, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
-	ctx.Start().Bindings = unit.Bindings.Clone()
+	ctx.Start().Bindings = pkg.Bindings.Clone()
 
 	// Arguments.
 	var args circuit.IO
 	for _, arg := range main.Args {
-		if arg.Type.Bits == 0 {
+		typeInfo, err := arg.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(arg.Loc,
+				"invalid argument type: %s", err)
+		}
+		if typeInfo.Bits == 0 {
 			return nil, nil,
 				fmt.Errorf("argument %s of %s has unspecified type",
 					arg.Name, main)
 		}
 		// Define argument in block.
-		a, err := gen.NewVar(arg.Name, arg.Type, ctx.Scope())
+		a, err := gen.NewVar(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -115,12 +128,16 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		if idx >= len(returnVars) {
 			return nil, nil, fmt.Errorf("too few values for %s", main)
 		}
-		typeInfo := rt.Type
+		typeInfo, err := rt.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
+		if err != nil {
+			return nil, nil, ctx.logger.Errorf(rt.Loc,
+				"invalid return type: %s", err)
+		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = returnVars[idx].Type.Bits
 		}
 		if returnVars[idx].Type.Type == types.Undefined {
-			returnVars[idx].Type.Type = rt.Type.Type
+			returnVars[idx].Type.Type = typeInfo.Type
 		}
 		if !ssa.LValueFor(typeInfo, returnVars[idx]) {
 			return nil, nil,
@@ -169,4 +186,40 @@ func (unit *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	}
 
 	return circ, main.Annotations, nil
+}
+
+func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
+	gen *ssa.Generator) error {
+
+	if pkg.Initialized {
+		return nil
+	}
+	pkg.Initialized = true
+	fmt.Printf("Initializing %s\n", pkg.Name)
+
+	// Imported packages.
+	for alias, name := range pkg.Imports {
+		p, ok := packages[alias]
+		if !ok {
+			return fmt.Errorf("unknown package '%s'", name)
+		}
+		err := p.Init(packages, ctx, gen)
+		if err != nil {
+			return err
+		}
+	}
+
+	block := gen.Block()
+	block.Bindings = pkg.Bindings.Clone()
+
+	for _, def := range pkg.Constants {
+		var err error
+		block, _, err = def.SSA(block, ctx, gen)
+		if err != nil {
+			return err
+		}
+	}
+	pkg.Bindings = block.Bindings
+
+	return nil
 }

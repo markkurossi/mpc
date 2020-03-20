@@ -12,7 +12,6 @@ import (
 	"io"
 	"math"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode"
@@ -37,7 +36,6 @@ const (
 	T_SymVar
 	T_SymConst
 	T_SymFor
-	T_Type
 	T_Assign
 	T_DefAssign
 	T_Mult
@@ -91,7 +89,6 @@ var tokenTypes = map[TokenType]string{
 	T_SymVar:     "var",
 	T_SymConst:   "const",
 	T_SymFor:     "for",
-	T_Type:       "type",
 	T_Assign:     "=",
 	T_DefAssign:  ":=",
 	T_Mult:       "*",
@@ -181,9 +178,6 @@ var symbols = map[string]TokenType{
 	"return":  T_SymReturn,
 	"var":     T_SymVar,
 }
-
-var reSizedType = regexp.MustCompilePOSIX(
-	`^(uint|int|float|string)([[:digit:]]*)$`)
 
 type Token struct {
 	Type     TokenType
@@ -566,37 +560,7 @@ func (l *Lexer) Get() (*Token, error) {
 				if ok {
 					return l.Token(tt), nil
 				}
-				matches := reSizedType.FindStringSubmatch(symbol)
-				if matches != nil {
-					tt, ok := types.Types[matches[1]]
-					if ok {
-						token := l.Token(T_Type)
-						var bits int
-						if len(matches[2]) > 0 {
-							bits, err = strconv.Atoi(matches[2])
-							if err != nil {
-								return nil, err
-							}
-						} else {
-							// Undefined size.
-							bits = 0
-						}
-						token.TypeInfo = types.Info{
-							Type: tt,
-							Bits: bits,
-						}
-						token.StrVal = symbol
-						return token, nil
-					}
-				} else if symbol == "bool" {
-					token := l.Token(T_Type)
-					token.TypeInfo = types.Info{
-						Type: types.Bool,
-						Bits: 1,
-					}
-					token.StrVal = symbol
-					return token, nil
-				} else if symbol == "true" || symbol == "false" {
+				if symbol == "true" || symbol == "false" {
 					token := l.Token(T_Constant)
 					token.ConstVal = symbol == "true"
 					return token, nil
