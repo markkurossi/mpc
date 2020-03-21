@@ -2,12 +2,16 @@
 
 package main
 
-func main(a, b int32) int {
-	return mult(a, b)
+func main(a, b int8) int {
+	return a * b
 }
 
-func mult(a, b int) int {
-	mType := make(int, size(a)*2)
-
-	return mType(a) * mType(b)
-}
+// 8	301		301
+// 16	1365	770
+// 32	5797	1972
+// 64	23877	5049
+// 128	96901	12927
+// 256	390405	33095
+// 512	1567237	84723
+// 1024	6280197	216893
+// 2048	25143301	555246

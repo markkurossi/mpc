@@ -111,3 +111,5 @@ func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 
 	return nil
 }
+
+// https://en.wikipedia.org/wiki/Karatsuba_algorithm

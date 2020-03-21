@@ -344,6 +344,32 @@ New connection from 127.0.0.1:59535
 ┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Optimized full-adder:
+
+```
+Circuit: #gates=7366376 (XOR=5210811 AND=2101407 OR=0 INV=54158), #wires=7366537 n1=129, n2=32, n3=64
+ - N1: msg{1,0}u32:uint32, gD{1,0}u32:uint32, pubN{1,0}u32:uint32, pubE{1,0}u32:uint32, %0:uint1
+ + N2: eD{1,0}u32:uint32
+ - N3: %ret0{1,9}u32:uint32, %ret1{1,1}u32:uint32
+ - In: [9]
+Listening for connections at :8080
+New connection from 127.0.0.1:59955
+ - Waiting for circuit info...
+ - Receiving garbled circuit...
+ - Querying our inputs...
+ - Evaluating circuit...
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃   7.9561241s ┃ 76.09% ┃       ┃
+┃ Recv   ┃ 1.660386022s ┃ 15.88% ┃ 199MB ┃
+┃ Inputs ┃ 232.583145ms ┃  2.22% ┃  41kB ┃
+┃ Eval   ┃ 606.479521ms ┃  5.80% ┃       ┃
+┃ Result ┃    304.202µs ┃  0.00% ┃   1kB ┃
+┃ Total  ┃ 10.45587699s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 # Develoment ideas
 
 ## Mathematical operations
