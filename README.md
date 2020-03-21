@@ -238,7 +238,6 @@ form assembly:
    - [ ] identity gate
    - [ ] Row reduction
    - [ ] Half AND
-   - [ ] 3-input gates for full-adder carry
    - [ ] Oblivious transfer extensions
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
