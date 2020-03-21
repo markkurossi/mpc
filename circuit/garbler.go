@@ -93,9 +93,9 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			var n []byte
 
 			if input != nil && input.Bit(i) == 1 {
-				n = wire.Label1.Bytes()
+				n = wire.L1.Bytes()
 			} else {
-				n = wire.Label0.Bytes()
+				n = wire.L0.Bytes()
 			}
 			n1 = append(n1, n)
 		}
@@ -208,9 +208,9 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 				wire := garbled.Wires[circ.NumWires-circ.N3.Size()+i]
 
 				var bit uint
-				if bytes.Compare(label, wire.Label0.Bytes()) == 0 {
+				if bytes.Compare(label, wire.L0.Bytes()) == 0 {
 					bit = 0
-				} else if bytes.Compare(label, wire.Label1.Bytes()) == 0 {
+				} else if bytes.Compare(label, wire.L1.Bytes()) == 0 {
 					bit = 1
 				} else {
 					return nil, fmt.Errorf("Unknown label %x for result %d",

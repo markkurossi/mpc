@@ -20,8 +20,8 @@ func benchmark(b *testing.B, keySize int) {
 
 	sender, err := NewSender(keySize, map[int]Wire{
 		0: Wire{
-			Label0: l0,
-			Label1: l1,
+			L0: l0,
+			L1: l1,
 		},
 	})
 	if err != nil {

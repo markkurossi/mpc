@@ -240,12 +240,6 @@ form assembly:
    - [ ] Half AND
    - [ ] 3-input gates for full-adder carry
    - [ ] Oblivious transfer extensions
- - Packages:
-   - [X] MODP circuit
-     - [X] variable definition with init value
-     - [X] binary modulo operation
-     - [X] peephole optimizer for creating bit test instructions
-     - [X] computed types: `multType := make(uint, size(a)*2)`
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
@@ -327,56 +321,27 @@ Wires in slice:
 ## 32-bit RSA encryption (64-bit modp)
 
 ```
-Circuit: #gates=14707672 (XOR=6292351 AND=6267581 OR=2064702 INV=83038), #wires=14707994 n1=258, n2=64, n3=64
- + N1: mode{1,0}b1:bool1, msg{1,0}u64:uint64, gD{1,0}u64:uint64, pubN{1,0}u64:uint64, pubE{1,0}u64:uint64, %0:uint1
- - N2: eD{1,0}u64:uint64
- - N3: %_{0,1025}u64:uint64
- - In: [1 0x6d7472 0x321af130 0xd60b2b09 0x10001 0]
- - Garbling...
- - Sending garbled circuit...
- - Processing messages...
-┏━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
-┃ Op      ┃          Time ┃      % ┃  Xfer ┃
-┣━━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
-┃ Garble  ┃ 21.301538337s ┃ 71.07% ┃       ┃
-┃ Xfer    ┃  6.031901951s ┃ 20.13% ┃ 728MB ┃
-┃ OT Init ┃  270.099382ms ┃  0.90% ┃  264B ┃
-┃ Eval    ┃  2.367941121s ┃  7.90% ┃ 728MB ┃
-┃ OT      ┃  495.455402ms ┃ 20.92% ┃       ┃
-┃ Total   ┃ 29.971480791s ┃        ┃       ┃
-┗━━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
-Result[0]: 1643769736
-Result[0]: 0b1100001111110011110111110001000
-Result[0]: 0x61f9ef88
-```
-
-## 64-bit RSA encryption (128-bit modp)
-
-```
-Circuit: #gates=58821912 (XOR=25166591 AND=25117309 OR=8323390 INV=214622), #wires=58822233 n1=257, n2=64, n3=128
- + N1: msg{1,0}u64:uint64, gD{1,0}u64:uint64, pubN{1,0}u64:uint64, pubE{1,0}u64:uint64, %0:uint1
- - N2: eD{1,0}u64:uint64
- - N3: %ret0{1,9}u64:uint64, %ret1{1,1}u64:uint64
- - In: [0x6d7472 0x321af130 0xd60b2b09 0x10001 0]
- - Garbling...
- - Sending garbled circuit...
- - Processing messages...
-┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
-┃ Op      ┃            Time ┃      % ┃ Xfer ┃
-┣━━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━┫
-┃ Garble  ┃ 3m38.029198671s ┃ 48.48% ┃      ┃
-┃ Xfer    ┃ 2m12.133617292s ┃ 29.38% ┃  2GB ┃
-┃ OT Init ┃    170.307866ms ┃  0.04% ┃ 264B ┃
-┃ Eval    ┃ 1m39.353739395s ┃ 22.09% ┃  2GB ┃
-┃ OT      ┃    1.540024033s ┃  1.55% ┃      ┃
-┃ Total   ┃ 7m29.686863224s ┃        ┃      ┃
-┗━━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━┛
-Result[0]: 1643769736
-Result[0]: 0b1100001111110011110111110001000
-Result[0]: 0x61f9ef88
-Result[1]: 7173234
-Result[1]: 0b11011010111010001110010
-Result[1]: 0x6d7472
+Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158), #wires=7366537 n1=129, n2=32, n3=64
+ - N1: msg{1,0}u32:uint32, gD{1,0}u32:uint32, pubN{1,0}u32:uint32, pubE{1,0}u32:uint32, %0:uint1
+ + N2: eD{1,0}u32:uint32
+ - N3: %ret0{1,9}u32:uint32, %ret1{1,1}u32:uint32
+ - In: [9]
+Listening for connections at :8080
+New connection from 127.0.0.1:57695
+ - Waiting for circuit info...
+ - Receiving garbled circuit...
+ - Querying our inputs...
+ - Evaluating circuit...
+┏━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃          Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃ 10.316916547s ┃ 72.79% ┃       ┃
+┃ Recv   ┃  2.727679162s ┃ 19.25% ┃ 364MB ┃
+┃ Inputs ┃  227.131261ms ┃  1.60% ┃  41kB ┃
+┃ Eval   ┃  901.089245ms ┃  6.36% ┃       ┃
+┃ Result ┃     212.022µs ┃  0.00% ┃   1kB ┃
+┃ Total  ┃ 14.173028237s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
 # Develoment ideas

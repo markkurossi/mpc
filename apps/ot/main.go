@@ -24,8 +24,8 @@ func main() {
 
 	sender, err := ot.NewSender(2048, map[int]ot.Wire{
 		0: ot.Wire{
-			Label0: m0,
-			Label1: m1,
+			L0: m0,
+			L1: m1,
 		},
 	})
 	if err != nil {

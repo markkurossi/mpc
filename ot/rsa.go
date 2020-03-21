@@ -115,8 +115,8 @@ func (l *Label) SetBytes(data []byte) {
 }
 
 type Wire struct {
-	Label0 *Label
-	Label1 *Label
+	L0 *Label
+	L1 *Label
 }
 
 type Inputs map[int]Wire
@@ -125,7 +125,7 @@ func (i Inputs) String() string {
 	var result string
 
 	for k, v := range i {
-		str := fmt.Sprintf("%d={%x,%x}", k, v.Label0, v.Label1)
+		str := fmt.Sprintf("%d={%x,%x}", k, v.L0, v.L1)
 		if len(result) > 0 {
 			result += ", "
 		}
@@ -209,14 +209,14 @@ func (s *SenderXfer) ReceiveV(data []byte) {
 
 func (s *SenderXfer) Messages() ([]byte, []byte, error) {
 	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.Label0.Bytes())
+		s.input.L0.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
 	m0p := mpint.Add(mpint.FromBytes(m0), s.k0)
 
 	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.Label1.Bytes())
+		s.input.L1.Bytes())
 	if err != nil {
 		return nil, nil, err
 	}
