@@ -53,31 +53,24 @@ func entry(enc Enc, a, b, c *ot.Label, tweak uint32) TableEntry {
 }
 
 func idx(l0, l1 *ot.Label) int {
-	if l0 == nil {
-		if l1 == nil {
-			return 0
-		}
-		if l1.S() {
-			return 1
-		} else {
-			return 0
-		}
-	} else if l1 == nil {
+	if l1 == nil {
 		if l0.S() {
 			return 1
 		} else {
 			return 0
 		}
-	} else {
-		var ret int
-		if l0.S() {
-			ret |= 0x2
-		}
-		if l1.S() {
-			ret |= 0x1
-		}
-		return ret
 	}
+
+	var ret int
+
+	if l0.S() {
+		ret |= 0x2
+	}
+	if l1.S() {
+		ret |= 0x1
+	}
+
+	return ret
 }
 
 func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {

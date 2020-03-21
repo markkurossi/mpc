@@ -327,7 +327,7 @@ Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158), #wires=7
  - N3: %ret0{1,9}u32:uint32, %ret1{1,1}u32:uint32
  - In: [9]
 Listening for connections at :8080
-New connection from 127.0.0.1:57695
+New connection from 127.0.0.1:59535
  - Waiting for circuit info...
  - Receiving garbled circuit...
  - Querying our inputs...
@@ -335,12 +335,12 @@ New connection from 127.0.0.1:57695
 ┏━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃          Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
-┃ Wait   ┃ 10.316916547s ┃ 72.79% ┃       ┃
-┃ Recv   ┃  2.727679162s ┃ 19.25% ┃ 364MB ┃
-┃ Inputs ┃  227.131261ms ┃  1.60% ┃  41kB ┃
-┃ Eval   ┃  901.089245ms ┃  6.36% ┃       ┃
-┃ Result ┃     212.022µs ┃  0.00% ┃   1kB ┃
-┃ Total  ┃ 14.173028237s ┃        ┃       ┃
+┃ Wait   ┃  10.72622192s ┃ 75.33% ┃       ┃
+┃ Recv   ┃  2.501608027s ┃ 17.57% ┃ 364MB ┃
+┃ Inputs ┃  232.257386ms ┃  1.63% ┃  41kB ┃
+┃ Eval   ┃  778.170361ms ┃  5.47% ┃       ┃
+┃ Result ┃     158.838µs ┃  0.00% ┃   1kB ┃
+┃ Total  ┃ 14.238416532s ┃        ┃       ┃
 ┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 

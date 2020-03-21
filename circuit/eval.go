@@ -37,7 +37,6 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 
 		case INV:
 			a = wires[gate.Input0]
-			b = nil
 
 		default:
 			return fmt.Errorf("invalid operation %s", gate.Op)
