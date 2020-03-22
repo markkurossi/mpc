@@ -234,6 +234,7 @@ form assembly:
    - [ ] unary expressions
      - [ ] logical not
    - [ ] BitShift
+   - [ ] Binary serialization format for circuits
  - Circuit & garbling:
    - [ ] identity gate
    - [ ] Row reduction
