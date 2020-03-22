@@ -35,7 +35,7 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	if len(x) == 1 {
 		compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], z[0]))
 		if len(z) > 1 {
-			compiler.Zero(z[1])
+			z[1] = compiler.ZeroWire()
 		}
 		return nil
 	}
@@ -117,7 +117,7 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		c = cout
 	}
 	for i := j + len(x) + 1; i < len(z); i++ {
-		compiler.Zero(z[i])
+		z[1] = compiler.ZeroWire()
 	}
 
 	return nil

@@ -95,16 +95,6 @@ func (c *Compiler) OneWire() *Wire {
 	return c.oneWire
 }
 
-func (c *Compiler) Zero(o *Wire) {
-	w := NewWire()
-	c.AddGate(NewINV(c.ZeroWire(), w))
-	c.AddGate(NewINV(w, o))
-}
-
-func (c *Compiler) One(o *Wire) {
-	c.AddGate(NewINV(c.ZeroWire(), o))
-}
-
 func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 	if len(x) == len(y) {
 		return x, y

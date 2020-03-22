@@ -21,8 +21,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 
 	// Init for the first row.
 	for i := 0; i < len(b); i++ {
-		rOut[i] = NewWire()
-		compiler.Zero(rOut[i])
+		rOut[i] = compiler.ZeroWire()
 	}
 
 	// Generate matrix.
@@ -32,15 +31,13 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 		copy(rIn[1:], rOut)
 
 		// Adders from b{0} to b{n-1}, 0
-		cIn := NewWire()
-		compiler.One(cIn)
+		cIn := compiler.OneWire()
 		for x := 0; x < len(b)+1; x++ {
 			var bw *Wire
 			if x < len(b) {
 				bw = bINV[x]
 			} else {
-				bw = NewWire()
-				compiler.One(bw) // INV(0)
+				bw = compiler.OneWire() // INV(0)
 			}
 			co := NewWire()
 			ro := NewWire()
@@ -76,14 +73,12 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 
 	// Set extra quotient bits to zero.
 	for y := len(a); y < len(q); y++ {
-		q[y] = NewWire()
-		compiler.Zero(q[y])
+		q[y] = compiler.ZeroWire()
 	}
 
 	// Set extra remainder bits to zero.
 	for x := len(b); x < len(r); x++ {
-		r[x] = NewWire()
-		compiler.Zero(r[x])
+		r[x] = compiler.ZeroWire()
 	}
 
 	return nil

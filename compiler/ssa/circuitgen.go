@@ -33,13 +33,13 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 		var wires []*circuits.Wire
 		var bitString string
 		for bit := 0; bit < c.Type.MinBits; bit++ {
-			w := circuits.NewWire()
+			var w *circuits.Wire
 			if c.Bit(bit) {
 				bitString = "1" + bitString
-				cc.One(w)
+				w = cc.OneWire()
 			} else {
 				bitString = "0" + bitString
-				cc.Zero(w)
+				w = cc.ZeroWire()
 			}
 			wires = append(wires, w)
 		}
@@ -162,8 +162,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				if bit < len(wires[0]) {
 					w = wires[0][bit]
 				} else {
-					w = circuits.NewWire()
-					cc.Zero(w)
+					w = cc.ZeroWire()
 				}
 				o[bit-from] = w
 			}
@@ -337,9 +336,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				if bit < len(wires[0]) {
 					w = wires[0][bit]
 				} else {
-					w = circuits.NewWire()
-					// XXX Types, sign bit expansion on signed values.
-					cc.Zero(w)
+					w = cc.ZeroWire()
 				}
 				o[bit] = w
 			}
@@ -386,8 +383,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				circWires = append(circWires, w...)
 				for i := len(w); i < inputs[idx].Size; i++ {
 					// Zeroes for unset input wires.
-					zw := circuits.NewWire()
-					cc.Zero(zw)
+					zw := cc.ZeroWire()
 					circWires = append(circWires, zw)
 				}
 			}

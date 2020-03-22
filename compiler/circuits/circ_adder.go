@@ -88,7 +88,7 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 
 	// Set all leftover bits to zero.
 	for i := len(x) + 1; i < len(z); i++ {
-		compiler.Zero(z[i])
+		z[i] = compiler.ZeroWire()
 	}
 
 	return nil

@@ -156,11 +156,10 @@ func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 			len(x), len(r))
 	}
 	if index < len(x) {
-		w := NewWire()
-		compiler.Zero(w)
+		w := compiler.ZeroWire()
 		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
 	} else {
-		compiler.Zero(r[0])
+		r[0] = compiler.ZeroWire()
 	}
 	return nil
 }
@@ -171,11 +170,10 @@ func NewBitClrTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 			len(x), len(r))
 	}
 	if index < len(x) {
-		w := NewWire()
-		compiler.One(w)
+		w := compiler.OneWire()
 		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
 	} else {
-		compiler.One(r[0])
+		r[0] = compiler.OneWire()
 	}
 	return nil
 }

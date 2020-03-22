@@ -57,7 +57,7 @@ func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 		cin = cout
 	}
 	for i := len(x) + 1; i < len(z); i++ {
-		compiler.Zero(z[i])
+		z[i] = compiler.ZeroWire()
 	}
 	return nil
 }
