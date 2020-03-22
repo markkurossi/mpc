@@ -32,7 +32,7 @@ func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
 
 func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(z) < len(x) || len(z) > len(x)+1 {
+	if len(z) < len(x) {
 		return fmt.Errorf("Invalid subtractor arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
@@ -45,7 +45,7 @@ func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 				// N-N=N, overflow, drop carry bit.
 				cout = nil
 			} else {
-				cout = z[i]
+				cout = z[i+1]
 			}
 		} else {
 			cout = NewWire()
@@ -55,6 +55,9 @@ func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 		NewFullSubtractor(compiler, y[i], x[i], cin, z[i], cout)
 
 		cin = cout
+	}
+	for i := len(x) + 1; i < len(z); i++ {
+		compiler.Zero(z[i])
 	}
 	return nil
 }

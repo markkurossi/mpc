@@ -369,6 +369,32 @@ New connection from 127.0.0.1:59955
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Karatsuba multiplication algorithm
+
+```
+Circuit: #gates=6822632 (XOR=4828475 XNOR=58368 AND=1874719 OR=0 INV=61070), #wires=6822793 n1=129, n2=32, n3=64
+ - N1: msg{1,0}u32:uint32, gD{1,0}u32:uint32, pubN{1,0}u32:uint32, pubE{1,0}u32:uint32, %0:uint1
+ + N2: eD{1,0}u32:uint32
+ - N3: %ret0{1,9}u32:uint32, %ret1{1,1}u32:uint32
+ - In: [9]
+Listening for connections at :8080
+New connection from 127.0.0.1:51850
+ - Waiting for circuit info...
+ - Receiving garbled circuit...
+ - Querying our inputs...
+ - Evaluating circuit...
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃ 6.672590283s ┃ 75.99% ┃       ┃
+┃ Recv   ┃ 1.320621876s ┃ 15.04% ┃ 179MB ┃
+┃ Inputs ┃ 231.659961ms ┃  2.64% ┃  41kB ┃
+┃ Eval   ┃ 555.192105ms ┃  6.32% ┃       ┃
+┃ Result ┃    298.855µs ┃  0.00% ┃   1kB ┃
+┃ Total  ┃  8.78036308s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 # Develoment ideas
 
 ## Mathematical operations

@@ -2,7 +2,7 @@
 
 package main
 
-func main(a, b uint2048) uint {
+func main(a, b uint1024) uint {
 	return a * b
 }
 

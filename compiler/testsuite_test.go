@@ -54,6 +54,7 @@ loop:
 		}
 
 		var cpuprof bool
+		base := 10
 
 		for _, ann := range annotations {
 			if strings.HasPrefix(ann, "@heavy") && testing.Short() {
@@ -62,6 +63,10 @@ loop:
 			}
 			if strings.HasPrefix(ann, "@pprof") {
 				cpuprof = true
+				continue
+			}
+			if strings.HasPrefix(ann, "@Hex") {
+				base = 16
 				continue
 			}
 			if !strings.HasPrefix(ann, "@Test ") {
@@ -141,7 +146,7 @@ loop:
 			for idx, result := range results {
 				if result.Cmp(outputs[idx]) != 0 {
 					t.Errorf("%s: result %d mismatch: got %v, expected %v",
-						file, idx, result, outputs[idx])
+						file, idx, result.Text(base), outputs[idx].Text(base))
 				}
 			}
 

@@ -7,7 +7,9 @@
 package compiler
 
 import (
+	"math"
 	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -33,6 +35,20 @@ var iteratorTests = []IteratorTest{
 package main
 func main(a, b uint3) uint3 {
     return a + b
+}
+`,
+	},
+	IteratorTest{
+		Name:    "Sub",
+		Operand: "-",
+		Bits:    2,
+		Eval: func(a int64, b int64) int64 {
+			return a - b
+		},
+		Code: `
+package main
+func main(a, b uint64) uint {
+    return a - b
 }
 `,
 	},
@@ -82,7 +98,7 @@ func main(a, b uint6) uint6 {
 }
 
 func TestIterator(t *testing.T) {
-	for _, test := range iteratorTests {
+	for idx, test := range iteratorTests {
 		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
@@ -94,11 +110,16 @@ func TestIterator(t *testing.T) {
 
 		for g = 0; g < limit; g++ {
 			for e = 0; e < limit; e++ {
+				n1 := []*big.Int{big.NewInt(g)}
+				n2 := []*big.Int{big.NewInt(e)}
 
-				results, err := circ.Compute([]*big.Int{big.NewInt(g)},
-					[]*big.Int{big.NewInt(e)})
+				if circ.N1.NeedZero() {
+					n1 = append(n1, big.NewInt(0))
+				}
+
+				results, err := circ.Compute(n1, n2)
 				if err != nil {
-					t.Fatalf("compute failed: %s\n", err)
+					t.Fatalf("%d: compute failed: %s\n", idx, err)
 				}
 
 				expected := test.Eval(g, e)
@@ -250,6 +271,48 @@ func TestFixed(t *testing.T) {
 		if results[0].Int64() != test.N3 {
 			t.Errorf("test %d failed: got %d (%x), expected %d (%x)", idx,
 				results[0].Int64(), results[0].Int64(), test.N3, test.N3)
+		}
+	}
+}
+
+func TestSubtraction(t *testing.T) {
+	circ, _, err := NewCompiler(&utils.Params{}).Compile(`package main
+func main(a, b uint64) uint64 {
+    return a - b
+}
+`)
+	if err != nil {
+		t.Fatalf("Failed to compile test: %s", err)
+	}
+
+	r := rand.New(rand.NewSource(99))
+
+	for i := 0; i < 1000; i++ {
+		g := new(big.Int).Rand(r, big.NewInt(math.MaxInt64))
+		n1 := []*big.Int{g}
+		if circ.N1.NeedZero() {
+			n1 = append(n1, big.NewInt(0))
+		}
+
+		var e *big.Int
+		for {
+			e = new(big.Int).Rand(r, big.NewInt(math.MaxInt64))
+			if e.Cmp(g) < 0 {
+				break
+			}
+		}
+		n2 := []*big.Int{e}
+
+		results, err := circ.Compute(n1, n2)
+		if err != nil {
+			t.Fatalf("compute failed: %s\n", err)
+		}
+
+		expected := new(big.Int).Sub(g, e)
+
+		if expected.Cmp(results[0]) != 0 {
+			t.Errorf("failed: %d - %d = %d, expected %d\n",
+				g, e, results[0], expected)
 		}
 	}
 }
