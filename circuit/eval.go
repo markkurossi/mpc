@@ -31,7 +31,7 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 		var b *ot.Label
 
 		switch gate.Op {
-		case XOR, AND, OR:
+		case XOR, XNOR, AND, OR:
 			a = wires[gate.Input0]
 			b = wires[gate.Input1]
 
@@ -44,11 +44,13 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 
 		var output []byte
 
-		if gate.Op == XOR {
+		switch gate.Op {
+		case XOR, XNOR:
 			result := a.Copy()
 			result.Xor(b)
 			output = result.Bytes()
-		} else {
+
+		default:
 			row := garbled[i]
 			index := idx(a, b)
 			if index >= len(row) {

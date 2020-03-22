@@ -208,7 +208,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 	if ok {
 		return nil, fmt.Errorf("gate output already set %d", g.Output)
 	}
-	if g.Op == XOR {
+	switch g.Op {
+	case XOR:
 		l0 := in[0].L0.Copy()
 		l0.Xor(in[1].L0)
 
@@ -218,7 +219,19 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 			L0: l0,
 			L1: l1,
 		}
-	} else {
+
+	case XNOR:
+		l0 := in[0].L0.Copy()
+		l0.Xor(in[1].L0)
+
+		l1 := in[0].L0.Copy()
+		l1.Xor(in[1].L1)
+		w = ot.Wire{
+			L0: l1,
+			L1: l0,
+		}
+
+	default:
 		w, err = makeLabels(r)
 		if err != nil {
 			return nil, err
@@ -230,7 +243,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 	var table []TableEntry
 
 	switch g.Op {
-	case XOR:
+	case XOR, XNOR:
 		// Free XOR.
 
 	case AND:

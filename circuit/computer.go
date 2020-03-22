@@ -46,6 +46,13 @@ func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
 		case XOR:
 			result = wires[gate.Input0] ^ wires[gate.Input1]
 
+		case XNOR:
+			if wires[gate.Input0]^wires[gate.Input1] == 0 {
+				result = 1
+			} else {
+				result = 0
+			}
+
 		case AND:
 			result = wires[gate.Input0] & wires[gate.Input1]
 

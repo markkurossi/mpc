@@ -23,6 +23,7 @@ type Operation byte
 
 const (
 	XOR Operation = iota
+	XNOR
 	AND
 	OR
 	INV
@@ -34,6 +35,8 @@ func (op Operation) String() string {
 	switch op {
 	case XOR:
 		return "XOR"
+	case XNOR:
+		return "XNOR"
 	case AND:
 		return "AND"
 	case OR:
@@ -192,7 +195,7 @@ func (g Gate) String() string {
 
 func (g Gate) Inputs() []Wire {
 	switch g.Op {
-	case XOR, AND, OR:
+	case XOR, XNOR, AND, OR:
 		return []Wire{g.Input0, g.Input1}
 	case INV:
 		return []Wire{g.Input0}
@@ -366,6 +369,9 @@ func Parse(in io.Reader) (*Circuit, error) {
 		switch line[len(line)-1] {
 		case "XOR":
 			op = XOR
+			numInputs = 2
+		case "XNOR":
+			op = XNOR
 			numInputs = 2
 		case "AND":
 			op = AND
