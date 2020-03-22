@@ -2,8 +2,8 @@
 
 package main
 
-func main(a, b uint32) uint {
-	return b - a
+func main(a, b uint2048) uint {
+	return a * b
 }
 
 //func main(a, b int8) int {
