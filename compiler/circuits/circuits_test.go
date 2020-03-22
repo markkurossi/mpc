@@ -78,41 +78,6 @@ func TestFullSubtractor(t *testing.T) {
 	}
 }
 
-func TestSub4(t *testing.T) {
-	bits := 4
-
-	// 2xbits inputs, bits+1 outputs
-	c, err := NewCompiler(NewIO(bits), NewIO(bits), NewIO(bits+1))
-	if err != nil {
-		t.Fatalf("NewCompiler: %s", err)
-	}
-
-	outputs := makeWires(bits + 1)
-
-	bin := NewWire()
-	NewHalfSubtractor(c, c.Inputs[0], c.Inputs[bits], outputs[0], bin)
-
-	for i := 1; i < bits; i++ {
-		var bout *Wire
-		if i+1 >= bits {
-			bout = outputs[bits]
-		} else {
-			bout = NewWire()
-		}
-
-		NewFullSubtractor(c, c.Inputs[i], c.Inputs[bits+i], bin, outputs[i],
-			bout)
-
-		bin = bout
-	}
-
-	result := c.Compile()
-	if verbose {
-		fmt.Printf("Result: %s\n", result)
-		result.Marshal(os.Stdout)
-	}
-}
-
 func TestMultiply1(t *testing.T) {
 	c, err := NewCompiler(NewIO(1), NewIO(1), NewIO(2))
 	if err != nil {

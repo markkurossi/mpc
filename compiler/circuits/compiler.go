@@ -29,6 +29,7 @@ type Compiler struct {
 	compiled   []circuit.Gate
 	wires      map[string][]*Wire
 	zeroWire   *Wire
+	oneWire    *Wire
 }
 
 func NewIO(size int) circuit.IO {
@@ -86,6 +87,14 @@ func (c *Compiler) ZeroWire() *Wire {
 	return c.zeroWire
 }
 
+func (c *Compiler) OneWire() *Wire {
+	if c.oneWire == nil {
+		c.oneWire = NewWire()
+		c.AddGate(NewINV(c.ZeroWire(), c.oneWire))
+	}
+	return c.oneWire
+}
+
 func (c *Compiler) Zero(o *Wire) {
 	w := NewWire()
 	c.AddGate(NewINV(c.ZeroWire(), w))
@@ -111,8 +120,7 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 		if i < len(x) {
 			rx[i] = x[i]
 		} else {
-			rx[i] = NewWire()
-			c.Zero(rx[i])
+			rx[i] = c.ZeroWire()
 		}
 	}
 
@@ -121,12 +129,26 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 		if i < len(y) {
 			ry[i] = y[i]
 		} else {
-			ry[i] = NewWire()
-			c.Zero(ry[i])
+			ry[i] = c.ZeroWire()
 		}
 	}
 
 	return rx, ry
+}
+
+func (c *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
+	result := make([]*Wire, size)
+
+	if count < size {
+		copy(result[count:], w)
+	}
+	for i := 0; i < count; i++ {
+		result[i] = c.ZeroWire()
+	}
+	for i := count + len(w); i < size; i++ {
+		result[i] = c.ZeroWire()
+	}
+	return result
 }
 
 func (c *Compiler) AddGate(gate Gate) {

@@ -2,9 +2,13 @@
 
 package main
 
-func main(a, b int8) int {
-	return a * b
+func main(a, b uint32) uint {
+	return b - a
 }
+
+//func main(a, b int8) int {
+//	return a * b
+//}
 
 // 8	301		301
 // 16	1365	770
