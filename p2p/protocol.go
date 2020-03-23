@@ -1,12 +1,10 @@
 //
-// protocol.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
 //
 
-package circuit
+package p2p
 
 import (
 	"bufio"
@@ -23,8 +21,9 @@ const (
 )
 
 type Conn struct {
-	IO    *bufio.ReadWriter
-	Stats IOStats
+	closer io.Closer
+	io     *bufio.ReadWriter
+	Stats  IOStats
 }
 
 type IOStats struct {
@@ -43,18 +42,32 @@ func (stats IOStats) Sum() uint64 {
 	return stats.Sent + stats.Recvd
 }
 
-func NewConn(c *bufio.ReadWriter) *Conn {
+func NewConn(conn io.ReadWriter) *Conn {
+	closer, _ := conn.(io.Closer)
+
 	return &Conn{
-		IO: c,
+		closer: closer,
+		io: bufio.NewReadWriter(bufio.NewReader(conn),
+			bufio.NewWriter(conn)),
 	}
 }
 
 func (c *Conn) Flush() error {
-	return c.IO.Flush()
+	return c.io.Flush()
+}
+
+func (c *Conn) Close() error {
+	if err := c.Flush(); err != nil {
+		return err
+	}
+	if c.closer != nil {
+		return c.closer.Close()
+	}
+	return nil
 }
 
 func (c *Conn) SendUint32(val int) error {
-	err := binary.Write(c.IO, binary.BigEndian, uint32(val))
+	err := binary.Write(c.io, binary.BigEndian, uint32(val))
 	if err != nil {
 		return err
 	}
@@ -67,7 +80,7 @@ func (c *Conn) SendData(val []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.IO.Write(val)
+	_, err = c.io.Write(val)
 	if err != nil {
 		return err
 	}
@@ -78,7 +91,7 @@ func (c *Conn) SendData(val []byte) error {
 func (c *Conn) ReceiveUint32() (int, error) {
 	var buf [4]byte
 
-	_, err := io.ReadFull(c.IO, buf[:])
+	_, err := io.ReadFull(c.io, buf[:])
 	if err != nil {
 		return 0, err
 	}
@@ -94,7 +107,7 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	}
 
 	result := make([]byte, len)
-	_, err = io.ReadFull(c.IO, result)
+	_, err = io.ReadFull(c.io, result)
 	if err != nil {
 		return nil, err
 	}

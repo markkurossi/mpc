@@ -14,13 +14,14 @@ import (
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 var (
 	debug = false
 )
 
-func Evaluator(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	timing := NewTiming()

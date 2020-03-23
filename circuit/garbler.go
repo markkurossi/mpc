@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/markkurossi/mpc/ot"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 type FileSize uint64
@@ -34,7 +35,7 @@ func (s FileSize) String() string {
 	}
 }
 
-func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	timing := NewTiming()
@@ -156,7 +157,7 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}
 
 		switch op {
-		case OP_OT:
+		case p2p.OP_OT:
 			bit, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, err
@@ -199,7 +200,7 @@ func Garbler(conn *Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			conn.Flush()
 			lastOT = time.Now()
 
-		case OP_RESULT:
+		case p2p.OP_RESULT:
 			for i := 0; i < circ.N3.Size(); i++ {
 				label, err := conn.ReceiveData()
 				if err != nil {

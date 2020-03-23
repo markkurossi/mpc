@@ -7,7 +7,6 @@
 package compiler
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"math/big"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 type Test struct {
@@ -116,25 +116,21 @@ func TestArithmetics(t *testing.T) {
 				gr, ew := io.Pipe()
 				er, gw := io.Pipe()
 
-				gio := bufio.NewReadWriter(
-					bufio.NewReader(gr),
-					bufio.NewWriter(gw))
-				eio := bufio.NewReadWriter(
-					bufio.NewReader(er),
-					bufio.NewWriter(ew))
+				gio := newReadWriter(gr, gw)
+				eio := newReadWriter(er, ew)
 
 				gInput := []*big.Int{big.NewInt(int64(g))}
 				eInput := []*big.Int{big.NewInt(int64(e))}
 
 				go func() {
-					_, err := circuit.Garbler(circuit.NewConn(gio), circ,
+					_, err := circuit.Garbler(p2p.NewConn(gio), circ,
 						gInput, false)
 					if err != nil {
 						t.Fatalf("Garbler failed: %s\n", err)
 					}
 				}()
 
-				result, err := circuit.Evaluator(circuit.NewConn(eio), circ,
+				result, err := circuit.Evaluator(p2p.NewConn(eio), circ,
 					eInput, false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
@@ -168,21 +164,41 @@ func BenchmarkMult(b *testing.B) {
 	gr, ew := io.Pipe()
 	er, gw := io.Pipe()
 
-	gio := bufio.NewReadWriter(bufio.NewReader(gr), bufio.NewWriter(gw))
-	eio := bufio.NewReadWriter(bufio.NewReader(er), bufio.NewWriter(ew))
+	gio := newReadWriter(gr, gw)
+	eio := newReadWriter(er, ew)
 
 	gInput := []*big.Int{big.NewInt(int64(11))}
 	eInput := []*big.Int{big.NewInt(int64(13))}
 
 	go func() {
-		_, err := circuit.Garbler(circuit.NewConn(gio), circ, gInput, false)
+		_, err := circuit.Garbler(p2p.NewConn(gio), circ, gInput, false)
 		if err != nil {
 			b.Fatalf("Garbler failed: %s\n", err)
 		}
 	}()
 
-	_, err = circuit.Evaluator(circuit.NewConn(eio), circ, eInput, false)
+	_, err = circuit.Evaluator(p2p.NewConn(eio), circ, eInput, false)
 	if err != nil {
 		b.Fatalf("Evaluator failed: %s\n", err)
 	}
+}
+
+func newReadWriter(in io.Reader, out io.Writer) io.ReadWriter {
+	return &wrap{
+		in:  in,
+		out: out,
+	}
+}
+
+type wrap struct {
+	in  io.Reader
+	out io.Writer
+}
+
+func (w *wrap) Read(p []byte) (n int, err error) {
+	return w.in.Read(p)
+}
+
+func (w *wrap) Write(p []byte) (n int, err error) {
+	return w.out.Write(p)
 }

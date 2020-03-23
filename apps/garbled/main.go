@@ -23,6 +23,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 const (
@@ -63,6 +64,7 @@ func main() {
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDebug := flag.Bool("d", false, "debug output")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
+	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	flag.Parse()
 
 	verbose = *fVerbose
@@ -162,6 +164,28 @@ func main() {
 	fmt.Printf(" - In: %s\n", inputFlag)
 
 	var input []*big.Int
+
+	if *bmr >= 0 {
+		fmt.Printf("semi-honest secure BMR protocol\n")
+		fmt.Printf("player: %d\n", *bmr)
+
+		for _, flag := range inputFlag {
+			i := new(big.Int)
+			_, ok := i.SetString(flag, 0)
+			if !ok {
+				fmt.Printf("%s\n", err)
+				os.Exit(1)
+			}
+			input = append(input, i)
+		}
+		err := bmrMode(circ, input, *bmr)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	if *evaluator {
 		input, err = circ.N2.Parse(inputFlag)
 		if err != nil {
@@ -200,17 +224,14 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int, once bool) error {
 	fmt.Printf("Listening for connections at %s\n", port)
 
 	for {
-		conn, err := ln.Accept()
+		nc, err := ln.Accept()
 		if err != nil {
 			return err
 		}
-		fmt.Printf("New connection from %s\n", conn.RemoteAddr())
+		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
-		bio := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-		ccon := circuit.NewConn(bio)
-
-		result, err := circuit.Evaluator(ccon, circ, input, verbose)
-
+		conn := p2p.NewConn(nc)
+		result, err := circuit.Evaluator(conn, circ, input, verbose)
 		conn.Close()
 
 		if err != nil && err != io.EOF {
@@ -229,10 +250,8 @@ func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
 	if err != nil {
 		return err
 	}
-	defer nc.Close()
-
-	bio := bufio.NewReadWriter(bufio.NewReader(nc), bufio.NewWriter(nc))
-	conn := circuit.NewConn(bio)
+	conn := p2p.NewConn(nc)
+	defer conn.Close()
 
 	result, err := circuit.Garbler(conn, circ, input, verbose)
 	if err != nil {
