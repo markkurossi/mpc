@@ -15,7 +15,7 @@ import (
 // public:  n, e
 
 // msg: 0x6d7472
-// ciper: 0x61f9ef88
+// cipher: 0x61f9ef88
 
 func main(msg, gD, pubN, pubE, eD uint32) (uint, uint) {
 	var d uint32 = 0
