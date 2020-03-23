@@ -24,7 +24,7 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 		return strings.Compare(consts[i].Name, consts[j].Name) == -1
 	})
 
-	if len(consts) > 0 && gen.verbose {
+	if len(consts) > 0 && gen.Params.Verbose {
 		fmt.Printf("Defining constants:\n")
 	}
 	for _, c := range consts {
@@ -43,7 +43,7 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 			}
 			wires = append(wires, w)
 		}
-		if gen.verbose {
+		if gen.Params.Verbose {
 			fmt.Printf("%s\t%s\n", msg, bitString)
 		}
 
@@ -102,7 +102,8 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewMultiplier(cc, wires[0], wires[1], o)
+			err = circuits.NewMultiplier(cc, gen.Params.CircMultArrayTreshold,
+				wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}

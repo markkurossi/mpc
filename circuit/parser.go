@@ -139,6 +139,10 @@ func (c *Circuit) String() string {
 		c.NumGates, stats, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
 }
 
+func (c *Circuit) Cost() int {
+	return (c.Stats[AND]+c.Stats[OR])*4 + c.Stats[INV]*2
+}
+
 func (c *Circuit) Dump() {
 	fmt.Printf("circuit %s\n", c)
 	for id, gate := range c.Gates {

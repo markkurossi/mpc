@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
@@ -17,7 +18,7 @@ const (
 )
 
 type Generator struct {
-	verbose   bool
+	Params    *utils.Params
 	versions  map[string]Variable
 	blockID   int
 	constants map[string]ConstantInst
@@ -28,9 +29,9 @@ type ConstantInst struct {
 	Const Variable
 }
 
-func NewGenerator(verbose bool) *Generator {
+func NewGenerator(params *utils.Params) *Generator {
 	return &Generator{
-		verbose:   verbose,
+		Params:    params,
 		versions:  make(map[string]Variable),
 		constants: make(map[string]ConstantInst),
 	}

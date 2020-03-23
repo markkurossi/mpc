@@ -45,7 +45,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 			"no main function defined")
 	}
 
-	gen := ssa.NewGenerator(params.Verbose)
+	gen := ssa.NewGenerator(params)
 	ctx := NewCodegen(logger, pkg, packages, params.Verbose)
 
 	// Init package.

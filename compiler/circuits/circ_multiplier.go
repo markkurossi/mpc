@@ -14,11 +14,14 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
-func NewMultiplier(compiler *Compiler, x, y, z []*Wire) error {
+func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 	if false {
-		return NewArrayMultiplier(compiler, x, y, z)
+		return NewArrayMultiplier(c, x, y, z)
 	} else {
-		return NewKaratsubaMultiplier(compiler, x, y, z)
+		if arrayTreshold < 12 {
+			arrayTreshold = 18
+		}
+		return NewKaratsubaMultiplier(c, arrayTreshold, x, y, z)
 	}
 }
 
@@ -142,16 +145,17 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 //   1024  6280197   4183044   2097153  3423717   2611364  812353
 //   2048  25143301  16754692  8388609  10350993  7899604  2451389
 //
-func NewKaratsubaMultiplier(compiler *Compiler, a, b, r []*Wire) error {
-	a, b = compiler.ZeroPad(a, b)
+func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
+
+	a, b = cc.ZeroPad(a, b)
 	if len(a) > len(r) {
 		return fmt.Errorf("Invalid multiplier arguments: a=%d, b=%d, r=%d",
 			len(a), len(b), len(r))
 	}
 
 	// Compute smaller multiplications with array multiplier.
-	if len(a) <= 32 {
-		return NewArrayMultiplier(compiler, a, b, r)
+	if len(a) <= limit {
+		return NewArrayMultiplier(cc, a, b, r)
 	}
 
 	mid := len(a) / 2
@@ -163,46 +167,46 @@ func NewKaratsubaMultiplier(compiler *Compiler, a, b, r []*Wire) error {
 	bHigh := b[mid:]
 
 	z0 := MakeWires(min(max(len(aLow), len(bLow))*2, len(r)))
-	if err := NewKaratsubaMultiplier(compiler, aLow, bLow, z0); err != nil {
+	if err := NewKaratsubaMultiplier(cc, limit, aLow, bLow, z0); err != nil {
 		return err
 	}
 	aSumLen := max(len(aLow), len(aHigh)) + 1
 	aSum := MakeWires(aSumLen)
-	if err := NewAdder(compiler, aLow, aHigh, aSum); err != nil {
+	if err := NewAdder(cc, aLow, aHigh, aSum); err != nil {
 		return err
 	}
 	bSumLen := max(len(bLow), len(bHigh)) + 1
 	bSum := MakeWires(bSumLen)
-	if err := NewAdder(compiler, bLow, bHigh, bSum); err != nil {
+	if err := NewAdder(cc, bLow, bHigh, bSum); err != nil {
 		return err
 	}
 	z1 := MakeWires(min(max(aSumLen, bSumLen)*2, len(r)))
-	if err := NewKaratsubaMultiplier(compiler, aSum, bSum, z1); err != nil {
+	if err := NewKaratsubaMultiplier(cc, limit, aSum, bSum, z1); err != nil {
 		return err
 	}
 	z2 := MakeWires(min(max(len(aHigh), len(bHigh))*2, len(r)))
-	if err := NewKaratsubaMultiplier(compiler, aHigh, bHigh, z2); err != nil {
+	if err := NewKaratsubaMultiplier(cc, limit, aHigh, bHigh, z2); err != nil {
 		return err
 	}
 
 	sub1 := MakeWires(len(r))
-	if err := NewSubtractor(compiler, z1, z2, sub1); err != nil {
+	if err := NewSubtractor(cc, z1, z2, sub1); err != nil {
 		return err
 	}
 	sub2 := MakeWires(len(r))
-	if err := NewSubtractor(compiler, sub1, z0, sub2); err != nil {
+	if err := NewSubtractor(cc, sub1, z0, sub2); err != nil {
 		return err
 	}
 
-	shift1 := compiler.ShiftLeft(z2, len(r), mid*2)
-	shift2 := compiler.ShiftLeft(sub2, len(r), mid)
+	shift1 := cc.ShiftLeft(z2, len(r), mid*2)
+	shift2 := cc.ShiftLeft(sub2, len(r), mid)
 
 	add1 := MakeWires(len(r))
-	if err := NewAdder(compiler, shift1, shift2, add1); err != nil {
+	if err := NewAdder(cc, shift1, shift2, add1); err != nil {
 		return err
 	}
 
-	return NewAdder(compiler, add1, z0, r)
+	return NewAdder(cc, add1, z0, r)
 }
 
 func max(a, b int) int {

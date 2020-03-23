@@ -21,3 +21,4 @@
 apps/circuit/circuit
 apps/garbled/garbled
 apps/ot/ot
+apps/iter/iter

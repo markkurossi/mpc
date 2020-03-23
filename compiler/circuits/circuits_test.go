@@ -86,7 +86,7 @@ func TestMultiply1(t *testing.T) {
 
 	outputs := makeWires(2)
 
-	err = NewMultiplier(c, c.Inputs[0:1], c.Inputs[1:2], outputs)
+	err = NewMultiplier(c, 0, c.Inputs[0:1], c.Inputs[1:2], outputs)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,7 +102,7 @@ func TestMultiply(t *testing.T) {
 
 	outputs := makeWires(bits * 2)
 
-	err = NewMultiplier(c, c.Inputs[0:bits], c.Inputs[bits:2*bits], outputs)
+	err = NewMultiplier(c, 0, c.Inputs[0:bits], c.Inputs[bits:2*bits], outputs)
 	if err != nil {
 		t.Error(err)
 	}
