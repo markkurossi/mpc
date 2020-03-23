@@ -213,8 +213,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 		l0 := in[0].L0.Copy()
 		l0.Xor(in[1].L0)
 
-		l1 := in[0].L0.Copy()
-		l1.Xor(in[1].L1)
+		l1 := l0.Copy()
+		l1.Xor(r)
 		w = ot.Wire{
 			L0: l0,
 			L1: l1,
@@ -224,8 +224,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 		l0 := in[0].L0.Copy()
 		l0.Xor(in[1].L0)
 
-		l1 := in[0].L0.Copy()
-		l1.Xor(in[1].L1)
+		l1 := l0.Copy()
+		l1.Xor(r)
 		w = ot.Wire{
 			L0: l1,
 			L1: l0,
