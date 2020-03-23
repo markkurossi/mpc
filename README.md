@@ -42,8 +42,8 @@ First, start the evaluator (these examples are run in the
 
 ```
 $ ./garbled -e -i 800000 examples/millionaire.mpcl
-Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
- - N1: a{1,0}i64:int64, %0:uint1
+Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
+ - N1: a{1,0}i64:int64
  + N2: b{1,0}i64:int64
  - N3: %_{0,1}b1:bool1
  - In: [800000]
@@ -58,11 +58,14 @@ Next, let's start the garbler:
 
 ```
 $ ./garbled -i 750000,0 examples/millionaire.mpcl
-Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
- + N1: a{1,0}i64:int64, %0:uint1
+Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
+ + N1: a{1,0}i64:int64
  - N2: b{1,0}i64:int64
  - N3: %_{0,1}b1:bool1
- - In: [750000 0]
+ - In: [750000]
+Result[0]: 0
+Result[0]: 0b0
+Result[0]: 0x00
 ```
 
 The garbler's input is 750000 and it is set to the circuit inputs
@@ -85,17 +88,16 @@ we see that the result is now `true` since the garbler's input is now
 bigger than the evaluator's input:
 
 ```
-$ ./garbled -i 900000,0 examples/millionaire.mpcl
-Circuit: #gates=386, #wires=515 n1=65, n2=64, n3=1
- + N1: a{1,0}i64:int64, %0:uint1
+$ ./garbled -i 900000 examples/millionaire.mpcl
+Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
+ + N1: a{1,0}i64:int64
  - N2: b{1,0}i64:int64
  - N3: %_{0,1}b1:bool1
- - In: [900000 0]
+ - In: [900000]
 Result[0]: 1
 Result[0]: 0b1
 Result[0]: 0x01
 ```
-
 
 # Multi-Party Computation Language (MPCL)
 
@@ -148,6 +150,7 @@ func MinMax(a, b int) (int, int) {
 
 The MPCL runtime defines the following builtin functions:
 
+ - `make(TYPE, SIZE)`: creates an instance of the type _type_ with _size_ bits.
  - `native(NAME, ARG...)`: calls a builtin function _name_ with
    arguments _arg..._. The _name_ can specify a circuit file (*.circ)
    of one of the following builtin functions:
@@ -282,7 +285,7 @@ Test program:
 ```go
 package main
 
-func main(a, b uint1024) (uint1024, uint1024) {
+func main(a, b uint1024) (uint, uint) {
     return b / a, b % a
 }
 ```

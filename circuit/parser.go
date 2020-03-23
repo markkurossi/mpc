@@ -135,8 +135,7 @@ func (c *Circuit) String() string {
 		}
 		stats += fmt.Sprintf("%s=%d", k, v)
 	}
-	return fmt.Sprintf("#gates=%d (%s), #wires=%d n1=%d, n2=%d, n3=%d",
-		c.NumGates, stats, c.NumWires, c.N1.Size(), c.N2.Size(), c.N3.Size())
+	return fmt.Sprintf("#gates=%d (%s)", c.NumGates, stats)
 }
 
 func (c *Circuit) Cost() int {
