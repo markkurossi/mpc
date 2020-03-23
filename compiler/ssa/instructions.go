@@ -681,6 +681,7 @@ func Constant(value interface{}) (Variable, error) {
 		}
 
 	case types.Info:
+		v.Name = fmt.Sprintf("$%s", val)
 		v.Type = val
 		v.TypeRef = true
 

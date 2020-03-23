@@ -104,6 +104,12 @@ func (b *Block) PP(out io.Writer, seen map[string]bool) {
 	if seen[b.ID] {
 		return
 	}
+	// Have all my predecessors been processed?
+	for _, from := range b.From {
+		if !seen[from.ID] {
+			return
+		}
+	}
 	seen[b.ID] = true
 
 	if len(b.Name) > 0 {
