@@ -359,10 +359,8 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			// Assign output wires.
 			for _, wg := range wires {
 				for _, w := range wg {
-					t := circuits.NewWire()
-					cc.AddGate(circuits.NewINV(w, t))
 					o := circuits.NewWire()
-					cc.AddGate(circuits.NewINV(t, o))
+					cc.ID(w, o)
 					cc.Outputs = append(cc.Outputs, o)
 				}
 			}
@@ -413,6 +411,11 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				switch gate.Op {
 				case circuit.XOR:
 					cc.AddGate(circuits.NewBinary(circuit.XOR,
+						circWires[gate.Input0],
+						circWires[gate.Input1],
+						circWires[gate.Output]))
+				case circuit.XNOR:
+					cc.AddGate(circuits.NewBinary(circuit.XNOR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))

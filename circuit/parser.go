@@ -56,15 +56,6 @@ type IOArg struct {
 
 type IO []IOArg
 
-func (io IO) NeedZero() bool {
-	for _, i := range io {
-		if i.Name == "%0" && i.Size == 1 {
-			return true
-		}
-	}
-	return false
-}
-
 func (io IO) Size() int {
 	var sum int
 	for _, a := range io {
@@ -272,6 +263,9 @@ func Parse(in io.Reader) (*Circuit, error) {
 			Size: bits,
 		})
 		inputWires += bits
+	}
+	if inputWires == 0 {
+		return nil, fmt.Errorf("no inputs defined")
 	}
 	// XXX Split inputs into N1 and N2.
 	mid := niv / 2

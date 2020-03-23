@@ -16,7 +16,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 	bINV := make([]*Wire, len(b))
 	for i := 0; i < len(b); i++ {
 		bINV[i] = NewWire()
-		compiler.AddGate(NewINV(b[i], bINV[i]))
+		compiler.INV(b[i], bINV[i])
 	}
 
 	// Init for the first row.
@@ -49,8 +49,8 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 		// Quotient y.
 		if len(a)-1-y < len(q) {
 			w := NewWire()
-			compiler.AddGate(NewINV(cIn, w))
-			compiler.AddGate(NewINV(w, q[len(a)-1-y]))
+			compiler.INV(cIn, w)
+			compiler.INV(w, q[len(a)-1-y])
 		}
 
 		// MUXes from high to low bit.

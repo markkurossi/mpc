@@ -113,10 +113,6 @@ func TestIterator(t *testing.T) {
 				n1 := []*big.Int{big.NewInt(g)}
 				n2 := []*big.Int{big.NewInt(e)}
 
-				if circ.N1.NeedZero() {
-					n1 = append(n1, big.NewInt(0))
-				}
-
 				results, err := circ.Compute(n1, n2)
 				if err != nil {
 					t.Fatalf("%d: compute failed: %s\n", idx, err)
@@ -138,7 +134,6 @@ type FixedTest struct {
 	N1   int64
 	N2   int64
 	N3   int64
-	Zero bool
 	Code string
 }
 
@@ -158,10 +153,9 @@ func main(a, b int4) int4 {
 `,
 	},
 	FixedTest{
-		N1:   5,
-		N2:   3,
-		N3:   6,
-		Zero: true,
+		N1: 5,
+		N2: 3,
+		N3: 6,
 		Code: `
 package main
 func main(a, b int4) int4 {
@@ -176,10 +170,9 @@ func add1(val int) int {
 `,
 	},
 	FixedTest{
-		N1:   5,
-		N2:   3,
-		N3:   7,
-		Zero: true,
+		N1: 5,
+		N2: 3,
+		N3: 7,
 		Code: `
 package main
 func main(a, b int4) int4 {
@@ -219,10 +212,9 @@ func MinMax(a, b int) (int, int) {
 	// For raw sha256 without padding, the digest is as follow:
 	// da5698be17b9b46962335799779fbeca8ce5d491c0d26243bafef9ea1837a9d8
 	FixedTest{
-		N1:   0,
-		N2:   0,
-		N3:   -4972262154746484264,
-		Zero: true,
+		N1: 0,
+		N2: 0,
+		N3: -4972262154746484264,
 		Code: `
 package main
 import (
@@ -236,10 +228,9 @@ func main(a, b uint512) uint256 {
 	// For raw sha512 without padding, the digest is as follow:
 	// 0xcf7881d5774acbe8533362e0fbc780700267639d87460eda3086cb40e85931b0717dc95288a023a396bab2c14ce0b5e06fc4fe04eae33e0b91f4d80cbd668bee
 	FixedTest{
-		N1:   0,
-		N2:   0,
-		N3:   -7929475494663779346,
-		Zero: true,
+		N1: 0,
+		N2: 0,
+		N3: -7929475494663779346,
 		Code: `
 package main
 import (
@@ -259,11 +250,9 @@ func TestFixed(t *testing.T) {
 			t.Errorf("Failed to compile test %d: %s", idx, err)
 			continue
 		}
-		var n1 = []*big.Int{big.NewInt(test.N1)}
-		if test.Zero {
-			n1 = append(n1, big.NewInt(0))
-		}
-		results, err := circ.Compute(n1, []*big.Int{big.NewInt(test.N2)})
+		n1 := []*big.Int{big.NewInt(test.N1)}
+		n2 := []*big.Int{big.NewInt(test.N2)}
+		results, err := circ.Compute(n1, n2)
 		if err != nil {
 			t.Errorf("compute failed: %s", err)
 			continue
@@ -290,9 +279,6 @@ func main(a, b uint64) uint64 {
 	for i := 0; i < 1000; i++ {
 		g := new(big.Int).Rand(r, big.NewInt(math.MaxInt64))
 		n1 := []*big.Int{g}
-		if circ.N1.NeedZero() {
-			n1 = append(n1, big.NewInt(0))
-		}
 
 		var e *big.Int
 		for {

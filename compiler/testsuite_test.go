@@ -107,10 +107,6 @@ loop:
 			n1 = append(n1, inputs[:split]...)
 			n2 = append(n2, inputs[split:]...)
 
-			if circ.N1.NeedZero() {
-				n1 = append(n1, big.NewInt(0))
-			}
-
 			var prof *os.File
 
 			if cpuprof {

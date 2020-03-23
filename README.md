@@ -240,6 +240,9 @@ form assembly:
    - [ ] Row reduction
    - [ ] Half AND
    - [ ] Oblivious transfer extensions
+   - [X] INV(x) = XOR(x,1)
+   - [X] ID(x)  = XOR(x,0)
+   - [ ] Plot multiplication circuit size f(ArrayTreshold)
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key

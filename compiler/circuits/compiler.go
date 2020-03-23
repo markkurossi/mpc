@@ -37,6 +37,9 @@ func NewIO(size int) circuit.IO {
 }
 
 func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
+	if n1.Size()+n2.Size() == 0 {
+		return nil, fmt.Errorf("no inputs defined")
+	}
 	result := &Compiler{
 		N1:    n1,
 		N2:    n2,
@@ -73,16 +76,7 @@ func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
 func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
 		c.zeroWire = NewWire()
-		var head []*Wire
-		head = append(head, c.Inputs[0:c.N1.Size()]...)
-		head = append(head, c.zeroWire)
-		head = append(head, c.Inputs[c.N1.Size():]...)
-		c.Inputs = head
-		c.N1 = append(c.N1, circuit.IOArg{
-			Name: "%0",
-			Type: "uint1",
-			Size: 1,
-		})
+		c.AddGate(NewBinary(circuit.XOR, c.Inputs[0], c.Inputs[0], c.zeroWire))
 	}
 	return c.zeroWire
 }
@@ -139,6 +133,14 @@ func (c *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
 		result[i] = c.ZeroWire()
 	}
 	return result
+}
+
+func (c *Compiler) INV(i, o *Wire) {
+	c.AddGate(NewBinary(circuit.XOR, i, c.OneWire(), o))
+}
+
+func (c *Compiler) ID(i, o *Wire) {
+	c.AddGate(NewBinary(circuit.XOR, i, c.ZeroWire(), o))
 }
 
 func (c *Compiler) AddGate(gate Gate) {
