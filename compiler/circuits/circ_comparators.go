@@ -12,78 +12,51 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
-// NewHalfLtComparator creates a circuit that tests if argument a is
-// smaller than argument b.
-func NewHalfLtComparator(compiler *Compiler, a, b, bout *Wire) {
-	w1 := NewWire()
-
-	compiler.AddGate(NewINV(a, w1))
-	compiler.AddGate(NewBinary(circuit.AND, w1, b, bout))
-}
-
-// NewFullLtComparator creates a circuit that tests if argument a is
-// smaller than argument b with the borrow bit bin.
-func NewFullLtComparator(compiler *Compiler, a, b, bin, bout *Wire) {
-	w3 := NewWire()
-	w4 := NewWire()
-	w5 := NewWire()
-	w6 := NewWire()
-	w7 := NewWire()
-
-	compiler.AddGate(NewBinary(circuit.XOR, a, b, w3))
-	compiler.AddGate(NewINV(a, w4))
-	compiler.AddGate(NewBinary(circuit.AND, b, w4, w5))
-	compiler.AddGate(NewINV(w3, w6))
-	compiler.AddGate(NewBinary(circuit.AND, bin, w6, w7))
-	compiler.AddGate(NewBinary(circuit.OR, w5, w7, bout))
-}
-
-func NewLtComparator(compiler *Compiler, x, y, r []*Wire) error {
+// comparator tests if x>y if cin=0, and x>=y if cin=1.
+func comparator(compiler *Compiler, cin *Wire, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != 1 {
 		return fmt.Errorf("invalid lt comparator arguments: r=%d", len(r))
 	}
-	if len(x) == 1 {
-		NewHalfLtComparator(compiler, x[0], y[0], r[0])
-	} else {
-		bin := NewWire()
-		NewHalfLtComparator(compiler, x[0], y[0], bin)
 
-		for i := 1; i < len(x); i++ {
-			var bout *Wire
-			if i+1 >= len(x) {
-				bout = r[0]
-			} else {
-				bout = NewWire()
-			}
+	for i := 0; i < len(x); i++ {
+		w1 := NewWire()
+		compiler.AddGate(NewBinary(circuit.XNOR, cin, y[i], w1))
+		w2 := NewWire()
+		compiler.AddGate(NewBinary(circuit.XOR, cin, x[i], w2))
+		w3 := NewWire()
+		compiler.AddGate(NewBinary(circuit.AND, w1, w2, w3))
 
-			NewFullLtComparator(compiler, x[i], y[i], bin, bout)
-
-			bin = bout
+		var cout *Wire
+		if i+1 < len(x) {
+			cout = NewWire()
+		} else {
+			cout = r[0]
 		}
+		compiler.AddGate(NewBinary(circuit.XOR, cin, w3, cout))
+		cin = cout
 	}
 	return nil
 }
 
-// NewLeComparator creates comparator circuit computing `r :=
-// x<=y'. The circuit is implemented by checking that `y-x' does not
-// overflow i.e. `x<=y == !(y<x)'.
+// NewGtComparator tests if x>y.
+func NewGtComparator(compiler *Compiler, x, y, r []*Wire) error {
+	return comparator(compiler, compiler.ZeroWire(), x, y, r)
+}
+
+// NewGeComparator tests if x>=y.
+func NewGeComparator(compiler *Compiler, x, y, r []*Wire) error {
+	return comparator(compiler, compiler.OneWire(), x, y, r)
+}
+
+// NewLtComparator tests if x<y.
+func NewLtComparator(compiler *Compiler, x, y, r []*Wire) error {
+	return comparator(compiler, compiler.ZeroWire(), y, x, r)
+}
+
+// NewLeComparator tests if x<=y.
 func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
-	x, y = compiler.ZeroPad(x, y)
-	if len(r) != 1 {
-		return fmt.Errorf("invalid le comparator arguments: r=%d", len(r))
-	}
-
-	// w = y < x
-	w := NewWire()
-	err := NewLtComparator(compiler, y, x, []*Wire{w})
-	if err != nil {
-		return err
-	}
-
-	// r = !w
-	compiler.AddGate(NewINV(w, r[0]))
-	return nil
+	return comparator(compiler, compiler.OneWire(), y, x, r)
 }
 
 func NewNeqComparator(compiler *Compiler, x, y, r []*Wire) error {

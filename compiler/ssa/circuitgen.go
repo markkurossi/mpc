@@ -196,7 +196,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewLtComparator(cc, wires[1], wires[0], o)
+			err = circuits.NewGtComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
@@ -206,7 +206,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewLeComparator(cc, wires[1], wires[0], o)
+			err = circuits.NewGeComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
