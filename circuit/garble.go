@@ -130,6 +130,7 @@ func makeLabels(r *ot.Label) (ot.Wire, error) {
 }
 
 type Garbled struct {
+	R     *ot.Label
 	Wires ot.Inputs
 	Gates [][][]byte
 }
@@ -179,6 +180,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}
 
 	return &Garbled{
+		R:     r,
 		Wires: wires,
 		Gates: garbled,
 	}, nil

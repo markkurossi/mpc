@@ -10,14 +10,8 @@ import (
 	"bufio"
 	"encoding/binary"
 	"io"
-	"math/big"
 
 	"github.com/markkurossi/mpc/ot"
-)
-
-const (
-	OP_OT = iota
-	OP_RESULT
 )
 
 type Conn struct {
@@ -116,12 +110,9 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	return result, nil
 }
 
-func (c *Conn) Receive(receiver *ot.Receiver, wire, bit int) ([]byte, error) {
+func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {
 
-	if err := c.SendUint32(OP_OT); err != nil {
-		return nil, err
-	}
-	if err := c.SendUint32(wire); err != nil {
+	if err := c.SendUint32(int(wire)); err != nil {
 		return nil, err
 	}
 	c.Flush()
@@ -166,22 +157,4 @@ func (c *Conn) Receive(receiver *ot.Receiver, wire, bit int) ([]byte, error) {
 
 	m, _ := xfer.Message()
 	return m, nil
-}
-
-func (c *Conn) Result(labels []*ot.Label) (*big.Int, error) {
-	if err := c.SendUint32(OP_RESULT); err != nil {
-		return nil, err
-	}
-	for _, l := range labels {
-		if err := c.SendData(l.Bytes()); err != nil {
-			return nil, err
-		}
-	}
-	c.Flush()
-
-	result, err := c.ReceiveData()
-	if err != nil {
-		return nil, err
-	}
-	return big.NewInt(0).SetBytes(result), nil
 }

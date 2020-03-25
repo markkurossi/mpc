@@ -115,14 +115,11 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			input = inputs[idx]
 		}
 		for i := 0; i < io.Size; i++ {
-			var bit int
-			if input.Bit(i) == 1 {
-				bit = 1
-			} else {
-				bit = 0
+			if err := conn.SendUint32(OP_OT); err != nil {
+				return nil, err
 			}
-
-			n, err := conn.Receive(receiver, circ.N1.Size()+w, bit)
+			n, err := conn.Receive(receiver, uint(circ.N1.Size()+w),
+				input.Bit(i))
 			if err != nil {
 				return nil, err
 			}
@@ -154,10 +151,23 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		labels = append(labels, r)
 	}
 
-	raw, err := conn.Result(labels)
+	// Resolve result values.
+	if err := conn.SendUint32(OP_RESULT); err != nil {
+		return nil, err
+	}
+	for _, l := range labels {
+		if err := conn.SendData(l.Bytes()); err != nil {
+			return nil, err
+		}
+	}
+	conn.Flush()
+
+	result, err := conn.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
+	raw := big.NewInt(0).SetBytes(result)
+
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
 	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})

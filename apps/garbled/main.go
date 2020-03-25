@@ -180,7 +180,7 @@ func main() {
 		}
 		err := bmrMode(circ, input, *bmr)
 		if err != nil {
-			fmt.Printf("%s\n", err)
+			fmt.Printf("BMR mode failed: %s\n", err)
 			os.Exit(1)
 		}
 		return

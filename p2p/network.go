@@ -7,16 +7,21 @@
 package p2p
 
 import (
+	"crypto/rsa"
+	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/markkurossi/mpc/ot"
 )
 
 type Network struct {
 	id       int
 	m        sync.Mutex
-	peers    map[int]*Peer
+	Peers    map[int]*Peer
 	addr     string
 	listener net.Listener
 }
@@ -28,7 +33,7 @@ func NewNetwork(addr string, id int) (*Network, error) {
 	}
 	nw := &Network{
 		id:       id,
-		peers:    make(map[int]*Peer),
+		Peers:    make(map[int]*Peer),
 		addr:     addr,
 		listener: listener,
 	}
@@ -43,7 +48,15 @@ func (nw *Network) Close() error {
 func (nw *Network) AddPeer(addr string, id int) error {
 	// Try to connect to peer.
 	for {
-		log.Printf("NW %d: Connecting to %s...\n", nw.id, addr)
+		// Check if we have already accepted peer `id`.
+		nw.m.Lock()
+		_, ok := nw.Peers[id]
+		nw.m.Unlock()
+		if ok {
+			return nil
+		}
+
+		log.Printf("NW %d: Connecting to peer %d...\n", nw.id, id)
 		nc, err := net.Dial("tcp", addr)
 		if err != nil {
 			delay := 5 * time.Second
@@ -54,20 +67,23 @@ func (nw *Network) AddPeer(addr string, id int) error {
 		}
 		log.Printf("NW %d: Connected to %s\n", nw.id, addr)
 		conn := NewConn(nc)
-		defer conn.Close()
 
 		if err := conn.SendUint32(nw.id); err != nil {
+			conn.Close()
 			return err
 		}
 		if err := conn.Flush(); err != nil {
+			conn.Close()
 			return err
 		}
-		return nw.newPeer(conn, id)
+		if err := nw.newPeer(true, conn, id); err != nil {
+			fmt.Printf("Failed to add peer: %s\n", err)
+		}
 	}
 }
 
 func (nw *Network) Ping() {
-	for _, peer := range nw.peers {
+	for _, peer := range nw.Peers {
 		peer.Ping()
 	}
 }
@@ -77,7 +93,7 @@ func (nw *Network) acceptLoop() {
 		nc, err := nw.listener.Accept()
 		if err != nil {
 			log.Printf("NW %d: accept failed: %s\n", nw.id, err)
-			break
+			continue
 		}
 		conn := NewConn(nc)
 
@@ -89,36 +105,38 @@ func (nw *Network) acceptLoop() {
 			continue
 		}
 
-		err = nw.newPeer(conn, id)
+		err = nw.newPeer(false, conn, id)
 		if err != nil {
 			log.Printf("inbound connection error: %s\n", err)
 		}
 	}
 }
 
-func (nw *Network) newPeer(conn *Conn, id int) error {
+func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 	nw.m.Lock()
-	peer, ok := nw.peers[id]
+	peer, ok := nw.Peers[id]
 	if ok {
 		nw.m.Unlock()
 		log.Printf("NW %d: peer %d already connected\n", nw.id, id)
 		return conn.Close()
 	}
 	peer = &Peer{
-		id:   id,
-		conn: conn,
+		id:     id,
+		conn:   conn,
+		client: client,
 	}
-	nw.peers[id] = peer
+	nw.Peers[id] = peer
 	nw.m.Unlock()
 
-	go peer.msgLoop()
-
-	return nil
+	return peer.init()
 }
 
 type Peer struct {
-	id   int
-	conn *Conn
+	id         int
+	conn       *Conn
+	client     bool
+	otSender   *ot.Sender
+	otReceiver *ot.Receiver
 }
 
 func (peer *Peer) Close() error {
@@ -132,23 +150,203 @@ func (peer *Peer) Ping() error {
 	return peer.conn.Flush()
 }
 
-func (peer *Peer) msgLoop() {
-	var done bool
+func (peer *Peer) init() error {
+	fmt.Printf("peer %d: init\n", peer.id)
 
-	for !done {
-		op, err := peer.conn.ReceiveUint32()
+	// Read peer public key.
+	finished := make(chan error)
+	go func() {
+		pubN, err := peer.conn.ReceiveData()
 		if err != nil {
-			log.Printf("%s\n", err)
-			done = true
-			continue
+			finished <- err
+			return
 		}
-		switch op {
-		case 0xffffffff:
-			log.Printf("Peer %d: PING\n", peer.id)
+		pubE, err := peer.conn.ReceiveUint32()
+		if err != nil {
+			finished <- err
+			return
+		}
+		pub := &rsa.PublicKey{
+			N: new(big.Int).SetBytes(pubN),
+			E: pubE,
+		}
+		receiver, err := ot.NewReceiver(pub)
+		if err != nil {
+			finished <- err
+			return
+		}
+		peer.otReceiver = receiver
+		finished <- nil
+	}()
 
-		default:
-			log.Printf("Peer %d: unknown message %d\n", peer.id, op)
+	// Init oblivious transfer.
+	sender, err := ot.NewSender(2048)
+	if err != nil {
+		<-finished
+		return err
+	}
+	peer.otSender = sender
+
+	// Send our public key to peer.
+	pub := sender.PublicKey()
+	data := pub.N.Bytes()
+	if err := peer.conn.SendData(data); err != nil {
+		<-finished
+		return err
+	}
+	if err := peer.conn.SendUint32(pub.E); err != nil {
+		<-finished
+		return err
+	}
+	peer.conn.Flush()
+
+	return <-finished
+}
+
+func (peer *Peer) OT(count int, queries, x1, x2 *big.Int) (
+	result *big.Int, err error) {
+
+	var mode string
+	if peer.client {
+		mode = "OT-client"
+	} else {
+		mode = "OT-server"
+	}
+
+	fmt.Printf("%s for peer %d: count=%d\n", mode, peer.id, count)
+
+	if peer.client {
+		// Client queries first.
+		result, err = peer.OTQuery(count, queries, x1, x2)
+		if err != nil {
+			return
+		}
+
+		// Serve peer queries.
+		err = peer.OTRespond(count, queries, x1, x2)
+		if err != nil {
+			return
+		}
+	} else {
+		// Serve peer queries.
+		err = peer.OTRespond(count, queries, x1, x2)
+		if err != nil {
+			return
+		}
+
+		// Server queries second.
+		result, err = peer.OTQuery(count, queries, x1, x2)
+		if err != nil {
+			return
 		}
 	}
-	peer.Close()
+	fmt.Printf("%s for peer %d done\n", mode, peer.id)
+	return
+}
+
+func (peer *Peer) OTQuery(count int, queries, x1, x2 *big.Int) (
+	*big.Int, error) {
+
+	// Number of OTs following
+	if err := peer.conn.SendUint32(count); err != nil {
+		fmt.Printf("*** debug0\n")
+		return nil, err
+	}
+	if err := peer.conn.Flush(); err != nil {
+		fmt.Printf("*** debug1\n")
+		return nil, err
+	}
+
+	// OTs for each query.
+	result := new(big.Int)
+	for i := 0; i < count; i++ {
+		fmt.Printf(" - peer %d: OT %d...\n", peer.id, i)
+		n, err := peer.conn.Receive(peer.otReceiver, uint(i), queries.Bit(i))
+		if err != nil {
+			fmt.Printf("*** OT %d: debug2\n", i)
+			return nil, err
+		}
+		if len(n) != 1 {
+			fmt.Printf("*** OT %d: debug3\n", i)
+			return nil, fmt.Errorf("invalid OT result of length %d", len(n))
+		}
+		if n[0] != 0 {
+			result.SetBit(result, i, 1)
+		}
+	}
+	return result, nil
+}
+
+func (peer *Peer) OTRespond(count int, queries, x1, x2 *big.Int) error {
+	pc, err := peer.conn.ReceiveUint32()
+	if err != nil {
+		fmt.Printf("respond0: %s\n", err)
+		return err
+	}
+	if pc != count {
+		fmt.Printf("respond1: %s\n", err)
+		return fmt.Errorf("protocol error: peer count %d, our %d",
+			pc, count)
+	}
+	for i := 0; i < count; i++ {
+		bit, err := peer.conn.ReceiveUint32()
+		if err != nil {
+			fmt.Printf("respond2: %s\n", err)
+			return err
+		}
+		var m0, m1 [1]byte
+
+		if x1.Bit(bit) != 0 {
+			m0[0] = 1
+		}
+		if x2.Bit(bit) != 0 {
+			m1[0] = 1
+		}
+
+		xfer, err := peer.otSender.NewTransfer(m0[:], m1[:])
+		if err != nil {
+			fmt.Printf("respond3: %s\n", err)
+			return err
+		}
+		x0, x1 := xfer.RandomMessages()
+		if err := peer.conn.SendData(x0); err != nil {
+			fmt.Printf("respond4: %s\n", err)
+			return err
+		}
+		if err := peer.conn.SendData(x1); err != nil {
+			fmt.Printf("respond5: %s\n", err)
+			return err
+		}
+		if err := peer.conn.Flush(); err != nil {
+			fmt.Printf("respond6: %s\n", err)
+			return err
+		}
+
+		v, err := peer.conn.ReceiveData()
+		if err != nil {
+			fmt.Printf("respond7: %s\n", err)
+			return err
+		}
+		xfer.ReceiveV(v)
+
+		m0p, m1p, err := xfer.Messages()
+		if err != nil {
+			fmt.Printf("respond8: %s\n", err)
+			return err
+		}
+		if err := peer.conn.SendData(m0p); err != nil {
+			fmt.Printf("respond9: %s\n", err)
+			return err
+		}
+		if err := peer.conn.SendData(m1p); err != nil {
+			fmt.Printf("respond10: %s\n", err)
+			return err
+		}
+		if err := peer.conn.Flush(); err != nil {
+			fmt.Printf("respond11: %s\n", err)
+			return err
+		}
+	}
+
+	return nil
 }

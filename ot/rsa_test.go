@@ -18,12 +18,7 @@ func benchmark(b *testing.B, keySize int) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender, err := NewSender(keySize, map[int]Wire{
-		0: Wire{
-			L0: l0,
-			L1: l1,
-		},
-	})
+	sender, err := NewSender(keySize)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -36,7 +31,7 @@ func benchmark(b *testing.B, keySize int) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		sXfer, err := sender.NewTransfer(0)
+		sXfer, err := sender.NewTransfer(l0.Bytes(), l1.Bytes())
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -19,6 +19,11 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+const (
+	OP_OT = iota
+	OP_RESULT
+)
+
 type FileSize uint64
 
 func (s FileSize) String() string {
@@ -118,7 +123,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 
 	// Init oblivious transfer.
-	sender, err := ot.NewSender(2048, garbled.Wires)
+	sender, err := ot.NewSender(2048)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +162,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}
 
 		switch op {
-		case p2p.OP_OT:
+		case OP_OT:
 			bit, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, err
@@ -167,7 +172,12 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			}
 			allowedOTs[bit] = false
 
-			xfer, err = sender.NewTransfer(bit)
+			wire, ok := garbled.Wires[bit]
+			if !ok {
+				return nil, fmt.Errorf("unknown wire %d", bit)
+			}
+
+			xfer, err = sender.NewTransfer(wire.L0.Bytes(), wire.L1.Bytes())
 			if err != nil {
 				return nil, err
 			}
@@ -200,7 +210,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			conn.Flush()
 			lastOT = time.Now()
 
-		case p2p.OP_RESULT:
+		case OP_RESULT:
 			for i := 0; i < circ.N3.Size(); i++ {
 				label, err := conn.ReceiveData()
 				if err != nil {

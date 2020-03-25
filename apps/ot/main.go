@@ -22,12 +22,7 @@ func main() {
 	m0, _ := ot.NewLabel(rand.Reader)
 	m1, _ := ot.NewLabel(rand.Reader)
 
-	sender, err := ot.NewSender(2048, map[int]ot.Wire{
-		0: ot.Wire{
-			L0: m0,
-			L1: m1,
-		},
-	})
+	sender, err := ot.NewSender(2048)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sXfer, err := sender.NewTransfer(0)
+	sXfer, err := sender.NewTransfer(m0.Bytes(), m1.Bytes())
 	if err != nil {
 		log.Fatal(err)
 	}

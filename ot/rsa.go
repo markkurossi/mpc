@@ -135,19 +135,17 @@ func (i Inputs) String() string {
 }
 
 type Sender struct {
-	key    *rsa.PrivateKey
-	inputs Inputs
+	key *rsa.PrivateKey
 }
 
-func NewSender(keyBits int, inputs Inputs) (*Sender, error) {
+func NewSender(keyBits int) (*Sender, error) {
 	key, err := rsa.GenerateKey(rand.Reader, keyBits)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Sender{
-		key:    key,
-		inputs: inputs,
+		key: key,
 	}, nil
 }
 
@@ -159,11 +157,7 @@ func (s *Sender) PublicKey() *rsa.PublicKey {
 	return &s.key.PublicKey
 }
 
-func (s *Sender) NewTransfer(input int) (*SenderXfer, error) {
-	w, ok := s.inputs[input]
-	if !ok {
-		return nil, fmt.Errorf("unknown input %d", input)
-	}
+func (s *Sender) NewTransfer(m0, m1 []byte) (*SenderXfer, error) {
 	x0, err := RandomData(s.MessageSize())
 	if err != nil {
 		return nil, err
@@ -175,7 +169,8 @@ func (s *Sender) NewTransfer(input int) (*SenderXfer, error) {
 
 	return &SenderXfer{
 		sender: s,
-		input:  w,
+		m0:     m0,
+		m1:     m1,
 		x0:     x0,
 		x1:     x1,
 	}, nil
@@ -183,7 +178,8 @@ func (s *Sender) NewTransfer(input int) (*SenderXfer, error) {
 
 type SenderXfer struct {
 	sender *Sender
-	input  Wire
+	m0     []byte
+	m1     []byte
 	x0     []byte
 	x1     []byte
 	k0     *big.Int
@@ -208,15 +204,13 @@ func (s *SenderXfer) ReceiveV(data []byte) {
 }
 
 func (s *SenderXfer) Messages() ([]byte, []byte, error) {
-	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.L0.Bytes())
+	m0, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(), s.m0)
 	if err != nil {
 		return nil, nil, err
 	}
 	m0p := mpint.Add(mpint.FromBytes(m0), s.k0)
 
-	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(),
-		s.input.L1.Bytes())
+	m1, err := pkcs1.NewEncryptionBlock(pkcs1.BT1, s.MessageSize(), s.m1)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -239,7 +233,7 @@ func (r *Receiver) MessageSize() int {
 	return r.pub.Size()
 }
 
-func (r *Receiver) NewTransfer(bit int) (*ReceiverXfer, error) {
+func (r *Receiver) NewTransfer(bit uint) (*ReceiverXfer, error) {
 	return &ReceiverXfer{
 		receiver: r,
 		bit:      bit,
@@ -248,7 +242,7 @@ func (r *Receiver) NewTransfer(bit int) (*ReceiverXfer, error) {
 
 type ReceiverXfer struct {
 	receiver *Receiver
-	bit      int
+	bit      uint
 	k        *big.Int
 	v        *big.Int
 	mb       []byte
@@ -303,6 +297,6 @@ func (r *ReceiverXfer) ReceiveMessages(m0p, m1p []byte, err error) error {
 	return nil
 }
 
-func (r *ReceiverXfer) Message() (m []byte, bit int) {
+func (r *ReceiverXfer) Message() (m []byte, bit uint) {
 	return r.mb, r.bit
 }

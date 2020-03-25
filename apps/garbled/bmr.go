@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/p2p"
@@ -38,10 +37,14 @@ func bmrMode(circ *circuit.Circuit, input []*big.Int, player int) error {
 	}
 
 	log.Printf("Network created\n")
-	for {
-		<-time.After(5 * time.Second)
-		nw.Ping()
+
+	result, err := circuit.Player(nw, circ, input, verbose)
+	if err != nil {
+		return err
 	}
+
+	printResult(result)
+	return nil
 }
 
 func makeAddr(player int) string {
