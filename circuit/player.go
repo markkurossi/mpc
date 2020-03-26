@@ -116,9 +116,9 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	fmt.Printf("Luv: %s\n", luv.Text(2))
 	timing.Sample("Fgc Step 1", nil)
 
-	// Step 2: generate XOR shares
+	// Step 2: generate XOR shares of Luvw
 	if verbose {
-		fmt.Printf(" - Step 2: generate XOR shares\n")
+		fmt.Printf(" - Step 2: generate XOR shares of Luvw\n")
 	}
 
 	// Init new gate values.
@@ -220,34 +220,32 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}
 	}
 
+	timing.Sample("Fgc Step 2", nil)
+
+	// Step 3: generate XOR shares of Rj
+	if verbose {
+		fmt.Printf(" - Step 3: generate XOR shares or Rj\n")
+	}
+
 	// OTs with peers.
 
 	rResults := make(chan OTRResult)
 
 	for peerID, peer := range nw.Peers {
-		for g, gate := range circ.Gates {
-			switch gate.Op {
-			case XOR, XNOR:
-			case INV:
+		go func(peerID int, peer *p2p.Peer) {
+			ra, rb, rc, err := peer.OTR(Ag,
+				X1LongAg[peerID], X2LongAg[peerID],
+				X1LongBg[peerID], X2LongBg[peerID],
+				X1LongCg[peerID], X2LongCg[peerID])
 
-			default:
-				go func(peerID, g int, peer *p2p.Peer) {
-					ra, rb, rc, err := peer.OTR(Ag,
-						X1LongAg[peerID], X2LongAg[peerID],
-						X1LongBg[peerID], X2LongBg[peerID],
-						X1LongCg[peerID], X2LongCg[peerID])
-
-					rResults <- OTRResult{
-						peerID: peerID,
-						g:      g,
-						Ra:     ra,
-						Rb:     rb,
-						Rc:     rc,
-						err:    err,
-					}
-				}(peerID, g, peer)
+			rResults <- OTRResult{
+				peerID: peerID,
+				Ra:     ra,
+				Rb:     rb,
+				Rc:     rc,
+				err:    err,
 			}
-		}
+		}(peerID, peer)
 	}
 
 	for i := 0; i < len(nw.Peers); i++ {
@@ -256,13 +254,21 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			return nil, fmt.Errorf("OT-R with peer %d failed: %s",
 				result.peerID, result.err)
 		}
-		Gs[result.g].Ag[result.peerID].Xor(&result.Ra[result.g])
-		Gs[result.g].Bg[result.peerID].Xor(&result.Rb[result.g])
-		Gs[result.g].Cg[result.peerID].Xor(&result.Rc[result.g])
+		for g, gate := range circ.Gates {
+			switch gate.Op {
+			case XOR, XNOR:
+			case INV:
 
-		Gs[result.g].Dg[result.peerID].Xor(&result.Ra[result.g])
-		Gs[result.g].Dg[result.peerID].Xor(&result.Rb[result.g])
-		Gs[result.g].Dg[result.peerID].Xor(&result.Rc[result.g])
+			default:
+				Gs[g].Ag[result.peerID].Xor(&result.Ra[g])
+				Gs[g].Bg[result.peerID].Xor(&result.Rb[g])
+				Gs[g].Cg[result.peerID].Xor(&result.Rc[g])
+
+				Gs[g].Dg[result.peerID].Xor(&result.Ra[g])
+				Gs[g].Dg[result.peerID].Xor(&result.Rb[g])
+				Gs[g].Dg[result.peerID].Xor(&result.Rc[g])
+			}
+		}
 	}
 
 	for false {
@@ -280,7 +286,6 @@ type OTLambdaResult struct {
 
 type OTRResult struct {
 	peerID int
-	g      int
 	Ra     []ot.Label
 	Rb     []ot.Label
 	Rc     []ot.Label

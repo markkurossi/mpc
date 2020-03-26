@@ -208,12 +208,12 @@ func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 
 	var mode string
 	if peer.client {
-		mode = "OT-client"
+		mode = "OT Lambda client"
 	} else {
-		mode = "OT-server"
+		mode = "OT Lambda server"
 	}
 
-	fmt.Printf("%s for peer %d: count=%d\n", mode, peer.id, count)
+	fmt.Printf("   - %s for peer %d: count=%d\n", mode, peer.id, count)
 
 	if peer.client {
 		// Client queries first.
@@ -258,7 +258,6 @@ func (peer *Peer) OTLambdaQuery(count int, choices *big.Int) (
 	// OTs for each query.
 	result := new(big.Int)
 	for i := 0; i < count; i++ {
-		fmt.Printf(" - peer %d: OT %d...\n", peer.id, i)
 		n, err := peer.conn.Receive(peer.otReceiver, uint(i), choices.Bit(i))
 		if err != nil {
 			return nil, err
@@ -276,18 +275,14 @@ func (peer *Peer) OTLambdaQuery(count int, choices *big.Int) (
 func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 	pc, err := peer.conn.ReceiveUint32()
 	if err != nil {
-		fmt.Printf("respond0: %s\n", err)
 		return err
 	}
 	if pc != count {
-		fmt.Printf("respond1: %s\n", err)
-		return fmt.Errorf("protocol error: peer count %d, our %d",
-			pc, count)
+		return fmt.Errorf("protocol error: peer count %d, our %d", pc, count)
 	}
 	for i := 0; i < count; i++ {
 		bit, err := peer.conn.ReceiveUint32()
 		if err != nil {
-			fmt.Printf("respond2: %s\n", err)
 			return err
 		}
 		var m0, m1 [1]byte
@@ -301,45 +296,36 @@ func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 
 		xfer, err := peer.otSender.NewTransfer(m0[:], m1[:])
 		if err != nil {
-			fmt.Printf("respond3: %s\n", err)
 			return err
 		}
 		x0, x1 := xfer.RandomMessages()
 		if err := peer.conn.SendData(x0); err != nil {
-			fmt.Printf("respond4: %s\n", err)
 			return err
 		}
 		if err := peer.conn.SendData(x1); err != nil {
-			fmt.Printf("respond5: %s\n", err)
 			return err
 		}
 		if err := peer.conn.Flush(); err != nil {
-			fmt.Printf("respond6: %s\n", err)
 			return err
 		}
 
 		v, err := peer.conn.ReceiveData()
 		if err != nil {
-			fmt.Printf("respond7: %s\n", err)
 			return err
 		}
 		xfer.ReceiveV(v)
 
 		m0p, m1p, err := xfer.Messages()
 		if err != nil {
-			fmt.Printf("respond8: %s\n", err)
 			return err
 		}
 		if err := peer.conn.SendData(m0p); err != nil {
-			fmt.Printf("respond9: %s\n", err)
 			return err
 		}
 		if err := peer.conn.SendData(m1p); err != nil {
-			fmt.Printf("respond10: %s\n", err)
 			return err
 		}
 		if err := peer.conn.Flush(); err != nil {
-			fmt.Printf("respond11: %s\n", err)
 			return err
 		}
 	}
@@ -350,6 +336,148 @@ func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 func (peer *Peer) OTR(choices *big.Int,
 	x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg []ot.Label) (
 	ra, rb, rc []ot.Label, err error) {
-	err = fmt.Errorf("OKR not implemented yet")
+
+	var mode string
+	if peer.client {
+		mode = "OT R client"
+	} else {
+		mode = "OT R server"
+	}
+
+	fmt.Printf("   - %s for peer %d: count=%d\n", mode, peer.id, len(x1Ag))
+
+	if peer.client {
+		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), choices)
+		if err != nil {
+			return
+		}
+		err = peer.OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
+		if err != nil {
+			return
+		}
+	} else {
+		err = peer.OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
+		if err != nil {
+			return
+		}
+		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), choices)
+		if err != nil {
+			return
+		}
+	}
+
+	fmt.Printf("%s for peer %d done\n", mode, peer.id)
 	return
+}
+
+func (peer *Peer) OTRQueries(count int, choices *big.Int) (
+	ra, rb, rc []ot.Label, err error) {
+
+	ra, err = peer.OTRQuery(count, choices)
+	if err != nil {
+		return
+	}
+	rb, err = peer.OTRQuery(count, choices)
+	if err != nil {
+		return
+	}
+	rc, err = peer.OTRQuery(count, choices)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
+
+	// Number of OTs following
+	if err := peer.conn.SendUint32(count); err != nil {
+		return nil, err
+	}
+	if err := peer.conn.Flush(); err != nil {
+		return nil, err
+	}
+
+	result := make([]ot.Label, count)
+	for i := 0; i < count; i++ {
+		n, err := peer.conn.Receive(peer.otReceiver, uint(i), choices.Bit(i))
+		if err != nil {
+			return nil, err
+		}
+		result[i] = *ot.LabelFromData(n)
+	}
+
+	return result, nil
+}
+
+func (peer *Peer) OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg,
+	x1Cg, x2Cg []ot.Label) error {
+	if err := peer.OTRRespond(x1Ag, x2Ag); err != nil {
+		return err
+	}
+	if err := peer.OTRRespond(x1Bg, x2Bg); err != nil {
+		return err
+	}
+	if err := peer.OTRRespond(x1Cg, x2Cg); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
+
+	pc, err := peer.conn.ReceiveUint32()
+	if err != nil {
+		return err
+	}
+	if pc != len(x1) {
+		return fmt.Errorf("protocol error: peer count %d, our %d", pc, len(x1))
+	}
+
+	for i := 0; i < len(x1); i++ {
+		bit, err := peer.conn.ReceiveUint32()
+		if err != nil {
+			return err
+		}
+		m0 := x1[bit].Bytes()
+		m1 := x2[bit].Bytes()
+
+		xfer, err := peer.otSender.NewTransfer(m0, m1)
+		if err != nil {
+			return err
+		}
+		x0, x1 := xfer.RandomMessages()
+		if err := peer.conn.SendData(x0); err != nil {
+			return err
+		}
+		if err := peer.conn.SendData(x1); err != nil {
+			return err
+		}
+		if err := peer.conn.Flush(); err != nil {
+			return err
+		}
+
+		v, err := peer.conn.ReceiveData()
+		if err != nil {
+			return err
+		}
+		xfer.ReceiveV(v)
+
+		m0p, m1p, err := xfer.Messages()
+		if err != nil {
+			return err
+		}
+		if err := peer.conn.SendData(m0p); err != nil {
+			return err
+		}
+		if err := peer.conn.SendData(m1p); err != nil {
+			return err
+		}
+		if err := peer.conn.Flush(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+
 }
