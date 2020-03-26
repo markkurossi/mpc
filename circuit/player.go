@@ -14,6 +14,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -22,6 +23,9 @@ var key [32]byte
 
 func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	[]*big.Int, error) {
+
+	numPlayers := len(nw.Peers) + 1
+	player := nw.ID
 
 	timing := NewTiming()
 	if verbose {
@@ -35,45 +39,37 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	timing.Sample("Garble", nil)
 
-	if verbose {
-		fmt.Printf(" - Sending garbled circuit...\n")
-	}
+	// The protocol for Fgc (Protocol 3.1)
 
-	// Compute LambdaUV for each non-XOR gate.
+	// Step 1: Compute Lambda{u,v} for each non-XOR gate.
+	if verbose {
+		fmt.Printf(" - Step 1: compute Luv\n")
+	}
 
 	luv := new(big.Int)
 	lu := new(big.Int)
 	lv := new(big.Int)
 
-	for i, gate := range circ.Gates {
+	for g, gate := range circ.Gates {
 		switch gate.Op {
 		case XOR, XNOR:
 
 		case INV:
-			if garbled.Wires[int(gate.Input0)].L0.S() {
-				lu.SetBit(lu, i, 1)
-			}
+			lu.SetBit(lu, g, garbled.Lambda(gate.Input0))
 
 		default:
-			if garbled.Wires[int(gate.Input0)].L0.S() {
-				lu.SetBit(lu, i, 1)
-			}
-			if garbled.Wires[int(gate.Input1)].L0.S() {
-				lv.SetBit(lv, i, 1)
-			}
+			lu.SetBit(lu, g, garbled.Lambda(gate.Input0))
+			lv.SetBit(lv, g, garbled.Lambda(gate.Input1))
 		}
 	}
 
-	// Compute lu AND lv.
-	luv.And(lu, lv)
+	// OTs with peers.
 
-	// Oblivious transfer with peers.
+	lambdaResults := make(chan OTLambdaResult)
 
-	results := make(chan OTResult)
-
-	for id, peer := range nw.Peers {
-		go func(id int, peer *p2p.Peer) {
-			x1, result, err := func(id int, peer *p2p.Peer) (
+	for peerID, peer := range nw.Peers {
+		go func(peerID int, peer *p2p.Peer) {
+			x1, result, err := func(peer *p2p.Peer) (
 				*big.Int, *big.Int, error) {
 
 				// Random X1
@@ -89,32 +85,185 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				// X2.
 				x2 := new(big.Int).Xor(lu, x1)
 
-				result, err := peer.OT(len(circ.Gates), lu, x1, x2)
+				result, err := peer.OTLambda(len(circ.Gates), lv, x1, x2)
 				if err != nil {
 					return nil, nil, err
 				}
 				return x1, result, nil
-			}(id, peer)
-			results <- OTResult{
-				id:     id,
+			}(peer)
+			lambdaResults <- OTLambdaResult{
+				peerID: peerID,
 				x1:     x1,
 				result: result,
 				err:    err,
 			}
-		}(id, peer)
+		}(peerID, peer)
 	}
 
+	// Compute lu AND lv.
+	luv.And(lu, lv)
+
 	for i := 0; i < len(nw.Peers); i++ {
-		result := <-results
+		result := <-lambdaResults
 		if result.err != nil {
-			return nil, fmt.Errorf("OT with peer %d failed: %s",
-				result.id, result.err)
+			return nil, fmt.Errorf("OT-Lambda with peer %d failed: %s",
+				result.peerID, result.err)
 		}
 		luv.Xor(luv, result.x1)
 		luv.Xor(luv, result.result)
 	}
 
-	fmt.Printf("luv: %s\n", luv.Text(2))
+	fmt.Printf("Luv: %s\n", luv.Text(2))
+	timing.Sample("Fgc Step 1", nil)
+
+	// Step 2: generate XOR shares
+	if verbose {
+		fmt.Printf(" - Step 2: generate XOR shares\n")
+	}
+
+	// Init new gate values.
+	Gs := make([]*GateValues, circ.NumGates)
+	for i, gate := range circ.Gates {
+		switch gate.Op {
+		case XOR, XNOR:
+		case INV:
+
+		default:
+			Gs[i] = NewGateValues(numPlayers)
+		}
+	}
+
+	Ag := new(big.Int)
+	Bg := new(big.Int)
+	Cg := new(big.Int)
+
+	for g, gate := range circ.Gates {
+		switch gate.Op {
+		case XOR, XNOR:
+
+		case INV:
+
+		default:
+			tmp := garbled.Lambda(gate.Output)
+			Ag.SetBit(Ag, g, 1)
+			if tmp != 0 {
+				Gs[g].Ag[player].Xor(garbled.R)
+				Gs[g].Dg[player].Xor(garbled.R)
+			}
+
+			Bg.SetBit(Bg, g, tmp^garbled.Lambda(gate.Input0))
+			if tmp^garbled.Lambda(gate.Input0) != 0 {
+				Gs[g].Bg[player].Xor(garbled.R)
+				Gs[g].Dg[player].Xor(garbled.R)
+			}
+
+			Cg.SetBit(Cg, g, tmp^garbled.Lambda(gate.Input1))
+			if tmp^garbled.Lambda(gate.Input1) != 0 {
+				Gs[g].Cg[player].Xor(garbled.R)
+				Gs[g].Dg[player].Xor(garbled.R)
+			}
+		}
+	}
+
+	X1LongAg := make([][]ot.Label, numPlayers)
+	X1LongBg := make([][]ot.Label, numPlayers)
+	X1LongCg := make([][]ot.Label, numPlayers)
+
+	X2LongAg := make([][]ot.Label, numPlayers)
+	X2LongBg := make([][]ot.Label, numPlayers)
+	X2LongCg := make([][]ot.Label, numPlayers)
+
+	for peerID, _ := range nw.Peers {
+		X1LongAg[peerID] = make([]ot.Label, len(circ.Gates))
+		X1LongBg[peerID] = make([]ot.Label, len(circ.Gates))
+		X1LongCg[peerID] = make([]ot.Label, len(circ.Gates))
+
+		X2LongAg[peerID] = make([]ot.Label, len(circ.Gates))
+		X2LongBg[peerID] = make([]ot.Label, len(circ.Gates))
+		X2LongCg[peerID] = make([]ot.Label, len(circ.Gates))
+
+		for g, gate := range circ.Gates {
+			switch gate.Op {
+			case XOR, XNOR:
+			case INV:
+
+			default:
+				rand1, err := ot.NewLabel(rand.Reader)
+				if err != nil {
+					return nil, err
+				}
+				X1LongAg[peerID][g] = *rand1
+				Gs[g].Ag[peerID].Xor(rand1)
+
+				rand2, err := ot.NewLabel(rand.Reader)
+				if err != nil {
+					return nil, err
+				}
+				X1LongBg[peerID][g] = *rand2
+				Gs[g].Bg[peerID].Xor(rand2)
+
+				rand3, err := ot.NewLabel(rand.Reader)
+				if err != nil {
+					return nil, err
+				}
+				X1LongCg[peerID][g] = *rand3
+				Gs[g].Cg[peerID].Xor(rand3)
+
+				Gs[g].Cg[peerID].Xor(rand1)
+				Gs[g].Cg[peerID].Xor(rand2)
+				Gs[g].Cg[peerID].Xor(rand3)
+
+				X2LongAg[peerID][g].Xor(rand1)
+				X2LongBg[peerID][g].Xor(rand2)
+				X2LongCg[peerID][g].Xor(rand3)
+			}
+		}
+	}
+
+	// OTs with peers.
+
+	rResults := make(chan OTRResult)
+
+	for peerID, peer := range nw.Peers {
+		for g, gate := range circ.Gates {
+			switch gate.Op {
+			case XOR, XNOR:
+			case INV:
+
+			default:
+				go func(peerID, g int, peer *p2p.Peer) {
+					ra, rb, rc, err := peer.OTR(Ag,
+						X1LongAg[peerID], X2LongAg[peerID],
+						X1LongBg[peerID], X2LongBg[peerID],
+						X1LongCg[peerID], X2LongCg[peerID])
+
+					rResults <- OTRResult{
+						peerID: peerID,
+						g:      g,
+						Ra:     ra,
+						Rb:     rb,
+						Rc:     rc,
+						err:    err,
+					}
+				}(peerID, g, peer)
+			}
+		}
+	}
+
+	for i := 0; i < len(nw.Peers); i++ {
+		result := <-rResults
+		if result.err != nil {
+			return nil, fmt.Errorf("OT-R with peer %d failed: %s",
+				result.peerID, result.err)
+		}
+		Gs[result.g].Ag[result.peerID].Xor(&result.Ra[result.g])
+		Gs[result.g].Bg[result.peerID].Xor(&result.Rb[result.g])
+		Gs[result.g].Cg[result.peerID].Xor(&result.Rc[result.g])
+
+		Gs[result.g].Dg[result.peerID].Xor(&result.Ra[result.g])
+		Gs[result.g].Dg[result.peerID].Xor(&result.Rb[result.g])
+		Gs[result.g].Dg[result.peerID].Xor(&result.Rc[result.g])
+	}
 
 	for false {
 		<-time.After(5 * time.Second)
@@ -122,9 +271,46 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	return nil, fmt.Errorf("player not implemented yet")
 }
 
-type OTResult struct {
-	id     int
+type OTLambdaResult struct {
+	peerID int
 	x1     *big.Int
 	result *big.Int
 	err    error
+}
+
+type OTRResult struct {
+	peerID int
+	g      int
+	Ra     []ot.Label
+	Rb     []ot.Label
+	Rc     []ot.Label
+	err    error
+}
+
+type GateValues struct {
+	Ag []ot.Label
+	Bg []ot.Label
+	Cg []ot.Label
+	Dg []ot.Label
+}
+
+func NewGateValues(numPlayers int) *GateValues {
+	return &GateValues{
+		Ag: arrayOfLabels(numPlayers),
+		Bg: arrayOfLabels(numPlayers),
+		Cg: arrayOfLabels(numPlayers),
+		Dg: arrayOfLabels(numPlayers),
+	}
+}
+
+func arrayOfLabels(count int) []ot.Label {
+	result := make([]ot.Label, count)
+	for i := 0; i < count; i++ {
+		l, err := ot.NewLabel(rand.Reader)
+		if err != nil {
+			panic(err)
+		}
+		result[i] = *l
+	}
+	return result
 }

@@ -135,6 +135,13 @@ type Garbled struct {
 	Gates [][][]byte
 }
 
+func (g *Garbled) Lambda(wire Wire) uint {
+	if g.Wires[int(wire)].L0.S() {
+		return 1
+	}
+	return 0
+}
+
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Create R.
 	r, err := ot.NewLabel(rand.Reader)

@@ -19,7 +19,7 @@ import (
 )
 
 type Network struct {
-	id       int
+	ID       int
 	m        sync.Mutex
 	Peers    map[int]*Peer
 	addr     string
@@ -32,7 +32,7 @@ func NewNetwork(addr string, id int) (*Network, error) {
 		return nil, err
 	}
 	nw := &Network{
-		id:       id,
+		ID:       id,
 		Peers:    make(map[int]*Peer),
 		addr:     addr,
 		listener: listener,
@@ -56,19 +56,19 @@ func (nw *Network) AddPeer(addr string, id int) error {
 			return nil
 		}
 
-		log.Printf("NW %d: Connecting to peer %d...\n", nw.id, id)
+		log.Printf("NW %d: Connecting to peer %d...\n", nw.ID, id)
 		nc, err := net.Dial("tcp", addr)
 		if err != nil {
 			delay := 5 * time.Second
 			log.Printf("NW %d: Connect to %s failed, retrying in %s\n",
-				nw.id, addr, delay)
+				nw.ID, addr, delay)
 			<-time.After(delay)
 			continue
 		}
-		log.Printf("NW %d: Connected to %s\n", nw.id, addr)
+		log.Printf("NW %d: Connected to %s\n", nw.ID, addr)
 		conn := NewConn(nc)
 
-		if err := conn.SendUint32(nw.id); err != nil {
+		if err := conn.SendUint32(nw.ID); err != nil {
 			conn.Close()
 			return err
 		}
@@ -92,7 +92,7 @@ func (nw *Network) acceptLoop() {
 	for {
 		nc, err := nw.listener.Accept()
 		if err != nil {
-			log.Printf("NW %d: accept failed: %s\n", nw.id, err)
+			log.Printf("NW %d: accept failed: %s\n", nw.ID, err)
 			continue
 		}
 		conn := NewConn(nc)
@@ -100,7 +100,7 @@ func (nw *Network) acceptLoop() {
 		// Read peer ID.
 		id, err := conn.ReceiveUint32()
 		if err != nil {
-			log.Printf("NW %d: I/O error: %s\n", nw.id, err)
+			log.Printf("NW %d: I/O error: %s\n", nw.ID, err)
 			conn.Close()
 			continue
 		}
@@ -117,7 +117,7 @@ func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 	peer, ok := nw.Peers[id]
 	if ok {
 		nw.m.Unlock()
-		log.Printf("NW %d: peer %d already connected\n", nw.id, id)
+		log.Printf("NW %d: peer %d already connected\n", nw.ID, id)
 		return conn.Close()
 	}
 	peer = &Peer{
@@ -203,7 +203,7 @@ func (peer *Peer) init() error {
 	return <-finished
 }
 
-func (peer *Peer) OT(count int, queries, x1, x2 *big.Int) (
+func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 	result *big.Int, err error) {
 
 	var mode string
@@ -217,25 +217,25 @@ func (peer *Peer) OT(count int, queries, x1, x2 *big.Int) (
 
 	if peer.client {
 		// Client queries first.
-		result, err = peer.OTQuery(count, queries, x1, x2)
+		result, err = peer.OTLambdaQuery(count, choices)
 		if err != nil {
 			return
 		}
 
 		// Serve peer queries.
-		err = peer.OTRespond(count, queries, x1, x2)
+		err = peer.OTLambdaRespond(count, x1, x2)
 		if err != nil {
 			return
 		}
 	} else {
 		// Serve peer queries.
-		err = peer.OTRespond(count, queries, x1, x2)
+		err = peer.OTLambdaRespond(count, x1, x2)
 		if err != nil {
 			return
 		}
 
 		// Server queries second.
-		result, err = peer.OTQuery(count, queries, x1, x2)
+		result, err = peer.OTLambdaQuery(count, choices)
 		if err != nil {
 			return
 		}
@@ -244,16 +244,14 @@ func (peer *Peer) OT(count int, queries, x1, x2 *big.Int) (
 	return
 }
 
-func (peer *Peer) OTQuery(count int, queries, x1, x2 *big.Int) (
+func (peer *Peer) OTLambdaQuery(count int, choices *big.Int) (
 	*big.Int, error) {
 
 	// Number of OTs following
 	if err := peer.conn.SendUint32(count); err != nil {
-		fmt.Printf("*** debug0\n")
 		return nil, err
 	}
 	if err := peer.conn.Flush(); err != nil {
-		fmt.Printf("*** debug1\n")
 		return nil, err
 	}
 
@@ -261,13 +259,11 @@ func (peer *Peer) OTQuery(count int, queries, x1, x2 *big.Int) (
 	result := new(big.Int)
 	for i := 0; i < count; i++ {
 		fmt.Printf(" - peer %d: OT %d...\n", peer.id, i)
-		n, err := peer.conn.Receive(peer.otReceiver, uint(i), queries.Bit(i))
+		n, err := peer.conn.Receive(peer.otReceiver, uint(i), choices.Bit(i))
 		if err != nil {
-			fmt.Printf("*** OT %d: debug2\n", i)
 			return nil, err
 		}
 		if len(n) != 1 {
-			fmt.Printf("*** OT %d: debug3\n", i)
 			return nil, fmt.Errorf("invalid OT result of length %d", len(n))
 		}
 		if n[0] != 0 {
@@ -277,7 +273,7 @@ func (peer *Peer) OTQuery(count int, queries, x1, x2 *big.Int) (
 	return result, nil
 }
 
-func (peer *Peer) OTRespond(count int, queries, x1, x2 *big.Int) error {
+func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 	pc, err := peer.conn.ReceiveUint32()
 	if err != nil {
 		fmt.Printf("respond0: %s\n", err)
@@ -349,4 +345,11 @@ func (peer *Peer) OTRespond(count int, queries, x1, x2 *big.Int) error {
 	}
 
 	return nil
+}
+
+func (peer *Peer) OTR(choices *big.Int,
+	x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg []ot.Label) (
+	ra, rb, rc []ot.Label, err error) {
+	err = fmt.Errorf("OKR not implemented yet")
+	return
 }
