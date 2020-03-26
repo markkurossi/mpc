@@ -142,6 +142,14 @@ func (g *Garbled) Lambda(wire Wire) uint {
 	return 0
 }
 
+func (g *Garbled) SetLambda(wire Wire, val uint) {
+	if val == 0 {
+		g.Wires[int(wire)].L0.SetS(false)
+	} else {
+		g.Wires[int(wire)].L0.SetS(true)
+	}
+}
+
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Create R.
 	r, err := ot.NewLabel(rand.Reader)

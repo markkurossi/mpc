@@ -481,3 +481,116 @@ func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
 	return nil
 
 }
+
+func (peer *Peer) ExchangeGates(ag, bg, cg, dg []ot.Label, lo *big.Int) (
+	ra, rb, rc, rd []ot.Label, ro *big.Int, err error) {
+
+	var mode string
+	if peer.client {
+		mode = "Exch client"
+	} else {
+		mode = "Exch server"
+	}
+
+	fmt.Printf("   - %s for peer %d\n", mode, peer.id)
+
+	if peer.client {
+		err = peer.ExchangeSend(ag, bg, cg, dg, lo)
+		if err != nil {
+			return
+		}
+		ra, rb, rc, rd, ro, err = peer.ExchangeReceive()
+		if err != nil {
+			return
+		}
+	} else {
+		ra, rb, rc, rd, ro, err = peer.ExchangeReceive()
+		if err != nil {
+			return
+		}
+		err = peer.ExchangeSend(ag, bg, cg, dg, lo)
+		if err != nil {
+			return
+		}
+	}
+	fmt.Printf("   - %s for peer %d done\n", mode, peer.id)
+	return
+}
+
+func (peer *Peer) ExchangeSend(ag, bg, cg, dg []ot.Label, lo *big.Int) (
+	err error) {
+	if err := peer.ExchangeSendArr(ag); err != nil {
+		return err
+	}
+	if err := peer.ExchangeSendArr(bg); err != nil {
+		return err
+	}
+	if err := peer.ExchangeSendArr(cg); err != nil {
+		return err
+	}
+	if err := peer.ExchangeSendArr(dg); err != nil {
+		return err
+	}
+	if err := peer.conn.SendData(lo.Bytes()); err != nil {
+		return err
+	}
+	return peer.conn.Flush()
+}
+
+func (peer *Peer) ExchangeSendArr(arr []ot.Label) (err error) {
+	if err := peer.conn.SendUint32(len(arr)); err != nil {
+		return err
+	}
+	for _, label := range arr {
+		if err := peer.conn.SendData(label.Bytes()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (peer *Peer) ExchangeReceive() (
+	ra, rb, rc, rd []ot.Label, ro *big.Int, err error) {
+
+	ra, err = peer.ExchangeReceiveArr()
+	if err != nil {
+		return
+	}
+	rb, err = peer.ExchangeReceiveArr()
+	if err != nil {
+		return
+	}
+	rc, err = peer.ExchangeReceiveArr()
+	if err != nil {
+		return
+	}
+	rd, err = peer.ExchangeReceiveArr()
+	if err != nil {
+		return
+	}
+
+	var buf []byte
+	buf, err = peer.conn.ReceiveData()
+	if err != nil {
+		return
+	}
+
+	ro = new(big.Int).SetBytes(buf)
+	return
+}
+
+func (peer *Peer) ExchangeReceiveArr() ([]ot.Label, error) {
+	count, err := peer.conn.ReceiveUint32()
+	if err != nil {
+		return nil, err
+	}
+	var result []ot.Label
+	for i := 0; i < count; i++ {
+		data, err := peer.conn.ReceiveData()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *ot.LabelFromData(data))
+	}
+	return result, nil
+}
