@@ -30,7 +30,7 @@ func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 	}
 	for i := 0; i < len(x); i++ {
 		w := NewWire()
-		compiler.AddGate(NewINV(y[i], w))
+		compiler.INV(y[i], w)
 		compiler.AddGate(NewBinary(circuit.AND, x[i], w, r[i]))
 	}
 	return nil

@@ -431,9 +431,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.INV:
-					cc.AddGate(circuits.NewINV(
-						circWires[gate.Input0],
-						circWires[gate.Output]))
+					cc.INV(circWires[gate.Input0], circWires[gate.Output])
 				default:
 					return fmt.Errorf("Unknown gate %s", gate)
 				}

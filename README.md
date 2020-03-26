@@ -242,7 +242,9 @@ form assembly:
    - [ ] Row reduction
    - [ ] Half AND
    - [ ] Oblivious transfer extensions
-   - [ ] Replace NOT with XNOR(v, 0)
+   - [ ] OT labels by value
+   - [ ] AES PRF function for grabling
+   - [X] Replace NOT with XNOR(v, 0)
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
@@ -321,10 +323,25 @@ Wires in slice:
 ┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Replacing INV with XNOR(v, 0):
+
+```
+┏━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃          Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃ 18.045051392s ┃ 58.95% ┃       ┃
+┃ Recv   ┃  3.771284541s ┃ 12.32% ┃ 403MB ┃
+┃ Inputs ┃  7.279901287s ┃ 23.78% ┃   1MB ┃
+┃ Eval   ┃  1.510656651s ┃  4.94% ┃       ┃
+┃ Result ┃    1.453307ms ┃  0.00% ┃  40kB ┃
+┃ Total  ┃ 30.608347178s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 ## 32-bit RSA encryption (64-bit modp)
 
 ```
-Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158), #wires=7366537 n1=129, n2=32, n3=64
+Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃          Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -340,7 +357,7 @@ Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158), #wires=7
 Optimized full-adder:
 
 ```
-Circuit: #gates=7366376 (XOR=5210811 AND=2101407 OR=0 INV=54158), #wires=7366537 n1=129, n2=32, n3=64
+Circuit: #gates=7366376 (XOR=5210811 AND=2101407 OR=0 INV=54158)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -356,7 +373,7 @@ Circuit: #gates=7366376 (XOR=5210811 AND=2101407 OR=0 INV=54158), #wires=7366537
 Karatsuba multiplication algorithm:
 
 ```
-Circuit: #gates=6822632 (XOR=4828475 XNOR=58368 AND=1874719 OR=0 INV=61070), #wires=6822793 n1=129, n2=32, n3=64
+Circuit: #gates=6822632 (XOR=4828475 XNOR=58368 AND=1874719 OR=0 INV=61070)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -372,7 +389,7 @@ Circuit: #gates=6822632 (XOR=4828475 XNOR=58368 AND=1874719 OR=0 INV=61070), #wi
 Optimized INV-gates:
 
 ```
-Circuit: #gates=6769820 (XOR=4836732 XNOR=58368 AND=1874719 OR=0 INV=1), #wires=6769980 n1=128, n2=32, n3=64
+Circuit: #gates=6769820 (XOR=4836732 XNOR=58368 AND=1874719 OR=0 INV=1)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫

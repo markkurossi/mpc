@@ -101,7 +101,7 @@ func NewEqComparator(compiler *Compiler, x, y, r []*Wire) error {
 		return err
 	}
 	// r = !w
-	compiler.AddGate(NewINV(w, r[0]))
+	compiler.INV(w, r[0])
 	return nil
 }
 

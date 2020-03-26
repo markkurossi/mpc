@@ -84,7 +84,7 @@ func (c *Compiler) ZeroWire() *Wire {
 func (c *Compiler) OneWire() *Wire {
 	if c.oneWire == nil {
 		c.oneWire = NewWire()
-		c.AddGate(NewINV(c.ZeroWire(), c.oneWire))
+		c.AddGate(NewBinary(circuit.XNOR, c.Inputs[0], c.Inputs[0], c.oneWire))
 	}
 	return c.oneWire
 }
