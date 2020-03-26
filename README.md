@@ -242,9 +242,7 @@ form assembly:
    - [ ] Row reduction
    - [ ] Half AND
    - [ ] Oblivious transfer extensions
-   - [ ] OT labels by value
    - [ ] AES PRF function for grabling
-   - [X] Replace NOT with XNOR(v, 0)
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
