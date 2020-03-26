@@ -93,7 +93,7 @@ func (nw *Network) acceptLoop() {
 		nc, err := nw.listener.Accept()
 		if err != nil {
 			log.Printf("NW %d: accept failed: %s\n", nw.ID, err)
-			continue
+			return
 		}
 		conn := NewConn(nc)
 
@@ -333,7 +333,7 @@ func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 	return nil
 }
 
-func (peer *Peer) OTR(choices *big.Int,
+func (peer *Peer) OTR(chA, chB, chC *big.Int,
 	x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg []ot.Label) (
 	ra, rb, rc []ot.Label, err error) {
 
@@ -347,7 +347,7 @@ func (peer *Peer) OTR(choices *big.Int,
 	fmt.Printf("   - %s for peer %d: count=%d\n", mode, peer.id, len(x1Ag))
 
 	if peer.client {
-		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), choices)
+		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), chA, chB, chC)
 		if err != nil {
 			return
 		}
@@ -360,7 +360,7 @@ func (peer *Peer) OTR(choices *big.Int,
 		if err != nil {
 			return
 		}
-		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), choices)
+		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), chA, chB, chC)
 		if err != nil {
 			return
 		}
@@ -370,18 +370,18 @@ func (peer *Peer) OTR(choices *big.Int,
 	return
 }
 
-func (peer *Peer) OTRQueries(count int, choices *big.Int) (
+func (peer *Peer) OTRQueries(count int, chA, chB, chC *big.Int) (
 	ra, rb, rc []ot.Label, err error) {
 
-	ra, err = peer.OTRQuery(count, choices)
+	ra, err = peer.OTRQuery(count, chA)
 	if err != nil {
 		return
 	}
-	rb, err = peer.OTRQuery(count, choices)
+	rb, err = peer.OTRQuery(count, chB)
 	if err != nil {
 		return
 	}
-	rc, err = peer.OTRQuery(count, choices)
+	rc, err = peer.OTRQuery(count, chC)
 	if err != nil {
 		return
 	}

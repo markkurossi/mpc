@@ -45,16 +45,13 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		fmt.Printf(" - Step 1: compute Luv\n")
 	}
 
-	luv := new(big.Int)
 	lu := new(big.Int)
 	lv := new(big.Int)
 
 	for g, gate := range circ.Gates {
 		switch gate.Op {
 		case XOR, XNOR:
-
 		case INV:
-			lu.SetBit(lu, g, garbled.Lambda(gate.Input0))
 
 		default:
 			lu.SetBit(lu, g, garbled.Lambda(gate.Input0))
@@ -72,7 +69,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				*big.Int, *big.Int, error) {
 
 				// Random X1
-				buf := make([]byte, luv.BitLen()/8+1)
+				buf := make([]byte, len(circ.Gates)/8+1)
 				_, err := rand.Read(buf[:])
 				if err != nil {
 					return nil, nil, err
@@ -100,6 +97,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 
 	// Compute lu AND lv.
+	luv := new(big.Int)
 	luv.And(lu, lv)
 
 	for i := 0; i < len(nw.Peers); i++ {
@@ -123,6 +121,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	// Init new gate values.
 	Gs := make([]*GateValues, numPlayers)
 	for i := 0; i < numPlayers; i++ {
+		// XXX should these labels be random or zero?
 		Gs[i] = NewGateValues(circ.NumGates)
 	}
 
@@ -133,12 +132,11 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	for g, gate := range circ.Gates {
 		switch gate.Op {
 		case XOR, XNOR:
-
 		case INV:
 
 		default:
-			tmp := garbled.Lambda(gate.Output)
-			Ag.SetBit(Ag, g, 1)
+			tmp := luv.Bit(g) ^ garbled.Lambda(gate.Output)
+			Ag.SetBit(Ag, g, tmp)
 			if tmp != 0 {
 				Gs[player].Ag[g].Xor(garbled.R)
 				Gs[player].Dg[g].Xor(garbled.R)
@@ -155,6 +153,8 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				Gs[player].Cg[g].Xor(garbled.R)
 				Gs[player].Dg[g].Xor(garbled.R)
 			}
+
+			Gs[player].Dg[g].Xor(garbled.R)
 		}
 	}
 
@@ -202,12 +202,17 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				X1LongCg[peerID][g] = *rand3
 				Gs[peerID].Cg[g].Xor(rand3)
 
-				Gs[peerID].Cg[g].Xor(rand1)
-				Gs[peerID].Cg[g].Xor(rand2)
-				Gs[peerID].Cg[g].Xor(rand3)
+				Gs[peerID].Dg[g].Xor(rand1)
+				Gs[peerID].Dg[g].Xor(rand2)
+				Gs[peerID].Dg[g].Xor(rand3)
 
+				X2LongAg[peerID][g] = *garbled.R.Copy()
 				X2LongAg[peerID][g].Xor(rand1)
+
+				X2LongBg[peerID][g] = *garbled.R.Copy()
 				X2LongBg[peerID][g].Xor(rand2)
+
+				X2LongCg[peerID][g] = *garbled.R.Copy()
 				X2LongCg[peerID][g].Xor(rand3)
 			}
 		}
@@ -226,7 +231,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	for peerID, peer := range nw.Peers {
 		go func(peerID int, peer *p2p.Peer) {
-			ra, rb, rc, err := peer.OTR(Ag,
+			ra, rb, rc, err := peer.OTR(Ag, Bg, Cg,
 				X1LongAg[peerID], X2LongAg[peerID],
 				X1LongBg[peerID], X2LongBg[peerID],
 				X1LongCg[peerID], X2LongCg[peerID])
@@ -270,6 +275,8 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	if verbose {
 		fmt.Printf(" - Step 4: exchange gates\n")
 	}
+
+	// XXX Checked up to here, but not network.go
 
 	// Output wire lambdas.
 	Lo := new(big.Int)
@@ -330,6 +337,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 
 	for i := 0; i < numPlayers; i++ {
+	gates:
 		for g, gate := range circ.Gates {
 			switch gate.Op {
 			case XOR, XNOR:
@@ -340,6 +348,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				fmt.Printf("%d:%d: Bg: %s\n", i, g, Gs[i].Bg[g])
 				fmt.Printf("%d:%d: Cg: %s\n", i, g, Gs[i].Cg[g])
 				fmt.Printf("%d:%d: Dg: %s\n", i, g, Gs[i].Dg[g])
+				break gates
 			}
 		}
 	}
@@ -349,7 +358,9 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		timing.Print()
 	}
 
-	return nil, fmt.Errorf("player not implemented yet")
+	fmt.Printf("player not implemented yet\n")
+
+	return []*big.Int{new(big.Int)}, nil
 }
 
 type OTLambdaResult struct {
