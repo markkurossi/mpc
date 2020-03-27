@@ -38,38 +38,38 @@ func (l Label) String() string {
 	return fmt.Sprintf("%016x%016x", l.d0, l.d1)
 }
 
-func NewLabel(rand io.Reader) (*Label, error) {
-	var buf [16]byte
-
-	if _, err := rand.Read(buf[:]); err != nil {
-		return nil, err
-	}
-	label := &Label{}
-	label.SetBytes(buf[:])
-
-	return label, nil
+func (l Label) Undefined() bool {
+	return l.d0 == 0 && l.d1 == 0
 }
 
-func LabelFromData(data []byte) *Label {
-	label := &Label{}
+func NewLabel(rand io.Reader) (Label, error) {
+	var buf [16]byte
+	var label Label
+
+	for {
+		if _, err := rand.Read(buf[:]); err != nil {
+			return label, err
+		}
+		label.SetBytes(buf[:])
+		if !label.Undefined() {
+			return label, nil
+		}
+	}
+}
+
+func LabelFromData(data []byte) Label {
+	label := Label{}
 	label.SetBytes(data)
 	return label
 }
 
-func NewTweak(tweak uint32) *Label {
-	return &Label{
+func NewTweak(tweak uint32) Label {
+	return Label{
 		d1: uint64(tweak),
 	}
 }
 
-func (l *Label) Copy() *Label {
-	return &Label{
-		d0: l.d0,
-		d1: l.d1,
-	}
-}
-
-func (l *Label) S() bool {
+func (l Label) S() bool {
 	return (l.d0 & 0x8000000000000000) != 0
 }
 
@@ -93,12 +93,12 @@ func (l *Label) Mul4() {
 	l.d1 <<= 2
 }
 
-func (l *Label) Xor(o *Label) {
+func (l *Label) Xor(o Label) {
 	l.d0 ^= o.d0
 	l.d1 ^= o.d1
 }
 
-func (l *Label) Bytes() []byte {
+func (l Label) Bytes() []byte {
 	result := make([]byte, 16)
 	binary.BigEndian.PutUint64(result[0:8], l.d0)
 	binary.BigEndian.PutUint64(result[8:16], l.d1)
@@ -115,8 +115,8 @@ func (l *Label) SetBytes(data []byte) {
 }
 
 type Wire struct {
-	L0 *Label
-	L1 *Label
+	L0 Label
+	L1 Label
 }
 
 type Inputs map[int]Wire

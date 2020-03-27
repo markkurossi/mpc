@@ -13,22 +13,22 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
-func (c *Circuit) Eval(key []byte, wires []*ot.Label,
+func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	garbled [][][]byte) error {
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
 		return err
 	}
-	dec := func(a, b *ot.Label, t uint32, data []byte) ([]byte, error) {
+	dec := func(a, b ot.Label, t uint32, data []byte) ([]byte, error) {
 		return decrypt(alg, a, b, t, data)
 	}
 
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
 
-		var a *ot.Label
-		var b *ot.Label
+		var a ot.Label
+		var b ot.Label
 
 		switch gate.Op {
 		case XOR, XNOR, AND, OR:
@@ -46,9 +46,8 @@ func (c *Circuit) Eval(key []byte, wires []*ot.Label,
 
 		switch gate.Op {
 		case XOR, XNOR:
-			result := a.Copy()
-			result.Xor(b)
-			output = result.Bytes()
+			a.Xor(b)
+			output = a.Bytes()
 
 		default:
 			row := garbled[i]

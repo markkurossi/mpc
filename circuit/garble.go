@@ -22,9 +22,9 @@ var (
 	verbose = false
 )
 
-type Enc func(a, b, c *ot.Label, t uint32) []byte
+type Enc func(a, b, c ot.Label, t uint32) []byte
 
-type Dec func(a, b *ot.Label, t uint32, data []byte) ([]byte, error)
+type Dec func(a, b ot.Label, t uint32, data []byte) ([]byte, error)
 
 type TableEntry struct {
 	Index int
@@ -45,15 +45,15 @@ func (a ByIndex) Less(i, j int) bool {
 	return a[i].Index < a[j].Index
 }
 
-func entry(enc Enc, a, b, c *ot.Label, tweak uint32) TableEntry {
+func entry(enc Enc, a, b, c ot.Label, tweak uint32) TableEntry {
 	return TableEntry{
 		Index: idx(a, b),
 		Data:  enc(a, b, c, tweak),
 	}
 }
 
-func idx(l0, l1 *ot.Label) int {
-	if l1 == nil {
+func idx(l0, l1 ot.Label) int {
+	if l1.Undefined() {
 		if l0.S() {
 			return 1
 		} else {
@@ -73,7 +73,7 @@ func idx(l0, l1 *ot.Label) int {
 	return ret
 }
 
-func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {
+func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) []byte {
 	k := makeK(a, b, t)
 
 	crypted := make([]byte, alg.BlockSize())
@@ -86,7 +86,7 @@ func encrypt(alg cipher.Block, a, b, c *ot.Label, t uint32) []byte {
 	return pi.Bytes()
 }
 
-func decrypt(alg cipher.Block, a, b *ot.Label, t uint32, encrypted []byte) (
+func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted []byte) (
 	[]byte, error) {
 
 	k := makeK(a, b, t)
@@ -101,26 +101,24 @@ func decrypt(alg cipher.Block, a, b *ot.Label, t uint32, encrypted []byte) (
 	return c.Bytes(), nil
 }
 
-func makeK(a, b *ot.Label, t uint32) *ot.Label {
-	k := a.Copy()
-	k.Mul2()
+func makeK(a, b ot.Label, t uint32) ot.Label {
+	a.Mul2()
 
-	if b != nil {
-		tmp := b.Copy()
-		tmp.Mul4()
-		k.Xor(tmp)
+	if !b.Undefined() {
+		b.Mul4()
+		a.Xor(b)
 	}
-	k.Xor(ot.NewTweak(t))
+	a.Xor(ot.NewTweak(t))
 
-	return k
+	return a
 }
 
-func makeLabels(r *ot.Label) (ot.Wire, error) {
+func makeLabels(r ot.Label) (ot.Wire, error) {
 	l0, err := ot.NewLabel(rand.Reader)
 	if err != nil {
 		return ot.Wire{}, err
 	}
-	l1 := l0.Copy()
+	l1 := l0
 	l1.Xor(r)
 
 	return ot.Wire{
@@ -130,7 +128,7 @@ func makeLabels(r *ot.Label) (ot.Wire, error) {
 }
 
 type Garbled struct {
-	R     *ot.Label
+	R     ot.Label
 	Wires ot.Inputs
 	Gates [][][]byte
 }
@@ -143,11 +141,13 @@ func (g *Garbled) Lambda(wire Wire) uint {
 }
 
 func (g *Garbled) SetLambda(wire Wire, val uint) {
+	w := g.Wires[int(wire)]
 	if val == 0 {
-		g.Wires[int(wire)].L0.SetS(false)
+		w.L0.SetS(false)
 	} else {
-		g.Wires[int(wire)].L0.SetS(true)
+		w.L0.SetS(true)
 	}
+	g.Wires[int(wire)] = w
 }
 
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
@@ -165,7 +165,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return nil, err
 	}
 
-	enc := func(a, b, c *ot.Label, t uint32) []byte {
+	enc := func(a, b, c ot.Label, t uint32) []byte {
 		return encrypt(alg, a, b, c, t)
 	}
 
@@ -201,7 +201,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
+func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
 	[][]byte, error) {
 
 	var in []ot.Wire
@@ -227,10 +227,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 	}
 	switch g.Op {
 	case XOR:
-		l0 := in[0].L0.Copy()
+		l0 := in[0].L0
 		l0.Xor(in[1].L0)
 
-		l1 := l0.Copy()
+		l1 := l0
 		l1.Xor(r)
 		w = ot.Wire{
 			L0: l0,
@@ -238,10 +238,10 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 		}
 
 	case XNOR:
-		l0 := in[0].L0.Copy()
+		l0 := in[0].L0
 		l0.Xor(in[1].L0)
 
-		l1 := l0.Copy()
+		l1 := l0
 		l1.Xor(r)
 		w = ot.Wire{
 			L0: l1,
@@ -300,8 +300,8 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r *ot.Label, id uint32) (
 		// 1   0
 		a := in[0]
 		c := out[0]
-		table = append(table, entry(enc, a.L0, nil, c.L1, id))
-		table = append(table, entry(enc, a.L1, nil, c.L0, id))
+		table = append(table, entry(enc, a.L0, ot.Label{}, c.L1, id))
+		table = append(table, entry(enc, a.L1, ot.Label{}, c.L0, id))
 
 	default:
 		return nil, fmt.Errorf("Invalid operand %s", g.Op)

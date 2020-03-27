@@ -185,34 +185,34 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				if err != nil {
 					return nil, err
 				}
-				X1LongAg[peerID][g] = *rand1
+				X1LongAg[peerID][g] = rand1
 				Gs[peerID].Ag[g].Xor(rand1)
 
 				rand2, err := ot.NewLabel(rand.Reader)
 				if err != nil {
 					return nil, err
 				}
-				X1LongBg[peerID][g] = *rand2
+				X1LongBg[peerID][g] = rand2
 				Gs[peerID].Bg[g].Xor(rand2)
 
 				rand3, err := ot.NewLabel(rand.Reader)
 				if err != nil {
 					return nil, err
 				}
-				X1LongCg[peerID][g] = *rand3
+				X1LongCg[peerID][g] = rand3
 				Gs[peerID].Cg[g].Xor(rand3)
 
 				Gs[peerID].Dg[g].Xor(rand1)
 				Gs[peerID].Dg[g].Xor(rand2)
 				Gs[peerID].Dg[g].Xor(rand3)
 
-				X2LongAg[peerID][g] = *garbled.R.Copy()
+				X2LongAg[peerID][g] = garbled.R
 				X2LongAg[peerID][g].Xor(rand1)
 
-				X2LongBg[peerID][g] = *garbled.R.Copy()
+				X2LongBg[peerID][g] = garbled.R
 				X2LongBg[peerID][g].Xor(rand2)
 
-				X2LongCg[peerID][g] = *garbled.R.Copy()
+				X2LongCg[peerID][g] = garbled.R
 				X2LongCg[peerID][g].Xor(rand3)
 			}
 		}
@@ -258,13 +258,13 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			case INV:
 
 			default:
-				Gs[result.peerID].Ag[g].Xor(&result.Ra[g])
-				Gs[result.peerID].Bg[g].Xor(&result.Rb[g])
-				Gs[result.peerID].Cg[g].Xor(&result.Rc[g])
+				Gs[result.peerID].Ag[g].Xor(result.Ra[g])
+				Gs[result.peerID].Bg[g].Xor(result.Rb[g])
+				Gs[result.peerID].Cg[g].Xor(result.Rc[g])
 
-				Gs[result.peerID].Dg[g].Xor(&result.Ra[g])
-				Gs[result.peerID].Dg[g].Xor(&result.Rb[g])
-				Gs[result.peerID].Dg[g].Xor(&result.Rc[g])
+				Gs[result.peerID].Dg[g].Xor(result.Ra[g])
+				Gs[result.peerID].Dg[g].Xor(result.Rb[g])
+				Gs[result.peerID].Dg[g].Xor(result.Rc[g])
 			}
 		}
 	}
@@ -316,10 +316,10 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			case INV:
 
 			default:
-				Gs[result.peerID].Ag[g].Xor(&result.Ra[g])
-				Gs[result.peerID].Bg[g].Xor(&result.Rb[g])
-				Gs[result.peerID].Cg[g].Xor(&result.Rc[g])
-				Gs[result.peerID].Dg[g].Xor(&result.Rd[g])
+				Gs[result.peerID].Ag[g].Xor(result.Ra[g])
+				Gs[result.peerID].Bg[g].Xor(result.Rb[g])
+				Gs[result.peerID].Cg[g].Xor(result.Rc[g])
+				Gs[result.peerID].Dg[g].Xor(result.Rd[g])
 			}
 		}
 		for w := 0; w < circ.N3.Size(); w++ {
@@ -411,7 +411,7 @@ func arrayOfLabels(count int) []ot.Label {
 		if err != nil {
 			panic(err)
 		}
-		result[i] = *l
+		result[i] = l
 	}
 	return result
 }

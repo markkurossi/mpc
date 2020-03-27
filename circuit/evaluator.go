@@ -70,7 +70,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		garbled[i] = values
 	}
 
-	wires := make([]*ot.Label, circ.NumWires)
+	wires := make([]ot.Label, circ.NumWires)
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1.Size(); i++ {
@@ -144,7 +144,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 	timing.Sample("Eval", nil)
 
-	var labels []*ot.Label
+	var labels []ot.Label
 
 	for i := 0; i < circ.N3.Size(); i++ {
 		r := wires[Wire(circ.NumWires-circ.N3.Size()+i)]

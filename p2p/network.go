@@ -404,7 +404,7 @@ func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
 		if err != nil {
 			return nil, err
 		}
-		result[i] = *ot.LabelFromData(n)
+		result[i] = ot.LabelFromData(n)
 	}
 
 	return result, nil
@@ -590,7 +590,7 @@ func (peer *Peer) ExchangeReceiveArr() ([]ot.Label, error) {
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, *ot.LabelFromData(data))
+		result = append(result, ot.LabelFromData(data))
 	}
 	return result, nil
 }
