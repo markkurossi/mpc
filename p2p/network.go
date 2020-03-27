@@ -88,6 +88,14 @@ func (nw *Network) Ping() {
 	}
 }
 
+func (nw *Network) Stats() IOStats {
+	var result IOStats
+	for _, peer := range nw.Peers {
+		result = result.Add(peer.conn.Stats)
+	}
+	return result
+}
+
 func (nw *Network) acceptLoop() {
 	for {
 		nc, err := nw.listener.Accept()

@@ -25,6 +25,13 @@ type IOStats struct {
 	Recvd uint64
 }
 
+func (stats IOStats) Add(o IOStats) IOStats {
+	return IOStats{
+		Sent:  stats.Sent + o.Sent,
+		Recvd: stats.Recvd + o.Recvd,
+	}
+}
+
 func (stats IOStats) Sub(o IOStats) IOStats {
 	return IOStats{
 		Sent:  stats.Sent - o.Sent,

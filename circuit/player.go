@@ -111,7 +111,9 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 
 	fmt.Printf("Luv: %s\n", luv.Text(2))
-	timing.Sample("Fgc Step 1", nil)
+
+	ioStats := nw.Stats()
+	timing.Sample("Fgc Step 1", []string{FileSize(ioStats.Sum()).String()})
 
 	// Step 2: generate XOR shares of Luvw
 	if verbose {
@@ -269,19 +271,18 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}
 	}
 
-	timing.Sample("Fgc Step 3", nil)
+	ioStats = nw.Stats().Sub(ioStats)
+	timing.Sample("Fgc Step 3", []string{FileSize(ioStats.Sum()).String()})
 
 	// Step 4: generate final secrets
 	if verbose {
 		fmt.Printf(" - Step 4: exchange gates\n")
 	}
 
-	// XXX Checked up to here, but not network.go
-
 	// Output wire lambdas.
 	Lo := new(big.Int)
 	for w := 0; w < circ.N3.Size(); w++ {
-		Lo.SetBit(Lo, w, garbled.Lambda(Wire(circ.NumWires-circ.N3.Size()-1-w)))
+		Lo.SetBit(Lo, w, garbled.Lambda(Wire(circ.NumWires-circ.N3.Size()+w)))
 	}
 
 	// Exchange gates with peers.
@@ -323,7 +324,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			}
 		}
 		for w := 0; w < circ.N3.Size(); w++ {
-			index := circ.NumWires - circ.N3.Size() - 1 - w
+			index := circ.NumWires - circ.N3.Size() + w
 			// XOR peer lambda bit with our lambda bit i.e. only
 			// result 1 changes our value.
 			if result.Ro.Bit(index) == 1 {
@@ -353,7 +354,8 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}
 	}
 
-	timing.Sample("Result", nil)
+	ioStats = nw.Stats().Sub(ioStats)
+	timing.Sample("Result", []string{FileSize(ioStats.Sum()).String()})
 	if verbose {
 		timing.Print()
 	}
