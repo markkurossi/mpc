@@ -226,7 +226,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 				} else if label.Equal(wire.L1) {
 					bit = 1
 				} else {
-					return nil, fmt.Errorf("Unknown label %x for result %d",
+					return nil, fmt.Errorf("Unknown label %s for result %d",
 						label, i)
 				}
 				result = big.NewInt(0).SetBit(result, i, bit)
