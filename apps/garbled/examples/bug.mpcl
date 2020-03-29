@@ -2,6 +2,10 @@
 
 package main
 
-func main(a, b uint1024) uint {
-	return a * b
+import (
+	"math"
+)
+
+func main(b, m, e uint32) uint {
+	return math.Exp(b, e, m)
 }

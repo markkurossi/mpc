@@ -34,7 +34,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sXfer, err := sender.NewTransfer(m0.Bytes(), m1.Bytes())
+	m0Data := m0.Data()
+	m1Data := m1.Data()
+
+	sXfer, err := sender.NewTransfer(m0Data[:], m1Data[:])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,9 +62,9 @@ func main() {
 
 	var ret int
 	if bit == 0 {
-		ret = bytes.Compare(m0.Bytes(), m)
+		ret = bytes.Compare(m0Data[:], m)
 	} else {
-		ret = bytes.Compare(m1.Bytes(), m)
+		ret = bytes.Compare(m1Data[:], m)
 	}
 	if ret != 0 {
 		fmt.Printf("Verify failed!\n")

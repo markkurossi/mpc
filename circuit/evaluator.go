@@ -26,7 +26,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	timing := NewTiming()
 
-	garbled := make([][][]byte, circ.NumGates)
+	garbled := make([][]ot.Label, circ.NumGates)
 
 	// Receive program info.
 	if verbose {
@@ -56,14 +56,14 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			return nil, err
 		}
 
-		var values [][]byte
+		var values []ot.Label
 		for j := 0; j < count; j++ {
-			v, err := conn.ReceiveData()
+			v, err := conn.ReceiveLabel()
 			if err != nil {
 				return nil, err
 			}
 			if debug {
-				fmt.Printf("G%d.%d\t%x\n", i, j, v)
+				fmt.Printf("G%d.%d\t%s\n", i, j, v)
 			}
 			values = append(values, v)
 		}
@@ -74,14 +74,14 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	// Receive peer inputs.
 	for i := 0; i < circ.N1.Size(); i++ {
-		n, err := conn.ReceiveData()
+		label, err := conn.ReceiveLabel()
 		if err != nil {
 			return nil, err
 		}
 		if debug {
-			fmt.Printf("N1[%d]:\t%x\n", i, n)
+			fmt.Printf("N1[%d]:\t%s\n", i, label)
 		}
-		wires[Wire(i)] = ot.LabelFromData(n)
+		wires[Wire(i)] = label
 	}
 
 	// Init oblivious transfer.
@@ -126,7 +126,9 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			if debug {
 				fmt.Printf("N2[%d]:\t%x\n", w, n)
 			}
-			wires[Wire(circ.N1.Size()+w)] = ot.LabelFromData(n)
+			var data ot.LabelData
+			copy(data[:], n)
+			wires[Wire(circ.N1.Size()+w)] = ot.LabelFromData(data)
 			w++
 		}
 	}
@@ -156,7 +158,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		return nil, err
 	}
 	for _, l := range labels {
-		if err := conn.SendData(l.Bytes()); err != nil {
+		if err := conn.SendLabel(l); err != nil {
 			return nil, err
 		}
 	}

@@ -22,13 +22,13 @@ var (
 	verbose = false
 )
 
-type Enc func(a, b, c ot.Label, t uint32) []byte
+type Enc func(a, b, c ot.Label, t uint32) ot.Label
 
-type Dec func(a, b ot.Label, t uint32, data []byte) ([]byte, error)
+type Dec func(a, b ot.Label, t uint32, data ot.Label) (ot.Label, error)
 
 type TableEntry struct {
 	Index int
-	Data  []byte
+	Data  ot.Label
 }
 
 type ByIndex []TableEntry
@@ -73,32 +73,34 @@ func idx(l0, l1 ot.Label) int {
 	return ret
 }
 
-func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) []byte {
+func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
 	k := makeK(a, b, t)
+	kData := k.Data()
 
-	crypted := make([]byte, alg.BlockSize())
-	alg.Encrypt(crypted, k.Bytes())
+	var crypted ot.LabelData
+	alg.Encrypt(crypted[:], kData[:])
 
 	pi := ot.LabelFromData(crypted)
 	pi.Xor(k)
 	pi.Xor(c)
 
-	return pi.Bytes()
+	return pi
 }
 
-func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted []byte) (
-	[]byte, error) {
+func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
+	ot.Label, error) {
 
 	k := makeK(a, b, t)
+	kData := k.Data()
 
-	crypted := make([]byte, alg.BlockSize())
-	alg.Encrypt(crypted, k.Bytes())
+	var crypted ot.LabelData
+	alg.Encrypt(crypted[:], kData[:])
 
-	c := ot.LabelFromData(encrypted)
+	c := encrypted
 	c.Xor(ot.LabelFromData(crypted))
 	c.Xor(k)
 
-	return c.Bytes(), nil
+	return c, nil
 }
 
 func makeK(a, b ot.Label, t uint32) ot.Label {
@@ -130,7 +132,7 @@ func makeLabels(r ot.Label) (ot.Wire, error) {
 type Garbled struct {
 	R     ot.Label
 	Wires ot.Inputs
-	Gates [][][]byte
+	Gates [][]ot.Label
 }
 
 func (g *Garbled) Lambda(wire Wire) uint {
@@ -158,14 +160,14 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}
 	r.SetS(true)
 
-	garbled := make([][][]byte, c.NumGates)
+	garbled := make([][]ot.Label, c.NumGates)
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
 
-	enc := func(a, b, c ot.Label, t uint32) []byte {
+	enc := func(a, b, c ot.Label, t uint32) ot.Label {
 		return encrypt(alg, a, b, c, t)
 	}
 
@@ -202,7 +204,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 }
 
 func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
-	[][]byte, error) {
+	[]ot.Label, error) {
 
 	var in []ot.Wire
 	var out []ot.Wire
@@ -309,7 +311,7 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
 
 	sort.Sort(ByIndex(table))
 
-	var result [][]byte
+	var result []ot.Label
 	for _, entry := range table {
 		result = append(result, entry.Data)
 	}

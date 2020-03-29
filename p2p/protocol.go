@@ -89,6 +89,16 @@ func (c *Conn) SendData(val []byte) error {
 	return nil
 }
 
+func (c *Conn) SendLabel(val ot.Label) error {
+	data := val.Data()
+	n, err := c.io.Write(data[:])
+	if err != nil {
+		return err
+	}
+	c.Stats.Sent += uint64(n)
+	return nil
+}
+
 func (c *Conn) ReceiveUint32() (int, error) {
 	var buf [4]byte
 
@@ -115,6 +125,17 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	c.Stats.Recvd += uint64(len)
 
 	return result, nil
+}
+
+func (c *Conn) ReceiveLabel() (ot.Label, error) {
+	var buf ot.LabelData
+	n, err := io.ReadFull(c.io, buf[:])
+	if err != nil {
+		return ot.Label{}, err
+	}
+	c.Stats.Recvd += uint64(n)
+
+	return ot.LabelFromData(buf), nil
 }
 
 func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {

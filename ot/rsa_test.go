@@ -31,7 +31,9 @@ func benchmark(b *testing.B, keySize int) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		sXfer, err := sender.NewTransfer(l0.Bytes(), l1.Bytes())
+		l0Data := l0.Data()
+		l1Data := l1.Data()
+		sXfer, err := sender.NewTransfer(l0Data[:], l1Data[:])
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -53,9 +55,9 @@ func benchmark(b *testing.B, keySize int) {
 		m, bit := rXfer.Message()
 		var ret int
 		if bit == 0 {
-			ret = bytes.Compare(l0.Bytes(), m)
+			ret = bytes.Compare(l0Data[:], m)
 		} else {
-			ret = bytes.Compare(l1.Bytes(), m)
+			ret = bytes.Compare(l1Data[:], m)
 		}
 		if ret != 0 {
 			b.Fatal("Verify failed!\n")

@@ -14,13 +14,13 @@ import (
 )
 
 func (c *Circuit) Eval(key []byte, wires []ot.Label,
-	garbled [][][]byte) error {
+	garbled [][]ot.Label) error {
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
 		return err
 	}
-	dec := func(a, b ot.Label, t uint32, data []byte) ([]byte, error) {
+	dec := func(a, b ot.Label, t uint32, data ot.Label) (ot.Label, error) {
 		return decrypt(alg, a, b, t, data)
 	}
 
@@ -42,12 +42,12 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 			return fmt.Errorf("invalid operation %s", gate.Op)
 		}
 
-		var output []byte
+		var output ot.Label
 
 		switch gate.Op {
 		case XOR, XNOR:
 			a.Xor(b)
-			output = a.Bytes()
+			output = a
 
 		default:
 			row := garbled[i]
@@ -61,8 +61,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return err
 			}
 		}
-
-		wires[gate.Output] = ot.LabelFromData(output)
+		wires[gate.Output] = output
 	}
 
 	return nil

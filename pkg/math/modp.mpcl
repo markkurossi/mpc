@@ -8,7 +8,6 @@
 package math
 
 // Exp computes b**e mod |m| (i.e. the sign of m is ignore).
-// TODO, use wildcard types: Exp(b, e, n uint_n) uint_n
 func Exp(b, e, m uint) uint {
 	rType := make(uint, size(m))
 	mType := make(uint, size(m)*2)

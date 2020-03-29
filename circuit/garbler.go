@@ -9,7 +9,6 @@
 package circuit
 
 import (
-	"bytes"
 	"crypto/rand"
 	"fmt"
 	"math/big"
@@ -78,14 +77,14 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			return nil, err
 		}
 		for _, d := range data {
-			if err := conn.SendData(d); err != nil {
+			if err := conn.SendLabel(d); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	// Select our inputs.
-	var n1 [][]byte
+	var n1 []ot.Label
 	var w int
 	for idx, io := range circ.N1 {
 		var input *big.Int
@@ -96,12 +95,12 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			wire := garbled.Wires[w]
 			w++
 
-			var n []byte
+			var n ot.Label
 
 			if input != nil && input.Bit(i) == 1 {
-				n = wire.L1.Bytes()
+				n = wire.L1
 			} else {
-				n = wire.L0.Bytes()
+				n = wire.L0
 			}
 			n1 = append(n1, n)
 		}
@@ -110,9 +109,9 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	// Send our inputs.
 	for idx, i := range n1 {
 		if verbose && false {
-			fmt.Printf("N1[%d]:\t%x\n", idx, i)
+			fmt.Printf("N1[%d]:\t%s\n", idx, i)
 		}
-		if err := conn.SendData(i); err != nil {
+		if err := conn.SendLabel(i); err != nil {
 			return nil, err
 		}
 	}
@@ -177,7 +176,10 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 				return nil, fmt.Errorf("unknown wire %d", bit)
 			}
 
-			xfer, err = sender.NewTransfer(wire.L0.Bytes(), wire.L1.Bytes())
+			m0Data := wire.L0.Data()
+			m1Data := wire.L1.Data()
+
+			xfer, err = sender.NewTransfer(m0Data[:], m1Data[:])
 			if err != nil {
 				return nil, err
 			}
@@ -212,16 +214,16 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 		case OP_RESULT:
 			for i := 0; i < circ.N3.Size(); i++ {
-				label, err := conn.ReceiveData()
+				label, err := conn.ReceiveLabel()
 				if err != nil {
 					return nil, err
 				}
 				wire := garbled.Wires[circ.NumWires-circ.N3.Size()+i]
 
 				var bit uint
-				if bytes.Compare(label, wire.L0.Bytes()) == 0 {
+				if label.Equal(wire.L0) {
 					bit = 0
-				} else if bytes.Compare(label, wire.L1.Bytes()) == 0 {
+				} else if label.Equal(wire.L1) {
 					bit = 1
 				} else {
 					return nil, fmt.Errorf("Unknown label %x for result %d",

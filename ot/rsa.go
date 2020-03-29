@@ -34,6 +34,8 @@ type Label struct {
 	d1 uint64
 }
 
+type LabelData [16]byte
+
 func (l Label) String() string {
 	return fmt.Sprintf("%016x%016x", l.d0, l.d1)
 }
@@ -42,22 +44,26 @@ func (l Label) Undefined() bool {
 	return l.d0 == 0 && l.d1 == 0
 }
 
+func (l Label) Equal(o Label) bool {
+	return l.d0 == o.d0 && l.d1 == o.d1
+}
+
 func NewLabel(rand io.Reader) (Label, error) {
-	var buf [16]byte
+	var buf LabelData
 	var label Label
 
 	for {
 		if _, err := rand.Read(buf[:]); err != nil {
 			return label, err
 		}
-		label.SetBytes(buf[:])
+		label.SetBytes(buf)
 		if !label.Undefined() {
 			return label, nil
 		}
 	}
 }
 
-func LabelFromData(data []byte) Label {
+func LabelFromData(data LabelData) Label {
 	label := Label{}
 	label.SetBytes(data)
 	return label
@@ -98,18 +104,14 @@ func (l *Label) Xor(o Label) {
 	l.d1 ^= o.d1
 }
 
-func (l Label) Bytes() []byte {
-	result := make([]byte, 16)
+func (l Label) Data() LabelData {
+	var result LabelData
 	binary.BigEndian.PutUint64(result[0:8], l.d0)
 	binary.BigEndian.PutUint64(result[8:16], l.d1)
 	return result
 }
 
-func (l *Label) SetBytes(data []byte) {
-	if len(data) != 16 {
-		panic(fmt.Sprintf("Invalid data length: got %d, expected 16",
-			len(data)))
-	}
+func (l *Label) SetBytes(data LabelData) {
 	l.d0 = binary.BigEndian.Uint64(data[0:8])
 	l.d1 = binary.BigEndian.Uint64(data[8:16])
 }

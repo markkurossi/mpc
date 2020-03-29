@@ -9,11 +9,8 @@
 package circuit
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/markkurossi/mpc/ot"
@@ -41,10 +38,7 @@ func TestEnc(t *testing.T) {
 		t.Fatalf("Decrypt failed: %s", err)
 	}
 
-	if bytes.Compare(c.Bytes(), plain) != 0 {
+	if !c.Equal(plain) {
 		t.Fatalf("Encrypt-decrypt failed")
-	} else {
-		fmt.Printf("c:\n%s", hex.Dump(c.Bytes()))
-		fmt.Printf("plain:\n%s", hex.Dump(plain))
 	}
 }

@@ -410,7 +410,9 @@ func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
 		if err != nil {
 			return nil, err
 		}
-		result[i] = ot.LabelFromData(n)
+		var data ot.LabelData
+		copy(data[:], n)
+		result[i] = ot.LabelFromData(data)
 	}
 
 	return result, nil
@@ -445,10 +447,10 @@ func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
 		if err != nil {
 			return err
 		}
-		m0 := x1[bit].Bytes()
-		m1 := x2[bit].Bytes()
+		m0 := x1[bit].Data()
+		m1 := x2[bit].Data()
 
-		xfer, err := peer.otSender.NewTransfer(m0, m1)
+		xfer, err := peer.otSender.NewTransfer(m0[:], m1[:])
 		if err != nil {
 			return err
 		}
@@ -554,7 +556,7 @@ func (peer *Peer) ExchangeSendArr(arr []ot.Label) (err error) {
 		return err
 	}
 	for _, label := range arr {
-		if err := peer.conn.SendData(label.Bytes()); err != nil {
+		if err := peer.conn.SendLabel(label); err != nil {
 			return err
 		}
 	}
@@ -611,11 +613,11 @@ func (peer *Peer) ExchangeReceiveArr() ([]ot.Label, error) {
 	}
 	var result []ot.Label
 	for i := 0; i < count; i++ {
-		data, err := peer.conn.ReceiveData()
+		label, err := peer.conn.ReceiveLabel()
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, ot.LabelFromData(data))
+		result = append(result, label)
 	}
 	return result, nil
 }
