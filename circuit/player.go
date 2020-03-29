@@ -121,11 +121,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 	}
 
 	// Init new gate values.
-	Gs := make([]*GateValues, numPlayers)
-	for i := 0; i < numPlayers; i++ {
-		// XXX should these labels be random or zero?
-		Gs[i] = NewGateValues(circ.NumGates)
-	}
+	Gs := NewGateValues(circ.NumGates, numPlayers, nw.ID)
 
 	Ag := new(big.Int)
 	Bg := new(big.Int)
@@ -140,23 +136,23 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			tmp := luv.Bit(g) ^ garbled.Lambda(gate.Output)
 			Ag.SetBit(Ag, g, tmp)
 			if tmp != 0 {
-				Gs[player].Ag[g].Xor(garbled.R)
-				Gs[player].Dg[g].Xor(garbled.R)
+				Gs.Ag[player][g].Xor(garbled.R)
+				Gs.Dg[player][g].Xor(garbled.R)
 			}
 
 			Bg.SetBit(Bg, g, tmp^garbled.Lambda(gate.Input0))
 			if tmp^garbled.Lambda(gate.Input0) != 0 {
-				Gs[player].Bg[g].Xor(garbled.R)
-				Gs[player].Dg[g].Xor(garbled.R)
+				Gs.Bg[player][g].Xor(garbled.R)
+				Gs.Dg[player][g].Xor(garbled.R)
 			}
 
 			Cg.SetBit(Cg, g, tmp^garbled.Lambda(gate.Input1))
 			if tmp^garbled.Lambda(gate.Input1) != 0 {
-				Gs[player].Cg[g].Xor(garbled.R)
-				Gs[player].Dg[g].Xor(garbled.R)
+				Gs.Cg[player][g].Xor(garbled.R)
+				Gs.Dg[player][g].Xor(garbled.R)
 			}
 
-			Gs[player].Dg[g].Xor(garbled.R)
+			Gs.Dg[player][g].Xor(garbled.R)
 		}
 	}
 
@@ -188,25 +184,25 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 					return nil, err
 				}
 				X1LongAg[peerID][g] = rand1
-				Gs[peerID].Ag[g].Xor(rand1)
+				Gs.Ag[player][g].Xor(rand1)
 
 				rand2, err := ot.NewLabel(rand.Reader)
 				if err != nil {
 					return nil, err
 				}
 				X1LongBg[peerID][g] = rand2
-				Gs[peerID].Bg[g].Xor(rand2)
+				Gs.Bg[player][g].Xor(rand2)
 
 				rand3, err := ot.NewLabel(rand.Reader)
 				if err != nil {
 					return nil, err
 				}
 				X1LongCg[peerID][g] = rand3
-				Gs[peerID].Cg[g].Xor(rand3)
+				Gs.Cg[player][g].Xor(rand3)
 
-				Gs[peerID].Dg[g].Xor(rand1)
-				Gs[peerID].Dg[g].Xor(rand2)
-				Gs[peerID].Dg[g].Xor(rand3)
+				Gs.Dg[player][g].Xor(rand1)
+				Gs.Dg[player][g].Xor(rand2)
+				Gs.Dg[player][g].Xor(rand3)
 
 				X2LongAg[peerID][g] = garbled.R
 				X2LongAg[peerID][g].Xor(rand1)
@@ -260,13 +256,13 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			case INV:
 
 			default:
-				Gs[result.peerID].Ag[g].Xor(result.Ra[g])
-				Gs[result.peerID].Bg[g].Xor(result.Rb[g])
-				Gs[result.peerID].Cg[g].Xor(result.Rc[g])
+				Gs.Ag[result.peerID][g].Xor(result.Ra[g])
+				Gs.Bg[result.peerID][g].Xor(result.Rb[g])
+				Gs.Cg[result.peerID][g].Xor(result.Rc[g])
 
-				Gs[result.peerID].Dg[g].Xor(result.Ra[g])
-				Gs[result.peerID].Dg[g].Xor(result.Rb[g])
-				Gs[result.peerID].Dg[g].Xor(result.Rc[g])
+				Gs.Dg[result.peerID][g].Xor(result.Ra[g])
+				Gs.Dg[result.peerID][g].Xor(result.Rb[g])
+				Gs.Dg[result.peerID][g].Xor(result.Rc[g])
 			}
 		}
 	}
@@ -287,13 +283,13 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	// Exchange gates with peers.
 
-	gResults := make(chan GateResults)
+	gResultsC := make(chan GateResults)
 
 	for peerID, peer := range nw.Peers {
 		go func(peerID int, peer *p2p.Peer) {
 			ra, rb, rc, rd, ro, err := peer.ExchangeGates(
-				Gs[peerID].Ag, Gs[peerID].Bg, Gs[peerID].Cg, Gs[peerID].Dg, Lo)
-			gResults <- GateResults{
+				Gs.Ag, Gs.Bg, Gs.Cg, Gs.Dg, Lo)
+			gResultsC <- GateResults{
 				peerID: peerID,
 				Ra:     ra,
 				Rb:     rb,
@@ -305,22 +301,27 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 		}(peerID, peer)
 	}
 
+	var gResults []GateResults
 	for i := 0; i < len(nw.Peers); i++ {
-		result := <-gResults
+		gResults = append(gResults, <-gResultsC)
+	}
+	for _, result := range gResults {
 		if result.err != nil {
 			return nil, fmt.Errorf("Gate exchange with peer %d failed: %s",
 				result.peerID, result.err)
 		}
-		for g, gate := range circ.Gates {
-			switch gate.Op {
-			case XOR, XNOR:
-			case INV:
+		for p := 0; p < numPlayers; p++ {
+			for g, gate := range circ.Gates {
+				switch gate.Op {
+				case XOR, XNOR:
+				case INV:
 
-			default:
-				Gs[result.peerID].Ag[g].Xor(result.Ra[g])
-				Gs[result.peerID].Bg[g].Xor(result.Rb[g])
-				Gs[result.peerID].Cg[g].Xor(result.Rc[g])
-				Gs[result.peerID].Dg[g].Xor(result.Rd[g])
+				default:
+					Gs.Ag[p][g].Xor(result.Ra[p][g])
+					Gs.Bg[p][g].Xor(result.Rb[p][g])
+					Gs.Cg[p][g].Xor(result.Rc[p][g])
+					Gs.Dg[p][g].Xor(result.Rd[p][g])
+				}
 			}
 		}
 		for w := 0; w < circ.N3.Size(); w++ {
@@ -345,10 +346,10 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 			case INV:
 
 			default:
-				fmt.Printf("%d:%d: Ag: %s\n", i, g, Gs[i].Ag[g])
-				fmt.Printf("%d:%d: Bg: %s\n", i, g, Gs[i].Bg[g])
-				fmt.Printf("%d:%d: Cg: %s\n", i, g, Gs[i].Cg[g])
-				fmt.Printf("%d:%d: Dg: %s\n", i, g, Gs[i].Dg[g])
+				fmt.Printf("%d:%d: Ag: %s\n", i, g, Gs.Ag[i][g])
+				fmt.Printf("%d:%d: Bg: %s\n", i, g, Gs.Bg[i][g])
+				fmt.Printf("%d:%d: Cg: %s\n", i, g, Gs.Cg[i][g])
+				fmt.Printf("%d:%d: Dg: %s\n", i, g, Gs.Dg[i][g])
 				break gates
 			}
 		}
@@ -382,28 +383,36 @@ type OTRResult struct {
 
 type GateResults struct {
 	peerID int
-	Ra     []ot.Label
-	Rb     []ot.Label
-	Rc     []ot.Label
-	Rd     []ot.Label
+	Ra     [][]ot.Label
+	Rb     [][]ot.Label
+	Rc     [][]ot.Label
+	Rd     [][]ot.Label
 	Ro     *big.Int
 	err    error
 }
 
 type GateValues struct {
-	Ag []ot.Label
-	Bg []ot.Label
-	Cg []ot.Label
-	Dg []ot.Label
+	Ag [][]ot.Label
+	Bg [][]ot.Label
+	Cg [][]ot.Label
+	Dg [][]ot.Label
 }
 
-func NewGateValues(numGates int) *GateValues {
-	return &GateValues{
-		Ag: arrayOfLabels(numGates),
-		Bg: arrayOfLabels(numGates),
-		Cg: arrayOfLabels(numGates),
-		Dg: arrayOfLabels(numGates),
+func NewGateValues(numGates, numPlayers, we int) *GateValues {
+	v := &GateValues{
+		Ag: make([][]ot.Label, numPlayers),
+		Bg: make([][]ot.Label, numPlayers),
+		Cg: make([][]ot.Label, numPlayers),
+		Dg: make([][]ot.Label, numPlayers),
 	}
+
+	for p := 0; p < numPlayers; p++ {
+		v.Ag[p] = arrayOfLabels(numGates)
+		v.Bg[p] = arrayOfLabels(numGates)
+		v.Cg[p] = arrayOfLabels(numGates)
+		v.Dg[p] = arrayOfLabels(numGates)
+	}
+	return v
 }
 
 func arrayOfLabels(count int) []ot.Label {

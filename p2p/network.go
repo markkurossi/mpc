@@ -248,7 +248,6 @@ func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 			return
 		}
 	}
-	fmt.Printf("%s for peer %d done\n", mode, peer.id)
 	return
 }
 
@@ -374,7 +373,6 @@ func (peer *Peer) OTR(chA, chB, chC *big.Int,
 		}
 	}
 
-	fmt.Printf("%s for peer %d done\n", mode, peer.id)
 	return
 }
 
@@ -487,11 +485,10 @@ func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
 	}
 
 	return nil
-
 }
 
-func (peer *Peer) ExchangeGates(ag, bg, cg, dg []ot.Label, lo *big.Int) (
-	ra, rb, rc, rd []ot.Label, ro *big.Int, err error) {
+func (peer *Peer) ExchangeGates(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
+	ra, rb, rc, rd [][]ot.Label, ro *big.Int, err error) {
 
 	var mode string
 	if peer.client {
@@ -521,23 +518,30 @@ func (peer *Peer) ExchangeGates(ag, bg, cg, dg []ot.Label, lo *big.Int) (
 			return
 		}
 	}
-	fmt.Printf("   - %s for peer %d done\n", mode, peer.id)
+
 	return
 }
 
-func (peer *Peer) ExchangeSend(ag, bg, cg, dg []ot.Label, lo *big.Int) (
+func (peer *Peer) ExchangeSend(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	err error) {
-	if err := peer.ExchangeSendArr(ag); err != nil {
+	// Number of peers
+	if err := peer.conn.SendUint32(len(ag)); err != nil {
 		return err
 	}
-	if err := peer.ExchangeSendArr(bg); err != nil {
-		return err
-	}
-	if err := peer.ExchangeSendArr(cg); err != nil {
-		return err
-	}
-	if err := peer.ExchangeSendArr(dg); err != nil {
-		return err
+	// Gates for all peers.
+	for p := 0; p < len(ag); p++ {
+		if err := peer.ExchangeSendArr(ag[p]); err != nil {
+			return err
+		}
+		if err := peer.ExchangeSendArr(bg[p]); err != nil {
+			return err
+		}
+		if err := peer.ExchangeSendArr(cg[p]); err != nil {
+			return err
+		}
+		if err := peer.ExchangeSendArr(dg[p]); err != nil {
+			return err
+		}
 	}
 	if err := peer.conn.SendData(lo.Bytes()); err != nil {
 		return err
@@ -558,23 +562,36 @@ func (peer *Peer) ExchangeSendArr(arr []ot.Label) (err error) {
 }
 
 func (peer *Peer) ExchangeReceive() (
-	ra, rb, rc, rd []ot.Label, ro *big.Int, err error) {
+	ras, rbs, rcs, rds [][]ot.Label, ro *big.Int, err error) {
 
-	ra, err = peer.ExchangeReceiveArr()
+	// Number of peers.
+	var count int
+	count, err = peer.conn.ReceiveUint32()
 	if err != nil {
 		return
 	}
-	rb, err = peer.ExchangeReceiveArr()
-	if err != nil {
-		return
-	}
-	rc, err = peer.ExchangeReceiveArr()
-	if err != nil {
-		return
-	}
-	rd, err = peer.ExchangeReceiveArr()
-	if err != nil {
-		return
+	for p := 0; p < count; p++ {
+		var arr []ot.Label
+		arr, err = peer.ExchangeReceiveArr()
+		if err != nil {
+			return
+		}
+		ras = append(ras, arr)
+		arr, err = peer.ExchangeReceiveArr()
+		if err != nil {
+			return
+		}
+		rbs = append(rbs, arr)
+		arr, err = peer.ExchangeReceiveArr()
+		if err != nil {
+			return
+		}
+		rcs = append(rcs, arr)
+		arr, err = peer.ExchangeReceiveArr()
+		if err != nil {
+			return
+		}
+		rds = append(rds, arr)
 	}
 
 	var buf []byte
