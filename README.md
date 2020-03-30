@@ -476,7 +476,7 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
-## 64-bit multiplication
+## Mathematic operations with compiler and optimized circuits
 
 Optimized circuits from [pkg/math/](pkg/math/):
 
