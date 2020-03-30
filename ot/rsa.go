@@ -40,10 +40,6 @@ func (l Label) String() string {
 	return fmt.Sprintf("%016x%016x", l.d0, l.d1)
 }
 
-func (l Label) Undefined() bool {
-	return l.d0 == 0 && l.d1 == 0
-}
-
 func (l Label) Equal(o Label) bool {
 	return l.d0 == o.d0 && l.d1 == o.d1
 }
@@ -52,15 +48,11 @@ func NewLabel(rand io.Reader) (Label, error) {
 	var buf LabelData
 	var label Label
 
-	for {
-		if _, err := rand.Read(buf[:]); err != nil {
-			return label, err
-		}
-		label.SetBytes(buf)
-		if !label.Undefined() {
-			return label, nil
-		}
+	if _, err := rand.Read(buf[:]); err != nil {
+		return label, err
 	}
+	label.SetBytes(buf)
+	return label, nil
 }
 
 func LabelFromData(data LabelData) Label {
