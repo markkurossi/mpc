@@ -446,6 +446,21 @@ Gate wires by value in garbler:
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Garbler keeping wires in an array instead of map:
+
+```
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃ 1.710655914s ┃ 53.63% ┃       ┃
+┃ Recv   ┃ 1.088403425s ┃ 34.12% ┃ 143MB ┃
+┃ Inputs ┃ 243.393526ms ┃  7.63% ┃  41kB ┃
+┃ Eval   ┃ 146.879726ms ┃  4.61% ┃       ┃
+┃ Result ┃      222.8µs ┃  0.01% ┃   1kB ┃
+┃ Total  ┃ 3.189555391s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 # Develoment ideas
 
 ## Mathematical operations

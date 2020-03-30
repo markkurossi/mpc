@@ -133,7 +133,7 @@ func makeLabels(r ot.Label) (ot.Wire, error) {
 
 type Garbled struct {
 	R     ot.Label
-	Wires ot.Inputs
+	Wires []ot.Wire
 	Gates [][]ot.Label
 }
 
@@ -173,9 +173,19 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return encrypt(alg, a, b, c, t)
 	}
 
-	// Assign labels to wires.
-	wires := make(ot.Inputs)
+	// Wire labels.
+	wires := make([]ot.Wire, c.NumWires)
 
+	// Assing all input wires.
+	for i := 0; i < c.N1.Size()+c.N2.Size(); i++ {
+		w, err := makeLabels(r)
+		if err != nil {
+			return nil, err
+		}
+		wires[i] = w
+	}
+
+	// Garble gates.
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
 		data, err := gate.Garble(wires, enc, r, uint32(i))
@@ -185,19 +195,6 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		garbled[i] = data
 	}
 
-	// Assign unset wires. Wire can be unset if one of the inputs is
-	// not used in the computation
-	for i := 0; i < c.NumWires; i++ {
-		_, ok := wires[i]
-		if !ok {
-			w, err := makeLabels(r)
-			if err != nil {
-				return nil, err
-			}
-			wires[i] = w
-		}
-	}
-
 	return &Garbled{
 		R:     r,
 		Wires: wires,
@@ -205,44 +202,26 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
+func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
 	[]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
-	var ok bool
 
+	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		b, ok = wires[g.Input1.ID()]
-		if !ok {
-			b, err = makeLabels(r)
-			if err != nil {
-				return nil, err
-			}
-			wires[g.Input1.ID()] = b
-		}
+		b = wires[g.Input1.ID()]
 		fallthrough
 
 	case INV:
-		a, ok = wires[g.Input0.ID()]
-		if !ok {
-			a, err = makeLabels(r)
-			if err != nil {
-				return nil, err
-			}
-			wires[g.Input0.ID()] = a
-		}
+		a = wires[g.Input0.ID()]
 
 	default:
 		return nil, fmt.Errorf("invalid gate type %s", g.Op)
 	}
 
-	// Output
-	c, ok = wires[g.Output.ID()]
-	if ok {
-		return nil, fmt.Errorf("gate output already set %d", g.Output)
-	}
+	// Output.
 	switch g.Op {
 	case XOR:
 		l0 := a.L0

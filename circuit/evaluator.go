@@ -56,13 +56,13 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			return nil, err
 		}
 
-		var values []ot.Label
+		values := make([]ot.Label, count)
 		for j := 0; j < count; j++ {
 			v, err := conn.ReceiveLabel()
 			if err != nil {
 				return nil, err
 			}
-			values = append(values, v)
+			values[j] = v
 		}
 		garbled[i] = values
 	}

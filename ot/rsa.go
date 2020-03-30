@@ -121,21 +121,6 @@ type Wire struct {
 	L1 Label
 }
 
-type Inputs map[int]Wire
-
-func (i Inputs) String() string {
-	var result string
-
-	for k, v := range i {
-		str := fmt.Sprintf("%d={%x,%x}", k, v.L0, v.L1)
-		if len(result) > 0 {
-			result += ", "
-		}
-		result += str
-	}
-	return result
-}
-
 type Sender struct {
 	key *rsa.PrivateKey
 }

@@ -171,10 +171,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			}
 			allowedOTs[bit] = false
 
-			wire, ok := garbled.Wires[bit]
-			if !ok {
-				return nil, fmt.Errorf("unknown wire %d", bit)
-			}
+			wire := garbled.Wires[bit]
 
 			m0Data := wire.L0.Data()
 			m1Data := wire.L1.Data()
