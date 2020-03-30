@@ -52,15 +52,22 @@ func entry(enc Enc, a, b, c ot.Label, tweak uint32) TableEntry {
 	}
 }
 
-func idx(l0, l1 ot.Label) int {
-	if l1.Undefined() {
-		if l0.S() {
-			return 1
-		} else {
-			return 0
-		}
+func entryUnary(enc Enc, a, c ot.Label, tweak uint32) TableEntry {
+	return TableEntry{
+		Index: idxUnary(a),
+		Data:  enc(a, ot.Label{}, c, tweak),
 	}
+}
 
+func idxUnary(l0 ot.Label) int {
+	if l0.S() {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func idx(l0, l1 ot.Label) int {
 	var ret int
 
 	if l0.S() {
@@ -105,11 +112,6 @@ func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
 
 func makeK(a, b ot.Label, t uint32) ot.Label {
 	a.Mul2()
-
-	if !b.Undefined() {
-		b.Mul4()
-		a.Xor(b)
-	}
 	a.Xor(ot.NewTweak(t))
 
 	return a
@@ -206,60 +208,74 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
 	[]ot.Label, error) {
 
-	var in []ot.Wire
-	var out []ot.Wire
+	var a, b, c ot.Wire
 	var err error
+	var ok bool
 
-	for _, i := range g.Inputs() {
-		w, ok := wires[i.ID()]
+	switch g.Op {
+	case XOR, XNOR, AND, OR:
+		b, ok = wires[g.Input1.ID()]
 		if !ok {
-			w, err = makeLabels(r)
+			b, err = makeLabels(r)
 			if err != nil {
 				return nil, err
 			}
-			wires[i.ID()] = w
+			wires[g.Input1.ID()] = b
 		}
-		in = append(in, w)
+		fallthrough
+
+	case INV:
+		a, ok = wires[g.Input0.ID()]
+		if !ok {
+			a, err = makeLabels(r)
+			if err != nil {
+				return nil, err
+			}
+			wires[g.Input0.ID()] = a
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid gate type %s", g.Op)
 	}
 
 	// Output
-	w, ok := wires[g.Output.ID()]
+	c, ok = wires[g.Output.ID()]
 	if ok {
 		return nil, fmt.Errorf("gate output already set %d", g.Output)
 	}
 	switch g.Op {
 	case XOR:
-		l0 := in[0].L0
-		l0.Xor(in[1].L0)
+		l0 := a.L0
+		l0.Xor(b.L0)
 
 		l1 := l0
 		l1.Xor(r)
-		w = ot.Wire{
+		c = ot.Wire{
 			L0: l0,
 			L1: l1,
 		}
 
 	case XNOR:
-		l0 := in[0].L0
-		l0.Xor(in[1].L0)
+		l0 := a.L0
+		l0.Xor(b.L0)
 
 		l1 := l0
 		l1.Xor(r)
-		w = ot.Wire{
+		c = ot.Wire{
 			L0: l1,
 			L1: l0,
 		}
 
 	default:
-		w, err = makeLabels(r)
+		c, err = makeLabels(r)
 		if err != nil {
 			return nil, err
 		}
 	}
-	wires[g.Output.ID()] = w
-	out = append(out, w)
+	wires[g.Output.ID()] = c
 
-	var table []TableEntry
+	var table [4]TableEntry
+	var count int
 
 	switch g.Op {
 	case XOR, XNOR:
@@ -272,13 +288,11 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		a := in[0]
-		b := in[1]
-		c := out[0]
-		table = append(table, entry(enc, a.L0, b.L0, c.L0, id))
-		table = append(table, entry(enc, a.L0, b.L1, c.L0, id))
-		table = append(table, entry(enc, a.L1, b.L0, c.L0, id))
-		table = append(table, entry(enc, a.L1, b.L1, c.L1, id))
+		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
+		table[1] = entry(enc, a.L0, b.L1, c.L0, id)
+		table[2] = entry(enc, a.L1, b.L0, c.L0, id)
+		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		count = 4
 
 	case OR:
 		// a b c
@@ -287,33 +301,30 @@ func (g *Gate) Garble(wires ot.Inputs, enc Enc, r ot.Label, id uint32) (
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		a := in[0]
-		b := in[1]
-		c := out[0]
-		table = append(table, entry(enc, a.L0, b.L0, c.L0, id))
-		table = append(table, entry(enc, a.L0, b.L1, c.L1, id))
-		table = append(table, entry(enc, a.L1, b.L0, c.L1, id))
-		table = append(table, entry(enc, a.L1, b.L1, c.L1, id))
+		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
+		table[1] = entry(enc, a.L0, b.L1, c.L1, id)
+		table[2] = entry(enc, a.L1, b.L0, c.L1, id)
+		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		count = 4
 
 	case INV:
 		// a b c
 		// -----
 		// 0   1
 		// 1   0
-		a := in[0]
-		c := out[0]
-		table = append(table, entry(enc, a.L0, ot.Label{}, c.L1, id))
-		table = append(table, entry(enc, a.L1, ot.Label{}, c.L0, id))
+		table[0] = entryUnary(enc, a.L0, c.L1, id)
+		table[1] = entryUnary(enc, a.L1, c.L0, id)
+		count = 2
 
 	default:
 		return nil, fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	sort.Sort(ByIndex(table))
+	sort.Sort(ByIndex(table[:count]))
 
-	var result []ot.Label
-	for _, entry := range table {
-		result = append(result, entry.Data)
+	result := make([]ot.Label, count)
+	for idx, entry := range table[:count] {
+		result[idx] = entry.Data
 	}
 
 	return result, nil

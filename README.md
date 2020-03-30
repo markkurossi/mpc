@@ -431,6 +431,21 @@ Labels by value in protocol, garbler, and evaluator:
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Gate wires by value in garbler:
+
+```
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃  4.37061338s ┃ 76.48% ┃       ┃
+┃ Recv   ┃  962.20669ms ┃ 16.84% ┃ 143MB ┃
+┃ Inputs ┃ 229.360283ms ┃  4.01% ┃  41kB ┃
+┃ Eval   ┃ 152.258636ms ┃  2.66% ┃       ┃
+┃ Result ┃    162.316µs ┃  0.00% ┃   1kB ┃
+┃ Total  ┃ 5.714601305s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 # Develoment ideas
 
 ## Mathematical operations

@@ -49,7 +49,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 			a.Xor(b)
 			output = a
 
-		default:
+		case AND, OR:
 			row := garbled[i]
 			index := idx(a, b)
 			if index >= len(row) {
@@ -57,6 +57,18 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 					index, len(row))
 			}
 			output, err = dec(a, b, uint32(i), row[index])
+			if err != nil {
+				return err
+			}
+
+		case INV:
+			row := garbled[i]
+			index := idxUnary(a)
+			if index >= len(row) {
+				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
+					index, len(row))
+			}
+			output, err = dec(a, ot.Label{}, uint32(i), row[index])
 			if err != nil {
 				return err
 			}

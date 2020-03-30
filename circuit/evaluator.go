@@ -62,9 +62,6 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			if err != nil {
 				return nil, err
 			}
-			if debug {
-				fmt.Printf("G%d.%d\t%s\n", i, j, v)
-			}
 			values = append(values, v)
 		}
 		garbled[i] = values
@@ -77,9 +74,6 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		label, err := conn.ReceiveLabel()
 		if err != nil {
 			return nil, err
-		}
-		if debug {
-			fmt.Printf("N1[%d]:\t%s\n", i, label)
 		}
 		wires[Wire(i)] = label
 	}
@@ -122,9 +116,6 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 				input.Bit(i))
 			if err != nil {
 				return nil, err
-			}
-			if debug {
-				fmt.Printf("N2[%d]:\t%x\n", w, n)
 			}
 			var data ot.LabelData
 			copy(data[:], n)

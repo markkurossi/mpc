@@ -2,15 +2,10 @@
 
 package main
 
-func main(b, m, e uint2) uint {
-	return Exp(b, e, m)
-}
+import (
+	"math"
+)
 
-func Exp(b, e, m uint2) uint2 {
-	var r uint2 = 1
-
-	r = r * 1
-	r = r + 1
-
-	return r
+func main(b, m, e uint64) uint {
+	return math.Exp(b, e, m)
 }
