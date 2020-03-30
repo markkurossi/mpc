@@ -18,6 +18,8 @@ type Params struct {
 	CircDotOut io.WriteCloser
 
 	CircMultArrayTreshold int
+
+	OptPruneGates bool
 }
 
 func (p *Params) Close() {

@@ -61,6 +61,7 @@ func main() {
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
 	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
+	optimize := flag.Int("O", 1, "optimization level")
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDebug := flag.Bool("d", false, "debug output")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
@@ -94,6 +95,10 @@ func main() {
 		Verbose: *fVerbose,
 	}
 	defer params.Close()
+
+	if *optimize > 0 {
+		params.OptPruneGates = true
+	}
 
 	for _, arg := range flag.Args() {
 		if strings.HasSuffix(arg, ".circ") {

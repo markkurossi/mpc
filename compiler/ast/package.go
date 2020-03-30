@@ -174,9 +174,11 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	if params.Verbose {
 		fmt.Printf("Compiling circuit...\n")
 	}
-	pruned := cc.Prune()
-	if params.Verbose {
-		fmt.Printf(" - Pruned %d gates\n", pruned)
+	if params.OptPruneGates {
+		pruned := cc.Prune()
+		if params.Verbose {
+			fmt.Printf(" - Pruned %d gates\n", pruned)
+		}
 	}
 	circ := cc.Compile()
 	if params.CircOut != nil {
