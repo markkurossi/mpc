@@ -188,6 +188,9 @@ func (p *Parser) parseToplevel() error {
 	case T_SymConst:
 		return p.parseConst()
 
+	case T_SymType:
+		return p.parseTypeDecl()
+
 	case T_SymFunc:
 		f, err := p.parseFunc(p.lexer.Annotations(token.From))
 		if err != nil {
@@ -269,6 +272,84 @@ func (p *Parser) parseConstDef(token *Token) error {
 	})
 
 	return nil
+}
+
+func (p *Parser) parseTypeDecl() error {
+	name, err := p.needToken(T_Identifier)
+	if err != nil {
+		return err
+	}
+	t, err := p.lexer.Get()
+	if err != nil {
+		return err
+	}
+	switch t.Type {
+	case T_SymStruct:
+		_, err := p.needToken(T_LBrace)
+		if err != nil {
+		}
+		var fields []ast.StructField
+		for {
+			t, err := p.lexer.Get()
+			if t.Type == T_RBrace {
+				break
+			}
+			var names []string
+			for {
+				if t.Type != T_Identifier {
+					return p.errf(t.From, "unexpected token '%s'", t.Type)
+				}
+				names = append(names, t.StrVal)
+				t, err = p.lexer.Get()
+				if err != nil {
+					return err
+				}
+				if t.Type != T_Comma {
+					p.lexer.Unget(t)
+					break
+				}
+				t, err = p.lexer.Get()
+				if err != nil {
+					return err
+				}
+			}
+
+			typeInfo, err := p.parseType()
+			if err != nil {
+				return err
+			}
+			// Expand names.
+			for _, n := range names {
+				fields = append(fields, ast.StructField{
+					Name: n,
+					Type: typeInfo,
+				})
+			}
+		}
+		typeInfo := &ast.TypeInfo{
+			Type:         ast.TypeStruct,
+			StructName:   name.StrVal,
+			StructFields: fields,
+		}
+		p.pkg.Types = append(p.pkg.Types, typeInfo)
+		return nil
+
+	case T_Assign:
+		ti, err := p.parseType()
+		if err != nil {
+			return err
+		}
+		typeInfo := &ast.TypeInfo{
+			Type:      ast.TypeAlias,
+			Alias:     name.StrVal,
+			AliasType: ti,
+		}
+		p.pkg.Types = append(p.pkg.Types, typeInfo)
+		return nil
+
+	default:
+		return p.errf(t.From, "unexpected token '%s'", t.Type)
+	}
 }
 
 func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
@@ -970,13 +1051,6 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 			return nil, err
 		}
 		if n.Type == T_Dot {
-			// Check that package is imported.
-			name, ok := p.pkg.Imports[t.StrVal]
-			if !ok {
-				return nil, p.errf(t.From, "undefined: %s", t.StrVal)
-			}
-			p.pkg.References[t.StrVal] = name
-
 			id, err := p.needToken(T_Identifier)
 			if err != nil {
 				return nil, err

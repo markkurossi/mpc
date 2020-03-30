@@ -68,7 +68,7 @@ func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
 	}
 	c.packages[pkg.Name] = pkg
 
-	for alias, name := range pkg.References {
+	for alias, name := range pkg.Imports {
 		_, err := c.parsePkg(alias, name)
 		if err != nil {
 			return nil, err

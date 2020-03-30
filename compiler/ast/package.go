@@ -22,17 +22,16 @@ type Package struct {
 	Initialized bool
 	Imports     map[string]string
 	Bindings    ssa.Bindings
+	Types       []*TypeInfo
 	Constants   []*ConstantDef
 	Functions   map[string]*Func
-	References  map[string]string
 }
 
 func NewPackage(name string) *Package {
 	return &Package{
-		Name:       name,
-		Imports:    make(map[string]string),
-		Functions:  make(map[string]*Func),
-		References: make(map[string]string),
+		Name:      name,
+		Imports:   make(map[string]string),
+		Functions: make(map[string]*Func),
 	}
 }
 
@@ -215,6 +214,11 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 		if err != nil {
 			return err
 		}
+	}
+
+	// Define types.
+	for _, typeDef := range pkg.Types {
+		fmt.Printf("Defining type %s\n", typeDef)
 	}
 
 	block := gen.Block()

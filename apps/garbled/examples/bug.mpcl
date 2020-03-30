@@ -2,8 +2,25 @@
 
 package main
 
-import ()
+import (
+	"crypto/rsa"
+)
 
-func main(a, b uint3) uint {
-	return a / b
+type Size = uint32
+
+type Garbler struct {
+	msg       Size
+	privShare Size
+	pubN      Size
+	pubE      Size
+}
+
+func main(g Garbler, privShare Size) (uint, uint) {
+
+	priv := g.privShare + privShare
+
+	cipher := rsa.Encrypt(g.msg, g.pubE, g.pubN)
+	plain := rsa.Decrypt(cipher, priv, g.pubN)
+
+	return cipher, plain
 }

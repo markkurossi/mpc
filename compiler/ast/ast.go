@@ -48,13 +48,24 @@ const (
 	TypeName Type = iota
 	TypeArray
 	TypeSlice
+	TypeStruct
+	TypeAlias
 )
 
 type TypeInfo struct {
-	Type        Type
-	Name        Identifier
-	ElementType *TypeInfo
-	ArrayLength AST
+	Type         Type
+	Name         Identifier
+	ElementType  *TypeInfo
+	ArrayLength  AST
+	StructName   string
+	StructFields []StructField
+	Alias        string
+	AliasType    *TypeInfo
+}
+
+type StructField struct {
+	Name string
+	Type *TypeInfo
 }
 
 var reSizedType = regexp.MustCompilePOSIX(
@@ -123,6 +134,19 @@ func (ti *TypeInfo) String() string {
 
 	case TypeSlice:
 		return fmt.Sprintf("[]%s", ti.ElementType)
+
+	case TypeStruct:
+		name := fmt.Sprintf("struct %s {", ti.StructName)
+		for idx, field := range ti.StructFields {
+			if idx > 0 {
+				name += ", "
+			}
+			name += fmt.Sprintf("%s %s", field.Name, field.Type.String())
+		}
+		return name + "}"
+
+	case TypeAlias:
+		return fmt.Sprintf("%s=%s", ti.Alias, ti.AliasType)
 
 	default:
 		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
