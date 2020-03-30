@@ -14,7 +14,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
-type Binary struct {
+type Gate struct {
 	Op       circuit.Operation
 	Visited  bool
 	Compiled bool
@@ -23,8 +23,8 @@ type Binary struct {
 	O        *Wire
 }
 
-func NewBinary(op circuit.Operation, a, b, o *Wire) *Binary {
-	gate := &Binary{
+func NewBinary(op circuit.Operation, a, b, o *Wire) *Gate {
+	gate := &Gate{
 		Op: op,
 		A:  a,
 		B:  b,
@@ -37,23 +37,32 @@ func NewBinary(op circuit.Operation, a, b, o *Wire) *Binary {
 	return gate
 }
 
-func (g *Binary) String() string {
+func (g *Gate) String() string {
 	return fmt.Sprintf("%s %d %d %d", g.Op, g.A.ID, g.B.ID, g.O.ID)
 }
 
-func (g *Binary) Visit(c *Compiler) {
+func (g *Gate) Visit(c *Compiler) {
 	if !g.Visited && g.A.Assigned && g.B.Assigned {
 		g.Visited = true
 		c.pending = append(c.pending, g)
 	}
 }
 
-func (g *Binary) Assign(c *Compiler) {
+func (g *Gate) Prune() bool {
+	if g.O.Output || len(g.O.Outputs) > 0 {
+		return false
+	}
+	g.A.RemoveOutput(g)
+	g.B.RemoveOutput(g)
+	return true
+}
+
+func (g *Gate) Assign(c *Compiler) {
 	g.O.Assign(c)
 	c.assigned = append(c.assigned, g)
 }
 
-func (g *Binary) Compile(c *Compiler) {
+func (g *Gate) Compile(c *Compiler) {
 	if g.Compiled {
 		return
 	}

@@ -448,6 +448,7 @@ Gate wires by value in garbler:
 Garbler keeping wires in an array instead of map:
 
 ```
+Circuit: #gates=6717340 (XOR=4787324 XNOR=108545 AND=1821471 OR=0 INV=0)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -459,6 +460,36 @@ Garbler keeping wires in an array instead of map:
 ┃ Total  ┃ 3.189555391s ┃        ┃       ┃
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
+
+Pruning dead gates:
+```
+Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃  1.28140619s ┃ 55.30% ┃       ┃
+┃ Recv   ┃ 676.432166ms ┃ 29.19% ┃ 126MB ┃
+┃ Inputs ┃ 229.527559ms ┃  9.91% ┃  41kB ┃
+┃ Eval   ┃ 129.623668ms ┃  5.59% ┃       ┃
+┃ Result ┃    203.248µs ┃  0.01% ┃   1kB ┃
+┃ Total  ┃ 2.317192831s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
+## 64-bit multiplication
+
+Optimized circuits from [pkg/math/](pkg/math/):
+
+| Implementation | XOR gates | AND gates | % of circ |
+|:---------------| ---------:|----------:|----------:|
+| add64.circ     |       313 |        63 |           |
+| sub64.circ     |       442 |        63 |           |
+| mul64.circ     |      9707 |      4033 |           |
+| div64.circ     |     25328 |      4664 |           |
+| MPCL a+b       |       316 |        63 |       100 |
+| MPCL a-b       |       319 |        63 |       100 |
+| MPCL a*b       |      9304 |      4242 |     105.2 |
+| MPCL a/b       |     24833 |      8192 |     175.6 |
 
 # Develoment ideas
 

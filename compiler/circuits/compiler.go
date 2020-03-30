@@ -1,7 +1,5 @@
 //
-// codegen.go
-//
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2020 Markku Rossi
 //
 // All rights reserved.
 //
@@ -22,10 +20,10 @@ type Compiler struct {
 	N3         circuit.IO
 	Inputs     []*Wire
 	Outputs    []*Wire
-	Gates      []Gate
+	Gates      []*Gate
 	nextWireID uint32
-	pending    []Gate
-	assigned   []Gate
+	pending    []*Gate
+	assigned   []*Gate
 	compiled   []circuit.Gate
 	wires      map[string][]*Wire
 	zeroWire   *Wire
@@ -44,7 +42,7 @@ func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
 		N1:    n1,
 		N2:    n2,
 		N3:    n3,
-		Gates: make([]Gate, 0, 65536),
+		Gates: make([]*Gate, 0, 65536),
 		wires: make(map[string][]*Wire),
 	}
 
@@ -143,7 +141,7 @@ func (c *Compiler) ID(i, o *Wire) {
 	c.AddGate(NewBinary(circuit.XOR, i, c.ZeroWire(), o))
 }
 
-func (c *Compiler) AddGate(gate Gate) {
+func (c *Compiler) AddGate(gate *Gate) {
 	c.Gates = append(c.Gates, gate)
 }
 
@@ -174,15 +172,32 @@ func (c *Compiler) SetWires(v string, w []*Wire) error {
 	return nil
 }
 
+// Prune removes all gates whose output wires are unused.
+func (c *Compiler) Prune() int {
+
+	n := make([]*Gate, len(c.Gates))
+	nPos := len(n)
+
+	for i := len(c.Gates) - 1; i >= 0; i-- {
+		g := c.Gates[i]
+		if !g.Prune() {
+			nPos--
+			n[nPos] = g
+		}
+	}
+	c.Gates = n[nPos:]
+	return nPos
+}
+
 func (c *Compiler) Compile() *circuit.Circuit {
 	if len(c.pending) != 0 {
 		panic("Compile: pending set")
 	}
-	c.pending = make([]Gate, 0, len(c.Gates))
+	c.pending = make([]*Gate, 0, len(c.Gates))
 	if len(c.assigned) != 0 {
 		panic("Compile: assigned set")
 	}
-	c.assigned = make([]Gate, 0, len(c.Gates))
+	c.assigned = make([]*Gate, 0, len(c.Gates))
 	if len(c.compiled) != 0 {
 		panic("Compile: compiled set")
 	}
@@ -234,13 +249,13 @@ type Wire struct {
 	Output   bool
 	Assigned bool
 	ID       uint32
-	Input    Gate
-	Outputs  []Gate
+	Input    *Gate
+	Outputs  []*Gate
 }
 
 func NewWire() *Wire {
 	return &Wire{
-		Outputs: make([]Gate, 0, 1),
+		Outputs: make([]*Gate, 0, 1),
 	}
 }
 
@@ -253,8 +268,8 @@ func MakeWires(bits int) []*Wire {
 }
 
 func (w *Wire) String() string {
-	return fmt.Sprintf("Wire{%p, Input:%v, Outputs:%d}",
-		w, w.Input, len(w.Outputs))
+	return fmt.Sprintf("Wire{%p, Input:%v, Outputs:%d, Output=%v}",
+		w, w.Input, len(w.Outputs), w.Output)
 }
 
 func (w *Wire) Assign(c *Compiler) {
@@ -270,20 +285,35 @@ func (w *Wire) Assign(c *Compiler) {
 	}
 }
 
-func (w *Wire) SetInput(gate Gate) {
+func (w *Wire) SetInput(gate *Gate) {
 	if w.Input != nil {
 		panic("Input gate already set")
 	}
 	w.Input = gate
 }
 
-func (w *Wire) AddOutput(gate Gate) {
+func (w *Wire) AddOutput(gate *Gate) {
 	w.Outputs = append(w.Outputs, gate)
 }
 
-type Gate interface {
-	String() string
-	Visit(c *Compiler)
-	Assign(c *Compiler)
-	Compile(c *Compiler)
+func (w *Wire) RemoveOutput(gate *Gate) {
+	if len(w.Outputs) <= 1 {
+		w.Outputs = nil
+		return
+	}
+	for i := 0; i < len(w.Outputs); i++ {
+		if gate != w.Outputs[i] {
+			continue
+		}
+		if i == 0 {
+			w.Outputs = w.Outputs[1:]
+		} else if i+1 >= len(w.Outputs) {
+			w.Outputs = w.Outputs[:i]
+		} else {
+			n := w.Outputs[:i]
+			n = append(n, w.Outputs[i+1:]...)
+			w.Outputs = n
+		}
+		return
+	}
 }

@@ -144,11 +144,14 @@ func main() {
 		}
 	}
 
+	if verbose {
+		fmt.Printf("Circuit: %v\n", circ)
+	}
+
 	if *ssa || *compile {
 		return
 	}
 
-	fmt.Printf("Circuit: %v\n", circ)
 	var n1t, n2t string
 	if *evaluator {
 		n1t = "- "

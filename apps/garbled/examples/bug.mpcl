@@ -2,10 +2,8 @@
 
 package main
 
-import (
-	"math"
-)
+import ()
 
-func main(b, m, e uint64) uint {
-	return math.Exp(b, e, m)
+func main(a, b uint64) uint {
+	return a - b
 }
