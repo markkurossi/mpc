@@ -242,7 +242,6 @@ form assembly:
    - [ ] Row reduction
    - [ ] Half AND
    - [ ] Oblivious transfer extensions
-   - [ ] AES PRF function for grabling
  - Misc:
    - [ ] TLS for garbler-evaluator protocol
    - [X] Session-specific circuit encryption key
