@@ -110,10 +110,10 @@ func TestIterator(t *testing.T) {
 
 		for g = 0; g < limit; g++ {
 			for e = 0; e < limit; e++ {
-				n1 := []*big.Int{big.NewInt(g)}
-				n2 := []*big.Int{big.NewInt(e)}
+				n1 := big.NewInt(g)
+				n2 := big.NewInt(e)
 
-				results, err := circ.Compute(n1, n2)
+				results, err := circ.Compute([]*big.Int{n1, n2})
 				if err != nil {
 					t.Fatalf("%d: compute failed: %s\n", idx, err)
 				}
@@ -250,9 +250,9 @@ func TestFixed(t *testing.T) {
 			t.Errorf("Failed to compile test %d: %s", idx, err)
 			continue
 		}
-		n1 := []*big.Int{big.NewInt(test.N1)}
-		n2 := []*big.Int{big.NewInt(test.N2)}
-		results, err := circ.Compute(n1, n2)
+		n1 := big.NewInt(test.N1)
+		n2 := big.NewInt(test.N2)
+		results, err := circ.Compute([]*big.Int{n1, n2})
 		if err != nil {
 			t.Errorf("compute failed: %s", err)
 			continue
@@ -278,7 +278,6 @@ func main(a, b uint64) uint64 {
 
 	for i := 0; i < 1000; i++ {
 		g := new(big.Int).Rand(r, big.NewInt(math.MaxInt64))
-		n1 := []*big.Int{g}
 
 		var e *big.Int
 		for {
@@ -287,9 +286,8 @@ func main(a, b uint64) uint64 {
 				break
 			}
 		}
-		n2 := []*big.Int{e}
 
-		results, err := circ.Compute(n1, n2)
+		results, err := circ.Compute([]*big.Int{g, e})
 		if err != nil {
 			t.Fatalf("compute failed: %s\n", err)
 		}

@@ -177,7 +177,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	wires := make([]ot.Wire, c.NumWires)
 
 	// Assing all input wires.
-	for i := 0; i < c.N1.Size()+c.N2.Size(); i++ {
+	for i := 0; i < c.Inputs.Size(); i++ {
 		w, err := makeLabels(r)
 		if err != nil {
 			return nil, err

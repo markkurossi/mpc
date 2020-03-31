@@ -20,7 +20,7 @@ import (
 // XXX check this
 var key [32]byte
 
-func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
+func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	numPlayers := len(nw.Peers) + 1
@@ -277,8 +277,9 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	// Output wire lambdas.
 	Lo := new(big.Int)
-	for w := 0; w < circ.N3.Size(); w++ {
-		Lo.SetBit(Lo, w, garbled.Lambda(Wire(circ.NumWires-circ.N3.Size()+w)))
+	for w := 0; w < circ.Outputs.Size(); w++ {
+		Lo.SetBit(Lo, w,
+			garbled.Lambda(Wire(circ.NumWires-circ.Outputs.Size()+w)))
 	}
 
 	// Exchange gates with peers.
@@ -324,8 +325,8 @@ func Player(nw *p2p.Network, circ *Circuit, inputs []*big.Int, verbose bool) (
 				}
 			}
 		}
-		for w := 0; w < circ.N3.Size(); w++ {
-			index := circ.NumWires - circ.N3.Size() + w
+		for w := 0; w < circ.Outputs.Size(); w++ {
+			index := circ.NumWires - circ.Outputs.Size() + w
 			// XOR peer lambda bit with our lambda bit i.e. only
 			// result 1 changes our value.
 			if result.Ro.Bit(index) == 1 {

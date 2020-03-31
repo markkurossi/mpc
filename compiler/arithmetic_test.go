@@ -119,8 +119,8 @@ func TestArithmetics(t *testing.T) {
 				gio := newReadWriter(gr, gw)
 				eio := newReadWriter(er, ew)
 
-				gInput := []*big.Int{big.NewInt(int64(g))}
-				eInput := []*big.Int{big.NewInt(int64(e))}
+				gInput := big.NewInt(int64(g))
+				eInput := big.NewInt(int64(e))
 
 				go func() {
 					_, err := circuit.Garbler(p2p.NewConn(gio), circ,
@@ -136,7 +136,7 @@ func TestArithmetics(t *testing.T) {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}
 
-				expected := test.Eval(gInput[0], eInput[0])
+				expected := test.Eval(gInput, eInput)
 
 				if expected.Cmp(result[0]) != 0 {
 					t.Errorf("%s failed: %s %s %s = %s, expected %s\n",
@@ -167,8 +167,8 @@ func BenchmarkMult(b *testing.B) {
 	gio := newReadWriter(gr, gw)
 	eio := newReadWriter(er, ew)
 
-	gInput := []*big.Int{big.NewInt(int64(11))}
-	eInput := []*big.Int{big.NewInt(int64(13))}
+	gInput := big.NewInt(int64(11))
+	eInput := big.NewInt(int64(13))
 
 	go func() {
 		_, err := circuit.Garbler(p2p.NewConn(gio), circ, gInput, false)

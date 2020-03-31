@@ -327,6 +327,18 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	var b ssa.Binding
 	var ok bool
 
+	// Check if package name is bound to variable.
+	b, ok = env.Get(ast.Name.Package)
+	if ok {
+		// Bound. We are selecting value from its value.
+		val, ok := b.Bound.(*ssa.Variable)
+		if !ok || !val.Const {
+			return nil, false, nil
+		}
+		return nil, false, ctx.logger.Errorf(ast.Loc,
+			"select not implemented yet")
+	}
+
 	if len(ast.Name.Package) > 0 {
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]

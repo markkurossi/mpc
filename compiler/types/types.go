@@ -38,6 +38,7 @@ const (
 	Uint
 	Float
 	String
+	Struct
 )
 
 var Types = map[string]Type{
@@ -47,6 +48,7 @@ var Types = map[string]Type{
 	"uint":        Uint,
 	"float":       Float,
 	"string":      String,
+	"struct":      Struct,
 }
 
 var shortTypes = map[Type]string{
@@ -56,12 +58,25 @@ var shortTypes = map[Type]string{
 	Uint:      "u",
 	Float:     "f",
 	String:    "str",
+	Struct:    "struct",
 }
 
 type Info struct {
 	Type    Type
 	Bits    int
 	MinBits int
+	Struct  []StructField
+	Offset  int
+}
+
+type StructField struct {
+	Name string
+	Type Info
+}
+
+func (f StructField) String() string {
+	return fmt.Sprintf("%s[%d:%d]",
+		f.Type.Type, f.Type.Offset, f.Type.Offset+f.Type.Bits)
 }
 
 func (i Info) String() string {

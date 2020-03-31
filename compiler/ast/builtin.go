@@ -165,19 +165,15 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 			"failed to parse circuit: %s", err)
 	}
 
-	var inputs circuit.IO
-	inputs = append(inputs, circ.N1...)
-	inputs = append(inputs, circ.N2...)
-
-	if len(inputs) < len(args) {
+	if len(circ.Inputs) < len(args) {
 		return nil, nil, ctx.logger.Errorf(loc,
 			"not enought argument in call to native")
-	} else if len(inputs) < len(args) {
+	} else if len(circ.Inputs) < len(args) {
 		return nil, nil, ctx.logger.Errorf(loc,
 			"too many argument in call to native")
 	}
 	// Check that the argument types match.
-	for idx, io := range inputs {
+	for idx, io := range circ.Inputs {
 		arg := args[idx]
 		if io.Size < arg.Type.Bits || io.Size > arg.Type.Bits && !arg.Const {
 			return nil, nil, ctx.logger.Errorf(loc,
@@ -192,7 +188,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	var result []ssa.Variable
 
-	for _, io := range circ.N3 {
+	for _, io := range circ.Outputs {
 		result = append(result, gen.AnonVar(types.Info{
 			Type: types.Undefined,
 			Bits: io.Size,

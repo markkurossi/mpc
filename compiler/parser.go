@@ -328,7 +328,7 @@ func (p *Parser) parseTypeDecl() error {
 		}
 		typeInfo := &ast.TypeInfo{
 			Type:         ast.TypeStruct,
-			StructName:   name.StrVal,
+			TypeName:     name.StrVal,
 			StructFields: fields,
 		}
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
@@ -341,7 +341,7 @@ func (p *Parser) parseTypeDecl() error {
 		}
 		typeInfo := &ast.TypeInfo{
 			Type:      ast.TypeAlias,
-			Alias:     name.StrVal,
+			TypeName:  name.StrVal,
 			AliasType: ti,
 		}
 		p.pkg.Types = append(p.pkg.Types, typeInfo)

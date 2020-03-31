@@ -49,9 +49,59 @@ func (op Operation) String() string {
 }
 
 type IOArg struct {
-	Name string
-	Type string
-	Size int
+	Name     string
+	Type     string
+	Size     int
+	Combound IO
+}
+
+func (io IOArg) String() string {
+	if len(io.Combound) > 0 {
+		return io.Combound.String()
+	}
+
+	if len(io.Name) > 0 {
+		return io.Name + ":" + io.Type
+	}
+	return io.Type
+}
+
+func (io IOArg) Parse(inputs []string) (*big.Int, error) {
+	if len(io.Combound) == 0 {
+		if len(inputs) != 1 {
+			return nil,
+				fmt.Errorf("invalid amount of arguments, got %d, expected 1",
+					len(inputs))
+		}
+		i := new(big.Int)
+		_, ok := i.SetString(inputs[0], 0)
+		if !ok {
+			return nil, fmt.Errorf("invalid input: %s", inputs[0])
+		}
+		return i, nil
+	}
+	if len(inputs) != len(io.Combound) {
+		return nil,
+			fmt.Errorf("invalid amount of arguments, got %d, expected %d",
+				len(inputs), len(io.Combound))
+	}
+
+	result := new(big.Int)
+	var offset int
+
+	for idx, arg := range io.Combound {
+		i := new(big.Int)
+		// XXX Type checks
+		_, ok := i.SetString(inputs[idx], 0)
+		if !ok {
+			return nil, fmt.Errorf("invalid input: %s", inputs[idx])
+		}
+		i.Lsh(i, uint(offset))
+		result.Or(result, i)
+
+		offset += arg.Size
+	}
+	return result, nil
 }
 
 type IO []IOArg
@@ -62,27 +112,6 @@ func (io IO) Size() int {
 		sum += a.Size
 	}
 	return sum
-}
-
-func (io IO) Parse(inputs []string) ([]*big.Int, error) {
-	if len(inputs) != len(io) {
-		return nil,
-			fmt.Errorf("invalid amount of arguments, got %d, expected %d",
-				len(inputs), len(io))
-	}
-
-	var result []*big.Int
-
-	for idx, _ := range io {
-		i := new(big.Int)
-		// XXX Type checks
-		_, ok := i.SetString(inputs[idx], 0)
-		if !ok {
-			return nil, fmt.Errorf("Invalid input: %s", inputs[idx])
-		}
-		result = append(result, i)
-	}
-	return result, nil
 }
 
 func (io IO) String() string {
@@ -118,9 +147,8 @@ func (io IO) Split(in *big.Int) []*big.Int {
 type Circuit struct {
 	NumGates int
 	NumWires int
-	N1       IO
-	N2       IO
-	N3       IO
+	Inputs   IO
+	Outputs  IO
 	Gates    []Gate
 	Stats    map[Operation]int
 }
@@ -151,16 +179,13 @@ func (c *Circuit) Dump() {
 
 func (c *Circuit) Marshal(out io.Writer) {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
-	fmt.Fprintf(out, "%d", len(c.N1)+len(c.N2))
-	for _, arg := range c.N1 {
-		fmt.Fprintf(out, " %d", arg.Size)
-	}
-	for _, arg := range c.N2 {
-		fmt.Fprintf(out, " %d", arg.Size)
+	fmt.Fprintf(out, "%d", len(c.Inputs))
+	for _, input := range c.Inputs {
+		fmt.Fprintf(out, " %d", input.Size)
 	}
 	fmt.Fprintln(out)
-	fmt.Fprintf(out, "%d", len(c.N3))
-	for _, ret := range c.N3 {
+	fmt.Fprintf(out, "%d", len(c.Outputs))
+	for _, ret := range c.Outputs {
 		fmt.Fprintf(out, " %d", ret.Size)
 	}
 	fmt.Fprintln(out)
@@ -240,7 +265,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 	}
 	wiresSeen := make(Seen, numWires)
 
-	// Inputs N1+N2
+	// Inputs
 	line, err = readLine(r)
 	if err != nil {
 		return nil, err
@@ -270,10 +295,6 @@ func Parse(in io.Reader) (*Circuit, error) {
 	if inputWires == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
-	// XXX Split inputs into N1 and N2.
-	mid := niv / 2
-	n1 := inputs[0:mid]
-	n2 := inputs[mid:]
 
 	// Mark input wires set.
 	for i := 0; i < inputWires; i++ {
@@ -283,7 +304,7 @@ func Parse(in io.Reader) (*Circuit, error) {
 		}
 	}
 
-	// Outputs N3
+	// Outputs
 	line, err = readLine(r)
 	if err != nil {
 		return nil, err
@@ -295,13 +316,13 @@ func Parse(in io.Reader) (*Circuit, error) {
 	if 1+nov != len(line) {
 		return nil, errors.New("invalid outputs line")
 	}
-	var n3 IO
+	var outputs IO
 	for i := 1; i < len(line); i++ {
 		bits, err := strconv.Atoi(line[i])
 		if err != nil {
 			return nil, fmt.Errorf("invalid output bits: %s", err)
 		}
-		n3 = append(n3, IOArg{
+		outputs = append(outputs, IOArg{
 			Name: fmt.Sprintf("NO%d", i),
 			Type: fmt.Sprintf("u%d", bits),
 			Size: bits,
@@ -422,9 +443,8 @@ func Parse(in io.Reader) (*Circuit, error) {
 	return &Circuit{
 		NumGates: numGates,
 		NumWires: numWires,
-		N1:       n1,
-		N2:       n2,
-		N3:       n3,
+		Inputs:   inputs,
+		Outputs:  outputs,
 		Gates:    gates,
 		Stats:    stats,
 	}, nil

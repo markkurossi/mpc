@@ -907,6 +907,49 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	var b ssa.Binding
 	var ok bool
 
+	// Check if package name is bound to variable.
+	b, ok = block.Bindings.Get(ast.Name.Package)
+	if ok {
+		// Selector.
+		value := b.Value(block, gen)
+		if value.Type.Type != types.Struct {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"%s.%s undefined", ast.Name.Package, ast.Name.Name)
+		}
+
+		var field *types.StructField
+		for _, f := range value.Type.Struct {
+			if f.Name == ast.Name.Name {
+				field = &f
+				break
+			}
+		}
+		if field == nil {
+			return nil, nil, ctx.logger.Errorf(ast.Loc,
+				"%s.%s undefined (type %s has no field or method %s)",
+				ast.Name.Package, ast.Name.Name, value.Type, ast.Name.Name)
+		}
+		fmt.Printf("Select %s from %s\n", field, value)
+
+		t := gen.AnonVar(types.Info{
+			Type:    field.Type.Type,
+			Bits:    field.Type.Bits,
+			MinBits: field.Type.Bits,
+		})
+
+		fromConst, err := ssa.Constant(int32(field.Type.Offset))
+		if err != nil {
+			return nil, nil, err
+		}
+		toConst, err := ssa.Constant(int32(field.Type.Offset + field.Type.Bits))
+		if err != nil {
+			return nil, nil, err
+		}
+
+		block.AddInstr(ssa.NewSliceInstr(value, fromConst, toConst, t))
+		return block, []ssa.Variable{t}, nil
+	}
+
 	if len(ast.Name.Package) > 0 {
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]

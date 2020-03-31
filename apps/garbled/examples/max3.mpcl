@@ -3,16 +3,20 @@
 
 package main
 
-func main(a, b, e int) int {
-	if a > b {
-		if a > e {
-			return a
+type G struct {
+	a, b int
+}
+
+func main(g G, e int) int {
+	if g.a > g.b {
+		if g.a > e {
+			return g.a
 		} else {
 			return e
 		}
 	} else {
-		if b > e {
-			return b
+		if g.b > e {
+			return g.b
 		} else {
 			return e
 		}

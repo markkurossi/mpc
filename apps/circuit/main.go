@@ -55,13 +55,13 @@ func main() {
 
 		if true {
 			fmt.Printf("  {  rank=same")
-			for w := 0; w < c.N1.Size()+c.N2.Size(); w++ {
+			for w := 0; w < c.Inputs.Size(); w++ {
 				fmt.Printf("; w%d", w)
 			}
 			fmt.Printf(";}\n")
 
 			fmt.Printf("  {  rank=same")
-			for w := 0; w < c.N3.Size(); w++ {
+			for w := 0; w < c.Outputs.Size(); w++ {
 				fmt.Printf("; w%d", c.NumWires-w-1)
 			}
 			fmt.Printf(";}\n")

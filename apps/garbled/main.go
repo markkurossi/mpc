@@ -157,35 +157,35 @@ func main() {
 		return
 	}
 
-	var n1t, n2t string
-	if *evaluator {
-		n1t = "- "
-		n2t = "+ "
-	} else {
-		n1t = "+ "
-		n2t = "- "
-	}
-
-	fmt.Printf(" %sN1: %s\n", n1t, circ.N1)
-	fmt.Printf(" %sN2: %s\n", n2t, circ.N2)
-	fmt.Printf(" - N3: %s\n", circ.N3)
-	fmt.Printf(" - In: %s\n", inputFlag)
-
-	var input []*big.Int
+	var input *big.Int
 
 	if *bmr >= 0 {
 		fmt.Printf("semi-honest secure BMR protocol\n")
 		fmt.Printf("player: %d\n", *bmr)
 
-		for _, flag := range inputFlag {
-			i := new(big.Int)
-			_, ok := i.SetString(flag, 0)
-			if !ok {
-				fmt.Printf("%s\n", err)
-				os.Exit(1)
-			}
-			input = append(input, i)
+		if *bmr >= len(circ.Inputs) {
+			fmt.Printf("invalid party number %d for %d-party computation\n",
+				*bmr, len(circ.Inputs))
+			return
 		}
+
+		input, err = circ.Inputs[*bmr].Parse(inputFlag)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+
+		for idx, arg := range circ.Inputs {
+			if idx == *bmr {
+				fmt.Printf(" + In%d: %s\n", idx, arg)
+			} else {
+				fmt.Printf(" - In%d: %s\n", idx, arg)
+			}
+		}
+
+		fmt.Printf(" - Out: %s\n", circ.Outputs)
+		fmt.Printf(" - In:  %s\n", inputFlag)
+
 		err := bmrMode(circ, input, *bmr)
 		if err != nil {
 			fmt.Printf("BMR mode failed: %s\n", err)
@@ -194,15 +194,35 @@ func main() {
 		return
 	}
 
+	if len(circ.Inputs) != 2 {
+		fmt.Printf("Invalid circuit for 2-party computation: %d parties\n",
+			len(circ.Inputs))
+		return
+	}
+
+	var i1t, i2t string
 	if *evaluator {
-		input, err = circ.N2.Parse(inputFlag)
+		i1t = "- "
+		i2t = "+ "
+	} else {
+		i1t = "+ "
+		i2t = "- "
+	}
+
+	fmt.Printf(" %sIn1: %s\n", i1t, circ.Inputs[0])
+	fmt.Printf(" %sIn2: %s\n", i2t, circ.Inputs[1])
+	fmt.Printf(" - Out: %s\n", circ.Outputs)
+	fmt.Printf(" - In: %s\n", inputFlag)
+
+	if *evaluator {
+		input, err = circ.Inputs[1].Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
 		err = evaluatorMode(circ, input, len(*cpuprofile) > 0)
 	} else {
-		input, err = circ.N1.Parse(inputFlag)
+		input, err = circ.Inputs[0].Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
@@ -224,7 +244,7 @@ func loadCircuit(file string) (*circuit.Circuit, error) {
 	return circuit.Parse(f)
 }
 
-func evaluatorMode(circ *circuit.Circuit, input []*big.Int, once bool) error {
+func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -253,7 +273,7 @@ func evaluatorMode(circ *circuit.Circuit, input []*big.Int, once bool) error {
 	}
 }
 
-func garblerMode(circ *circuit.Circuit, input []*big.Int) error {
+func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err

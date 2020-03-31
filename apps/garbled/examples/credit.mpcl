@@ -2,16 +2,30 @@
 
 package main
 
-func main(male bool, age, income int, eMaxAge, fIncome, mIncome int) bool {
+type Size = uint42
+
+type Applicant struct {
+	male   bool
+	age    Size
+	income Size
+}
+
+type Bank struct {
+	maxAge       Size
+	femaleIncome Size
+	maleIncome   Size
+}
+
+func main(applicant Applicant, bank Bank) bool {
 	// Bank sets the maximum age limit.
-	if age > eMaxAge {
+	if applicant.age > bank.maxAge {
 		return false
 	}
-	if male {
+	if applicant.male {
 		// Credit criteria for males.
-		return age >= 21 && income >= mIncome
+		return applicant.age >= 21 && applicant.income >= bank.maleIncome
 	} else {
 		// Credit criteria for females.
-		return age >= 18 && income >= fIncome
+		return applicant.age >= 18 && applicant.income >= bank.femaleIncome
 	}
 }

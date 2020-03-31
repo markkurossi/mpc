@@ -78,13 +78,17 @@ func (c *Circuit) Dot(out io.Writer) {
 
 	if true {
 		fmt.Fprintf(out, "  {  rank=same")
-		for w := 0; w < c.N1.Size()+c.N2.Size(); w++ {
+		var numInputs int
+		for _, input := range c.Inputs {
+			numInputs += input.Size
+		}
+		for w := 0; w < numInputs; w++ {
 			fmt.Fprintf(out, "; w%d", w)
 		}
 		fmt.Fprintf(out, ";}\n")
 
 		fmt.Fprintf(out, "  {  rank=same")
-		for w := 0; w < c.N3.Size(); w++ {
+		for w := 0; w < c.Outputs.Size(); w++ {
 			fmt.Fprintf(out, "; w%d", c.NumWires-w-1)
 		}
 		fmt.Fprintf(out, ";}\n")

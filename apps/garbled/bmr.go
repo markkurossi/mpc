@@ -15,7 +15,7 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-func bmrMode(circ *circuit.Circuit, input []*big.Int, player int) error {
+func bmrMode(circ *circuit.Circuit, input *big.Int, player int) error {
 	// Create network.
 	addr := makeAddr(player)
 	nw, err := p2p.NewNetwork(addr, player)
@@ -24,7 +24,7 @@ func bmrMode(circ *circuit.Circuit, input []*big.Int, player int) error {
 	}
 	defer nw.Close()
 
-	numPlayers := len(circ.N1) + len(circ.N2)
+	numPlayers := len(circ.Inputs)
 
 	for i := 0; i < numPlayers; i++ {
 		if i == player {

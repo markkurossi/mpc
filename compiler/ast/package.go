@@ -8,7 +8,6 @@ package ast
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -57,7 +56,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	ctx.Start().Bindings = pkg.Bindings.Clone()
 
 	// Arguments.
-	var args circuit.IO
+	var inputs circuit.IO
 	for _, arg := range main.Args {
 		typeInfo, err := arg.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
 		if err != nil {
@@ -76,11 +75,16 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		}
 		ctx.Start().Bindings.Set(a, nil)
 
-		args = append(args, circuit.IOArg{
+		arg := circuit.IOArg{
 			Name: a.String(),
 			Type: a.Type.String(),
 			Size: a.Type.Bits,
-		})
+		}
+		if typeInfo.Type == types.Struct {
+			arg.Combound = flattenStruct(typeInfo)
+		}
+
+		inputs = append(inputs, arg)
 	}
 
 	// Compile main.
@@ -100,29 +104,8 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		ssa.Dot(params.SSADotOut, ctx.Start())
 	}
 
-	// Split arguments into garbler and evaluator arguments.
-	var separatorSeen bool
-	var g, e circuit.IO
-	for _, a := range args {
-		if !separatorSeen {
-			if !strings.HasPrefix(a.Name, "e") {
-				g = append(g, a)
-				continue
-			}
-			separatorSeen = true
-		}
-		e = append(e, a)
-	}
-	if !separatorSeen {
-		if len(args) != 2 {
-			return nil, nil, fmt.Errorf("can't split arguments: %s", args)
-		}
-		g = circuit.IO{args[0]}
-		e = circuit.IO{args[1]}
-	}
-
 	// Return values
-	var r circuit.IO
+	var outputs circuit.IO
 	for idx, rt := range main.Return {
 		if idx >= len(returnVars) {
 			return nil, nil, fmt.Errorf("too few values for %s", main)
@@ -145,14 +128,14 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		}
 
 		v := returnVars[idx]
-		r = append(r, circuit.IOArg{
+		outputs = append(outputs, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type.String(),
 			Size: v.Type.Bits,
 		})
 	}
 
-	cc, err := circuits.NewCompiler(g, e, r)
+	cc, err := circuits.NewCompiler(inputs, outputs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -193,6 +176,24 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	return circ, main.Annotations, nil
 }
 
+func flattenStruct(t types.Info) circuit.IO {
+	var result circuit.IO
+	if t.Type != types.Struct {
+		return result
+	}
+
+	for _, f := range t.Struct {
+		// XXX recursive structs.
+		result = append(result, circuit.IOArg{
+			Name: f.Name,
+			Type: f.Type.String(),
+			Size: f.Type.Bits,
+		})
+	}
+
+	return result
+}
+
 func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 	gen *ssa.Generator) error {
 
@@ -218,8 +219,13 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 
 	// Define types.
 	for _, typeDef := range pkg.Types {
-		fmt.Printf("Defining type %s\n", typeDef)
+		err := pkg.defineType(typeDef, ctx, gen)
+		if err != nil {
+			return err
+		}
 	}
+
+	// Define constants.
 
 	block := gen.Block()
 	block.Bindings = pkg.Bindings.Clone()
@@ -234,4 +240,81 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 	pkg.Bindings = block.Bindings
 
 	return nil
+}
+
+func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
+	gen *ssa.Generator) error {
+
+	fmt.Printf("Defining type %s\n", def)
+	env := &Env{
+		Bindings: pkg.Bindings,
+	}
+	switch def.Type {
+	case TypeStruct:
+		_, ok := pkg.Bindings.Get(def.TypeName)
+		if ok {
+			return fmt.Errorf("type %s already defined", def.TypeName)
+		}
+		// Construct compound type.
+		var fields []types.StructField
+		var bits int
+		var minBits int
+		var offset int
+		for _, field := range def.StructFields {
+			info, err := field.Type.Resolve(env, ctx, gen)
+			if err != nil {
+				return err
+			}
+			field := types.StructField{
+				Name: field.Name,
+				Type: info,
+			}
+			field.Type.Offset = offset
+			fields = append(fields, field)
+
+			bits += info.Bits
+			minBits += info.MinBits
+			offset += info.Bits
+		}
+		info := types.Info{
+			Type:    types.Struct,
+			Bits:    bits,
+			MinBits: minBits,
+			Struct:  fields,
+		}
+
+		v, err := ssa.Constant(info)
+		if err != nil {
+			return err
+		}
+		lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
+		if err != nil {
+			return err
+		}
+		pkg.Bindings.Set(lval, &v)
+		return nil
+
+	case TypeAlias:
+		_, ok := pkg.Bindings.Get(def.TypeName)
+		if ok {
+			return fmt.Errorf("type %s already defined", def.TypeName)
+		}
+		info, err := def.AliasType.Resolve(env, ctx, gen)
+		if err != nil {
+			return err
+		}
+		v, err := ssa.Constant(info)
+		if err != nil {
+			return err
+		}
+		lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
+		if err != nil {
+			return err
+		}
+		pkg.Bindings.Set(lval, &v)
+		return nil
+
+	default:
+		return fmt.Errorf("invalid type definition: %s", def)
+	}
 }

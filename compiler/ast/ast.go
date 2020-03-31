@@ -57,9 +57,8 @@ type TypeInfo struct {
 	Name         Identifier
 	ElementType  *TypeInfo
 	ArrayLength  AST
-	StructName   string
+	TypeName     string
 	StructFields []StructField
-	Alias        string
 	AliasType    *TypeInfo
 }
 
@@ -136,7 +135,7 @@ func (ti *TypeInfo) String() string {
 		return fmt.Sprintf("[]%s", ti.ElementType)
 
 	case TypeStruct:
-		name := fmt.Sprintf("struct %s {", ti.StructName)
+		name := fmt.Sprintf("struct %s {", ti.TypeName)
 		for idx, field := range ti.StructFields {
 			if idx > 0 {
 				name += ", "
@@ -146,7 +145,7 @@ func (ti *TypeInfo) String() string {
 		return name + "}"
 
 	case TypeAlias:
-		return fmt.Sprintf("%s=%s", ti.Alias, ti.AliasType)
+		return fmt.Sprintf("%s=%s", ti.TypeName, ti.AliasType)
 
 	default:
 		return fmt.Sprintf("{TypeInfo %d}", ti.Type)

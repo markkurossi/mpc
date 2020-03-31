@@ -15,53 +15,46 @@ import (
 type Builtin func(cc *Compiler, a, b, r []*Wire) error
 
 type Compiler struct {
-	N1         circuit.IO
-	N2         circuit.IO
-	N3         circuit.IO
-	Inputs     []*Wire
-	Outputs    []*Wire
-	Gates      []*Gate
-	nextWireID uint32
-	pending    []*Gate
-	assigned   []*Gate
-	compiled   []circuit.Gate
-	wires      map[string][]*Wire
-	zeroWire   *Wire
-	oneWire    *Wire
+	CircInputs  circuit.IO
+	CircOutputs circuit.IO
+	Inputs      []*Wire
+	Outputs     []*Wire
+	Gates       []*Gate
+	nextWireID  uint32
+	pending     []*Gate
+	assigned    []*Gate
+	compiled    []circuit.Gate
+	wires       map[string][]*Wire
+	zeroWire    *Wire
+	oneWire     *Wire
 }
 
-func NewIO(size int) circuit.IO {
-	return circuit.IO{circuit.IOArg{Size: size}}
+func NewIO(size int, name string) circuit.IO {
+	return circuit.IO{
+		circuit.IOArg{
+			Name: name,
+			Size: size,
+		},
+	}
 }
 
-func NewCompiler(n1, n2, n3 circuit.IO) (*Compiler, error) {
-	if n1.Size()+n2.Size() == 0 {
+func NewCompiler(inputs circuit.IO, outputs circuit.IO) (*Compiler, error) {
+	if inputs.Size() == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
 	result := &Compiler{
-		N1:    n1,
-		N2:    n2,
-		N3:    n3,
-		Gates: make([]*Gate, 0, 65536),
-		wires: make(map[string][]*Wire),
+		CircInputs:  inputs,
+		CircOutputs: outputs,
+		Gates:       make([]*Gate, 0, 65536),
+		wires:       make(map[string][]*Wire),
 	}
 
 	// Inputs into wires
-	for idx, n := range n1 {
-		if len(n.Name) == 0 {
-			n.Name = fmt.Sprintf("n1{%d}", idx)
+	for idx, arg := range inputs {
+		if len(arg.Name) == 0 {
+			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
-		wires, err := result.Wires(n.Name, n.Size)
-		if err != nil {
-			return nil, err
-		}
-		result.Inputs = append(result.Inputs, wires...)
-	}
-	for idx, n := range n2 {
-		if len(n.Name) == 0 {
-			n.Name = fmt.Sprintf("n2{%d}", idx)
-		}
-		wires, err := result.Wires(n.Name, n.Size)
+		wires, err := result.Wires(arg.Name, arg.Size)
 		if err != nil {
 			return nil, err
 		}
@@ -235,9 +228,8 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	result := &circuit.Circuit{
 		NumGates: len(c.compiled),
 		NumWires: int(c.nextWireID),
-		N1:       c.N1,
-		N2:       c.N2,
-		N3:       c.N3,
+		Inputs:   c.CircInputs,
+		Outputs:  c.CircOutputs,
 		Gates:    c.compiled,
 		Stats:    stats,
 	}

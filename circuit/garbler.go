@@ -39,7 +39,7 @@ func (s FileSize) String() string {
 	}
 }
 
-func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	timing := NewTiming()
@@ -86,24 +86,18 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	// Select our inputs.
 	var n1 []ot.Label
 	var w int
-	for idx, io := range circ.N1 {
-		var input *big.Int
-		if idx < len(inputs) {
-			input = inputs[idx]
-		}
-		for i := 0; i < io.Size; i++ {
-			wire := garbled.Wires[w]
-			w++
+	for i := 0; i < circ.Inputs[0].Size; i++ {
+		wire := garbled.Wires[w]
+		w++
 
-			var n ot.Label
+		var n ot.Label
 
-			if input != nil && input.Bit(i) == 1 {
-				n = wire.L1
-			} else {
-				n = wire.L0
-			}
-			n1 = append(n1, n)
+		if inputs.Bit(i) == 1 {
+			n = wire.L1
+		} else {
+			n = wire.L0
 		}
+		n1 = append(n1, n)
 	}
 
 	// Send our inputs.
@@ -143,8 +137,8 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	// Init wires the peer is allowed to OT.
 	allowedOTs := make(map[int]bool)
-	for bit := 0; bit < circ.N2.Size(); bit++ {
-		allowedOTs[circ.N1.Size()+bit] = true
+	for bit := 0; bit < circ.Inputs[1].Size; bit++ {
+		allowedOTs[circ.Inputs[0].Size+bit] = true
 	}
 
 	// Process messages.
@@ -210,12 +204,12 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 			lastOT = time.Now()
 
 		case OP_RESULT:
-			for i := 0; i < circ.N3.Size(); i++ {
+			for i := 0; i < circ.Outputs.Size(); i++ {
 				label, err := conn.ReceiveLabel()
 				if err != nil {
 					return nil, err
 				}
-				wire := garbled.Wires[circ.NumWires-circ.N3.Size()+i]
+				wire := garbled.Wires[circ.NumWires-circ.Outputs.Size()+i]
 
 				var bit uint
 				if label.Equal(wire.L0) {
@@ -243,5 +237,5 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		timing.Print()
 	}
 
-	return circ.N3.Split(result), nil
+	return circ.Outputs.Split(result), nil
 }

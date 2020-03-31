@@ -21,7 +21,7 @@ var (
 	debug = false
 )
 
-func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
+func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 
 	timing := NewTiming()
@@ -70,7 +70,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 	wires := make([]ot.Label, circ.NumWires)
 
 	// Receive peer inputs.
-	for i := 0; i < circ.N1.Size(); i++ {
+	for i := 0; i < circ.Inputs[0].Size; i++ {
 		label, err := conn.ReceiveLabel()
 		if err != nil {
 			return nil, err
@@ -103,25 +103,19 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		fmt.Printf(" - Querying our inputs...\n")
 	}
 	var w int
-	for idx, io := range circ.N2 {
-		var input *big.Int
-		if idx < len(inputs) {
-			input = inputs[idx]
+	for i := 0; i < circ.Inputs[1].Size; i++ {
+		if err := conn.SendUint32(OP_OT); err != nil {
+			return nil, err
 		}
-		for i := 0; i < io.Size; i++ {
-			if err := conn.SendUint32(OP_OT); err != nil {
-				return nil, err
-			}
-			n, err := conn.Receive(receiver, uint(circ.N1.Size()+w),
-				input.Bit(i))
-			if err != nil {
-				return nil, err
-			}
-			var data ot.LabelData
-			copy(data[:], n)
-			wires[Wire(circ.N1.Size()+w)] = ot.LabelFromData(data)
-			w++
+		n, err := conn.Receive(receiver, uint(circ.Inputs[0].Size+w),
+			inputs.Bit(i))
+		if err != nil {
+			return nil, err
 		}
+		var data ot.LabelData
+		copy(data[:], n)
+		wires[Wire(circ.Inputs[0].Size+w)] = ot.LabelFromData(data)
+		w++
 	}
 	xfer := conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
@@ -139,8 +133,8 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 
 	var labels []ot.Label
 
-	for i := 0; i < circ.N3.Size(); i++ {
-		r := wires[Wire(circ.NumWires-circ.N3.Size()+i)]
+	for i := 0; i < circ.Outputs.Size(); i++ {
+		r := wires[Wire(circ.NumWires-circ.Outputs.Size()+i)]
 		labels = append(labels, r)
 	}
 
@@ -168,5 +162,5 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs []*big.Int, verbose bool) (
 		timing.Print()
 	}
 
-	return circ.N3.Split(raw), nil
+	return circ.Outputs.Split(raw), nil
 }

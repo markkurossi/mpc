@@ -11,29 +11,19 @@ import (
 	"math/big"
 )
 
-func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
-	if len(n1) != len(c.N1) {
-		return nil, fmt.Errorf("invalid n1 arguments: got %d, expected %d\n",
-			len(n1), len(c.N1))
-	}
-	if len(n2) != len(c.N2) {
-		return nil, fmt.Errorf("invalid n2 arguments: got %d, expected %d\n",
-			len(n2), len(c.N2))
+func (c *Circuit) Compute(inputs []*big.Int) ([]*big.Int, error) {
+	if len(inputs) != len(c.Inputs) {
+		return nil, fmt.Errorf("invalid inputs: got %d, expected %d",
+			len(inputs), len(c.Inputs))
 	}
 
+	// Flatten inputs and arguments.
 	wires := make([]byte, c.NumWires)
-	var ios IO
-	ios = append(ios, c.N1...)
-	ios = append(ios, c.N2...)
-
-	var args []*big.Int
-	args = append(args, n1...)
-	args = append(args, n2...)
 
 	var w int
-	for idx, io := range ios {
+	for idx, io := range c.Inputs {
 		for bit := 0; bit < io.Size; bit++ {
-			wires[w] = byte(args[idx].Bit(bit))
+			wires[w] = byte(inputs[idx].Bit(bit))
 			w++
 		}
 	}
@@ -74,9 +64,9 @@ func (c *Circuit) Compute(n1, n2 []*big.Int) ([]*big.Int, error) {
 	}
 
 	// Construct outputs
-	w = c.NumWires - c.N3.Size()
+	w = c.NumWires - c.Outputs.Size()
 	var result []*big.Int
-	for _, io := range c.N3 {
+	for _, io := range c.Outputs {
 		r := new(big.Int)
 		for bit := 0; bit < io.Size; bit++ {
 			if wires[w] != 0 {

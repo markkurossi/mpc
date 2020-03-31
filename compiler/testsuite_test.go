@@ -78,8 +78,6 @@ loop:
 			var outputs []*big.Int
 			var sep bool
 
-			split := -1
-
 			for i := 1; i < len(parts); i++ {
 				part := parts[i]
 				if part == "=" {
@@ -99,13 +97,7 @@ loop:
 				}
 			}
 
-			if split < 0 {
-				split = len(inputs) / 2
-			}
-			var n1, n2 []*big.Int
-
-			n1 = append(n1, inputs[:split]...)
-			n2 = append(n2, inputs[split:]...)
+			// Wrap inputs to args.
 
 			var prof *os.File
 
@@ -122,7 +114,7 @@ loop:
 				}
 			}
 
-			results, err := circ.Compute(n1, n2)
+			results, err := circ.Compute(inputs)
 
 			if cpuprof {
 				pprof.StopCPUProfile()
