@@ -16,6 +16,10 @@ const (
 	MAGIC = 0x63726300 // crc0
 )
 
+var (
+	bo = binary.BigEndian
+)
+
 func (c *Circuit) Marshal(out io.Writer) error {
 	var data = []interface{}{
 		uint32(MAGIC),
@@ -24,14 +28,18 @@ func (c *Circuit) Marshal(out io.Writer) error {
 		uint32(len(c.Inputs)),
 		uint32(len(c.Outputs)),
 	}
+	for _, v := range data {
+		if err := binary.Write(out, bo, v); err != nil {
+			return err
+		}
+	}
 	for _, input := range c.Inputs {
-		data = append(data, uint32(input.Size))
+		if err := marshalIOArg(out, input); err != nil {
+			return err
+		}
 	}
 	for _, output := range c.Outputs {
-		data = append(data, uint32(output.Size))
-	}
-	for _, v := range data {
-		if err := binary.Write(out, binary.BigEndian, v); err != nil {
+		if err := marshalIOArg(out, output); err != nil {
 			return err
 		}
 	}
@@ -53,12 +61,42 @@ func (c *Circuit) Marshal(out io.Writer) error {
 			return fmt.Errorf("unsupported gate type %s", g.Op)
 		}
 		for _, v := range data {
-			if err := binary.Write(out, binary.BigEndian, v); err != nil {
+			if err := binary.Write(out, bo, v); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func marshalIOArg(out io.Writer, arg IOArg) error {
+	if err := marshalString(out, arg.Name); err != nil {
+		return err
+	}
+	if err := marshalString(out, arg.Type); err != nil {
+		return err
+	}
+	if err := binary.Write(out, bo, uint32(arg.Size)); err != nil {
+		return err
+	}
+	if err := binary.Write(out, bo, uint32(len(arg.Compound))); err != nil {
+		return err
+	}
+	for _, c := range arg.Compound {
+		if err := marshalIOArg(out, c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func marshalString(out io.Writer, val string) error {
+	bytes := []byte(val)
+	if err := binary.Write(out, bo, uint32(len(bytes))); err != nil {
+		return err
+	}
+	_, err := out.Write(bytes)
+	return err
 }
 
 func (c *Circuit) MarshalBristol(out io.Writer) {

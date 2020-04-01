@@ -81,7 +81,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 			Size: a.Type.Bits,
 		}
 		if typeInfo.Type == types.Struct {
-			arg.Combound = flattenStruct(typeInfo)
+			arg.Compound = flattenStruct(typeInfo)
 		}
 
 		inputs = append(inputs, arg)

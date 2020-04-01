@@ -55,36 +55,29 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 		NumInputs  uint32
 		NumOutputs uint32
 	}
-	if err := binary.Read(r, binary.BigEndian, &header); err != nil {
+	if err := binary.Read(r, bo, &header); err != nil {
 		return nil, err
 	}
 	var inputs, outputs IO
 	var inputWires, outputWires int
-	var ui32 uint32
 
 	wiresSeen := make(Seen, header.NumWires)
 
 	for i := 0; i < int(header.NumInputs); i++ {
-		if err := binary.Read(r, binary.BigEndian, &ui32); err != nil {
+		arg, err := parseIOArg(r)
+		if err != nil {
 			return nil, err
 		}
-		inputs = append(inputs, IOArg{
-			Name: fmt.Sprintf("NI%d", i),
-			Type: fmt.Sprintf("u%d", ui32),
-			Size: int(ui32),
-		})
-		inputWires += int(ui32)
+		inputs = append(inputs, arg)
+		inputWires += arg.Size
 	}
 	for i := 0; i < int(header.NumOutputs); i++ {
-		if err := binary.Read(r, binary.BigEndian, &ui32); err != nil {
+		out, err := parseIOArg(r)
+		if err != nil {
 			return nil, err
 		}
-		outputs = append(outputs, IOArg{
-			Name: fmt.Sprintf("NO%d", i),
-			Type: fmt.Sprintf("u%d", ui32),
-			Size: int(ui32),
-		})
-		outputWires += int(ui32)
+		outputs = append(outputs, out)
+		outputWires += out.Size
 	}
 
 	// Mark input wires seen.
@@ -112,7 +105,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 				Input1 uint32
 				Output uint32
 			}
-			if err := binary.Read(r, binary.BigEndian, &bin); err != nil {
+			if err := binary.Read(r, bo, &bin); err != nil {
 				return nil, err
 			}
 			if !wiresSeen[bin.Input0] {
@@ -138,7 +131,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 				Input0 uint32
 				Output uint32
 			}
-			if err := binary.Read(r, binary.BigEndian, &unary); err != nil {
+			if err := binary.Read(r, bo, &unary); err != nil {
 				return nil, err
 			}
 			if !wiresSeen[unary.Input0] {
@@ -182,6 +175,54 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 		Gates:    gates,
 		Stats:    stats,
 	}, nil
+}
+
+func parseIOArg(r *bufio.Reader) (arg IOArg, err error) {
+	name, err := parseString(r)
+	if err != nil {
+		return arg, err
+	}
+	t, err := parseString(r)
+	if err != nil {
+		return arg, err
+	}
+	var ui32 uint32
+	if err := binary.Read(r, bo, &ui32); err != nil {
+		return arg, err
+	}
+	arg.Name = name
+	arg.Type = t
+	arg.Size = int(ui32)
+
+	// Compound
+	if err := binary.Read(r, bo, &ui32); err != nil {
+		return arg, err
+	}
+	for i := 0; i < int(ui32); i++ {
+		c, err := parseIOArg(r)
+		if err != nil {
+			return arg, err
+		}
+		arg.Compound = append(arg.Compound, c)
+	}
+
+	return
+}
+
+func parseString(r *bufio.Reader) (string, error) {
+	var ui32 uint32
+	if err := binary.Read(r, bo, &ui32); err != nil {
+		return "", err
+	}
+	if ui32 == 0 {
+		return "", nil
+	}
+	buf := make([]byte, ui32)
+	_, err := r.Read(buf)
+	if err != nil {
+		return "", err
+	}
+	return string(buf), nil
 }
 
 func ParseBristol(in io.Reader) (*Circuit, error) {

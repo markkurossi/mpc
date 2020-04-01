@@ -42,12 +42,12 @@ type IOArg struct {
 	Name     string
 	Type     string
 	Size     int
-	Combound IO
+	Compound IO
 }
 
 func (io IOArg) String() string {
-	if len(io.Combound) > 0 {
-		return io.Combound.String()
+	if len(io.Compound) > 0 {
+		return io.Compound.String()
 	}
 
 	if len(io.Name) > 0 {
@@ -57,7 +57,7 @@ func (io IOArg) String() string {
 }
 
 func (io IOArg) Parse(inputs []string) (*big.Int, error) {
-	if len(io.Combound) == 0 {
+	if len(io.Compound) == 0 {
 		if len(inputs) != 1 {
 			return nil,
 				fmt.Errorf("invalid amount of arguments, got %d, expected 1",
@@ -70,16 +70,16 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 		}
 		return i, nil
 	}
-	if len(inputs) != len(io.Combound) {
+	if len(inputs) != len(io.Compound) {
 		return nil,
 			fmt.Errorf("invalid amount of arguments, got %d, expected %d",
-				len(inputs), len(io.Combound))
+				len(inputs), len(io.Compound))
 	}
 
 	result := new(big.Int)
 	var offset int
 
-	for idx, arg := range io.Combound {
+	for idx, arg := range io.Compound {
 		i := new(big.Int)
 		// XXX Type checks
 		_, ok := i.SetString(inputs[idx], 0)
