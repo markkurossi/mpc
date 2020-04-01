@@ -8,7 +8,6 @@ package ast
 
 import (
 	"fmt"
-	"os"
 	"path"
 	"strings"
 
@@ -153,13 +152,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	dir := path.Dir(loc.Source)
 	fp := path.Join(dir, name)
-	file, err := os.Open(fp)
-	if err != nil {
-		return nil, nil, ctx.logger.Errorf(loc, "failed to open circuit: %s",
-			err)
-	}
-	defer file.Close()
-	circ, err := circuit.Parse(file)
+	circ, err := circuit.Parse(fp)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(loc,
 			"failed to parse circuit: %s", err)

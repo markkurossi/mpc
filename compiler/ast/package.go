@@ -167,7 +167,17 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		if params.Verbose {
 			fmt.Printf("Serializing circuit...\n")
 		}
-		circ.Marshal(params.CircOut)
+		switch params.CircFormat {
+		case "mpclc":
+			if err := circ.Marshal(params.CircOut); err != nil {
+				return nil, nil, err
+			}
+		case "bristol":
+			circ.MarshalBristol(params.CircOut)
+		default:
+			return nil, nil, fmt.Errorf("unsupported circuit format: %s",
+				params.CircFormat)
+		}
 	}
 	if params.CircDotOut != nil {
 		circ.Dot(params.CircDotOut)

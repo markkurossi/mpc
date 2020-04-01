@@ -22,7 +22,7 @@ var data = `1 3
 `
 
 func TestParse(t *testing.T) {
-	circuit, err := Parse(bytes.NewReader([]byte(data)))
+	circuit, err := ParseBristol(bytes.NewReader([]byte(data)))
 	if err != nil {
 		t.Fatalf("Parse failed: %s", err)
 	}

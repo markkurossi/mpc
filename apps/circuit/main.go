@@ -12,7 +12,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/markkurossi/mpc/circuit"
 )
@@ -22,13 +21,7 @@ func main() {
 	flag.Parse()
 
 	for _, file := range flag.Args() {
-		f, err := os.Open(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-
-		c, err := circuit.Parse(f)
+		c, err := circuit.Parse(file)
 		if err != nil {
 			log.Fatal(err)
 		}

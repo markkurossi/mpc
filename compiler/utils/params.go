@@ -16,6 +16,7 @@ type Params struct {
 	SSADotOut  io.WriteCloser
 	CircOut    io.WriteCloser
 	CircDotOut io.WriteCloser
+	CircFormat string
 
 	CircMultArrayTreshold int
 

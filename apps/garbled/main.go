@@ -59,6 +59,8 @@ func init() {
 func main() {
 	evaluator := flag.Bool("e", false, "evaluator / garbler mode")
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
+	circFormat := flag.String("format", "mpclc",
+		"circuit format: mpclc, bristol")
 	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
 	optimize := flag.Int("O", 1, "optimization level")
@@ -101,8 +103,10 @@ func main() {
 	}
 
 	for _, arg := range flag.Args() {
-		if strings.HasSuffix(arg, ".circ") {
-			circ, err = loadCircuit(arg)
+		if strings.HasSuffix(arg, ".circ") ||
+			strings.HasSuffix(arg, ".bristol") ||
+			strings.HasSuffix(arg, ".mpclc") {
+			circ, err = circuit.Parse(arg)
 			if err != nil {
 				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
 				return
@@ -123,11 +127,12 @@ func main() {
 				}
 			}
 			if *compile {
-				params.CircOut, err = makeOutput(arg, "circ")
+				params.CircOut, err = makeOutput(arg, *circFormat)
 				if err != nil {
 					fmt.Printf("Failed to create circuit file: %s\n", err)
 					return
 				}
+				params.CircFormat = *circFormat
 				if *dot {
 					params.CircDotOut, err = makeOutput(arg, "circ.dot")
 					if err != nil {
@@ -232,16 +237,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func loadCircuit(file string) (*circuit.Circuit, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return circuit.Parse(f)
 }
 
 func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {

@@ -18,6 +18,8 @@
 *.pdf
 *.ssa
 *.prof
+*.mpclc
+*.bristol
 apps/circuit/circuit
 apps/garbled/garbled
 apps/ot/ot
