@@ -387,6 +387,16 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+## RSA signature computation
+
+| Input Size | MODP Size | Total gates | Non-XOR gates |
+|-----------:|----------:|------------:|--------------:|
+|          8 |        16 |       44796 |         12423 |
+|         16 |        32 |      374844 |        102255 |
+|         32 |        64 |     2986556 |        801887 |
+|         64 |       128 |    23171068 |       6137023 |
+|        128 |       256 |             |               |
+
 ## Mathematic operations with compiler and optimized circuits
 
 Optimized circuits from [pkg/math/](pkg/math/):

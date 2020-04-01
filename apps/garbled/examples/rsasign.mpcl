@@ -1,0 +1,34 @@
+// -*- go -*-
+//
+
+package main
+
+import (
+	"crypto/rsa"
+)
+
+// d: 0x321af139
+// n: 0xd60b2b09
+// e: 0x10001
+//
+// private: d, e
+// public:  n, e
+
+// msg: 0x6d7472
+// cipher: 0x61f9ef88
+
+type Size = uint128
+
+type Garbler struct {
+	msg       Size
+	privShare Size
+	pubN      Size
+	pubE      Size
+}
+
+func main(g Garbler, privShare Size) uint {
+
+	priv := g.privShare + privShare
+
+	return rsa.Decrypt(g.msg, priv, g.pubN)
+}
