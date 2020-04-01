@@ -183,12 +183,16 @@ func flattenStruct(t types.Info) circuit.IO {
 	}
 
 	for _, f := range t.Struct {
-		// XXX recursive structs.
-		result = append(result, circuit.IOArg{
-			Name: f.Name,
-			Type: f.Type.String(),
-			Size: f.Type.Bits,
-		})
+		if f.Type.Type == types.Struct {
+			ios := flattenStruct(f.Type)
+			result = append(result, ios...)
+		} else {
+			result = append(result, circuit.IOArg{
+				Name: f.Name,
+				Type: f.Type.String(),
+				Size: f.Type.Bits,
+			})
+		}
 	}
 
 	return result
