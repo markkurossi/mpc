@@ -104,6 +104,10 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		ssa.Dot(params.SSADotOut, ctx.Start())
 	}
 
+	if params.NoCircCompile {
+		return nil, main.Annotations, nil
+	}
+
 	// Return values
 	var outputs circuit.IO
 	for idx, rt := range main.Return {
@@ -259,7 +263,6 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 	gen *ssa.Generator) error {
 
-	fmt.Printf("Defining type %s\n", def)
 	env := &Env{
 		Bindings: pkg.Bindings,
 	}

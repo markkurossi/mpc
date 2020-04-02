@@ -929,7 +929,6 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 				"%s.%s undefined (type %s has no field or method %s)",
 				ast.Name.Package, ast.Name.Name, value.Type, ast.Name.Name)
 		}
-		fmt.Printf("Select %s from %s\n", field, value)
 
 		t := gen.AnonVar(types.Info{
 			Type:    field.Type.Type,

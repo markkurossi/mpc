@@ -101,6 +101,9 @@ func main() {
 	if *optimize > 0 {
 		params.OptPruneGates = true
 	}
+	if *ssa && !*compile {
+		params.NoCircCompile = true
+	}
 
 	for _, arg := range flag.Args() {
 		if strings.HasSuffix(arg, ".circ") ||
@@ -154,7 +157,7 @@ func main() {
 		}
 	}
 
-	if verbose {
+	if verbose && circ != nil {
 		fmt.Printf("Circuit: %v\n", circ)
 	}
 

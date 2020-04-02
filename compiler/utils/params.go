@@ -11,12 +11,14 @@ import (
 )
 
 type Params struct {
-	Verbose    bool
-	SSAOut     io.WriteCloser
-	SSADotOut  io.WriteCloser
-	CircOut    io.WriteCloser
-	CircDotOut io.WriteCloser
-	CircFormat string
+	Verbose   bool
+	SSAOut    io.WriteCloser
+	SSADotOut io.WriteCloser
+
+	NoCircCompile bool
+	CircOut       io.WriteCloser
+	CircDotOut    io.WriteCloser
+	CircFormat    string
 
 	CircMultArrayTreshold int
 
