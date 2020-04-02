@@ -57,7 +57,7 @@ port `:8080`.
 Next, let's start the garbler:
 
 ```
-$ ./garbled -i 750000,0 examples/millionaire.mpcl
+$ ./garbled -i 750000 examples/millionaire.mpcl
 Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
  + N1: a{1,0}i64:int64
  - N2: b{1,0}i64:int64
@@ -399,21 +399,6 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 |         32 |        64 |     2986556 |        801887 |
 |         64 |       128 |    23171068 |       6137023 |
 |        128 |       256 |   177580028 |      46495359 |
-
-128 bit RSA signature, 256 bit modp:
-```
-Circuit: #gates=177580028 (XOR=129173372 XNOR=1911297 AND=46495359 OR=0 INV=0)
-┏━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
-┃ Op     ┃            Time ┃      % ┃  Xfer ┃
-┣━━━━━━━━╋━━━━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
-┃ Wait   ┃ 2m14.022685305s ┃ 39.82% ┃       ┃
-┃ Recv   ┃ 1m50.525335462s ┃ 32.83% ┃   3GB ┃
-┃ Inputs ┃   10.743590709s ┃  3.19% ┃ 167kB ┃
-┃ Eval   ┃ 1m21.304090189s ┃ 24.15% ┃       ┃
-┃ Result ┃     16.982097ms ┃  0.01% ┃   2kB ┃
-┃ Total  ┃ 5m36.612683762s ┃        ┃       ┃
-┗━━━━━━━━┻━━━━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
-```
 
 ## Mathematic operations with compiler and optimized circuits
 
