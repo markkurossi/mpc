@@ -225,27 +225,40 @@ form assembly:
 
 # TODO
 
- - Compiler:
-   - [ ] Constant folding
-     - [ ] Implement using AST rewrite
-     - [X] binary expressions
-     - [X] if-blocks
-     - [X] For-loop unrolling
-     - [ ] Function call and return
-   - [ ] sort blocks in topological order
-     - [ ] peephole optimization over block boundaries
-   - [ ] Signed / unsigned arithmetics
-   - [ ] unary expressions
-     - [ ] logical not
-   - [ ] BitShift
-   - [X] Binary serialization format for circuits
- - Circuit & garbling:
-   - [ ] Row reduction
-   - [ ] Half AND
-   - [ ] Oblivious transfer extensions
- - Misc:
-   - [ ] TLS for garbler-evaluator protocol
-   - [X] Session-specific circuit encryption key
+ - [X] Phase 0
+   - [X] Oblivious Transfer
+   - [X] Garbled circuit garbling and evaluation
+   - [X] MPCL compiler for basic arithmetics
+ - [ ] Phase 1
+   - [X] Compiler
+     - [X] Conditionals
+     - [X] Struct input types
+     - [X] Binary serialization format for circuits
+     - [X] RSA 126-bit signature
+   - Circuit & garbling
+     - [X] RSA 126-bit signature
+     - [ ] BMR multi-party protocol
+ - [ ] Phase 2
+   - [ ] Incremental compiler
+     - [ ] Constant folding
+       - [ ] Implement using AST rewrite
+       - [ ] binary expressions
+       - [ ] if-blocks
+       - [ ] For-loop unrolling
+       - [ ] Function call and return
+     - [ ] sort blocks in topological order
+       - [ ] peephole optimization over block boundaries
+     - [ ] Signed / unsigned arithmetics
+     - [ ] unary expressions
+       - [ ] logical not
+     - [ ] BitShift
+   - Circuit & garbling:
+     - [ ] Incremental (streaming) evaluation
+     - [ ] Row reduction
+     - [ ] Half AND
+     - [ ] Oblivious transfer extensions
+   - Misc:
+     - [ ] TLS for garbler-evaluator protocol
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 
@@ -399,6 +412,24 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 |         32 |        64 |     2986556 |        801887 |
 |         64 |       128 |    23171068 |       6137023 |
 |        128 |       256 |   177580028 |      46495359 |
+
+## Multiplication
+
+| Input Size | Total gates | Non-XOR gates |
+|-----------:|------------:|--------------:|
+|          2 |           7 |             3 |
+|          4 |          29 |            13 |
+|          8 |         145 |            57 |
+|         16 |         655 |           241 |
+|         32 |        3347 |          1100 |
+|         64 |       13546 |          4242 |
+|        128 |       49249 |         14986 |
+|        256 |      167977 |         50167 |
+|        512 |      549965 |        162147 |
+|       1024 |     1752826 |        512099 |
+|       2048 |     5485700 |       1592234 |
+|       4096 |    16954032 |       4897756 |
+|       8192 |    51940803 |      14953708 |
 
 ## Mathematic operations with compiler and optimized circuits
 

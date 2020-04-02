@@ -157,9 +157,6 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		fmt.Printf("Compiling circuit...\n")
 	}
 	if params.OptPruneGates {
-		if params.Verbose {
-			fmt.Printf(" - Pruning dead gates...\n")
-		}
 		pruned := cc.Prune()
 		if params.Verbose {
 			fmt.Printf(" - Pruned %d gates\n", pruned)
