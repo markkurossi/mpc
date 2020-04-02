@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -35,7 +34,7 @@ func NewPackage(name string) *Package {
 }
 
 func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
-	params *utils.Params) (*circuit.Circuit, Annotations, error) {
+	params *utils.Params) (*ssa.SSA, Annotations, error) {
 
 	main, ok := pkg.Functions["main"]
 	if !ok {
@@ -139,55 +138,12 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		})
 	}
 
-	cc, err := circuits.NewCompiler(inputs, outputs)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = gen.DefineConstants(cc)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if params.Verbose {
-		fmt.Printf("Creating circuit...\n")
-	}
-	err = ctx.Start().Circuit(gen, cc)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if params.Verbose {
-		fmt.Printf("Compiling circuit...\n")
-	}
-	if params.OptPruneGates {
-		pruned := cc.Prune()
-		if params.Verbose {
-			fmt.Printf(" - Pruned %d gates\n", pruned)
-		}
-	}
-	circ := cc.Compile()
-	if params.CircOut != nil {
-		if params.Verbose {
-			fmt.Printf("Serializing circuit...\n")
-		}
-		switch params.CircFormat {
-		case "mpclc":
-			if err := circ.Marshal(params.CircOut); err != nil {
-				return nil, nil, err
-			}
-		case "bristol":
-			circ.MarshalBristol(params.CircOut)
-		default:
-			return nil, nil, fmt.Errorf("unsupported circuit format: %s",
-				params.CircFormat)
-		}
-	}
-	if params.CircDotOut != nil {
-		circ.Dot(params.CircDotOut)
-	}
-
-	return circ, main.Annotations, nil
+	return &ssa.SSA{
+		Inputs:    inputs,
+		Outputs:   outputs,
+		Start:     ctx.Start(),
+		Generator: gen,
+	}, main.Annotations, nil
 }
 
 func flattenStruct(t types.Info) circuit.IO {

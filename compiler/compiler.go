@@ -55,7 +55,18 @@ func (c *Compiler) compile(source string, in io.Reader) (
 		return nil, nil, err
 	}
 
-	return pkg.Compile(c.packages, logger, c.params)
+	code, annotation, err := pkg.Compile(c.packages, logger, c.params)
+	if err != nil {
+		return nil, nil, err
+	}
+	if c.params.NoCircCompile {
+		return nil, annotation, nil
+	}
+	circ, err := code.CompileCircuit(c.params)
+	if err != nil {
+		return nil, nil, err
+	}
+	return circ, annotation, nil
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
