@@ -8,6 +8,7 @@ package circuits
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/markkurossi/mpc/circuit"
 )
@@ -179,6 +180,7 @@ func (c *Compiler) Prune() int {
 		}
 	}
 	c.Gates = n[nPos:]
+
 	return nPos
 }
 
@@ -206,11 +208,10 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	}
 	// Assign outputs.
 	for _, w := range c.Outputs {
-		if w.Assigned {
+		if w.Assigned() {
 			panic("Output already assigned")
 		}
 		w.ID = c.NextWireID()
-		w.Assigned = true
 	}
 
 	// Compile circuit.
@@ -237,16 +238,25 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	return result
 }
 
+const (
+	UnassignedID uint32 = math.MaxUint32
+)
+
 type Wire struct {
-	Output   bool
-	Assigned bool
-	ID       uint32
-	Input    *Gate
-	Outputs  []*Gate
+	Output     bool
+	ID         uint32
+	NumOutputs uint32
+	Input      *Gate
+	Outputs    []*Gate
+}
+
+func (w *Wire) Assigned() bool {
+	return w.ID != UnassignedID
 }
 
 func NewWire() *Wire {
 	return &Wire{
+		ID:      UnassignedID,
 		Outputs: make([]*Gate, 0, 1),
 	}
 }
@@ -261,16 +271,15 @@ func MakeWires(bits int) []*Wire {
 
 func (w *Wire) String() string {
 	return fmt.Sprintf("Wire{%p, Input:%v, Outputs:%d, Output=%v}",
-		w, w.Input, len(w.Outputs), w.Output)
+		w, w.Input, w.NumOutputs, w.Output)
 }
 
 func (w *Wire) Assign(c *Compiler) {
 	if w.Output {
 		return
 	}
-	if !w.Assigned {
+	if !w.Assigned() {
 		w.ID = c.NextWireID()
-		w.Assigned = true
 	}
 	for _, output := range w.Outputs {
 		output.Visit(c)
@@ -286,26 +295,9 @@ func (w *Wire) SetInput(gate *Gate) {
 
 func (w *Wire) AddOutput(gate *Gate) {
 	w.Outputs = append(w.Outputs, gate)
+	w.NumOutputs++
 }
 
 func (w *Wire) RemoveOutput(gate *Gate) {
-	if len(w.Outputs) <= 1 {
-		w.Outputs = nil
-		return
-	}
-	for i := 0; i < len(w.Outputs); i++ {
-		if gate != w.Outputs[i] {
-			continue
-		}
-		if i == 0 {
-			w.Outputs = w.Outputs[1:]
-		} else if i+1 >= len(w.Outputs) {
-			w.Outputs = w.Outputs[:i]
-		} else {
-			n := w.Outputs[:i]
-			n = append(n, w.Outputs[i+1:]...)
-			w.Outputs = n
-		}
-		return
-	}
+	w.NumOutputs--
 }

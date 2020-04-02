@@ -2,6 +2,6 @@
 
 package main
 
-func main(a, b int) int {
+func main(a, b int8) int8 {
 	return a + b
 }

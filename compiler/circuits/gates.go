@@ -18,6 +18,7 @@ type Gate struct {
 	Op       circuit.Operation
 	Visited  bool
 	Compiled bool
+	Dead     bool
 	A        *Wire
 	B        *Wire
 	O        *Wire
@@ -42,28 +43,31 @@ func (g *Gate) String() string {
 }
 
 func (g *Gate) Visit(c *Compiler) {
-	if !g.Visited && g.A.Assigned && g.B.Assigned {
+	if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
 		g.Visited = true
 		c.pending = append(c.pending, g)
 	}
 }
 
 func (g *Gate) Prune() bool {
-	if g.O.Output || len(g.O.Outputs) > 0 {
+	if g.Dead || g.O.Output || g.O.NumOutputs > 0 {
 		return false
 	}
+	g.Dead = true
 	g.A.RemoveOutput(g)
 	g.B.RemoveOutput(g)
 	return true
 }
 
 func (g *Gate) Assign(c *Compiler) {
-	g.O.Assign(c)
-	c.assigned = append(c.assigned, g)
+	if !g.Dead {
+		g.O.Assign(c)
+		c.assigned = append(c.assigned, g)
+	}
 }
 
 func (g *Gate) Compile(c *Compiler) {
-	if g.Compiled {
+	if g.Dead || g.Compiled {
 		return
 	}
 	g.Compiled = true
