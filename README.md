@@ -227,6 +227,7 @@ form assembly:
 
  - Compiler:
    - [ ] Constant folding
+     - [ ] Implement using AST rewrite
      - [X] binary expressions
      - [X] if-blocks
      - [X] For-loop unrolling
@@ -237,7 +238,7 @@ form assembly:
    - [ ] unary expressions
      - [ ] logical not
    - [ ] BitShift
-   - [ ] Binary serialization format for circuits
+   - [X] Binary serialization format for circuits
  - Circuit & garbling:
    - [ ] Row reduction
    - [ ] Half AND
