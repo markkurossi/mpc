@@ -326,9 +326,6 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
-		case If, Jump:
-			// Branch operations are no-ops in circuits.
-
 		case Mov:
 			o := make([]*circuits.Wire, instr.Out.Type.Bits)
 

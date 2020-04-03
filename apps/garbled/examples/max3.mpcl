@@ -4,10 +4,10 @@
 package main
 
 type G struct {
-	a, b int
+	a, b int32
 }
 
-func main(g G, e int) int {
+func main(g G, e int32) int {
 	if g.a > g.b {
 		if g.a > e {
 			return g.a

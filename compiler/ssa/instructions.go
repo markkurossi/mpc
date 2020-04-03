@@ -59,8 +59,6 @@ const (
 	Neq
 	And
 	Or
-	If
-	Jump
 	Mov
 	Phi
 	Ret
@@ -109,8 +107,6 @@ var operands = map[Operand]string{
 	Neq:     "neq",
 	And:     "and",
 	Or:      "or",
-	If:      "if",
-	Jump:    "jump",
 	Mov:     "mov",
 	Phi:     "phi",
 	Ret:     "ret",
@@ -406,26 +402,11 @@ func NewBxorInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
-func NewIfInstr(c Variable, t *Block) Instr {
-	return Instr{
-		Op:    If,
-		In:    []Variable{c},
-		Label: t,
-	}
-}
-
 func NewMovInstr(from, to Variable) Instr {
 	return Instr{
 		Op:  Mov,
 		In:  []Variable{from},
 		Out: &to,
-	}
-}
-
-func NewJumpInstr(label *Block) Instr {
-	return Instr{
-		Op:    Jump,
-		Label: label,
 	}
 }
 
@@ -464,13 +445,16 @@ func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
 }
 
 func (i Instr) String() string {
+	return i.StringWithMaxLength(maxOperandLength)
+}
+func (i Instr) StringWithMaxLength(maxLen int) string {
 	result := i.Op.String()
 
 	if len(i.In) == 0 && i.Out == nil && i.Label == nil {
 		return result
 	}
 
-	for len(result) < maxOperandLength+1 {
+	for len(result) < maxLen {
 		result += " "
 	}
 	for _, i := range i.In {
