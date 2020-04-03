@@ -48,39 +48,42 @@ func (t Template) Expand(env map[string]Variable) (Instr, error) {
 	}, nil
 }
 
-func (rule Rule) Match(instrs []Instr) []Instr {
+func (rule Rule) Match(steps []Step) []Step {
 	env := make(map[string]Variable)
 
 	// Match all patterns
 	for idx, p := range rule.Pattern {
-		instr := instrs[idx]
-		if instr.Op != p.Op {
+		step := steps[idx]
+		if step.Instr.Op != p.Op {
 			return nil
 		}
-		if len(instr.In) != len(p.In) {
+		if len(step.Instr.In) != len(p.In) {
 			return nil
 		}
 		for i, in := range p.In {
-			if !matchVar(env, in, instr.In[i]) {
+			if !matchVar(env, in, step.Instr.In[i]) {
 				return nil
 			}
 		}
-		if instr.Out == nil {
+		if step.Instr.Out == nil {
 			return nil
 		}
-		if !matchVar(env, p.Out, *instr.Out) {
+		if !matchVar(env, p.Out, *step.Instr.Out) {
 			return nil
 		}
 	}
 
-	var result []Instr
+	var result []Step
 	for _, r := range rule.Replace {
 		instr, err := r.Expand(env)
 		if err != nil {
 			fmt.Printf("template expansion failed: %s\n", err)
 			return nil
 		}
-		result = append(result, instr)
+		// XXX variable liveness in expansions
+		result = append(result, Step{
+			Instr: instr,
+		})
 	}
 
 	return result
@@ -192,48 +195,27 @@ func init() {
 	}
 }
 
-func (b *Block) Peephole(seen map[string]bool) error {
-	if seen[b.ID] {
-		return nil
-	}
-	seen[b.ID] = true
+func (prog *Program) Peephole() error {
 
 outer:
-	for i := 0; i < len(b.Instr); i++ {
+	for i := 0; i < len(prog.Steps); i++ {
 		for _, rule := range rules {
-			if len(rule.Pattern) > len(b.Instr)-i {
+			if len(rule.Pattern) > len(prog.Steps)-i {
 				continue
 			}
-			match := rule.Match(b.Instr[i : i+len(rule.Pattern)])
+			match := rule.Match(prog.Steps[i : i+len(rule.Pattern)])
 			if match == nil {
 				continue
 			}
 
-			var n []Instr
-			n = append(n, b.Instr[:i]...)
+			var n []Step
+			n = append(n, prog.Steps[:i]...)
 			n = append(n, match...)
-			n = append(n, b.Instr[i+len(rule.Pattern):]...)
-			b.Instr = n
+			n = append(n, prog.Steps[i+len(rule.Pattern):]...)
+			prog.Steps = n
 			continue outer
 		}
 	}
 
-	if b.Next != nil {
-		err := b.Next.Peephole(seen)
-		if err != nil {
-			return err
-		}
-	}
-	if b.Branch != nil {
-		err := b.Branch.Peephole(seen)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
-}
-
-func Peephole(block *Block) error {
-	return block.Peephole(make(map[string]bool))
 }

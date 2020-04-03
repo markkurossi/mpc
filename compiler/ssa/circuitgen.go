@@ -13,7 +13,62 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
+
+func (code *SSA) CompileCircuit(params *utils.Params) (
+	*circuit.Circuit, error) {
+
+	cc, err := circuits.NewCompiler(code.Inputs, code.Outputs)
+	if err != nil {
+		return nil, err
+	}
+
+	err = code.Generator.DefineConstants(cc)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.Verbose {
+		fmt.Printf("Creating circuit...\n")
+	}
+	err = code.Circuit(code.Generator, cc)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.Verbose {
+		fmt.Printf("Compiling circuit...\n")
+	}
+	if params.OptPruneGates {
+		pruned := cc.Prune()
+		if params.Verbose {
+			fmt.Printf(" - Pruned %d gates\n", pruned)
+		}
+	}
+	circ := cc.Compile()
+	if params.CircOut != nil {
+		if params.Verbose {
+			fmt.Printf("Serializing circuit...\n")
+		}
+		switch params.CircFormat {
+		case "mpclc":
+			if err := circ.Marshal(params.CircOut); err != nil {
+				return nil, err
+			}
+		case "bristol":
+			circ.MarshalBristol(params.CircOut)
+		default:
+			return nil, fmt.Errorf("unsupported circuit format: %s",
+				params.CircFormat)
+		}
+	}
+	if params.CircDotOut != nil {
+		circ.Dot(params.CircDotOut)
+	}
+
+	return circ, nil
+}
 
 func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 	var consts []Variable
@@ -55,19 +110,9 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 	return nil
 }
 
-func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
-	if b.Processed {
-		return nil
-	}
-	// Check that all from blocks have been processed.
-	for _, from := range b.From {
-		if !from.Processed {
-			return nil
-		}
-	}
-	b.Processed = true
-
-	for _, instr := range b.Instr {
+func (code *SSA) Circuit(gen *Generator, cc *circuits.Compiler) error {
+	for _, step := range code.Program.Steps {
+		instr := step.Instr
 		var wires [][]*circuits.Wire
 		for _, in := range instr.In {
 			w, err := cc.Wires(in.String(), in.Type.Bits)
@@ -441,19 +486,6 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 
 		default:
 			return fmt.Errorf("Block.Circuit: %s not implemented yet", instr.Op)
-		}
-	}
-
-	if b.Branch != nil {
-		err := b.Branch.Circuit(gen, cc)
-		if err != nil {
-			return err
-		}
-	}
-	if b.Next != nil {
-		err := b.Next.Circuit(gen, cc)
-		if err != nil {
-			return err
 		}
 	}
 

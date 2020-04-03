@@ -100,36 +100,47 @@ func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 	return v, true
 }
 
-func (b *Block) PP(out io.Writer, seen map[string]bool) {
-	if seen[b.ID] {
-		return
+func (b *Block) Serialize() *Program {
+	seen := make(map[string]bool)
+	steps := b.serialize(nil, seen)
+
+	return &Program{
+		Steps: steps,
 	}
-	// Have all my predecessors been processed?
+}
+
+func (b *Block) serialize(code []Step, seen map[string]bool) []Step {
+	if seen[b.ID] {
+		return code
+	}
+	// Have all predecessors been processed?
 	for _, from := range b.From {
 		if !seen[from.ID] {
-			return
+			return code
 		}
 	}
 	seen[b.ID] = true
 
+	var label string
 	if len(b.Name) > 0 {
-		fmt.Fprintf(out, "# %s:\n", b.Name)
+		label = b.Name
 	}
 
-	fmt.Fprintf(out, "%s:\n", b.ID)
-	for _, i := range b.Instr {
-		i.PP(out)
+	for _, instr := range b.Instr {
+		code = append(code, Step{
+			Label: label,
+			Instr: instr,
+		})
+		label = ""
+	}
+
+	if b.Branch != nil {
+		code = b.Branch.serialize(code, seen)
 	}
 	if b.Next != nil {
-		b.Next.PP(out, seen)
+		code = b.Next.serialize(code, seen)
 	}
-	if b.Branch != nil {
-		b.Branch.PP(out, seen)
-	}
-}
-
-func PP(out io.Writer, block *Block) {
-	block.PP(out, make(map[string]bool))
+	return code
 }
 
 func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {

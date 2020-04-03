@@ -8,69 +8,33 @@ package ssa
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/compiler/circuits"
-	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type SSA struct {
 	Inputs    circuit.IO
 	Outputs   circuit.IO
-	Start     *Block
+	Program   *Program
 	Generator *Generator
 }
 
-func (code *SSA) CompileCircuit(params *utils.Params) (
-	*circuit.Circuit, error) {
+type Program struct {
+	Steps []Step
+}
 
-	cc, err := circuits.NewCompiler(code.Inputs, code.Outputs)
-	if err != nil {
-		return nil, err
-	}
+type Step struct {
+	Label string
+	Instr Instr
+	Live  []string
+}
 
-	err = code.Generator.DefineConstants(cc)
-	if err != nil {
-		return nil, err
-	}
-
-	if params.Verbose {
-		fmt.Printf("Creating circuit...\n")
-	}
-	err = code.Start.Circuit(code.Generator, cc)
-	if err != nil {
-		return nil, err
-	}
-
-	if params.Verbose {
-		fmt.Printf("Compiling circuit...\n")
-	}
-	if params.OptPruneGates {
-		pruned := cc.Prune()
-		if params.Verbose {
-			fmt.Printf(" - Pruned %d gates\n", pruned)
+func (prog *Program) PP(out io.Writer) {
+	for _, step := range prog.Steps {
+		if len(step.Label) > 0 {
+			fmt.Fprintf(out, "# %s:\n", step.Label)
 		}
+		step.Instr.PP(out)
 	}
-	circ := cc.Compile()
-	if params.CircOut != nil {
-		if params.Verbose {
-			fmt.Printf("Serializing circuit...\n")
-		}
-		switch params.CircFormat {
-		case "mpclc":
-			if err := circ.Marshal(params.CircOut); err != nil {
-				return nil, err
-			}
-		case "bristol":
-			circ.MarshalBristol(params.CircOut)
-		default:
-			return nil, fmt.Errorf("unsupported circuit format: %s",
-				params.CircFormat)
-		}
-	}
-	if params.CircDotOut != nil {
-		circ.Dot(params.CircDotOut)
-	}
-
-	return circ, nil
 }

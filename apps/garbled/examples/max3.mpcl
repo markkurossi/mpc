@@ -3,11 +3,13 @@
 
 package main
 
+type Size = int4
+
 type G struct {
-	a, b int32
+	a, b Size
 }
 
-func main(g G, e int32) int {
+func main(g G, e Size) int {
 	if g.a > g.b {
 		if g.a > e {
 			return g.a

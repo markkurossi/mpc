@@ -91,13 +91,14 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	if err != nil {
 		return nil, nil, err
 	}
-	err = ssa.Peephole(ctx.Start())
+	program := ctx.Start().Serialize()
+	err = program.Peephole()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if params.SSAOut != nil {
-		ssa.PP(params.SSAOut, ctx.Start())
+		program.PP(params.SSAOut)
 	}
 	if params.SSADotOut != nil {
 		ssa.Dot(params.SSADotOut, ctx.Start())
@@ -141,7 +142,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	return &ssa.SSA{
 		Inputs:    inputs,
 		Outputs:   outputs,
-		Start:     ctx.Start(),
+		Program:   program,
 		Generator: gen,
 	}, main.Annotations, nil
 }
