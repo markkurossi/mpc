@@ -19,7 +19,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       with:
-        ref: topic/streaming
+        ref: topic/streamingX
 
     - name: Get dependencies
       run: |
