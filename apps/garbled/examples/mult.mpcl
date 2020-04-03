@@ -3,6 +3,6 @@
 
 package main
 
-func main(a, b uint64) uint {
+func main(a, b uint2048) uint {
 	return a * b
 }
