@@ -16,15 +16,15 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func (code *SSA) CompileCircuit(params *utils.Params) (
+func (prog *Program) CompileCircuit(params *utils.Params) (
 	*circuit.Circuit, error) {
 
-	cc, err := circuits.NewCompiler(code.Inputs, code.Outputs)
+	cc, err := circuits.NewCompiler(params, prog.Inputs, prog.Outputs)
 	if err != nil {
 		return nil, err
 	}
 
-	err = code.Generator.DefineConstants(cc)
+	err = prog.DefineConstants(cc)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (code *SSA) CompileCircuit(params *utils.Params) (
 	if params.Verbose {
 		fmt.Printf("Creating circuit...\n")
 	}
-	err = code.Circuit(code.Generator, cc)
+	err = prog.Circuit(cc)
 	if err != nil {
 		return nil, err
 	}
@@ -70,16 +70,17 @@ func (code *SSA) CompileCircuit(params *utils.Params) (
 	return circ, nil
 }
 
-func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
+func (prog *Program) DefineConstants(cc *circuits.Compiler) error {
+
 	var consts []Variable
-	for _, c := range gen.constants {
+	for _, c := range prog.Constants {
 		consts = append(consts, c.Const)
 	}
 	sort.Slice(consts, func(i, j int) bool {
 		return strings.Compare(consts[i].Name, consts[j].Name) == -1
 	})
 
-	if len(consts) > 0 && gen.Params.Verbose {
+	if len(consts) > 0 && cc.Params.Verbose {
 		fmt.Printf("Defining constants:\n")
 	}
 	for _, c := range consts {
@@ -98,7 +99,7 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 			}
 			wires = append(wires, w)
 		}
-		if gen.Params.Verbose {
+		if cc.Params.Verbose {
 			fmt.Printf("%s\t%s\n", msg, bitString)
 		}
 
@@ -110,8 +111,9 @@ func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
 	return nil
 }
 
-func (code *SSA) Circuit(gen *Generator, cc *circuits.Compiler) error {
-	for _, step := range code.Program.Steps {
+func (prog *Program) Circuit(cc *circuits.Compiler) error {
+
+	for _, step := range prog.Steps {
 		instr := step.Instr
 		var wires [][]*circuits.Wire
 		for _, in := range instr.In {
@@ -147,7 +149,7 @@ func (code *SSA) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewMultiplier(cc, gen.Params.CircMultArrayTreshold,
+			err = circuits.NewMultiplier(cc, cc.Params.CircMultArrayTreshold,
 				wires[0], wires[1], o)
 			if err != nil {
 				return err
@@ -483,6 +485,8 @@ func (code *SSA) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
+
+		case GC:
 
 		default:
 			return fmt.Errorf("Block.Circuit: %s not implemented yet", instr.Op)

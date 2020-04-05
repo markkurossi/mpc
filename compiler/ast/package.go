@@ -34,7 +34,7 @@ func NewPackage(name string) *Package {
 }
 
 func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
-	params *utils.Params) (*ssa.SSA, Annotations, error) {
+	params *utils.Params) (*ssa.Program, Annotations, error) {
 
 	main, ok := pkg.Functions["main"]
 	if !ok {
@@ -96,17 +96,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if params.SSAOut != nil {
-		program.PP(params.SSAOut)
-	}
-	if params.SSADotOut != nil {
-		ssa.Dot(params.SSADotOut, ctx.Start())
-	}
-
-	if params.NoCircCompile {
-		return nil, main.Annotations, nil
-	}
+	program.GC()
 
 	// Return values
 	var outputs circuit.IO
@@ -139,12 +129,18 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		})
 	}
 
-	return &ssa.SSA{
-		Inputs:    inputs,
-		Outputs:   outputs,
-		Program:   program,
-		Generator: gen,
-	}, main.Annotations, nil
+	program.Inputs = inputs
+	program.Outputs = outputs
+	program.Constants = gen.Constants()
+
+	if params.SSAOut != nil {
+		program.PP(params.SSAOut)
+	}
+	if params.SSADotOut != nil {
+		ssa.Dot(params.SSADotOut, ctx.Start())
+	}
+
+	return program, main.Annotations, nil
 }
 
 func flattenStruct(t types.Info) circuit.IO {

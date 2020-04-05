@@ -80,9 +80,16 @@ func (rule Rule) Match(steps []Step) []Step {
 			fmt.Printf("template expansion failed: %s\n", err)
 			return nil
 		}
-		// XXX variable liveness in expansions
+
+		// Base liveness from the first replaced instruction.
+		live := steps[0].Live.Copy()
+		if instr.Out != nil {
+			live.Add(instr.Out.String())
+		}
+
 		result = append(result, Step{
 			Instr: instr,
+			Live:  live,
 		})
 	}
 
@@ -197,6 +204,7 @@ func init() {
 
 func (prog *Program) Peephole() error {
 
+	prog.liveness()
 outer:
 	for i := 0; i < len(prog.Steps); i++ {
 		for _, rule := range rules {

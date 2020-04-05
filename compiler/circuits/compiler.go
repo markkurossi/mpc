@@ -11,11 +11,13 @@ import (
 	"math"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Builtin func(cc *Compiler, a, b, r []*Wire) error
 
 type Compiler struct {
+	Params      *utils.Params
 	CircInputs  circuit.IO
 	CircOutputs circuit.IO
 	Inputs      []*Wire
@@ -39,11 +41,14 @@ func NewIO(size int, name string) circuit.IO {
 	}
 }
 
-func NewCompiler(inputs circuit.IO, outputs circuit.IO) (*Compiler, error) {
+func NewCompiler(params *utils.Params, inputs circuit.IO, outputs circuit.IO) (
+	*Compiler, error) {
+
 	if inputs.Size() == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
 	result := &Compiler{
+		Params:      params,
 		CircInputs:  inputs,
 		CircOutputs: outputs,
 		Gates:       make([]*Gate, 0, 65536),

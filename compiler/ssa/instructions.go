@@ -64,6 +64,7 @@ const (
 	Ret
 	Circ
 	Builtin
+	GC
 )
 
 var operands = map[Operand]string{
@@ -112,6 +113,7 @@ var operands = map[Operand]string{
 	Ret:     "ret",
 	Circ:    "circ",
 	Builtin: "builtin",
+	GC:      "gc",
 }
 
 var maxOperandLength int
@@ -139,6 +141,7 @@ type Instr struct {
 	Label   *Block
 	Circ    *circuit.Circuit
 	Builtin circuits.Builtin
+	GC      string
 	Ret     []Variable
 }
 
@@ -444,13 +447,20 @@ func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
 	}
 }
 
+func NewGCInstr(v string) Instr {
+	return Instr{
+		Op: GC,
+		GC: v,
+	}
+}
+
 func (i Instr) String() string {
 	return i.StringWithMaxLength(maxOperandLength)
 }
 func (i Instr) StringWithMaxLength(maxLen int) string {
 	result := i.Op.String()
 
-	if len(i.In) == 0 && i.Out == nil && i.Label == nil {
+	if len(i.In) == 0 && i.Out == nil && i.Label == nil && len(i.GC) == 0 {
 		return result
 	}
 
@@ -471,6 +481,10 @@ func (i Instr) StringWithMaxLength(maxLen int) string {
 	}
 	if i.Circ != nil {
 		result += fmt.Sprintf(" {G=%d, W=%d}", i.Circ.NumGates, i.Circ.NumWires)
+	}
+	if len(i.GC) > 0 {
+		result += " "
+		result += i.GC
 	}
 	for _, r := range i.Ret {
 		result += " "

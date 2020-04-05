@@ -12,10 +12,16 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
 	verbose = false
+)
+
+var (
+	params = &utils.Params{}
 )
 
 func makeWires(count int) []*Wire {
@@ -30,7 +36,7 @@ func TestAdd4(t *testing.T) {
 	bits := 4
 
 	// 2xbits inputs, bits+1 outputs
-	c, err := NewCompiler(NewIO(bits*2, "in"), NewIO(bits+1, "out"))
+	c, err := NewCompiler(params, NewIO(bits*2, "in"), NewIO(bits+1, "out"))
 	if err != nil {
 		t.Fatalf("NewCompiler: %s", err)
 	}
@@ -61,7 +67,7 @@ func TestAdd4(t *testing.T) {
 }
 
 func TestFullSubtractor(t *testing.T) {
-	c, err := NewCompiler(NewIO(1+2, "in"), NewIO(2, "out"))
+	c, err := NewCompiler(params, NewIO(1+2, "in"), NewIO(2, "out"))
 	if err != nil {
 		t.Fatalf("NewCompiler: %s", err)
 	}
@@ -79,7 +85,7 @@ func TestFullSubtractor(t *testing.T) {
 }
 
 func TestMultiply1(t *testing.T) {
-	c, err := NewCompiler(NewIO(2, "in"), NewIO(2, "out"))
+	c, err := NewCompiler(params, NewIO(2, "in"), NewIO(2, "out"))
 	if err != nil {
 		t.Fatalf("NewCompiler: %s", err)
 	}
@@ -95,7 +101,7 @@ func TestMultiply1(t *testing.T) {
 func TestMultiply(t *testing.T) {
 	bits := 64
 
-	c, err := NewCompiler(NewIO(bits*2, "in"), NewIO(bits*2, "out"))
+	c, err := NewCompiler(params, NewIO(bits*2, "in"), NewIO(bits*2, "out"))
 	if err != nil {
 		t.Fatalf("NewCompiler: %s", err)
 	}

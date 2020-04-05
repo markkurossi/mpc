@@ -246,14 +246,16 @@ form assembly:
        - [ ] if-blocks
        - [ ] For-loop unrolling
        - [ ] Function call and return
-     - [ ] sort blocks in topological order
-       - [ ] peephole optimization over block boundaries
+     - [ ] peephole optimization
+       - [X] sort blocks in topological order
+       - [X] peephole optimization over block boundaries
+       - [ ] variable liveness analysis for templates
      - [ ] Signed / unsigned arithmetics
      - [ ] unary expressions
        - [ ] logical not
      - [ ] BitShift
    - Circuit & garbling:
-     - [ ] Incremental (streaming) evaluation
+     - [ ] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
      - [ ] Half AND
      - [ ] Oblivious transfer extensions
