@@ -396,7 +396,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			err = circuits.NewMux(cc, wires[0], wires[1], wires[2], o)
+			err = circuits.NewMUX(cc, wires[0], wires[1], wires[2], o)
 			if err != nil {
 				return err
 			}
