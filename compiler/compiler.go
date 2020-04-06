@@ -55,18 +55,41 @@ func (c *Compiler) compile(source string, in io.Reader) (
 		return nil, nil, err
 	}
 
-	code, annotation, err := pkg.Compile(c.packages, logger, c.params)
+	program, annotation, err := pkg.Compile(c.packages, logger, c.params)
 	if err != nil {
 		return nil, nil, err
 	}
 	if c.params.NoCircCompile {
 		return nil, annotation, nil
 	}
-	circ, err := code.CompileCircuit(c.params)
+	circ, err := program.CompileCircuit(c.params)
 	if err != nil {
 		return nil, nil, err
 	}
 	return circ, annotation, nil
+}
+
+func (c *Compiler) StreamFile(file string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return c.stream(file, f)
+}
+
+func (c *Compiler) stream(source string, in io.Reader) error {
+	logger := utils.NewLogger(os.Stdout)
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
+	if err != nil {
+		return err
+	}
+
+	program, _, err := pkg.Compile(c.packages, logger, c.params)
+	if err != nil {
+		return err
+	}
+	return program.StreamCircuit(c.params)
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,

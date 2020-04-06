@@ -11,19 +11,70 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/circuits"
 )
 
 type Program struct {
-	Inputs    circuit.IO
-	Outputs   circuit.IO
-	Constants map[string]ConstantInst
-	Steps     []Step
+	Inputs      circuit.IO
+	Outputs     circuit.IO
+	InputWires  []*circuits.Wire
+	OutputWires []*circuits.Wire
+	Constants   map[string]ConstantInst
+	Steps       []Step
+	wires       map[string][]*circuits.Wire
+}
+
+func NewProgram(in, out circuit.IO, consts map[string]ConstantInst,
+	steps []Step) (*Program, error) {
+
+	prog := &Program{
+		Inputs:    in,
+		Outputs:   out,
+		Constants: consts,
+		Steps:     steps,
+		wires:     make(map[string][]*circuits.Wire),
+	}
+
+	// Inputs into wires.
+	for idx, arg := range in {
+		if len(arg.Name) == 0 {
+			arg.Name = fmt.Sprintf("arg{%d}", idx)
+		}
+		wires, err := prog.Wires(arg.Name, arg.Size)
+		if err != nil {
+			return nil, err
+		}
+		prog.InputWires = append(prog.InputWires, wires...)
+	}
+
+	return prog, nil
 }
 
 type Step struct {
 	Label string
 	Instr Instr
 	Live  Set
+}
+
+func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
+	if bits <= 0 {
+		return nil, fmt.Errorf("size not set for variable %v", v)
+	}
+	wires, ok := prog.wires[v]
+	if !ok {
+		wires = circuits.MakeWires(bits)
+		prog.wires[v] = wires
+	}
+	return wires, nil
+}
+
+func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
+	_, ok := prog.wires[v]
+	if ok {
+		return fmt.Errorf("wires already set for %v", v)
+	}
+	prog.wires[v] = w
+	return nil
 }
 
 func (prog *Program) liveness() {

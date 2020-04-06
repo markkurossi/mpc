@@ -91,12 +91,6 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	if err != nil {
 		return nil, nil, err
 	}
-	program := ctx.Start().Serialize()
-	err = program.Peephole()
-	if err != nil {
-		return nil, nil, err
-	}
-	program.GC()
 
 	// Return values
 	var outputs circuit.IO
@@ -129,9 +123,17 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		})
 	}
 
-	program.Inputs = inputs
-	program.Outputs = outputs
-	program.Constants = gen.Constants()
+	steps := ctx.Start().Serialize()
+
+	program, err := ssa.NewProgram(inputs, outputs, gen.Constants(), steps)
+	if err != nil {
+		return nil, nil, err
+	}
+	err = program.Peephole()
+	if err != nil {
+		return nil, nil, err
+	}
+	program.GC()
 
 	if params.SSAOut != nil {
 		program.PP(params.SSAOut)

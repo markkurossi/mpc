@@ -100,13 +100,9 @@ func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 	return v, true
 }
 
-func (b *Block) Serialize() *Program {
+func (b *Block) Serialize() []Step {
 	seen := make(map[string]bool)
-	steps := b.serialize(nil, seen)
-
-	return &Program{
-		Steps: steps,
-	}
+	return b.serialize(nil, seen)
 }
 
 func (b *Block) serialize(code []Step, seen map[string]bool) []Step {

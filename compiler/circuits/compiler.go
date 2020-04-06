@@ -18,16 +18,16 @@ type Builtin func(cc *Compiler, a, b, r []*Wire) error
 
 type Compiler struct {
 	Params      *utils.Params
-	CircInputs  circuit.IO
-	CircOutputs circuit.IO
-	Inputs      []*Wire
-	Outputs     []*Wire
+	Inputs      circuit.IO
+	Outputs     circuit.IO
+	InputWires  []*Wire
+	OutputWires []*Wire
 	Gates       []*Gate
 	nextWireID  uint32
 	pending     []*Gate
 	assigned    []*Gate
 	compiled    []circuit.Gate
-	wires       map[string][]*Wire
+	wiresX      map[string][]*Wire
 	zeroWire    *Wire
 	oneWire     *Wire
 }
@@ -41,39 +41,27 @@ func NewIO(size int, name string) circuit.IO {
 	}
 }
 
-func NewCompiler(params *utils.Params, inputs circuit.IO, outputs circuit.IO) (
-	*Compiler, error) {
+func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
+	inputWires, outputWires []*Wire) (*Compiler, error) {
 
 	if inputs.Size() == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
-	result := &Compiler{
+	return &Compiler{
 		Params:      params,
-		CircInputs:  inputs,
-		CircOutputs: outputs,
+		Inputs:      inputs,
+		Outputs:     outputs,
+		InputWires:  inputWires,
+		OutputWires: outputWires,
 		Gates:       make([]*Gate, 0, 65536),
-		wires:       make(map[string][]*Wire),
-	}
-
-	// Inputs into wires
-	for idx, arg := range inputs {
-		if len(arg.Name) == 0 {
-			arg.Name = fmt.Sprintf("arg{%d}", idx)
-		}
-		wires, err := result.Wires(arg.Name, arg.Size)
-		if err != nil {
-			return nil, err
-		}
-		result.Inputs = append(result.Inputs, wires...)
-	}
-
-	return result, nil
+	}, nil
 }
 
 func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
 		c.zeroWire = NewWire()
-		c.AddGate(NewBinary(circuit.XOR, c.Inputs[0], c.Inputs[0], c.zeroWire))
+		c.AddGate(NewBinary(circuit.XOR, c.InputWires[0], c.InputWires[0],
+			c.zeroWire))
 	}
 	return c.zeroWire
 }
@@ -81,7 +69,8 @@ func (c *Compiler) ZeroWire() *Wire {
 func (c *Compiler) OneWire() *Wire {
 	if c.oneWire == nil {
 		c.oneWire = NewWire()
-		c.AddGate(NewBinary(circuit.XNOR, c.Inputs[0], c.Inputs[0], c.oneWire))
+		c.AddGate(NewBinary(circuit.XNOR, c.InputWires[0], c.InputWires[0],
+			c.oneWire))
 	}
 	return c.oneWire
 }
@@ -150,27 +139,6 @@ func (c *Compiler) NextWireID() uint32 {
 	return ret
 }
 
-func (c *Compiler) Wires(v string, bits int) ([]*Wire, error) {
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for variable %v", v)
-	}
-	wires, ok := c.wires[v]
-	if !ok {
-		wires = MakeWires(bits)
-		c.wires[v] = wires
-	}
-	return wires, nil
-}
-
-func (c *Compiler) SetWires(v string, w []*Wire) error {
-	_, ok := c.wires[v]
-	if ok {
-		return fmt.Errorf("wires already set for %v", v)
-	}
-	c.wires[v] = w
-	return nil
-}
-
 // Prune removes all gates whose output wires are unused.
 func (c *Compiler) Prune() int {
 
@@ -203,7 +171,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	}
 	c.compiled = make([]circuit.Gate, 0, len(c.Gates))
 
-	for _, w := range c.Inputs {
+	for _, w := range c.InputWires {
 		w.Assign(c)
 	}
 	for len(c.pending) > 0 {
@@ -212,7 +180,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 		gate.Assign(c)
 	}
 	// Assign outputs.
-	for _, w := range c.Outputs {
+	for _, w := range c.OutputWires {
 		if w.Assigned() {
 			panic("Output already assigned")
 		}
@@ -234,8 +202,8 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	result := &circuit.Circuit{
 		NumGates: len(c.compiled),
 		NumWires: int(c.nextWireID),
-		Inputs:   c.CircInputs,
-		Outputs:  c.CircOutputs,
+		Inputs:   c.Inputs,
+		Outputs:  c.Outputs,
 		Gates:    c.compiled,
 		Stats:    stats,
 	}
