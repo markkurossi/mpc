@@ -58,6 +58,7 @@ func init() {
 
 func main() {
 	evaluator := flag.Bool("e", false, "evaluator / garbler mode")
+	stream := flag.Bool("stream", false, "streaming mode")
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
 	circFormat := flag.String("format", "mpclc",
 		"circuit format: mpclc, bristol")
@@ -146,10 +147,18 @@ func main() {
 				}
 			}
 
-			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				return
+			if *stream {
+				err = compiler.NewCompiler(params).StreamFile(arg)
+				if err != nil {
+					fmt.Printf("%s\n", err)
+					return
+				}
+			} else {
+				circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
+				if err != nil {
+					fmt.Printf("%s\n", err)
+					return
+				}
 			}
 		} else {
 			fmt.Printf("Unknown file type '%s'\n", arg)
@@ -161,7 +170,7 @@ func main() {
 		fmt.Printf("Circuit: %v\n", circ)
 	}
 
-	if *ssa || *compile {
+	if *ssa || *compile || *stream {
 		return
 	}
 

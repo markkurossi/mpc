@@ -17,6 +17,9 @@ import (
 // msg: 0x6d7472
 // cipher: 0x61f9ef88
 
+// $ ./garbled -e -v -i 9 examples/rsa.mpcl
+// $ ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsa.mpcl
+
 type Size = uint32
 
 type Garbler struct {

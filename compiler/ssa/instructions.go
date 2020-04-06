@@ -455,9 +455,14 @@ func NewGCInstr(v string) Instr {
 }
 
 func (i Instr) String() string {
-	return i.StringWithMaxLength(maxOperandLength)
+	return i.string(maxOperandLength, false)
 }
-func (i Instr) StringWithMaxLength(maxLen int) string {
+
+func (i Instr) StringTyped() string {
+	return i.string(0, true)
+}
+
+func (i Instr) string(maxLen int, typesOnly bool) string {
 	result := i.Op.String()
 
 	if len(i.In) == 0 && i.Out == nil && i.Label == nil && len(i.GC) == 0 {
@@ -469,11 +474,19 @@ func (i Instr) StringWithMaxLength(maxLen int) string {
 	}
 	for _, i := range i.In {
 		result += " "
-		result += i.String()
+		if typesOnly {
+			result += i.Type.String()
+		} else {
+			result += i.String()
+		}
 	}
 	if i.Out != nil {
 		result += " "
-		result += i.Out.String()
+		if typesOnly {
+			result += i.Out.Type.String()
+		} else {
+			result += i.Out.String()
+		}
 	}
 	if i.Label != nil {
 		result += " "

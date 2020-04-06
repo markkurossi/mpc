@@ -147,7 +147,7 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 
 	var label string
 	if len(b.Instr) == 1 {
-		label = b.Instr[0].StringWithMaxLength(0)
+		label = b.Instr[0].string(0, false)
 	} else {
 		var maxLen int
 		for _, i := range b.Instr {
@@ -157,7 +157,7 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 			}
 		}
 		for _, i := range b.Instr {
-			label += i.StringWithMaxLength(maxLen)
+			label += i.string(maxLen, false)
 			label += "\\l"
 		}
 	}
