@@ -32,15 +32,6 @@ type Compiler struct {
 	oneWire     *Wire
 }
 
-func NewIO(size int, name string) circuit.IO {
-	return circuit.IO{
-		circuit.IOArg{
-			Name: name,
-			Size: size,
-		},
-	}
-}
-
 func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 	inputWires, outputWires []*Wire) (*Compiler, error) {
 

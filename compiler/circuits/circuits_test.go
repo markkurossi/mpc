@@ -13,6 +13,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -32,6 +33,15 @@ func makeWires(count int, output bool) []*Wire {
 		result = append(result, w)
 	}
 	return result
+}
+
+func NewIO(size int, name string) circuit.IO {
+	return circuit.IO{
+		circuit.IOArg{
+			Name: name,
+			Size: size,
+		},
+	}
 }
 
 func TestAdd4(t *testing.T) {
