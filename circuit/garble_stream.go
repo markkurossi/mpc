@@ -43,7 +43,7 @@ func (wires *StreamWires) Set(w Wire, val ot.Wire) {
 	}
 }
 
-func (c *Circuit) GarbleStream(key []byte, r ot.Label) error {
+func (c *Circuit) GarbleStream(key []byte, r ot.Label, inputIDs []Wire) error {
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
@@ -109,11 +109,11 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		b = wires.Get(Wire(g.Input1.ID()))
+		b = wires.Get(g.Input1)
 		fallthrough
 
 	case INV:
-		a = wires.Get(Wire(g.Input0.ID()))
+		a = wires.Get(g.Input0)
 
 	default:
 		return nil, fmt.Errorf("invalid gate type %s", g.Op)
@@ -149,7 +149,7 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 			return nil, err
 		}
 	}
-	wires.Set(Wire(g.Output.ID()), c)
+	wires.Set(g.Output, c)
 
 	var table [4]TableEntry
 	var count int

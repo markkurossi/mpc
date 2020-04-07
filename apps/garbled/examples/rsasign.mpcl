@@ -17,7 +17,7 @@ import (
 // msg: 0x6d7472
 // cipher: 0x61f9ef88
 
-type Size = uint256
+type Size = uint1024
 
 type Garbler struct {
 	msg       Size

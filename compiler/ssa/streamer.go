@@ -9,6 +9,7 @@ package ssa
 import (
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -171,13 +172,15 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 				return fmt.Errorf("Program.Stream: %s not implemented yet",
 					instr.Op)
 			}
+
+			// Flatten input wires.
+			var flat []*circuits.Wire
+			for _, w := range wires {
+				flat = append(flat, w...)
+			}
+
 			circ, ok := cache[instr.StringTyped()]
 			if !ok {
-				// Flatten input wires.
-				var flat []*circuits.Wire
-				for _, w := range wires {
-					flat = append(flat, w...)
-				}
 				// Clear output wires from input wires (they could be
 				// outputs of previous computation).
 				for _, w := range flat {
@@ -216,12 +219,26 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			if false {
 				circ.Dump()
 			}
-			if false {
+			if true {
 				fmt.Printf("%05d: - garble %d gates\n", idx, circ.NumGates)
-			}
-			err := circ.GarbleStream(key[:], r)
-			if err != nil {
-				return err
+
+				var inputIDs []circuit.Wire
+				for _, in := range flat {
+					inputIDs = append(inputIDs, circuit.Wire(in.ID))
+				}
+
+				start := time.Now()
+				err := circ.GarbleStream(key[:], r, inputIDs)
+				if err != nil {
+					return err
+				}
+				dt := time.Now().Sub(start)
+				elapsed := time.Now().UnixNano() - start.UnixNano()
+				elapsed /= 1000000000
+				if elapsed > 0 {
+					fmt.Printf("%05d: - garbled %d gates/s (%s)\n",
+						idx, int64(circ.NumGates)/elapsed, dt)
+				}
 			}
 			numGates += uint64(circ.NumGates)
 			numNonXOR += uint64(circ.Stats[circuit.AND])

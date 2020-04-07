@@ -206,3 +206,11 @@ func (w Wire) String() string {
 		return fmt.Sprintf("w%d", w)
 	}
 }
+
+func (w Wire) Index() (int, bool) {
+	if w >= TmpWireID {
+		return int(w &^ TmpWireID), true
+	} else {
+		return int(w), false
+	}
+}
