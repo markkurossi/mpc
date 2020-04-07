@@ -17,25 +17,26 @@ import (
 type Builtin func(cc *Compiler, a, b, r []*Wire) error
 
 type Compiler struct {
-	Params      *utils.Params
-	Inputs      circuit.IO
-	Outputs     circuit.IO
-	InputWires  []*Wire
-	OutputWires []*Wire
-	Gates       []*Gate
-	nextWireID  uint32
-	pending     []*Gate
-	assigned    []*Gate
-	compiled    []circuit.Gate
-	wiresX      map[string][]*Wire
-	zeroWire    *Wire
-	oneWire     *Wire
+	Params          *utils.Params
+	OutputsAssigned bool
+	Inputs          circuit.IO
+	Outputs         circuit.IO
+	InputWires      []*Wire
+	OutputWires     []*Wire
+	Gates           []*Gate
+	nextWireID      uint32
+	pending         []*Gate
+	assigned        []*Gate
+	compiled        []circuit.Gate
+	wiresX          map[string][]*Wire
+	zeroWire        *Wire
+	oneWire         *Wire
 }
 
 func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 	inputWires, outputWires []*Wire) (*Compiler, error) {
 
-	if inputs.Size() == 0 {
+	if len(inputWires) == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
 	return &Compiler{
@@ -124,6 +125,10 @@ func (c *Compiler) AddGate(gate *Gate) {
 	c.Gates = append(c.Gates, gate)
 }
 
+func (c *Compiler) SetNextWireID(next uint32) {
+	c.nextWireID = next
+}
+
 func (c *Compiler) NextWireID() uint32 {
 	ret := c.nextWireID
 	c.nextWireID++
@@ -173,9 +178,12 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	// Assign outputs.
 	for _, w := range c.OutputWires {
 		if w.Assigned() {
-			panic("Output already assigned")
+			if !c.OutputsAssigned {
+				panic("Output already assigned")
+			}
+		} else {
+			w.ID = c.NextWireID()
 		}
-		w.ID = c.NextWireID()
 	}
 
 	// Compile circuit.
@@ -234,8 +242,8 @@ func MakeWires(bits int) []*Wire {
 }
 
 func (w *Wire) String() string {
-	return fmt.Sprintf("Wire{%p, Input:%v, Outputs:%d, Output=%v}",
-		w, w.Input, w.NumOutputs, w.Output)
+	return fmt.Sprintf("Wire{%x, Input:%v, Outputs:%d, Output=%v}",
+		w.ID, w.Input, w.NumOutputs, w.Output)
 }
 
 func (w *Wire) Assign(c *Compiler) {

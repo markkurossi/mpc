@@ -2,11 +2,6 @@
 
 package main
 
-func main(a, b uint8) uint {
-	result := a
-
-	if b > a {
-		result = result * b
-	}
-	return result
+func main(a, b bool) bool {
+	return a & b
 }

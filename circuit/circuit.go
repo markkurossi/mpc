@@ -153,7 +153,7 @@ func (c *Circuit) String() string {
 		}
 		stats += fmt.Sprintf("%s=%d", k, v)
 	}
-	return fmt.Sprintf("#gates=%d (%s)", c.NumGates, stats)
+	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, stats, c.NumWires)
 }
 
 func (c *Circuit) Cost() int {
@@ -191,10 +191,18 @@ func (g Gate) Inputs() []Wire {
 
 type Wire uint32
 
+const (
+	TmpWireID = 0x80000000
+)
+
 func (w Wire) ID() int {
 	return int(w)
 }
 
 func (w Wire) String() string {
-	return fmt.Sprintf("w%d", w)
+	if w >= TmpWireID {
+		return fmt.Sprintf("~%d", w&^TmpWireID)
+	} else {
+		return fmt.Sprintf("w%d", w)
+	}
 }

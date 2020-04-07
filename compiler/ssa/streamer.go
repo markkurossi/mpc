@@ -7,11 +7,13 @@
 package ssa
 
 import (
+	"crypto/rand"
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
 )
 
 type NewCircuit func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
@@ -110,10 +112,25 @@ var circuitGenerators = map[Operand]NewCircuit{
 }
 
 func (prog *Program) StreamCircuit(params *utils.Params) error {
+	var key [32]byte
+	_, err := rand.Read(key[:])
+	if err != nil {
+		return err
+	}
+	prog.assignWires = false
+
+	var numGates uint64
+	var numNonXOR uint64
 	cache := make(map[string]*circuit.Circuit)
 
+	r, err := ot.NewLabel(rand.Reader)
+	if err != nil {
+		return err
+	}
+	r.SetS(true)
+
 	for idx, step := range prog.Steps {
-		if idx%1000 == 0 {
+		if idx%100 == 0 {
 			fmt.Printf("%d/%d\n", idx, len(prog.Steps))
 		}
 		instr := step.Instr
@@ -126,10 +143,10 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			wires = append(wires, w)
 		}
 
-		var o []*circuits.Wire
+		var out []*circuits.Wire
 		var err error
 		if instr.Out != nil {
-			o, err = prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			out, err = prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -140,9 +157,10 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 		case Slice, Mov, Ret:
 
 		case GC:
-			_, ok := prog.wires[instr.GC]
+			wires, ok := prog.wires[instr.GC]
 			if ok {
 				delete(prog.wires, instr.GC)
+				prog.recycleWires(wires)
 			} else {
 				fmt.Printf("GC: %s not known\n", instr.GC)
 			}
@@ -155,34 +173,64 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			}
 			circ, ok := cache[instr.StringTyped()]
 			if !ok {
-				// XXX this is wrong
-				cc, err := circuits.NewCompiler(params,
-					prog.Inputs, prog.Outputs,
-					prog.InputWires, prog.OutputWires)
+				// Flatten input wires.
+				var flat []*circuits.Wire
+				for _, w := range wires {
+					flat = append(flat, w...)
+				}
+				// Clear output wires from input wires (they could be
+				// outputs of previous computation).
+				for _, w := range flat {
+					w.Output = false
+				}
+				// Mark outputs as output wires.
+				for _, o := range out {
+					o.Output = true
+				}
+
+				cc, err := circuits.NewCompiler(params, nil, nil, flat, out)
 				if err != nil {
 					return err
 				}
+				cc.OutputsAssigned = true
+				cc.SetNextWireID(0x80000000)
 
 				if params.Verbose {
-					fmt.Printf("%d: %s\n", idx, instr.StringTyped())
+					fmt.Printf("%05d: %s\n", idx, instr.StringTyped())
 				}
-				err = f(cc, instr, wires, o)
+				err = f(cc, instr, wires, out)
 				if err != nil {
 					return err
 				}
 				pruned := cc.Prune()
 				if params.Verbose {
-					fmt.Printf("%d: %s: pruned %d gates\n",
-						idx, instr.StringTyped(), pruned)
+					fmt.Printf("%05d: - pruned %d gates\n",
+						idx, pruned)
 				}
 				circ = cc.Compile()
 				cache[instr.StringTyped()] = circ
 				if params.Verbose {
-					fmt.Printf("%d: %s: %s\n", idx, instr.StringTyped(), circ)
+					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
 			}
+			if false {
+				circ.Dump()
+			}
+			fmt.Printf("%05d: - garble %d gates\n", idx, circ.NumGates)
+			err := circ.GarbleStream(key[:], r)
+			if err != nil {
+				return err
+			}
+			numGates += uint64(circ.NumGates)
+			numNonXOR += uint64(circ.Stats[circuit.AND])
+			numNonXOR += uint64(circ.Stats[circuit.OR])
+			numNonXOR += uint64(circ.Stats[circuit.INV])
 		}
 	}
+
+	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
+		prog.nextWireID, len(cache))
+	fmt.Printf("#gates=%d, #non-XOR=%d\n", numGates, numNonXOR)
 
 	return nil
 }

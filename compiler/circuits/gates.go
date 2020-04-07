@@ -39,7 +39,7 @@ func NewBinary(op circuit.Operation, a, b, o *Wire) *Gate {
 }
 
 func (g *Gate) String() string {
-	return fmt.Sprintf("%s %d %d %d", g.Op, g.A.ID, g.B.ID, g.O.ID)
+	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID, g.B.ID, g.O.ID)
 }
 
 func (g *Gate) Visit(c *Compiler) {

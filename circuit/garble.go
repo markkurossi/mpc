@@ -1,6 +1,4 @@
 //
-// garble.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -22,10 +20,6 @@ var (
 	verbose = false
 )
 
-type Enc func(a, b, c ot.Label, t uint32) ot.Label
-
-type Dec func(a, b ot.Label, t uint32, data ot.Label) (ot.Label, error)
-
 type TableEntry struct {
 	Index int
 	Data  ot.Label
@@ -45,17 +39,17 @@ func (a ByIndex) Less(i, j int) bool {
 	return a[i].Index < a[j].Index
 }
 
-func entry(enc Enc, a, b, c ot.Label, tweak uint32) TableEntry {
+func entry(alg cipher.Block, a, b, c ot.Label, tweak uint32) TableEntry {
 	return TableEntry{
 		Index: idx(a, b),
-		Data:  enc(a, b, c, tweak),
+		Data:  encrypt(alg, a, b, c, tweak),
 	}
 }
 
-func entryUnary(enc Enc, a, c ot.Label, tweak uint32) TableEntry {
+func entryUnary(alg cipher.Block, a, c ot.Label, tweak uint32) TableEntry {
 	return TableEntry{
 		Index: idxUnary(a),
-		Data:  enc(a, ot.Label{}, c, tweak),
+		Data:  encrypt(alg, a, ot.Label{}, c, tweak),
 	}
 }
 
@@ -169,10 +163,6 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return nil, err
 	}
 
-	enc := func(a, b, c ot.Label, t uint32) ot.Label {
-		return encrypt(alg, a, b, c, t)
-	}
-
 	// Wire labels.
 	wires := make([]ot.Wire, c.NumWires)
 
@@ -188,7 +178,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Garble gates.
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.Garble(wires, enc, r, uint32(i))
+		data, err := gate.Garble(wires, alg, r, uint32(i))
 		if err != nil {
 			return nil, err
 		}
@@ -202,8 +192,8 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
-	[]ot.Label, error) {
+func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
+	id uint32) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error

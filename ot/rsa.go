@@ -20,6 +20,55 @@ import (
 	"github.com/markkurossi/mpc/pkcs1"
 )
 
+const (
+	BlockSize  = 16
+	BlockCount = 1024
+)
+
+type LabelType int
+
+const (
+	LabelRandom = iota
+	LabelPRF
+	LabelZero
+)
+
+const (
+	labelGenerator = LabelRandom
+)
+
+var labelC = make(chan Label)
+
+func prf() {
+	var counter uint64 = 1
+	buf := make([]byte, BlockSize*BlockCount)
+	rand.Read(buf)
+
+	for {
+		for i := 0; i < BlockCount; i++ {
+			binary.BigEndian.PutUint64(buf[i*BlockSize:], counter)
+			counter++
+		}
+
+		for i := 0; i < BlockCount; i++ {
+			var label Label
+			var data LabelData
+
+			copy(data[:], buf[i*BlockSize:i*BlockSize+BlockSize])
+			label.SetBytes(data)
+			labelC <- label
+		}
+	}
+}
+
+func init() {
+	if labelGenerator == LabelPRF {
+		for i := 0; i < 10; i++ {
+			go prf()
+		}
+	}
+}
+
 func RandomData(size int) ([]byte, error) {
 	m := make([]byte, size)
 	_, err := rand.Read(m)
@@ -45,14 +94,27 @@ func (l Label) Equal(o Label) bool {
 }
 
 func NewLabel(rand io.Reader) (Label, error) {
-	var buf LabelData
-	var label Label
+	switch labelGenerator {
+	case LabelRandom:
+		var buf LabelData
+		var label Label
 
-	if _, err := rand.Read(buf[:]); err != nil {
-		return label, err
+		if _, err := rand.Read(buf[:]); err != nil {
+			return label, err
+		}
+		label.SetBytes(buf)
+		return label, nil
+
+	case LabelPRF:
+		return <-labelC, nil
+
+	case LabelZero:
+		var l Label
+		return l, nil
+
+	default:
+		panic(fmt.Sprintf("Unknown label generator: %v", labelGenerator))
 	}
-	label.SetBytes(buf)
-	return label, nil
 }
 
 func LabelFromData(data LabelData) Label {
