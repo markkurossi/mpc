@@ -10,7 +10,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"fmt"
-	"sort"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -101,7 +100,7 @@ func (c *Circuit) GarbleStream(key []byte, r ot.Label, inputIDs []Wire) error {
 }
 
 func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
-	r ot.Label, id uint32, buf []ot.Label) ([]ot.Label, error) {
+	r ot.Label, id uint32, table []ot.Label) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
@@ -151,7 +150,7 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 	}
 	wires.Set(g.Output, c)
 
-	var table [4]TableEntry
+	table = table[0:4]
 	var count int
 
 	switch g.Op {
@@ -165,10 +164,10 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
-		table[1] = entry(enc, a.L0, b.L1, c.L0, id)
-		table[2] = entry(enc, a.L1, b.L0, c.L0, id)
-		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case OR:
@@ -178,10 +177,10 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
-		table[1] = entry(enc, a.L0, b.L1, c.L1, id)
-		table[2] = entry(enc, a.L1, b.L0, c.L1, id)
-		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case INV:
@@ -189,20 +188,13 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// -----
 		// 0   1
 		// 1   0
-		table[0] = entryUnary(enc, a.L0, c.L1, id)
-		table[1] = entryUnary(enc, a.L1, c.L0, id)
+		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id)
+		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id)
 		count = 2
 
 	default:
 		return nil, fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	sort.Sort(ByIndex(table[:count]))
-
-	buf = buf[:count]
-	for idx, entry := range table[:count] {
-		buf[idx] = entry.Data
-	}
-
-	return buf, nil
+	return table[:count], nil
 }
