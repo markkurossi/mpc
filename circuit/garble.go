@@ -78,10 +78,9 @@ func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
 	k := makeK(a, b, t)
 	kData := k.Data()
 
-	var crypted ot.LabelData
-	alg.Encrypt(crypted[:], kData[:])
+	alg.Encrypt(kData[:], kData[:])
 
-	pi := ot.LabelFromData(crypted)
+	pi := ot.LabelFromData(kData)
 	pi.Xor(k)
 	pi.Xor(c)
 

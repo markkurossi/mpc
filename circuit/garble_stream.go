@@ -87,9 +87,10 @@ func (c *Circuit) GarbleStream(key []byte, r ot.Label) error {
 	}
 
 	// Garble gates.
+	buf := make([]ot.Label, 4)
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.GarbleStream(wires, alg, r, uint32(i))
+		data, err := gate.GarbleStream(wires, alg, r, uint32(i), buf)
 		if err != nil {
 			return err
 		}
@@ -100,7 +101,7 @@ func (c *Circuit) GarbleStream(key []byte, r ot.Label) error {
 }
 
 func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
-	r ot.Label, id uint32) ([]ot.Label, error) {
+	r ot.Label, id uint32, buf []ot.Label) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
@@ -198,10 +199,10 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 
 	sort.Sort(ByIndex(table[:count]))
 
-	result := make([]ot.Label, count)
+	buf = buf[:count]
 	for idx, entry := range table[:count] {
-		result[idx] = entry.Data
+		buf[idx] = entry.Data
 	}
 
-	return result, nil
+	return buf, nil
 }

@@ -86,10 +86,6 @@ func (prog *Program) allocWires(bits int) (result []*circuits.Wire) {
 		// Assign wire IDs.
 		for i := 0; i < bits; i++ {
 			result[i].ID = prog.nextWireID + uint32(i)
-			fmt.Printf("Program: assigned wire %d\n", result[i].ID)
-			if result[i].ID == 2 {
-				panic(42)
-			}
 		}
 		prog.nextWireID += uint32(bits)
 	}

@@ -117,7 +117,7 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 	if err != nil {
 		return err
 	}
-	prog.assignWires = false
+	prog.assignWires = true
 
 	var numGates uint64
 	var numNonXOR uint64
@@ -130,7 +130,7 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 	r.SetS(true)
 
 	for idx, step := range prog.Steps {
-		if idx%100 == 0 {
+		if idx%1000 == 0 {
 			fmt.Printf("%d/%d\n", idx, len(prog.Steps))
 		}
 		instr := step.Instr
@@ -216,7 +216,9 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			if false {
 				circ.Dump()
 			}
-			fmt.Printf("%05d: - garble %d gates\n", idx, circ.NumGates)
+			if false {
+				fmt.Printf("%05d: - garble %d gates\n", idx, circ.NumGates)
+			}
 			err := circ.GarbleStream(key[:], r)
 			if err != nil {
 				return err
