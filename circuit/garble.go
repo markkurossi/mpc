@@ -71,6 +71,10 @@ func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
 
 func makeK(a, b ot.Label, t uint32) ot.Label {
 	a.Mul2()
+
+	b.Mul4()
+	a.Xor(b)
+
 	a.Xor(ot.NewTweak(t))
 
 	return a
