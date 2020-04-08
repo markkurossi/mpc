@@ -9,6 +9,8 @@
 package ot
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
@@ -21,8 +23,8 @@ import (
 )
 
 const (
-	BlockSize  = 16
-	BlockCount = 1024
+	PRFBlockSize  = 16
+	PRFBlockCount = 256
 )
 
 type LabelType int
@@ -34,39 +36,51 @@ const (
 )
 
 const (
-	labelGenerator = LabelRandom
+	labelGenerator = LabelPRF
 )
 
-var labelC = make(chan Label)
+var (
+	prfCounter uint64
+	prfKey     [16]byte
+	prfBuffer  [PRFBlockSize * PRFBlockCount]byte
+	prfBlock   int
+	prfCipher  cipher.Block
+)
 
-func prf() {
-	var counter uint64 = 1
-	buf := make([]byte, BlockSize*BlockCount)
-	rand.Read(buf)
+func prf() Label {
 
-	for {
-		for i := 0; i < BlockCount; i++ {
-			binary.BigEndian.PutUint64(buf[i*BlockSize:], counter)
-			counter++
+	if prfBlock >= PRFBlockCount {
+		prfBlock = 0
+		prfCounter++
+
+		var buf [PRFBlockSize]byte
+		binary.BigEndian.PutUint64(buf[:], prfCounter)
+
+		for b := 0; b < PRFBlockCount; b++ {
+			for i := 0; i < PRFBlockSize; i++ {
+				prfBuffer[b*PRFBlockSize+i] ^= buf[i]
+			}
 		}
-
-		for i := 0; i < BlockCount; i++ {
-			var label Label
-			var data LabelData
-
-			copy(data[:], buf[i*BlockSize:i*BlockSize+BlockSize])
-			label.SetBytes(data)
-			labelC <- label
-		}
+		prfCipher.Encrypt(prfBuffer[:], prfBuffer[:])
 	}
+
+	var label Label
+	label.InitFromData(prfBuffer[prfBlock*PRFBlockSize:])
+	prfBlock++
+
+	return label
 }
 
 func init() {
-	if labelGenerator == LabelPRF {
-		for i := 0; i < 10; i++ {
-			go prf()
-		}
+	rand.Read(prfKey[:])
+	rand.Read(prfBuffer[:])
+
+	var err error
+	prfCipher, err = aes.NewCipher(prfKey[:])
+	if err != nil {
+		panic(err)
 	}
+	prfBlock = PRFBlockCount
 }
 
 func RandomData(size int) ([]byte, error) {
@@ -106,7 +120,7 @@ func NewLabel(rand io.Reader) (Label, error) {
 		return label, nil
 
 	case LabelPRF:
-		return <-labelC, nil
+		return prf(), nil
 
 	case LabelZero:
 		var l Label
@@ -166,6 +180,11 @@ func (l Label) Data() LabelData {
 }
 
 func (l *Label) SetBytes(data LabelData) {
+	l.d0 = binary.BigEndian.Uint64(data[0:8])
+	l.d1 = binary.BigEndian.Uint64(data[8:16])
+}
+
+func (l *Label) InitFromData(data []byte) {
 	l.d0 = binary.BigEndian.Uint64(data[0:8])
 	l.d1 = binary.BigEndian.Uint64(data[8:16])
 }

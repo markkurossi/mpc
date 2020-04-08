@@ -219,26 +219,22 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			if false {
 				circ.Dump()
 			}
-			if true {
-				fmt.Printf("%05d: - garble %d gates\n", idx, circ.NumGates)
+			var inputIDs []circuit.Wire
+			for _, in := range flat {
+				inputIDs = append(inputIDs, circuit.Wire(in.ID))
+			}
 
-				var inputIDs []circuit.Wire
-				for _, in := range flat {
-					inputIDs = append(inputIDs, circuit.Wire(in.ID))
-				}
-
-				start := time.Now()
-				err := circ.GarbleStream(key[:], r, inputIDs)
-				if err != nil {
-					return err
-				}
-				dt := time.Now().Sub(start)
-				elapsed := time.Now().UnixNano() - start.UnixNano()
-				elapsed /= 1000000000
-				if elapsed > 0 {
-					fmt.Printf("%05d: - garbled %d gates/s (%s)\n",
-						idx, int64(circ.NumGates)/elapsed, dt)
-				}
+			start := time.Now()
+			err := circ.GarbleStream(key[:], r, inputIDs)
+			if err != nil {
+				return err
+			}
+			dt := time.Now().Sub(start)
+			elapsed := float64(time.Now().UnixNano() - start.UnixNano())
+			elapsed /= 1000000000
+			if elapsed > 0 {
+				fmt.Printf("%05d: - garbled %10.0f gates/s (%s)\n",
+					idx, float64(circ.NumGates)/elapsed, dt)
 			}
 			numGates += uint64(circ.NumGates)
 			numNonXOR += uint64(circ.Stats[circuit.AND])
