@@ -90,8 +90,7 @@ func (c *Conn) SendData(val []byte) error {
 }
 
 func (c *Conn) SendLabel(val ot.Label) error {
-	data := val.Data()
-	n, err := c.io.Write(data[:])
+	n, err := c.io.Write(val.Bytes())
 	if err != nil {
 		return err
 	}
@@ -135,7 +134,9 @@ func (c *Conn) ReceiveLabel() (ot.Label, error) {
 	}
 	c.Stats.Recvd += uint64(n)
 
-	return ot.LabelFromData(buf), nil
+	var result ot.Label
+	result.SetData(&buf)
+	return result, nil
 }
 
 func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {

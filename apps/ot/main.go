@@ -34,10 +34,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m0Data := m0.Data()
-	m1Data := m1.Data()
+	m0Data := m0.Bytes()
+	m1Data := m1.Bytes()
 
-	sXfer, err := sender.NewTransfer(m0Data[:], m1Data[:])
+	sXfer, err := sender.NewTransfer(m0Data, m1Data)
 	if err != nil {
 		log.Fatal(err)
 	}

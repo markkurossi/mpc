@@ -112,9 +112,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 		if err != nil {
 			return nil, err
 		}
-		var data ot.LabelData
-		copy(data[:], n)
-		wires[Wire(circ.Inputs[0].Size+w)] = ot.LabelFromData(data)
+		wires[Wire(circ.Inputs[0].Size+w)].SetBytes(n)
 		w++
 	}
 	xfer := conn.Stats.Sub(ioStats)

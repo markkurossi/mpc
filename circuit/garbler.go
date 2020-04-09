@@ -167,10 +167,10 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 			wire := garbled.Wires[bit]
 
-			m0Data := wire.L0.Data()
-			m1Data := wire.L1.Data()
+			m0Data := wire.L0.Bytes()
+			m1Data := wire.L1.Bytes()
 
-			xfer, err = sender.NewTransfer(m0Data[:], m1Data[:])
+			xfer, err = sender.NewTransfer(m0Data, m1Data)
 			if err != nil {
 				return nil, err
 			}

@@ -65,7 +65,7 @@ func prf() Label {
 	}
 
 	var label Label
-	label.InitFromData(prfBuffer[prfBlock*PRFBlockSize:])
+	label.SetBytes(prfBuffer[prfBlock*PRFBlockSize:])
 	prfBlock++
 
 	return label
@@ -116,7 +116,7 @@ func NewLabel(rand io.Reader) (Label, error) {
 		if _, err := rand.Read(buf[:]); err != nil {
 			return label, err
 		}
-		label.SetBytes(buf)
+		label.SetData(&buf)
 		return label, nil
 
 	case LabelPRF:
@@ -129,12 +129,6 @@ func NewLabel(rand io.Reader) (Label, error) {
 	default:
 		panic(fmt.Sprintf("Unknown label generator: %v", labelGenerator))
 	}
-}
-
-func LabelFromData(data LabelData) Label {
-	label := Label{}
-	label.SetBytes(data)
-	return label
 }
 
 func NewTweak(tweak uint32) Label {
@@ -172,19 +166,23 @@ func (l *Label) Xor(o Label) {
 	l.d1 ^= o.d1
 }
 
-func (l Label) Data() LabelData {
-	var result LabelData
-	binary.BigEndian.PutUint64(result[0:8], l.d0)
-	binary.BigEndian.PutUint64(result[8:16], l.d1)
-	return result
+func (l Label) GetData(buf *LabelData) {
+	binary.BigEndian.PutUint64((*buf)[0:8], l.d0)
+	binary.BigEndian.PutUint64((*buf)[8:16], l.d1)
 }
 
-func (l *Label) SetBytes(data LabelData) {
-	l.d0 = binary.BigEndian.Uint64(data[0:8])
-	l.d1 = binary.BigEndian.Uint64(data[8:16])
+func (l *Label) SetData(data *LabelData) {
+	l.d0 = binary.BigEndian.Uint64((*data)[0:8])
+	l.d1 = binary.BigEndian.Uint64((*data)[8:16])
 }
 
-func (l *Label) InitFromData(data []byte) {
+func (l Label) Bytes() []byte {
+	var buf LabelData
+	l.GetData(&buf)
+	return buf[:]
+}
+
+func (l *Label) SetBytes(data []byte) {
 	l.d0 = binary.BigEndian.Uint64(data[0:8])
 	l.d1 = binary.BigEndian.Uint64(data[8:16])
 }

@@ -42,28 +42,35 @@ func idx(l0, l1 ot.Label) int {
 
 func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
 	k := makeK(a, b, t)
-	kData := k.Data()
+
+	var kData ot.LabelData
+	k.GetData(&kData)
 
 	alg.Encrypt(kData[:], kData[:])
 
-	pi := ot.LabelFromData(kData)
+	var pi ot.Label
+	pi.SetData(&kData)
+
 	pi.Xor(k)
 	pi.Xor(c)
 
 	return pi
 }
 
-func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
+func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label) (
 	ot.Label, error) {
 
 	k := makeK(a, b, t)
-	kData := k.Data()
 
-	var crypted ot.LabelData
-	alg.Encrypt(crypted[:], kData[:])
+	var kData ot.LabelData
+	k.GetData(&kData)
 
-	c := encrypted
-	c.Xor(ot.LabelFromData(crypted))
+	alg.Encrypt(kData[:], kData[:])
+
+	var crypted ot.Label
+	crypted.SetData(&kData)
+
+	c.Xor(crypted)
 	c.Xor(k)
 
 	return c, nil
