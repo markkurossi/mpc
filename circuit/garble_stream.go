@@ -9,113 +9,158 @@ package circuit
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/markkurossi/mpc/ot"
 )
 
-type StreamWires struct {
-	Wires    []ot.Wire
-	TmpWires []ot.Wire
+const (
+	streamDebug = false
+)
+
+type Streaming struct {
+	key      []byte
+	alg      cipher.Block
+	r        ot.Label
+	wires    []ot.Wire
+	tmp      []ot.Wire
+	in       []Wire
+	out      []Wire
+	firstTmp Wire
+	firstOut Wire
 }
 
-func NewStreamWires(normal, tmp int) *StreamWires {
-	return &StreamWires{
-		Wires:    make([]ot.Wire, normal),
-		TmpWires: make([]ot.Wire, tmp),
+func NewStreaming(key []byte, inputs []Wire) (*Streaming, error) {
+	r, err := ot.NewLabel(rand.Reader)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func (wires *StreamWires) Get(w Wire) ot.Wire {
-	if w >= TmpWireID {
-		return wires.TmpWires[w-TmpWireID]
-	} else {
-		return wires.Wires[w]
-	}
-}
-
-func (wires *StreamWires) Set(w Wire, val ot.Wire) {
-	if w >= TmpWireID {
-		wires.TmpWires[w-TmpWireID] = val
-	} else {
-		wires.Wires[w] = val
-	}
-}
-
-func (c *Circuit) GarbleStream(key []byte, r ot.Label, inputIDs []Wire) error {
+	r.SetS(true)
 
 	alg, err := aes.NewCipher(key)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var numWires int
-	var numTmpWires int
+	stream := &Streaming{
+		key: key,
+		alg: alg,
+		r:   r,
+	}
 
-	max := func(w Wire) {
-		if w >= TmpWireID {
-			l := w - TmpWireID + 1
-			if int(l) > numTmpWires {
-				numTmpWires = int(l)
-			}
-		} else if int(w) >= numWires {
-			numWires = int(w) + 1
+	stream.ensureWires(inputs)
+
+	// Assing all input wires.
+	for i := 0; i < len(inputs); i++ {
+		w, err := makeLabels(stream.r)
+		if err != nil {
+			return nil, err
+		}
+		stream.wires[inputs[i]] = w
+		if streamDebug {
+			fmt.Printf("Set %s\n", inputs[i])
 		}
 	}
 
-	for i := 0; i < len(c.Gates); i++ {
-		g := &c.Gates[i]
-		max(g.Input0)
-		max(g.Input1)
-		max(g.Output)
-	}
+	return stream, nil
+}
 
-	// Wire labels.
-	wires := NewStreamWires(numWires, numTmpWires)
-
-	// XXX
-	if false {
-		// Assing all input wires.
-		for i := 0; i < c.Inputs.Size(); i++ {
-			w, err := makeLabels(r)
-			if err != nil {
-				return err
-			}
-			wires.Set(Wire(i), w)
+func (stream *Streaming) ensureWires(wires []Wire) {
+	// Verify that wires is big enough.
+	var max Wire
+	for _, w := range wires {
+		if w > max {
+			max = w
 		}
 	}
+	if len(stream.wires) <= int(max) {
+		n := make([]ot.Wire, max+1)
+		copy(n, stream.wires)
+		stream.wires = n
+	}
+}
+
+func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
+	stream.ensureWires(in)
+	stream.ensureWires(out)
+
+	if len(stream.tmp) < c.NumWires {
+		stream.tmp = make([]ot.Wire, c.NumWires)
+	}
+
+	stream.in = in
+	stream.out = out
+
+	stream.firstTmp = Wire(len(in))
+	stream.firstOut = Wire(c.NumWires - len(out))
+}
+
+func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
+	if w < stream.firstTmp {
+		index := stream.in[w]
+		return stream.wires[index], index, false
+	} else if w >= stream.firstOut {
+		index := stream.out[w-stream.firstOut]
+		return stream.wires[index], index, false
+	} else {
+		return stream.tmp[w], w, true
+	}
+}
+
+func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
+	if w < stream.firstTmp {
+		index = stream.in[w]
+		stream.wires[index] = val
+	} else if w >= stream.firstOut {
+		index = stream.out[w-stream.firstOut]
+		stream.wires[index] = val
+	} else {
+		index = w
+		tmp = true
+		stream.tmp[w] = val
+	}
+	return index, tmp
+}
+
+func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
+	if streamDebug {
+		fmt.Printf("Streaming.Garble: in=%v, out=%v\n", in, out)
+	}
+
+	stream.initCircuit(c, in, out)
 
 	// Garble gates.
 	buf := make([]ot.Label, 4)
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.GarbleStream(wires, alg, r, uint32(i), buf)
+		err := stream.GarbleGate(gate, uint32(i), buf)
 		if err != nil {
 			return err
 		}
-		// XXX stream data
-		_ = data
 	}
 	return nil
 }
 
-func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
-	r ot.Label, id uint32, table []ot.Label) ([]ot.Label, error) {
+func (stream *Streaming) GarbleGate(g *Gate, id uint32,
+	table []ot.Label) error {
 
 	var a, b, c ot.Wire
+	var aIndex, bIndex, cIndex Wire
+	var aTmp, bTmp, cTmp bool
 	var err error
 
 	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		b = wires.Get(g.Input1)
+		b, bIndex, bTmp = stream.Get(g.Input1)
 		fallthrough
 
 	case INV:
-		a = wires.Get(g.Input0)
+		a, aIndex, aTmp = stream.Get(g.Input0)
 
 	default:
-		return nil, fmt.Errorf("invalid gate type %s", g.Op)
+		return fmt.Errorf("invalid gate type %s", g.Op)
 	}
 
 	// Output.
@@ -125,7 +170,7 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		l0.Xor(b.L0)
 
 		l1 := l0
-		l1.Xor(r)
+		l1.Xor(stream.r)
 		c = ot.Wire{
 			L0: l0,
 			L1: l1,
@@ -136,19 +181,31 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		l0.Xor(b.L0)
 
 		l1 := l0
-		l1.Xor(r)
+		l1.Xor(stream.r)
 		c = ot.Wire{
 			L0: l1,
 			L1: l0,
 		}
 
 	default:
-		c, err = makeLabels(r)
+		c, err = makeLabels(stream.r)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	wires.Set(g.Output, c)
+
+	ws := func(i Wire, tmp bool) string {
+		if tmp {
+			return fmt.Sprintf("~%d", i)
+		} else {
+			return i.String()
+		}
+	}
+
+	cIndex, cTmp = stream.Set(g.Output, c)
+	if streamDebug {
+		fmt.Printf("Set %s\n", ws(cIndex, cTmp))
+	}
 
 	table = table[0:4]
 	var count int
@@ -164,10 +221,10 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id)
-		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id)
-		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L0, id)
+		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L0, id)
+		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case OR:
@@ -177,10 +234,10 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id)
-		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id)
-		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L1, id)
+		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L1, id)
+		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case INV:
@@ -188,13 +245,31 @@ func (g *Gate) GarbleStream(wires *StreamWires, enc cipher.Block,
 		// -----
 		// 0   1
 		// 1   0
-		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id)
-		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id)
+		table[idxUnary(a.L0)] = encrypt(stream.alg, a.L0, ot.Label{}, c.L1, id)
+		table[idxUnary(a.L1)] = encrypt(stream.alg, a.L1, ot.Label{}, c.L0, id)
 		count = 2
 
 	default:
-		return nil, fmt.Errorf("Invalid operand %s", g.Op)
+		return fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	return table[:count], nil
+	if streamDebug {
+		switch count {
+		case 0:
+			fmt.Printf("Gate %s %s %s %s\n", ws(aIndex, aTmp), ws(bIndex, bTmp),
+				g.Op, ws(cIndex, cTmp))
+
+		case 2:
+			fmt.Printf("Gate %s %s %s\n", ws(aIndex, aTmp),
+				g.Op, ws(cIndex, cTmp))
+
+		case 4:
+			fmt.Printf("Gate %s %s %s %s\n", ws(aIndex, aTmp), ws(bIndex, bTmp),
+				g.Op, ws(cIndex, cTmp))
+		}
+	}
+
+	// XXX stream gate
+
+	return nil
 }

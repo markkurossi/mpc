@@ -191,26 +191,10 @@ func (g Gate) Inputs() []Wire {
 
 type Wire uint32
 
-const (
-	TmpWireID = 0x80000000
-)
-
 func (w Wire) ID() int {
 	return int(w)
 }
 
 func (w Wire) String() string {
-	if w >= TmpWireID {
-		return fmt.Sprintf("~%d", w&^TmpWireID)
-	} else {
-		return fmt.Sprintf("w%d", w)
-	}
-}
-
-func (w Wire) Index() (int, bool) {
-	if w >= TmpWireID {
-		return int(w &^ TmpWireID), true
-	} else {
-		return int(w), false
-	}
+	return fmt.Sprintf("w%d", w)
 }

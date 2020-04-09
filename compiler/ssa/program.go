@@ -23,7 +23,6 @@ type Program struct {
 	Steps       []Step
 	wires       map[string][]*circuits.Wire
 	freeWires   map[int][][]*circuits.Wire
-	assignWires bool
 	nextWireID  uint32
 }
 
@@ -66,13 +65,28 @@ func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	}
 	wires, ok := prog.wires[v]
 	if !ok {
-		wires = prog.allocWires(bits)
+		wires = prog.allocWires(bits, false)
 		prog.wires[v] = wires
 	}
 	return wires, nil
 }
 
-func (prog *Program) allocWires(bits int) (result []*circuits.Wire) {
+func (prog *Program) AssignedWires(v string, bits int) (
+	[]*circuits.Wire, error) {
+	if bits <= 0 {
+		return nil, fmt.Errorf("size not set for variable %v", v)
+	}
+	wires, ok := prog.wires[v]
+	if !ok {
+		wires = prog.allocWires(bits, true)
+		prog.wires[v] = wires
+	}
+	return wires, nil
+}
+
+func (prog *Program) allocWires(bits int, assign bool) (
+	result []*circuits.Wire) {
+
 	fl, ok := prog.freeWires[bits]
 	if ok && len(fl) > 0 {
 		result = fl[0]
@@ -82,7 +96,7 @@ func (prog *Program) allocWires(bits int) (result []*circuits.Wire) {
 
 	result = circuits.MakeWires(bits)
 
-	if prog.assignWires {
+	if assign {
 		// Assign wire IDs.
 		for i := 0; i < bits; i++ {
 			result[i].ID = prog.nextWireID + uint32(i)

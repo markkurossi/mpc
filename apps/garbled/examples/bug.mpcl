@@ -2,6 +2,7 @@
 
 package main
 
-func main(a, b bool) bool {
-	return a & b
+func main(a, b int4) int {
+	tmp := a + b
+	return tmp - b
 }
