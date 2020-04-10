@@ -67,6 +67,15 @@ func (c *Conn) Close() error {
 	return nil
 }
 
+func (c *Conn) SendByte(val byte) error {
+	err := c.io.WriteByte(val)
+	if err != nil {
+		return err
+	}
+	c.Stats.Sent += 1
+	return nil
+}
+
 func (c *Conn) SendUint32(val int) error {
 	err := binary.Write(c.io, binary.BigEndian, uint32(val))
 	if err != nil {
@@ -96,6 +105,19 @@ func (c *Conn) SendLabel(val ot.Label) error {
 	}
 	c.Stats.Sent += uint64(n)
 	return nil
+}
+
+func (c *Conn) SendString(val string) error {
+	return c.SendData([]byte(val))
+}
+
+func (c *Conn) ReceiveByte() (byte, error) {
+	val, err := c.io.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	c.Stats.Recvd += 1
+	return val, nil
 }
 
 func (c *Conn) ReceiveUint32() (int, error) {
@@ -137,6 +159,14 @@ func (c *Conn) ReceiveLabel() (ot.Label, error) {
 	var result ot.Label
 	result.SetData(&buf)
 	return result, nil
+}
+
+func (c *Conn) ReceiveString() (string, error) {
+	data, err := c.ReceiveData()
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {

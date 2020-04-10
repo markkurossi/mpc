@@ -1,0 +1,67 @@
+//
+// Copyright (c) 2020 Markku Rossi
+//
+// All rights reserved.
+//
+
+package main
+
+import (
+	"fmt"
+	"io"
+	"net"
+	"strings"
+
+	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler"
+	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/p2p"
+)
+
+func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
+	ln, err := net.Listen("tcp", port)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Listening for connections at %s\n", port)
+
+	for {
+		nc, err := ln.Accept()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
+
+		conn := p2p.NewConn(nc)
+		result, err := circuit.StreamEvaluator(conn, input, verbose)
+		conn.Close()
+
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		printResult(result)
+		if once {
+			return nil
+		}
+	}
+}
+
+func streamGarblerMode(params *utils.Params, input input, args []string) error {
+	if len(args) != 1 || !strings.HasSuffix(args[0], ".mpcl") {
+		return fmt.Errorf("streaming mode takes single MPCL file")
+	}
+	nc, err := net.Dial("tcp", port)
+	if err != nil {
+		return err
+	}
+	conn := p2p.NewConn(nc)
+	defer conn.Close()
+
+	result, err := compiler.NewCompiler(params).StreamFile(conn, args[0], input)
+	if err != nil {
+		return err
+	}
+	printResult(result)
+	return nil
+}

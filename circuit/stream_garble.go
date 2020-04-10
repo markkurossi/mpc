@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/ot"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 )
 
 type Streaming struct {
+	conn     *p2p.Conn
 	key      []byte
 	alg      cipher.Block
 	r        ot.Label
@@ -31,7 +33,9 @@ type Streaming struct {
 	firstOut Wire
 }
 
-func NewStreaming(key []byte, inputs []Wire) (*Streaming, error) {
+func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
+	*Streaming, error) {
+
 	r, err := ot.NewLabel(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -44,9 +48,10 @@ func NewStreaming(key []byte, inputs []Wire) (*Streaming, error) {
 	}
 
 	stream := &Streaming{
-		key: key,
-		alg: alg,
-		r:   r,
+		conn: conn,
+		key:  key,
+		alg:  alg,
+		r:    r,
 	}
 
 	stream.ensureWires(inputs)
@@ -58,9 +63,6 @@ func NewStreaming(key []byte, inputs []Wire) (*Streaming, error) {
 			return nil, err
 		}
 		stream.wires[inputs[i]] = w
-		if streamDebug {
-			fmt.Printf("Set %s\n", inputs[i])
-		}
 	}
 
 	return stream, nil
@@ -94,6 +96,10 @@ func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
 
 	stream.firstTmp = Wire(len(in))
 	stream.firstOut = Wire(c.NumWires - len(out))
+}
+
+func (stream *Streaming) GetInput(w Wire) ot.Wire {
+	return stream.wires[w]
 }
 
 func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
@@ -203,7 +209,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	}
 
 	cIndex, cTmp = stream.Set(g.Output, c)
-	if streamDebug {
+	if streamDebug && false {
 		fmt.Printf("Set %s\n", ws(cIndex, cTmp))
 	}
 
@@ -253,23 +259,55 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		return fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	if streamDebug {
-		switch count {
-		case 0:
-			fmt.Printf("Gate %s %s %s %s\n", ws(aIndex, aTmp), ws(bIndex, bTmp),
-				g.Op, ws(cIndex, cTmp))
+	var op byte = byte(g.Op)
+	if aTmp {
+		op |= 0b10000000
+	}
+	if bTmp {
+		op |= 0b01000000
+	}
+	if cTmp {
+		op |= 0b00100000
+	}
 
-		case 2:
-			fmt.Printf("Gate %s %s %s\n", ws(aIndex, aTmp),
+	if err := stream.conn.SendByte(op); err != nil {
+		return err
+	}
+	switch count {
+	case 0, 4:
+		if err := stream.conn.SendUint32(int(aIndex)); err != nil {
+			return err
+		}
+		if err := stream.conn.SendUint32(int(bIndex)); err != nil {
+			return err
+		}
+		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
+			return err
+		}
+		if streamDebug {
+			fmt.Printf("Gate%d:\t%s %s %s %s\n", id,
+				ws(aIndex, aTmp), ws(bIndex, bTmp),
 				g.Op, ws(cIndex, cTmp))
+		}
 
-		case 4:
-			fmt.Printf("Gate %s %s %s %s\n", ws(aIndex, aTmp), ws(bIndex, bTmp),
-				g.Op, ws(cIndex, cTmp))
+	case 2:
+		if err := stream.conn.SendUint32(int(aIndex)); err != nil {
+			return err
+		}
+		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
+			return err
+		}
+		if streamDebug {
+			fmt.Printf("Gate%d:\t%s %s %s\n", id,
+				ws(aIndex, aTmp), g.Op, ws(cIndex, cTmp))
 		}
 	}
 
-	// XXX stream gate
+	for i := 0; i < count; i++ {
+		if err := stream.conn.SendLabel(table[i]); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

@@ -9,6 +9,7 @@ package compiler
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"path"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 type Compiler struct {
@@ -69,27 +71,47 @@ func (c *Compiler) compile(source string, in io.Reader) (
 	return circ, annotation, nil
 }
 
-func (c *Compiler) StreamFile(file string) error {
+func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
+	input []string) ([]*big.Int, error) {
+
 	f, err := os.Open(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer f.Close()
-	return c.stream(file, f)
+	return c.stream(conn, file, f, input)
 }
 
-func (c *Compiler) stream(source string, in io.Reader) error {
+func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
+	inputFlag []string) ([]*big.Int, error) {
+
 	logger := utils.NewLogger(os.Stdout)
 	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	program, _, err := pkg.Compile(c.packages, logger, c.params)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return program.StreamCircuit(c.params)
+
+	if len(program.Inputs) != 2 {
+		return nil,
+			fmt.Errorf("invalid program for 2-party computation: %d parties",
+				len(program.Inputs))
+	}
+	input, err := program.Inputs[0].Parse(inputFlag)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf(" + In1: %s\n", program.Inputs[0])
+	fmt.Printf(" - In2: %s\n", program.Inputs[1])
+	fmt.Printf(" - Out: %s\n", program.Outputs)
+	fmt.Printf(" -  In: %s\n", inputFlag)
+
+	return program.StreamCircuit(conn, c.params, input)
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,

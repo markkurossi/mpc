@@ -20,9 +20,6 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	if err != nil {
 		return err
 	}
-	dec := func(a, b ot.Label, t uint32, data ot.Label) (ot.Label, error) {
-		return decrypt(alg, a, b, t, data)
-	}
 
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
@@ -56,7 +53,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output, err = dec(a, b, uint32(i), row[index])
+			output, err = decrypt(alg, a, b, uint32(i), row[index])
 			if err != nil {
 				return err
 			}
@@ -68,7 +65,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output, err = dec(a, ot.Label{}, uint32(i), row[index])
+			output, err = decrypt(alg, a, ot.Label{}, uint32(i), row[index])
 			if err != nil {
 				return err
 			}

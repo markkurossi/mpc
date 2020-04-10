@@ -9,18 +9,51 @@ package ssa
 import (
 	"crypto/rand"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
+	"github.com/markkurossi/mpc/p2p"
 )
 
-func (prog *Program) StreamCircuit(params *utils.Params) error {
+func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
+	inputs *big.Int) ([]*big.Int, error) {
+
 	var key [32]byte
 	_, err := rand.Read(key[:])
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	if params.Verbose {
+		fmt.Printf(" - Sending program info...\n")
+	}
+	if err := conn.SendData(key[:]); err != nil {
+		return nil, err
+	}
+	// Our input.
+	if err := sendArgument(conn, prog.Inputs[0]); err != nil {
+		return nil, err
+	}
+	// Peer input.
+	if err := sendArgument(conn, prog.Inputs[1]); err != nil {
+		return nil, err
+	}
+	// Program outputs.
+	if err := conn.SendUint32(len(prog.Outputs)); err != nil {
+		return nil, err
+	}
+	for _, o := range prog.Outputs {
+		if err := sendArgument(conn, o); err != nil {
+			return nil, err
+		}
+	}
+	// Number of program steps.
+	if err := conn.SendUint32(len(prog.Steps)); err != nil {
+		return nil, err
 	}
 
 	// Collect input wire IDs.
@@ -33,10 +66,97 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 		ids = append(ids, circuit.Wire(w.ID))
 	}
 
-	streaming, err := circuit.NewStreaming(key[:], ids)
+	streaming, err := circuit.NewStreaming(key[:], ids, conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	// Select our inputs.
+	var n1 []ot.Label
+	for i := 0; i < prog.Inputs[0].Size; i++ {
+		wire := streaming.GetInput(circuit.Wire(i))
+
+		var n ot.Label
+		if inputs.Bit(i) == 1 {
+			n = wire.L1
+		} else {
+			n = wire.L0
+		}
+		n1 = append(n1, n)
+	}
+
+	// Send our inputs.
+	for idx, i := range n1 {
+		if params.Verbose && false {
+			fmt.Printf("N1[%d]:\t%s\n", idx, i)
+		}
+		if err := conn.SendLabel(i); err != nil {
+			return nil, err
+		}
+	}
+
+	// Init oblivious transfer.
+	sender, err := ot.NewSender(2048)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send our public key.
+	pub := sender.PublicKey()
+	data := pub.N.Bytes()
+	if err := conn.SendData(data); err != nil {
+		return nil, err
+	}
+	if err := conn.SendUint32(pub.E); err != nil {
+		return nil, err
+	}
+	conn.Flush()
+
+	// Peer OTs its inputs.
+	for i := 0; i < prog.Inputs[1].Size; i++ {
+		bit, err := conn.ReceiveUint32()
+		if err != nil {
+			return nil, err
+		}
+		wire := streaming.GetInput(circuit.Wire(bit))
+
+		m0Data := wire.L0.Bytes()
+		m1Data := wire.L1.Bytes()
+
+		xfer, err := sender.NewTransfer(m0Data, m1Data)
+		if err != nil {
+			return nil, err
+		}
+
+		x0, x1 := xfer.RandomMessages()
+		if err := conn.SendData(x0); err != nil {
+			return nil, err
+		}
+		if err := conn.SendData(x1); err != nil {
+			return nil, err
+		}
+		conn.Flush()
+
+		v, err := conn.ReceiveData()
+		if err != nil {
+			return nil, err
+		}
+		xfer.ReceiveV(v)
+
+		m0p, m1p, err := xfer.Messages()
+		if err != nil {
+			return nil, err
+		}
+		if err := conn.SendData(m0p); err != nil {
+			return nil, err
+		}
+		if err := conn.SendData(m1p); err != nil {
+			return nil, err
+		}
+		conn.Flush()
+	}
+
+	// Stream circuit.
 
 	var numGates uint64
 	var numNonXOR uint64
@@ -62,7 +182,7 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 		for _, in := range instr.In {
 			w, err := prog.AssignedWires(in.String(), in.Type.Bits)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			wires = append(wires, w)
 		}
@@ -73,7 +193,7 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 			out, err = prog.AssignedWires(instr.Out.String(),
 				instr.Out.Type.Bits)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
 
@@ -96,7 +216,7 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 		default:
 			f, ok := circuitGenerators[instr.Op]
 			if !ok {
-				return fmt.Errorf("Program.Stream: %s not implemented yet",
+				return nil, fmt.Errorf("Program.Stream: %s not implemented yet",
 					instr.Op)
 			}
 			circ, ok := cache[instr.StringTyped()]
@@ -117,14 +237,14 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 
 				cc, err := circuits.NewCompiler(params, nil, nil, flat, cOut)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if params.Verbose {
 					fmt.Printf("%05d: %s\n", idx, instr.StringTyped())
 				}
 				err = f(cc, instr, cIn, cOut)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				pruned := cc.Prune()
 				if params.Verbose {
@@ -144,19 +264,42 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 
 			// Collect input and output IDs
 			var iIDs, oIDs []circuit.Wire
+			var maxID uint32
 			for _, vars := range wires {
 				for _, w := range vars {
 					iIDs = append(iIDs, circuit.Wire(w.ID))
+					if w.ID > maxID {
+						maxID = w.ID
+					}
 				}
 			}
 			for _, w := range out {
 				oIDs = append(oIDs, circuit.Wire(w.ID))
+				if w.ID > maxID {
+					maxID = w.ID
+				}
+			}
+
+			if err := conn.SendUint32(circuit.OP_CIRCUIT); err != nil {
+				return nil, err
+			}
+			if err := conn.SendUint32(idx); err != nil {
+				return nil, err
+			}
+			if err := conn.SendUint32(circ.NumGates); err != nil {
+				return nil, err
+			}
+			if err := conn.SendUint32(circ.NumWires); err != nil {
+				return nil, err
+			}
+			if err := conn.SendUint32(int(maxID + 1)); err != nil {
+				return nil, err
 			}
 
 			gStart := time.Now()
 			err := streaming.Garble(circ, iIDs, oIDs)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			dt := time.Now().Sub(gStart)
 			elapsed := float64(time.Now().UnixNano() - gStart.UnixNano())
@@ -175,6 +318,29 @@ func (prog *Program) StreamCircuit(params *utils.Params) error {
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
 		prog.nextWireID, len(cache))
 	fmt.Printf("#gates=%d, #non-XOR=%d\n", numGates, numNonXOR)
+
+	return nil, nil
+}
+
+func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {
+	if err := conn.SendString(arg.Name); err != nil {
+		return err
+	}
+	if err := conn.SendString(arg.Type); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(arg.Size); err != nil {
+		return err
+	}
+
+	if err := conn.SendUint32(len(arg.Compound)); err != nil {
+		return err
+	}
+	for _, a := range arg.Compound {
+		if err := sendArgument(conn, a); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
