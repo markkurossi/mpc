@@ -161,6 +161,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	var numGates uint64
 	var numNonXOR uint64
 	cache := make(map[string]*circuit.Circuit)
+	var returnIDs []uint32
 
 	start := time.Now()
 
@@ -202,7 +203,18 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		case Slice, Mov:
 
 		case Ret:
-			fmt.Printf("Ret: %v\n", wires)
+			if err := conn.SendUint32(circuit.OP_RETURN); err != nil {
+				return nil, err
+			}
+			for _, arg := range wires {
+				for _, w := range arg {
+					if err := conn.SendUint32(int(w.ID)); err != nil {
+						return nil, err
+					}
+					returnIDs = append(returnIDs, w.ID)
+				}
+			}
+			conn.Flush()
 
 		case GC:
 			wires, ok := prog.wires[instr.GC]
@@ -315,11 +327,44 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 	}
 
+	op, err := conn.ReceiveUint32()
+	if err != nil {
+		return nil, err
+	}
+	if op != circuit.OP_RESULT {
+		return nil, fmt.Errorf("unexpected operation: %d", op)
+	}
+
+	result := new(big.Int)
+
+	for i := 0; i < prog.Outputs.Size(); i++ {
+		label, err := conn.ReceiveLabel()
+		if err != nil {
+			return nil, err
+		}
+		wire := streaming.GetInput(circuit.Wire(returnIDs[i]))
+		var bit uint
+		if label.Equal(wire.L0) {
+			bit = 0
+		} else if label.Equal(wire.L1) {
+			bit = 1
+		} else {
+			return nil, fmt.Errorf("unknown label %s for result %d",
+				label, i)
+		}
+		result.SetBit(result, i, bit)
+	}
+	data = result.Bytes()
+	if err := conn.SendData(data); err != nil {
+		return nil, err
+	}
+	conn.Flush()
+
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
 		prog.nextWireID, len(cache))
 	fmt.Printf("#gates=%d, #non-XOR=%d\n", numGates, numNonXOR)
 
-	return nil, nil
+	return prog.Outputs.Split(result), nil
 }
 
 func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {

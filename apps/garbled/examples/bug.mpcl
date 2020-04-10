@@ -3,6 +3,5 @@
 package main
 
 func main(a, b int4) int {
-	tmp := a + b
-	return tmp - b
+	return a * b
 }

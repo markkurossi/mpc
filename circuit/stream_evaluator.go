@@ -185,6 +185,9 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	}
 	var garbled [4]ot.Label
 	var lastStep int
+
+	var rawResult *big.Int
+
 	start := time.Now()
 loop:
 	for {
@@ -340,7 +343,37 @@ loop:
 				streaming.Set(cTmp, cIndex, output)
 			}
 
-		case OP_RESULT:
+		case OP_RETURN:
+			xfer := conn.Stats.Sub(ioStats)
+			ioStats = conn.Stats
+			timing.Sample("Eval", []string{FileSize(xfer.Sum()).String()})
+
+			var labels []ot.Label
+			for i := 0; i < outputs.Size(); i++ {
+				id, err := conn.ReceiveUint32()
+				if err != nil {
+					return nil, err
+				}
+				label := streaming.Get(false, id)
+				labels = append(labels, label)
+			}
+
+			// Resolve result values.
+			if err := conn.SendUint32(OP_RESULT); err != nil {
+				return nil, err
+			}
+			for _, l := range labels {
+				if err := conn.SendLabel(l); err != nil {
+					return nil, err
+				}
+			}
+			conn.Flush()
+
+			result, err := conn.ReceiveData()
+			if err != nil {
+				return nil, err
+			}
+			rawResult = new(big.Int).SetBytes(result)
 			break loop
 
 		default:
@@ -348,11 +381,15 @@ loop:
 		}
 	}
 
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
+
 	if verbose {
 		timing.Print()
 	}
 
-	return nil, fmt.Errorf("StreamEvaluator not implemented yet")
+	return outputs.Split(rawResult), nil
 }
 
 func receiveArgument(conn *p2p.Conn) (arg IOArg, err error) {

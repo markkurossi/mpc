@@ -22,6 +22,7 @@ const (
 	OP_OT = iota
 	OP_RESULT
 	OP_CIRCUIT
+	OP_RETURN
 )
 
 type FileSize uint64
