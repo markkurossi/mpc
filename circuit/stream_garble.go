@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	streamDebug = false
+	StreamDebug = false
 )
 
 type Streaming struct {
@@ -130,7 +130,7 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 }
 
 func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
-	if streamDebug {
+	if StreamDebug {
 		fmt.Printf("Streaming.Garble: in=%v, out=%v\n", in, out)
 	}
 
@@ -209,7 +209,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	}
 
 	cIndex, cTmp = stream.Set(g.Output, c)
-	if streamDebug && false {
+	if StreamDebug && false {
 		fmt.Printf("Set %s\n", ws(cIndex, cTmp))
 	}
 
@@ -284,7 +284,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
 			return err
 		}
-		if streamDebug {
+		if StreamDebug {
 			fmt.Printf("Gate%d:\t%s %s %s %s\n", id,
 				ws(aIndex, aTmp), ws(bIndex, bTmp),
 				g.Op, ws(cIndex, cTmp))
@@ -297,7 +297,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
 			return err
 		}
-		if streamDebug {
+		if StreamDebug {
 			fmt.Printf("Gate%d:\t%s %s %s\n", id,
 				ws(aIndex, aTmp), g.Op, ws(cIndex, cTmp))
 		}

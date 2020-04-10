@@ -200,7 +200,45 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		switch instr.Op {
 
-		case Slice, Mov:
+		case Slice:
+			if !instr.In[1].Const {
+				return nil,
+					fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var from int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				from = int(val)
+			default:
+				return nil,
+					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+
+			if !instr.In[2].Const {
+				return nil,
+					fmt.Errorf("%s only constant index supported", instr.Op)
+			}
+			var to int
+			switch val := instr.In[2].ConstValue.(type) {
+			case int32:
+				to = int(val)
+			default:
+				return nil,
+					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			}
+			if from >= to {
+				return nil, fmt.Errorf("%s bounds out of range [%d:%d]",
+					instr.Op, from, to)
+			}
+			prog.SetWires(instr.Out.String(), wires[0][from:to])
+
+		case Mov:
+			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+				if bit < len(wires[0]) {
+					out[bit].ID = wires[0][bit].ID
+				}
+				// XXX need ZeroWire
+			}
 
 		case Ret:
 			if err := conn.SendUint32(circuit.OP_RETURN); err != nil {
@@ -213,6 +251,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 					}
 					returnIDs = append(returnIDs, w.ID)
 				}
+			}
+			if circuit.StreamDebug {
+				fmt.Printf("return=%v\n", returnIDs)
 			}
 			conn.Flush()
 

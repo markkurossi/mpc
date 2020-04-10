@@ -293,7 +293,7 @@ loop:
 
 				switch Operation(gop) {
 				case XOR, XNOR, AND, OR:
-					if streamDebug {
+					if StreamDebug {
 						fmt.Printf("Gate%d:\t %s %s %s %s\n", i,
 							ws(aIndex, aTmp), ws(bIndex, bTmp),
 							Operation(gop), ws(cIndex, cTmp))
@@ -302,7 +302,7 @@ loop:
 					b = streaming.Get(bTmp, bIndex)
 
 				case INV:
-					if streamDebug {
+					if StreamDebug {
 						fmt.Printf("Gate%d:\t %s %s %s\n", i,
 							ws(aIndex, aTmp), Operation(gop), ws(bIndex, bTmp))
 					}
