@@ -156,10 +156,22 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		conn.Flush()
 	}
 
+	zero, err := prog.ZeroWire(conn, streaming)
+	if err != nil {
+		return nil, err
+	}
+	one, err := prog.OneWire(conn, streaming)
+	if err != nil {
+		return nil, err
+	}
+
+	err = prog.DefineConstants(zero, one)
+	if err != nil {
+		return nil, err
+	}
+
 	// Stream circuit.
 
-	var numGates uint64
-	var numNonXOR uint64
 	cache := make(map[string]*circuit.Circuit)
 	var returnIDs []uint32
 
@@ -236,8 +248,13 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
 				if bit < len(wires[0]) {
 					out[bit].ID = wires[0][bit].ID
+				} else {
+					w, err := prog.ZeroWire(conn, streaming)
+					if err != nil {
+						return nil, err
+					}
+					out[bit] = w
 				}
-				// XXX need ZeroWire
 			}
 
 		case Ret:
@@ -277,8 +294,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				var cIn [][]*circuits.Wire
 				var flat []*circuits.Wire
 
-				for _, in := range instr.In {
-					w := circuits.MakeWires(in.Type.Bits)
+				for _, in := range wires {
+					w := circuits.MakeWires(len(in))
 					cIn = append(cIn, w)
 					flat = append(flat, w...)
 				}
@@ -317,54 +334,19 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 			// Collect input and output IDs
 			var iIDs, oIDs []circuit.Wire
-			var maxID uint32
 			for _, vars := range wires {
 				for _, w := range vars {
 					iIDs = append(iIDs, circuit.Wire(w.ID))
-					if w.ID > maxID {
-						maxID = w.ID
-					}
 				}
 			}
 			for _, w := range out {
 				oIDs = append(oIDs, circuit.Wire(w.ID))
-				if w.ID > maxID {
-					maxID = w.ID
-				}
 			}
 
-			if err := conn.SendUint32(circuit.OP_CIRCUIT); err != nil {
-				return nil, err
-			}
-			if err := conn.SendUint32(idx); err != nil {
-				return nil, err
-			}
-			if err := conn.SendUint32(circ.NumGates); err != nil {
-				return nil, err
-			}
-			if err := conn.SendUint32(circ.NumWires); err != nil {
-				return nil, err
-			}
-			if err := conn.SendUint32(int(maxID + 1)); err != nil {
-				return nil, err
-			}
-
-			gStart := time.Now()
-			err := streaming.Garble(circ, iIDs, oIDs)
+			err = prog.garble(conn, streaming, idx, circ, iIDs, oIDs)
 			if err != nil {
 				return nil, err
 			}
-			dt := time.Now().Sub(gStart)
-			elapsed := float64(time.Now().UnixNano() - gStart.UnixNano())
-			elapsed /= 1000000000
-			if elapsed > 0 && false {
-				fmt.Printf("%05d: - garbled %10.0f gates/s (%s)\n",
-					idx, float64(circ.NumGates)/elapsed, dt)
-			}
-			numGates += uint64(circ.NumGates)
-			numNonXOR += uint64(circ.Stats[circuit.AND])
-			numNonXOR += uint64(circ.Stats[circuit.OR])
-			numNonXOR += uint64(circ.Stats[circuit.INV])
 		}
 	}
 
@@ -403,9 +385,144 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
 		prog.nextWireID, len(cache))
-	fmt.Printf("#gates=%d, #non-XOR=%d\n", numGates, numNonXOR)
+	fmt.Printf("#gates=%d, #non-XOR=%d\n", prog.numGates, prog.numNonXOR)
 
 	return prog.Outputs.Split(result), nil
+}
+
+func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
+	step int, circ *circuit.Circuit, in, out []circuit.Wire) error {
+
+	var maxID circuit.Wire
+	for _, id := range in {
+		if id > maxID {
+			maxID = id
+		}
+	}
+	for _, id := range out {
+		if id > maxID {
+			maxID = id
+		}
+	}
+
+	if err := conn.SendUint32(circuit.OP_CIRCUIT); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(step); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(circ.NumGates); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(circ.NumWires); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(int(maxID + 1)); err != nil {
+		return err
+	}
+
+	gStart := time.Now()
+	err := streaming.Garble(circ, in, out)
+	if err != nil {
+		return err
+	}
+	dt := time.Now().Sub(gStart)
+	elapsed := float64(time.Now().UnixNano() - gStart.UnixNano())
+	elapsed /= 1000000000
+	if elapsed > 0 && false {
+		fmt.Printf("%05d: - garbled %10.0f gates/s (%s)\n",
+			step, float64(circ.NumGates)/elapsed, dt)
+	}
+	prog.numGates += uint64(circ.NumGates)
+	prog.numNonXOR += uint64(circ.Stats[circuit.AND])
+	prog.numNonXOR += uint64(circ.Stats[circuit.OR])
+	prog.numNonXOR += uint64(circ.Stats[circuit.INV])
+
+	return nil
+}
+
+func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
+	*circuits.Wire, error) {
+
+	if prog.zeroWire == nil {
+		wires, err := prog.AssignedWires("$0", 1)
+		if err != nil {
+			return nil, err
+		}
+		err = prog.garble(conn, streaming, 0, &circuit.Circuit{
+			NumGates: 1,
+			NumWires: 2,
+			Inputs: []circuit.IOArg{
+				circuit.IOArg{
+					Name: "i0",
+					Type: "uint1",
+					Size: 1,
+				},
+			},
+			Outputs: []circuit.IOArg{
+				circuit.IOArg{
+					Name: "o0",
+					Type: "uint1",
+					Size: 1,
+				},
+			},
+			Gates: []circuit.Gate{
+				circuit.Gate{
+					Input0: 0,
+					Input1: 0,
+					Output: 1,
+					Op:     circuit.XOR,
+				},
+			},
+		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
+		if err != nil {
+			return nil, err
+		}
+		prog.zeroWire = wires[0]
+	}
+	return prog.zeroWire, nil
+}
+
+func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
+	*circuits.Wire, error) {
+
+	if prog.oneWire == nil {
+		wires, err := prog.AssignedWires("$1", 1)
+		if err != nil {
+			return nil, err
+		}
+		err = prog.garble(conn, streaming, 0, &circuit.Circuit{
+			NumGates: 1,
+			NumWires: 2,
+			Inputs: []circuit.IOArg{
+				circuit.IOArg{
+					Name: "i0",
+					Type: "uint1",
+					Size: 1,
+				},
+			},
+			Outputs: []circuit.IOArg{
+				circuit.IOArg{
+					Name: "o0",
+					Type: "uint1",
+					Size: 1,
+				},
+			},
+			Gates: []circuit.Gate{
+				circuit.Gate{
+					Input0: 0,
+					Input1: 0,
+					Output: 1,
+					Op:     circuit.XNOR,
+				},
+			},
+		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
+		if err != nil {
+			return nil, err
+		}
+		prog.oneWire = wires[0]
+	}
+	return prog.oneWire, nil
 }
 
 func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {

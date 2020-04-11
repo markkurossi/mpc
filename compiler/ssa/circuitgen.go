@@ -8,8 +8,6 @@ package ssa
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -25,7 +23,7 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 		return nil, err
 	}
 
-	err = prog.DefineConstants(cc)
+	err = prog.DefineConstants(cc.ZeroWire(), cc.OneWire())
 	if err != nil {
 		return nil, err
 	}
@@ -69,47 +67,6 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 	}
 
 	return circ, nil
-}
-
-func (prog *Program) DefineConstants(cc *circuits.Compiler) error {
-
-	var consts []Variable
-	for _, c := range prog.Constants {
-		consts = append(consts, c.Const)
-	}
-	sort.Slice(consts, func(i, j int) bool {
-		return strings.Compare(consts[i].Name, consts[j].Name) == -1
-	})
-
-	if len(consts) > 0 && cc.Params.Verbose {
-		fmt.Printf("Defining constants:\n")
-	}
-	for _, c := range consts {
-		msg := fmt.Sprintf(" - %v(%d)", c, c.Type.MinBits)
-
-		var wires []*circuits.Wire
-		var bitString string
-		for bit := 0; bit < c.Type.MinBits; bit++ {
-			var w *circuits.Wire
-			if c.Bit(bit) {
-				bitString = "1" + bitString
-				w = cc.OneWire()
-			} else {
-				bitString = "0" + bitString
-				w = cc.ZeroWire()
-			}
-			wires = append(wires, w)
-		}
-		if cc.Params.Verbose {
-			fmt.Printf("%s\t%s\n", msg, bitString)
-		}
-
-		err := prog.SetWires(c.String(), wires)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (prog *Program) Circuit(cc *circuits.Compiler) error {

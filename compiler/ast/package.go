@@ -125,7 +125,8 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 	steps := ctx.Start().Serialize()
 
-	program, err := ssa.NewProgram(inputs, outputs, gen.Constants(), steps)
+	program, err := ssa.NewProgram(params, inputs, outputs, gen.Constants(),
+		steps)
 	if err != nil {
 		return nil, nil, err
 	}

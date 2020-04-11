@@ -9,12 +9,16 @@ package ssa
 import (
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 type Program struct {
+	Params      *utils.Params
 	Inputs      circuit.IO
 	Outputs     circuit.IO
 	InputWires  []*circuits.Wire
@@ -24,12 +28,17 @@ type Program struct {
 	wires       map[string][]*circuits.Wire
 	freeWires   map[int][][]*circuits.Wire
 	nextWireID  uint32
+	zeroWire    *circuits.Wire
+	oneWire     *circuits.Wire
+	numGates    uint64
+	numNonXOR   uint64
 }
 
-func NewProgram(in, out circuit.IO, consts map[string]ConstantInst,
-	steps []Step) (*Program, error) {
+func NewProgram(params *utils.Params, in, out circuit.IO,
+	consts map[string]ConstantInst, steps []Step) (*Program, error) {
 
 	prog := &Program{
+		Params:    params,
 		Inputs:    in,
 		Outputs:   out,
 		Constants: consts,
@@ -179,6 +188,53 @@ func (prog *Program) GC() {
 		steps = append(steps, step)
 	}
 	prog.Steps = steps
+}
+
+func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
+
+	var consts []Variable
+	for _, c := range prog.Constants {
+		consts = append(consts, c.Const)
+	}
+	sort.Slice(consts, func(i, j int) bool {
+		return strings.Compare(consts[i].Name, consts[j].Name) == -1
+	})
+
+	if len(consts) > 0 && prog.Params.Verbose {
+		fmt.Printf("Defining constants:\n")
+	}
+	for _, c := range consts {
+		msg := fmt.Sprintf(" - %v(%d)", c, c.Type.MinBits)
+
+		_, ok := prog.wires[c.String()]
+		if ok {
+			fmt.Printf("%s\talready defined\n", msg)
+			continue
+		}
+
+		var wires []*circuits.Wire
+		var bitString string
+		for bit := 0; bit < c.Type.MinBits; bit++ {
+			var w *circuits.Wire
+			if c.Bit(bit) {
+				bitString = "1" + bitString
+				w = one
+			} else {
+				bitString = "0" + bitString
+				w = zero
+			}
+			wires = append(wires, w)
+		}
+		if prog.Params.Verbose {
+			fmt.Printf("%s\t%s\n", msg, bitString)
+		}
+
+		err := prog.SetWires(c.String(), wires)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (prog *Program) PP(out io.Writer) {

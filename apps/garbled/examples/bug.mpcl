@@ -2,7 +2,6 @@
 
 package main
 
-func main(a, b int4) int {
-	tmp := a / b
-	return tmp + b
+func main(a, b uint8) uint {
+	return b - a
 }
