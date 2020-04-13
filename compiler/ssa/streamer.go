@@ -246,19 +246,33 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				return nil, fmt.Errorf("%s bounds out of range [%d:%d]",
 					instr.Op, from, to)
 			}
-			prog.SetWires(instr.Out.String(), wires[0][from:to])
-
-		case Mov:
-			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+			for bit := from; bit < to; bit++ {
+				var id uint32
 				if bit < len(wires[0]) {
-					out[bit].ID = wires[0][bit].ID
+					id = wires[0][bit].ID
 				} else {
 					w, err := prog.ZeroWire(conn, streaming)
 					if err != nil {
 						return nil, err
 					}
-					out[bit].ID = w.ID
+					id = w.ID
 				}
+				out[bit-from].ID = id
+			}
+
+		case Mov:
+			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+				var id uint32
+				if bit < len(wires[0]) {
+					id = wires[0][bit].ID
+				} else {
+					w, err := prog.ZeroWire(conn, streaming)
+					if err != nil {
+						return nil, err
+					}
+					id = w.ID
+				}
+				out[bit].ID = id
 			}
 
 		case Ret:
