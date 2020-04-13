@@ -255,7 +255,7 @@ form assembly:
        - [ ] logical not
      - [ ] BitShift
    - Circuit & garbling:
-     - [ ] Incremental (streaming) garbling and evaluation
+     - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
      - [ ] Half AND
      - [ ] Oblivious transfer extensions
@@ -424,15 +424,16 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 
 ## RSA signature computation
 
-| Input Size | MODP Size | Total gates | Non-XOR gates |
-|-----------:|----------:|------------:|--------------:|
-|          2 |         4 |         708 |           201 |
-|          4 |         8 |        5596 |          1571 |
-|          8 |        16 |       44796 |         12423 |
-|         16 |        32 |      374844 |        102255 |
-|         32 |        64 |     2986556 |        801887 |
-|         64 |       128 |    23171068 |       6137023 |
-|        128 |       256 |   177580028 |      46495359 |
+| Input | MODP |     Gates | Non-XOR  | Stream gates | Stream non-XOR |
+|------:|-----:|----------:|---------:|-------------:|---------------:|
+|     2 |    4 |       708 |      201 |          730 |            205 |
+|     4 |    8 |      5596 |     1571 |         5640 |           1579 |
+|     8 |   16 |     44796 |    12423 |        44884 |          12439 |
+|    16 |   32 |    374844 |   102255 |       375052 |         102287 |
+|    32 |   64 |   2986556 |   801887 |      2986972 |         801951 |
+|    64 |  128 |  23171068 |  6137023 |     23171900 |        6137151 |
+|   128 |  256 | 177580028 | 46495359 |    177581692 |       46495615 |
+|   256 |  512 |           |          |   1356768508 |      351848191 |
 
 ## Multiplication
 
