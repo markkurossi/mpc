@@ -246,14 +246,16 @@ form assembly:
        - [ ] if-blocks
        - [ ] For-loop unrolling
        - [ ] Function call and return
-     - [ ] sort blocks in topological order
-       - [ ] peephole optimization over block boundaries
+     - [ ] peephole optimization
+       - [X] sort blocks in topological order
+       - [X] peephole optimization over block boundaries
+       - [ ] variable liveness analysis for templates
      - [ ] Signed / unsigned arithmetics
      - [ ] unary expressions
        - [ ] logical not
      - [ ] BitShift
    - Circuit & garbling:
-     - [ ] Incremental (streaming) evaluation
+     - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
      - [ ] Half AND
      - [ ] Oblivious transfer extensions
@@ -343,6 +345,7 @@ Circuit: #gates=6717340 (XOR=4787324 XNOR=108545 AND=1821471 OR=0 INV=0)
 Labels by value in protocol, garbler, and evaluator:
 
 ```
+Circuit: #gates=6717340 (XOR=4787324 XNOR=108545 AND=1821471 OR=0 INV=0)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -358,6 +361,7 @@ Labels by value in protocol, garbler, and evaluator:
 Gate wires by value in garbler:
 
 ```
+Circuit: #gates=6717340 (XOR=4787324 XNOR=108545 AND=1821471 OR=0 INV=0)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
@@ -387,6 +391,7 @@ Circuit: #gates=6717340 (XOR=4787324 XNOR=108545 AND=1821471 OR=0 INV=0)
 ```
 
 Pruning dead gates:
+
 ```
 Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
@@ -401,17 +406,34 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Optimized garbling:
+
+```
+Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┣━━━━━━━━╋━━━━━━━━━━━━━━╋━━━━━━━━╋━━━━━━━┫
+┃ Wait   ┃ 700.031233ms ┃ 38.57% ┃       ┃
+┃ Recv   ┃ 706.339086ms ┃ 38.92% ┃ 126MB ┃
+┃ Inputs ┃ 233.615365ms ┃ 12.87% ┃  41kB ┃
+┃ Eval   ┃  174.84741ms ┃  9.63% ┃       ┃
+┃ Result ┃    215.733µs ┃  0.01% ┃   1kB ┃
+┃ Total  ┃ 1.815048827s ┃        ┃       ┃
+┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
+```
+
 ## RSA signature computation
 
-| Input Size | MODP Size | Total gates | Non-XOR gates |
-|-----------:|----------:|------------:|--------------:|
-|          2 |         4 |         708 |           201 |
-|          4 |         8 |        5596 |          1571 |
-|          8 |        16 |       44796 |         12423 |
-|         16 |        32 |      374844 |        102255 |
-|         32 |        64 |     2986556 |        801887 |
-|         64 |       128 |    23171068 |       6137023 |
-|        128 |       256 |   177580028 |      46495359 |
+| Input | MODP |     Gates | Non-XOR  | Stream gates | Stream non-XOR |
+|------:|-----:|----------:|---------:|-------------:|---------------:|
+|     2 |    4 |       708 |      201 |          730 |            205 |
+|     4 |    8 |      5596 |     1571 |         5640 |           1579 |
+|     8 |   16 |     44796 |    12423 |        44884 |          12439 |
+|    16 |   32 |    374844 |   102255 |       375052 |         102287 |
+|    32 |   64 |   2986556 |   801887 |      2986972 |         801951 |
+|    64 |  128 |  23171068 |  6137023 |     23171900 |        6137151 |
+|   128 |  256 | 177580028 | 46495359 |    177581692 |       46495615 |
+|   256 |  512 |           |          |   1356768508 |      351848191 |
 
 ## Multiplication
 

@@ -31,9 +31,9 @@ func benchmark(b *testing.B, keySize int) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		l0Data := l0.Data()
-		l1Data := l1.Data()
-		sXfer, err := sender.NewTransfer(l0Data[:], l1Data[:])
+		l0Data := l0.Bytes()
+		l1Data := l1.Bytes()
+		sXfer, err := sender.NewTransfer(l0Data, l1Data)
 		if err != nil {
 			b.Fatal(err)
 		}

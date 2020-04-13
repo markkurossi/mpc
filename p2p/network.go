@@ -410,9 +410,7 @@ func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
 		if err != nil {
 			return nil, err
 		}
-		var data ot.LabelData
-		copy(data[:], n)
-		result[i] = ot.LabelFromData(data)
+		result[i].SetBytes(n)
 	}
 
 	return result, nil
@@ -447,10 +445,10 @@ func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
 		if err != nil {
 			return err
 		}
-		m0 := x1[bit].Data()
-		m1 := x2[bit].Data()
+		m0 := x1[bit].Bytes()
+		m1 := x2[bit].Bytes()
 
-		xfer, err := peer.otSender.NewTransfer(m0[:], m1[:])
+		xfer, err := peer.otSender.NewTransfer(m0, m1)
 		if err != nil {
 			return err
 		}

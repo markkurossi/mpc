@@ -9,6 +9,8 @@
 package ot
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
@@ -19,6 +21,67 @@ import (
 	"github.com/markkurossi/mpc/ot/mpint"
 	"github.com/markkurossi/mpc/pkcs1"
 )
+
+const (
+	PRFBlockSize  = 16
+	PRFBlockCount = 256
+)
+
+type LabelType int
+
+const (
+	LabelRandom = iota
+	LabelPRF
+	LabelZero
+)
+
+const (
+	labelGenerator = LabelPRF
+)
+
+var (
+	prfCounter uint64
+	prfKey     [16]byte
+	prfBuffer  [PRFBlockSize * PRFBlockCount]byte
+	prfBlock   int
+	prfCipher  cipher.Block
+)
+
+func prf() Label {
+
+	if prfBlock >= PRFBlockCount {
+		prfBlock = 0
+		prfCounter++
+
+		var buf [PRFBlockSize]byte
+		binary.BigEndian.PutUint64(buf[:], prfCounter)
+
+		for b := 0; b < PRFBlockCount; b++ {
+			for i := 0; i < PRFBlockSize; i++ {
+				prfBuffer[b*PRFBlockSize+i] ^= buf[i]
+			}
+		}
+		prfCipher.Encrypt(prfBuffer[:], prfBuffer[:])
+	}
+
+	var label Label
+	label.SetBytes(prfBuffer[prfBlock*PRFBlockSize:])
+	prfBlock++
+
+	return label
+}
+
+func init() {
+	rand.Read(prfKey[:])
+	rand.Read(prfBuffer[:])
+
+	var err error
+	prfCipher, err = aes.NewCipher(prfKey[:])
+	if err != nil {
+		panic(err)
+	}
+	prfBlock = PRFBlockCount
+}
 
 func RandomData(size int) ([]byte, error) {
 	m := make([]byte, size)
@@ -45,20 +108,27 @@ func (l Label) Equal(o Label) bool {
 }
 
 func NewLabel(rand io.Reader) (Label, error) {
-	var buf LabelData
-	var label Label
+	switch labelGenerator {
+	case LabelRandom:
+		var buf LabelData
+		var label Label
 
-	if _, err := rand.Read(buf[:]); err != nil {
-		return label, err
+		if _, err := rand.Read(buf[:]); err != nil {
+			return label, err
+		}
+		label.SetData(&buf)
+		return label, nil
+
+	case LabelPRF:
+		return prf(), nil
+
+	case LabelZero:
+		var l Label
+		return l, nil
+
+	default:
+		panic(fmt.Sprintf("Unknown label generator: %v", labelGenerator))
 	}
-	label.SetBytes(buf)
-	return label, nil
-}
-
-func LabelFromData(data LabelData) Label {
-	label := Label{}
-	label.SetBytes(data)
-	return label
 }
 
 func NewTweak(tweak uint32) Label {
@@ -96,14 +166,23 @@ func (l *Label) Xor(o Label) {
 	l.d1 ^= o.d1
 }
 
-func (l Label) Data() LabelData {
-	var result LabelData
-	binary.BigEndian.PutUint64(result[0:8], l.d0)
-	binary.BigEndian.PutUint64(result[8:16], l.d1)
-	return result
+func (l Label) GetData(buf *LabelData) {
+	binary.BigEndian.PutUint64((*buf)[0:8], l.d0)
+	binary.BigEndian.PutUint64((*buf)[8:16], l.d1)
 }
 
-func (l *Label) SetBytes(data LabelData) {
+func (l *Label) SetData(data *LabelData) {
+	l.d0 = binary.BigEndian.Uint64((*data)[0:8])
+	l.d1 = binary.BigEndian.Uint64((*data)[8:16])
+}
+
+func (l Label) Bytes() []byte {
+	var buf LabelData
+	l.GetData(&buf)
+	return buf[:]
+}
+
+func (l *Label) SetBytes(data []byte) {
 	l.d0 = binary.BigEndian.Uint64(data[0:8])
 	l.d1 = binary.BigEndian.Uint64(data[8:16])
 }

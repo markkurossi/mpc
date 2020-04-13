@@ -1,6 +1,4 @@
 //
-// garble.go
-//
 // Copyright (c) 2019 Markku Rossi
 //
 // All rights reserved.
@@ -13,7 +11,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
-	"sort"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -21,43 +18,6 @@ import (
 var (
 	verbose = false
 )
-
-type Enc func(a, b, c ot.Label, t uint32) ot.Label
-
-type Dec func(a, b ot.Label, t uint32, data ot.Label) (ot.Label, error)
-
-type TableEntry struct {
-	Index int
-	Data  ot.Label
-}
-
-type ByIndex []TableEntry
-
-func (a ByIndex) Len() int {
-	return len(a)
-}
-
-func (a ByIndex) Swap(i, j int) {
-	a[i], a[j] = a[j], a[i]
-}
-
-func (a ByIndex) Less(i, j int) bool {
-	return a[i].Index < a[j].Index
-}
-
-func entry(enc Enc, a, b, c ot.Label, tweak uint32) TableEntry {
-	return TableEntry{
-		Index: idx(a, b),
-		Data:  enc(a, b, c, tweak),
-	}
-}
-
-func entryUnary(enc Enc, a, c ot.Label, tweak uint32) TableEntry {
-	return TableEntry{
-		Index: idxUnary(a),
-		Data:  enc(a, ot.Label{}, c, tweak),
-	}
-}
 
 func idxUnary(l0 ot.Label) int {
 	if l0.S() {
@@ -82,29 +42,35 @@ func idx(l0, l1 ot.Label) int {
 
 func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
 	k := makeK(a, b, t)
-	kData := k.Data()
 
-	var crypted ot.LabelData
-	alg.Encrypt(crypted[:], kData[:])
+	var kData ot.LabelData
+	k.GetData(&kData)
 
-	pi := ot.LabelFromData(crypted)
+	alg.Encrypt(kData[:], kData[:])
+
+	var pi ot.Label
+	pi.SetData(&kData)
+
 	pi.Xor(k)
 	pi.Xor(c)
 
 	return pi
 }
 
-func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
+func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label) (
 	ot.Label, error) {
 
 	k := makeK(a, b, t)
-	kData := k.Data()
 
-	var crypted ot.LabelData
-	alg.Encrypt(crypted[:], kData[:])
+	var kData ot.LabelData
+	k.GetData(&kData)
 
-	c := encrypted
-	c.Xor(ot.LabelFromData(crypted))
+	alg.Encrypt(kData[:], kData[:])
+
+	var crypted ot.Label
+	crypted.SetData(&kData)
+
+	c.Xor(crypted)
 	c.Xor(k)
 
 	return c, nil
@@ -112,6 +78,10 @@ func decrypt(alg cipher.Block, a, b ot.Label, t uint32, encrypted ot.Label) (
 
 func makeK(a, b ot.Label, t uint32) ot.Label {
 	a.Mul2()
+
+	b.Mul4()
+	a.Xor(b)
+
 	a.Xor(ot.NewTweak(t))
 
 	return a
@@ -169,10 +139,6 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 		return nil, err
 	}
 
-	enc := func(a, b, c ot.Label, t uint32) ot.Label {
-		return encrypt(alg, a, b, c, t)
-	}
-
 	// Wire labels.
 	wires := make([]ot.Wire, c.NumWires)
 
@@ -188,7 +154,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Garble gates.
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.Garble(wires, enc, r, uint32(i))
+		data, err := gate.Garble(wires, alg, r, uint32(i))
 		if err != nil {
 			return nil, err
 		}
@@ -202,8 +168,8 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
-func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
-	[]ot.Label, error) {
+func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
+	id uint32) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
@@ -253,7 +219,7 @@ func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
 	}
 	wires[g.Output.ID()] = c
 
-	var table [4]TableEntry
+	var table [4]ot.Label
 	var count int
 
 	switch g.Op {
@@ -267,10 +233,10 @@ func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
-		table[1] = entry(enc, a.L0, b.L1, c.L0, id)
-		table[2] = entry(enc, a.L1, b.L0, c.L0, id)
-		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case OR:
@@ -280,10 +246,10 @@ func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		table[0] = entry(enc, a.L0, b.L0, c.L0, id)
-		table[1] = entry(enc, a.L0, b.L1, c.L1, id)
-		table[2] = entry(enc, a.L1, b.L0, c.L1, id)
-		table[3] = entry(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
 		count = 4
 
 	case INV:
@@ -291,20 +257,13 @@ func (g *Gate) Garble(wires []ot.Wire, enc Enc, r ot.Label, id uint32) (
 		// -----
 		// 0   1
 		// 1   0
-		table[0] = entryUnary(enc, a.L0, c.L1, id)
-		table[1] = entryUnary(enc, a.L1, c.L0, id)
+		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id)
+		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id)
 		count = 2
 
 	default:
 		return nil, fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	sort.Sort(ByIndex(table[:count]))
-
-	result := make([]ot.Label, count)
-	for idx, entry := range table[:count] {
-		result[idx] = entry.Data
-	}
-
-	return result, nil
+	return table[:count], nil
 }

@@ -62,7 +62,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 				ro = NewWire()
 			}
 
-			err := NewMux(compiler, []*Wire{cIn}, rOut[x:x+1], rIn[x:x+1],
+			err := NewMUX(compiler, []*Wire{cIn}, rOut[x:x+1], rIn[x:x+1],
 				[]*Wire{ro})
 			if err != nil {
 				return err

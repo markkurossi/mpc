@@ -38,7 +38,7 @@ func (t *Timing) Sample(label string, cols []string) *Sample {
 	return sample
 }
 
-func (t *Timing) Print() {
+func (t *Timing) Print(xfer string) {
 	if len(t.Samples) == 0 {
 		return
 	}
@@ -67,7 +67,12 @@ func (t *Timing) Print() {
 			row := tab.Row()
 			row.ColumnAttrs(AlignLeft, sub.Label, FmtItalic)
 
-			d := sub.End.Sub(sub.Start)
+			var d time.Duration
+			if sub.Abs > 0 {
+				d = sub.Abs
+			} else {
+				d = sub.End.Sub(sub.Start)
+			}
 			row.ColumnAttrs(AlignRight, d.String(), FmtItalic)
 			row.ColumnAttrs(AlignRight,
 				fmt.Sprintf("%.2f%%", float64(d)/float64(duration)*100),
@@ -79,6 +84,8 @@ func (t *Timing) Print() {
 	row.ColumnAttrs(AlignRight,
 		t.Samples[len(t.Samples)-1].End.Sub(t.Start).String(),
 		FmtBold)
+	row.ColumnAttrs(AlignRight, "", FmtBold)
+	row.ColumnAttrs(AlignRight, xfer, FmtBold)
 
 	tab.Print(os.Stdout)
 }
@@ -87,6 +94,7 @@ type Sample struct {
 	Label   string
 	Start   time.Time
 	End     time.Time
+	Abs     time.Duration
 	Cols    []string
 	Samples []*Sample
 }
@@ -100,5 +108,12 @@ func (s *Sample) SubSample(label string, end time.Time) {
 		Label: label,
 		Start: start,
 		End:   end,
+	})
+}
+
+func (s *Sample) AbsSubSample(label string, duration time.Duration) {
+	s.Samples = append(s.Samples, &Sample{
+		Label: label,
+		Abs:   duration,
 	})
 }

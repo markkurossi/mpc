@@ -37,6 +37,10 @@ func NewGenerator(params *utils.Params) *Generator {
 	}
 }
 
+func (gen *Generator) Constants() map[string]ConstantInst {
+	return gen.constants
+}
+
 func (gen *Generator) UndefVar() Variable {
 	v, ok := gen.versions[anon]
 	if !ok {

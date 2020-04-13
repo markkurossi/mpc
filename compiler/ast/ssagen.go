@@ -73,9 +73,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	caller := ctx.Caller()
-	if caller != nil {
-		ctx.Return().AddInstr(ssa.NewJumpInstr(caller))
-	} else {
+	if caller == nil {
 		ctx.Return().AddInstr(ssa.NewRetInstr(vars))
 	}
 
@@ -293,15 +291,10 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			"non-bool %s (type %s) used as if condition", ast.Expr, e[0].Type)
 	}
 
-	branchBlock := gen.NextBlock(block)
-	branchBlock.BranchCond = e[0]
-	block.AddInstr(ssa.NewJumpInstr(branchBlock))
-
-	block = branchBlock
+	block.BranchCond = e[0]
 
 	// Branch.
 	tBlock := gen.BranchBlock(block)
-	block.AddInstr(ssa.NewIfInstr(e[0], tBlock))
 
 	// True branch.
 	tNext, _, err := ast.True.SSA(tBlock, ctx, gen)
@@ -319,13 +312,11 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			tNext.Bindings = tNext.Bindings.Merge(e[0], block.Bindings)
 			block.SetNext(tNext)
 		}
-		block.AddInstr(ssa.NewJumpInstr(tNext))
 
 		return tNext, nil, nil
 	}
 
 	fBlock := gen.NextBlock(block)
-	block.AddInstr(ssa.NewJumpInstr(fBlock))
 
 	fNext, _, err := ast.False.SSA(fBlock, ctx, gen)
 	if err != nil {
@@ -349,10 +340,8 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	next := gen.Block()
 	tNext.SetNext(next)
-	tNext.AddInstr(ssa.NewJumpInstr(next))
 
 	fNext.SetNext(next)
-	fNext.AddInstr(ssa.NewJumpInstr(next))
 
 	next.Bindings = tNext.Bindings.Merge(e[0], fNext.Bindings)
 
@@ -524,7 +513,6 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	block.SetNext(ctx.Start())
-	block.AddInstr(ssa.NewJumpInstr(ctx.Start()))
 
 	ctx.Return().SetNext(rblock)
 	block = rblock
@@ -629,7 +617,6 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.Bindings.Set(v, nil)
 	}
 
-	block.AddInstr(ssa.NewJumpInstr(ctx.Return()))
 	block.SetNext(ctx.Return())
 	block.Dead = true
 

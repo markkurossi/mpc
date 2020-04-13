@@ -21,6 +21,8 @@ import (
 const (
 	OP_OT = iota
 	OP_RESULT
+	OP_CIRCUIT
+	OP_RETURN
 )
 
 type FileSize uint64
@@ -85,10 +87,8 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 	// Select our inputs.
 	var n1 []ot.Label
-	var w int
 	for i := 0; i < circ.Inputs[0].Size; i++ {
-		wire := garbled.Wires[w]
-		w++
+		wire := garbled.Wires[i]
 
 		var n ot.Label
 
@@ -143,7 +143,6 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 	// Process messages.
 
-	var xfer *ot.SenderXfer
 	lastOT := time.Now()
 	done := false
 	result := big.NewInt(0)
@@ -167,10 +166,10 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 			wire := garbled.Wires[bit]
 
-			m0Data := wire.L0.Data()
-			m1Data := wire.L1.Data()
+			m0Data := wire.L0.Bytes()
+			m1Data := wire.L1.Bytes()
 
-			xfer, err = sender.NewTransfer(m0Data[:], m1Data[:])
+			xfer, err := sender.NewTransfer(m0Data, m1Data)
 			if err != nil {
 				return nil, err
 			}
@@ -234,7 +233,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	timing.Sample("Eval", []string{FileSize(ioStats.Sum()).String()}).
 		SubSample("OT", lastOT)
 	if verbose {
-		timing.Print()
+		timing.Print(FileSize(conn.Stats.Sum()).String())
 	}
 
 	return circ.Outputs.Split(result), nil

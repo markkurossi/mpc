@@ -58,6 +58,7 @@ func init() {
 
 func main() {
 	evaluator := flag.Bool("e", false, "evaluator / garbler mode")
+	stream := flag.Bool("stream", false, "streaming mode")
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
 	circFormat := flag.String("format", "mpclc",
 		"circuit format: mpclc, bristol")
@@ -75,11 +76,6 @@ func main() {
 
 	var circ *circuit.Circuit
 	var err error
-
-	if len(flag.Args()) == 0 {
-		fmt.Printf("No input files\n")
-		os.Exit(1)
-	}
 
 	if len(*cpuprofile) > 0 {
 		f, err := os.Create(*cpuprofile)
@@ -103,6 +99,24 @@ func main() {
 	}
 	if *ssa && !*compile {
 		params.NoCircCompile = true
+	}
+
+	if *stream {
+		if *evaluator {
+			err = streamEvaluatorMode(params, inputFlag, len(*cpuprofile) > 0)
+		} else {
+			err = streamGarblerMode(params, inputFlag, flag.Args())
+		}
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if len(flag.Args()) == 0 {
+		fmt.Printf("No input files\n")
+		os.Exit(1)
 	}
 
 	for _, arg := range flag.Args() {
@@ -145,7 +159,6 @@ func main() {
 					}
 				}
 			}
-
 			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
@@ -161,7 +174,7 @@ func main() {
 		fmt.Printf("Circuit: %v\n", circ)
 	}
 
-	if *ssa || *compile {
+	if *ssa || *compile || *stream {
 		return
 	}
 
@@ -203,7 +216,7 @@ func main() {
 	}
 
 	if len(circ.Inputs) != 2 {
-		fmt.Printf("Invalid circuit for 2-party computation: %d parties\n",
+		fmt.Printf("invalid circuit for 2-party computation: %d parties\n",
 			len(circ.Inputs))
 		return
 	}
@@ -220,7 +233,7 @@ func main() {
 	fmt.Printf(" %sIn1: %s\n", i1t, circ.Inputs[0])
 	fmt.Printf(" %sIn2: %s\n", i2t, circ.Inputs[1])
 	fmt.Printf(" - Out: %s\n", circ.Outputs)
-	fmt.Printf(" - In: %s\n", inputFlag)
+	fmt.Printf(" -  In: %s\n", inputFlag)
 
 	if *evaluator {
 		input, err = circ.Inputs[1].Parse(inputFlag)

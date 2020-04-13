@@ -2,7 +2,7 @@
 
 package main
 
-type Size = uint42
+type Size = uint32
 
 type Applicant struct {
 	male   bool

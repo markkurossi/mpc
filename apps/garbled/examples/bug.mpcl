@@ -6,21 +6,24 @@ import (
 	"crypto/rsa"
 )
 
-type Size = uint32
+type Size = uint4
 
-type Garbler struct {
-	msg       Size
-	privShare Size
-	pubN      Size
-	pubE      Size
+func main(a, b Size) (uint, uint) {
+	sum := count(a, b)
+	sum2 := count(b, a)
+
+	return sum, sum2
 }
 
-func main(g Garbler, privShare Size) (uint, uint) {
+func count(a, b uint) uint {
+	sumType := make(uint, size(b))
 
-	priv := g.privShare + privShare
+	var sum sumType
 
-	cipher := rsa.Encrypt(g.msg, g.pubE, g.pubN)
-	plain := rsa.Decrypt(cipher, priv, g.pubN)
-
-	return cipher, plain
+	for i := 0; i < size(a); i++ {
+		if a>>i&1 == 1 {
+			sum += b
+		}
+	}
+	return sum
 }

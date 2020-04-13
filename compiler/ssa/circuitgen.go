@@ -8,69 +8,74 @@ package ssa
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func (gen *Generator) DefineConstants(cc *circuits.Compiler) error {
-	var consts []Variable
-	for _, c := range gen.constants {
-		consts = append(consts, c.Const)
-	}
-	sort.Slice(consts, func(i, j int) bool {
-		return strings.Compare(consts[i].Name, consts[j].Name) == -1
-	})
+func (prog *Program) CompileCircuit(params *utils.Params) (
+	*circuit.Circuit, error) {
 
-	if len(consts) > 0 && gen.Params.Verbose {
-		fmt.Printf("Defining constants:\n")
+	cc, err := circuits.NewCompiler(params, prog.Inputs, prog.Outputs,
+		prog.InputWires, prog.OutputWires)
+	if err != nil {
+		return nil, err
 	}
-	for _, c := range consts {
-		msg := fmt.Sprintf(" - %v(%d)", c, c.Type.MinBits)
 
-		var wires []*circuits.Wire
-		var bitString string
-		for bit := 0; bit < c.Type.MinBits; bit++ {
-			var w *circuits.Wire
-			if c.Bit(bit) {
-				bitString = "1" + bitString
-				w = cc.OneWire()
-			} else {
-				bitString = "0" + bitString
-				w = cc.ZeroWire()
+	err = prog.DefineConstants(cc.ZeroWire(), cc.OneWire())
+	if err != nil {
+		return nil, err
+	}
+
+	if params.Verbose {
+		fmt.Printf("Creating circuit...\n")
+	}
+	err = prog.Circuit(cc)
+	if err != nil {
+		return nil, err
+	}
+
+	if params.Verbose {
+		fmt.Printf("Compiling circuit...\n")
+	}
+	if params.OptPruneGates {
+		pruned := cc.Prune()
+		if params.Verbose {
+			fmt.Printf(" - Pruned %d gates\n", pruned)
+		}
+	}
+	circ := cc.Compile()
+	if params.CircOut != nil {
+		if params.Verbose {
+			fmt.Printf("Serializing circuit...\n")
+		}
+		switch params.CircFormat {
+		case "mpclc":
+			if err := circ.Marshal(params.CircOut); err != nil {
+				return nil, err
 			}
-			wires = append(wires, w)
-		}
-		if gen.Params.Verbose {
-			fmt.Printf("%s\t%s\n", msg, bitString)
-		}
-
-		err := cc.SetWires(c.String(), wires)
-		if err != nil {
-			return err
+		case "bristol":
+			circ.MarshalBristol(params.CircOut)
+		default:
+			return nil, fmt.Errorf("unsupported circuit format: %s",
+				params.CircFormat)
 		}
 	}
-	return nil
+	if params.CircDotOut != nil {
+		circ.Dot(params.CircDotOut)
+	}
+
+	return circ, nil
 }
 
-func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
-	if b.Processed {
-		return nil
-	}
-	// Check that all from blocks have been processed.
-	for _, from := range b.From {
-		if !from.Processed {
-			return nil
-		}
-	}
-	b.Processed = true
+func (prog *Program) Circuit(cc *circuits.Compiler) error {
 
-	for _, instr := range b.Instr {
+	for _, step := range prog.Steps {
+		instr := step.Instr
 		var wires [][]*circuits.Wire
 		for _, in := range instr.In {
-			w, err := cc.Wires(in.String(), in.Type.Bits)
+			w, err := prog.Wires(in.String(), in.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -78,7 +83,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 		}
 		switch instr.Op {
 		case Iadd, Uadd:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -88,7 +93,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Isub, Usub:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -98,18 +103,18 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Imult, Umult:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewMultiplier(cc, gen.Params.CircMultArrayTreshold,
+			err = circuits.NewMultiplier(cc, cc.Params.CircMultArrayTreshold,
 				wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
 
 		case Idiv, Udiv:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -120,7 +125,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Imod, Umod:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -167,13 +172,13 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				}
 				o[bit-from] = w
 			}
-			err := cc.SetWires(instr.Out.String(), o)
+			err := prog.SetWires(instr.Out.String(), o)
 			if err != nil {
 				return err
 			}
 
 		case Ilt, Ult:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -183,7 +188,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Ile, Ule:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -193,7 +198,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Igt, Ugt:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -203,7 +208,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Ige, Uge:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -213,7 +218,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Eq:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -223,7 +228,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Neq:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -243,7 +248,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			default:
 				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			err = circuits.NewBitSetTest(cc, wires[0], index, o)
 			if err != nil {
 				return err
@@ -260,14 +265,14 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			default:
 				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			err = circuits.NewBitClrTest(cc, wires[0], index, o)
 			if err != nil {
 				return err
 			}
 
 		case And:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -277,7 +282,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Or:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -287,7 +292,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Band:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -297,7 +302,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Bclr:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -307,7 +312,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Bor:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -317,7 +322,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Bxor:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -325,9 +330,6 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-
-		case If, Jump:
-			// Branch operations are no-ops in circuits.
 
 		case Mov:
 			o := make([]*circuits.Wire, instr.Out.Type.Bits)
@@ -341,17 +343,17 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				}
 				o[bit] = w
 			}
-			err := cc.SetWires(instr.Out.String(), o)
+			err := prog.SetWires(instr.Out.String(), o)
 			if err != nil {
 				return err
 			}
 
 		case Phi:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewMux(cc, wires[0], wires[1], wires[2], o)
+			err = circuits.NewMUX(cc, wires[0], wires[1], wires[2], o)
 			if err != nil {
 				return err
 			}
@@ -362,10 +364,10 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				for _, w := range wg {
 					o := circuits.NewWire()
 					cc.ID(w, o)
-					cc.Outputs = append(cc.Outputs, o)
+					cc.OutputWires = append(cc.OutputWires, o)
 				}
 			}
-			for _, o := range cc.Outputs {
+			for _, o := range cc.OutputWires {
 				o.Output = true
 			}
 
@@ -386,7 +388,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			var circOut []*circuits.Wire
 
 			for _, r := range instr.Ret {
-				o, err := cc.Wires(r.String(), r.Type.Bits)
+				o, err := prog.Wires(r.String(), r.Type.Bits)
 				if err != nil {
 					return err
 				}
@@ -433,7 +435,7 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 			}
 
 		case Builtin:
-			o, err := cc.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -442,21 +444,10 @@ func (b *Block) Circuit(gen *Generator, cc *circuits.Compiler) error {
 				return err
 			}
 
+		case GC:
+
 		default:
 			return fmt.Errorf("Block.Circuit: %s not implemented yet", instr.Op)
-		}
-	}
-
-	if b.Branch != nil {
-		err := b.Branch.Circuit(gen, cc)
-		if err != nil {
-			return err
-		}
-	}
-	if b.Next != nil {
-		err := b.Next.Circuit(gen, cc)
-		if err != nil {
-			return err
 		}
 	}
 

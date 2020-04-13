@@ -12,16 +12,25 @@ import (
 )
 
 func (c *Circuit) Compute(inputs []*big.Int) ([]*big.Int, error) {
-	if len(inputs) != len(c.Inputs) {
+	// Flatten circuit arguments.
+	var args IO
+	for _, io := range c.Inputs {
+		if len(io.Compound) > 0 {
+			args = append(args, io.Compound...)
+		} else {
+			args = append(args, io)
+		}
+	}
+	if len(inputs) != len(args) {
 		return nil, fmt.Errorf("invalid inputs: got %d, expected %d",
-			len(inputs), len(c.Inputs))
+			len(inputs), len(args))
 	}
 
 	// Flatten inputs and arguments.
 	wires := make([]byte, c.NumWires)
 
 	var w int
-	for idx, io := range c.Inputs {
+	for idx, io := range args {
 		for bit := 0; bit < io.Size; bit++ {
 			wires[w] = byte(inputs[idx].Bit(bit))
 			w++

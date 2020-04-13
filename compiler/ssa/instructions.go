@@ -59,13 +59,12 @@ const (
 	Neq
 	And
 	Or
-	If
-	Jump
 	Mov
 	Phi
 	Ret
 	Circ
 	Builtin
+	GC
 )
 
 var operands = map[Operand]string{
@@ -109,13 +108,12 @@ var operands = map[Operand]string{
 	Neq:     "neq",
 	And:     "and",
 	Or:      "or",
-	If:      "if",
-	Jump:    "jump",
 	Mov:     "mov",
 	Phi:     "phi",
 	Ret:     "ret",
 	Circ:    "circ",
 	Builtin: "builtin",
+	GC:      "gc",
 }
 
 var maxOperandLength int
@@ -143,6 +141,7 @@ type Instr struct {
 	Label   *Block
 	Circ    *circuit.Circuit
 	Builtin circuits.Builtin
+	GC      string
 	Ret     []Variable
 }
 
@@ -406,26 +405,11 @@ func NewBxorInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
-func NewIfInstr(c Variable, t *Block) Instr {
-	return Instr{
-		Op:    If,
-		In:    []Variable{c},
-		Label: t,
-	}
-}
-
 func NewMovInstr(from, to Variable) Instr {
 	return Instr{
 		Op:  Mov,
 		In:  []Variable{from},
 		Out: &to,
-	}
-}
-
-func NewJumpInstr(label *Block) Instr {
-	return Instr{
-		Op:    Jump,
-		Label: label,
 	}
 }
 
@@ -463,23 +447,46 @@ func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
 	}
 }
 
+func NewGCInstr(v string) Instr {
+	return Instr{
+		Op: GC,
+		GC: v,
+	}
+}
+
 func (i Instr) String() string {
+	return i.string(maxOperandLength, false)
+}
+
+func (i Instr) StringTyped() string {
+	return i.string(0, true)
+}
+
+func (i Instr) string(maxLen int, typesOnly bool) string {
 	result := i.Op.String()
 
-	if len(i.In) == 0 && i.Out == nil && i.Label == nil {
+	if len(i.In) == 0 && i.Out == nil && i.Label == nil && len(i.GC) == 0 {
 		return result
 	}
 
-	for len(result) < maxOperandLength+1 {
+	for len(result) < maxLen {
 		result += " "
 	}
 	for _, i := range i.In {
 		result += " "
-		result += i.String()
+		if typesOnly {
+			result += i.Type.String()
+		} else {
+			result += i.String()
+		}
 	}
 	if i.Out != nil {
 		result += " "
-		result += i.Out.String()
+		if typesOnly {
+			result += i.Out.Type.String()
+		} else {
+			result += i.Out.String()
+		}
 	}
 	if i.Label != nil {
 		result += " "
@@ -487,6 +494,10 @@ func (i Instr) String() string {
 	}
 	if i.Circ != nil {
 		result += fmt.Sprintf(" {G=%d, W=%d}", i.Circ.NumGates, i.Circ.NumWires)
+	}
+	if len(i.GC) > 0 {
+		result += " "
+		result += i.GC
 	}
 	for _, r := range i.Ret {
 		result += " "

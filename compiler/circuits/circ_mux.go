@@ -12,7 +12,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
-func NewMux(compiler *Compiler, cond, t, f, out []*Wire) error {
+func NewMUX(compiler *Compiler, cond, t, f, out []*Wire) error {
 	if len(cond) != 1 || len(t) != len(f) || len(t) != len(out) {
 		return fmt.Errorf("invalid mux arguments: cond=%d, l=%d, r=%d, out=%d",
 			len(cond), len(t), len(f), len(out))
