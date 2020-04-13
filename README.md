@@ -422,7 +422,7 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 
 ## RSA signature computation
 
-| Input | MODP |     Gates | Non-XOR  | Stream gates | Stream non-XOR |
+| Input | MODP |     Gates | Non-XOR  | Stream Gates | Stream Non-XOR |
 |------:|-----:|----------:|---------:|-------------:|---------------:|
 |     2 |    4 |       708 |      201 |          730 |            205 |
 |     4 |    8 |      5596 |     1571 |         5640 |           1579 |
