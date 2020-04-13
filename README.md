@@ -173,25 +173,23 @@ func main(a, b int4) int4 {
 The compiler creates the following SSA form assembly:
 
 ```
+# Input0: a{1,0}i4:int4
+# Input1: b{1,0}i4:int4
+# Output0: %_{0,1}i4:int4
 # main#0:
-l0:
-        igt    a{1,0}i4 b{1,0}i4 %_{0,0}b1
-        jump   l2
-l2:
-        if     %_{0,0}b1 l3
-        jump   l4
-l4:
-        mov    b{1,0}i4 %ret0{1,2}i4
-        jump   l1
+	igt     a{1,0}i4 b{1,0}i4 %_{0,0}b1
+	mov     a{1,0}i4 %ret0{1,1}i4
+	mov     b{1,0}i4 %ret0{1,2}i4
 # main.ret#0:
-l1:
-        phi    %_{0,0}b1 %ret0{1,1}i4 %ret0{1,2}i4 %_{0,1}i4
-        ret    %_{0,1}i4
-l3:
-        mov    a{1,0}i4 %ret0{1,1}i4
-        jump   l1
+	phi     %_{0,0}b1 %ret0{1,1}i4 %ret0{1,2}i4 %_{0,1}i4
+	gc      %_{0,0}b1
+	gc      %ret0{1,1}i4
+	gc      %ret0{1,2}i4
+	gc      a{1,0}i4
+	gc      b{1,0}i4
+	ret     %_{0,1}i4
 ```
-<img align="center" width="524" height="394" src="ifelse.png">
+<img align="center" width="476" height="284" src="ifelse.png">
 
 The SSA assembly (and logical circuit) form a Directed Acyclic Graph
 (DAG) without any mutable storage locations. This means that all
@@ -221,7 +219,7 @@ The 3rd compiler phase converts SSA form assembly into logic gate
 circuit. The following circuit was generated from the previous SSA
 form assembly:
 
-<img align="center" width="500" height="660" src="max.png">
+<img align="center" width="454" height="1047" src="max.png">
 
 # TODO
 
