@@ -26,7 +26,7 @@ type Program struct {
 	OutputWires    []*circuits.Wire
 	Constants      map[string]ConstantInst
 	Steps          []Step
-	wires          map[string][]*circuits.Wire
+	wires          map[string]*wireAlloc
 	freeWires      map[int][][]*circuits.Wire
 	nextWireID     uint32
 	zeroWire       *circuits.Wire
@@ -34,6 +34,11 @@ type Program struct {
 	numGates       uint64
 	numNonXOR      uint64
 	garbleDuration time.Duration
+}
+
+type wireAlloc struct {
+	Base  uint32
+	Wires []*circuits.Wire
 }
 
 func NewProgram(params *utils.Params, in, out circuit.IO,
@@ -45,7 +50,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		wires:     make(map[string][]*circuits.Wire),
+		wires:     make(map[string]*wireAlloc),
 		freeWires: make(map[int][][]*circuits.Wire),
 	}
 
@@ -74,12 +79,12 @@ func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for variable %v", v)
 	}
-	wires, ok := prog.wires[v]
+	alloc, ok := prog.wires[v]
 	if !ok {
-		wires = prog.allocWires(bits, false)
-		prog.wires[v] = wires
+		alloc = prog.allocWires(bits, false)
+		prog.wires[v] = alloc
 	}
-	return wires, nil
+	return alloc.Wires, nil
 }
 
 func (prog *Program) AssignedWires(v string, bits int) (
@@ -87,52 +92,60 @@ func (prog *Program) AssignedWires(v string, bits int) (
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for variable %v", v)
 	}
-	wires, ok := prog.wires[v]
+	alloc, ok := prog.wires[v]
 	if !ok {
-		wires = prog.allocWires(bits, true)
-		prog.wires[v] = wires
+		alloc = prog.allocWires(bits, true)
+		prog.wires[v] = alloc
 	}
-	return wires, nil
+	return alloc.Wires, nil
 }
 
-func (prog *Program) allocWires(bits int, assign bool) (
-	result []*circuits.Wire) {
+func (prog *Program) allocWires(bits int, assign bool) *wireAlloc {
+
+	result := &wireAlloc{
+		Base: circuits.UnassignedID,
+	}
 
 	fl, ok := prog.freeWires[bits]
 	if ok && len(fl) > 0 {
-		result = fl[0]
+		result.Wires = fl[0]
+		result.Base = result.Wires[0].ID
 		prog.freeWires[bits] = fl[1:]
-		return
+	} else {
+		result.Wires = circuits.MakeWires(bits)
 	}
 
-	result = circuits.MakeWires(bits)
-
-	if assign {
+	if assign && result.Base == circuits.UnassignedID {
 		// Assign wire IDs.
+		result.Base = prog.nextWireID
 		for i := 0; i < bits; i++ {
-			result[i].ID = prog.nextWireID + uint32(i)
+			result.Wires[i].ID = prog.nextWireID + uint32(i)
 		}
 		prog.nextWireID += uint32(bits)
 	}
 
-	return
+	return result
 }
 
-func (prog *Program) recycleWires(wires []*circuits.Wire) {
-	// Clear wires but keep their IDs.
-	for _, w := range wires {
-		w.Output = false
-		w.NumOutputs = 0
-		w.Input = nil
-		w.Outputs = nil
+func (prog *Program) recycleWires(alloc *wireAlloc) {
+	if alloc.Base == circuits.UnassignedID {
+		alloc.Base = alloc.Wires[0].ID
+	}
+	// Clear wires and reassign their IDs.
+	bits := len(alloc.Wires)
+	for i := 0; i < bits; i++ {
+		alloc.Wires[i].ID = alloc.Base + uint32(i)
+		alloc.Wires[i].Output = false
+		alloc.Wires[i].NumOutputs = 0
+		alloc.Wires[i].Input = nil
+		alloc.Wires[i].Outputs = nil
 	}
 
-	bits := len(wires)
 	fl := prog.freeWires[bits]
-	fl = append(fl, wires)
+	fl = append(fl, alloc.Wires)
 	prog.freeWires[bits] = fl
 	if false {
-		fmt.Printf("FL: %d: ", len(wires))
+		fmt.Printf("FL: %d: ", bits)
 		for k, v := range prog.freeWires {
 			fmt.Printf(" %d:%d", k, len(v))
 		}
@@ -145,7 +158,10 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 	if ok {
 		return fmt.Errorf("wires already set for %v", v)
 	}
-	prog.wires[v] = w
+	prog.wires[v] = &wireAlloc{
+		Base:  w[0].ID,
+		Wires: w,
+	}
 	return nil
 }
 
@@ -160,6 +176,18 @@ func (prog *Program) liveness() {
 			}
 			live[in.String()] = true
 		}
+		switch step.Instr.Op {
+		case Slice, Mov:
+			// Now `out' is an alias for `in[0]' and we must make `in]
+			// live in all steps where `out' is live.
+			for j := i + 1; j < len(prog.Steps); j++ {
+				s := &prog.Steps[j]
+				if s.Live.Contains(step.Instr.Out.String()) {
+					s.Live.Add(step.Instr.In[0].String())
+				}
+			}
+		}
+
 		if step.Instr.Out != nil {
 			delete(live, step.Instr.Out.String())
 		}
@@ -251,5 +279,8 @@ func (prog *Program) PP(out io.Writer) {
 			fmt.Fprintf(out, "# %s:\n", step.Label)
 		}
 		step.Instr.PP(out)
+		for live, _ := range step.Live {
+			fmt.Fprintf(out, "#\t\t- %s\n", live)
+		}
 	}
 }

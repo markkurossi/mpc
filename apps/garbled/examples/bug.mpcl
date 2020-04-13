@@ -3,18 +3,14 @@
 package main
 
 import (
-	"crypto/rsa"
 	"math"
 )
 
-func main(b, e uint2) (uint, uint) {
-	var msg uint32 = 0x6d7472
-	var pubE uint32 = 0x10001
-	var pubN uint32 = 0xd60b2b09
-	var priv uint32 = 0x321af139
+type Arg struct {
+	a uint32
+	b uint32
+}
 
-	cipher := rsa.Encrypt(msg, pubE, pubN)
-	plain := rsa.Decrypt(cipher, priv, pubN)
-
-	return cipher, plain
+func main(a, b Arg) uint {
+	return math.Exp(a.a, a.b, b.a)
 }

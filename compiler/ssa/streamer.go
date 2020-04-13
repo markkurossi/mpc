@@ -307,11 +307,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			conn.Flush()
 
 		case GC:
-			if false {
-				wires, ok := prog.wires[instr.GC]
+			if true {
+				alloc, ok := prog.wires[instr.GC]
 				if ok {
 					delete(prog.wires, instr.GC)
-					prog.recycleWires(wires)
+					prog.recycleWires(alloc)
 				} else {
 					fmt.Printf("GC: %s not known\n", instr.GC)
 				}

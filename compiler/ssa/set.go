@@ -16,6 +16,11 @@ func NewSet() Set {
 	return make(map[string]bool)
 }
 
+func (set Set) Contains(val string) bool {
+	_, ok := set[val]
+	return ok
+}
+
 func (set Set) Add(val string) {
 	set[val] = true
 }
