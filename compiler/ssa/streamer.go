@@ -490,7 +490,7 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.zeroWire == nil {
-		wires, err := prog.AssignedWires("$0", 1)
+		wires, err := prog.AssignedWires("{zero}", 1)
 		if err != nil {
 			return nil, err
 		}
@@ -532,7 +532,7 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.oneWire == nil {
-		wires, err := prog.AssignedWires("$1", 1)
+		wires, err := prog.AssignedWires("{one}", 1)
 		if err != nil {
 			return nil, err
 		}

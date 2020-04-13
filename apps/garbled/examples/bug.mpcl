@@ -3,14 +3,27 @@
 package main
 
 import (
-	"math"
+	"crypto/rsa"
 )
 
-type Arg struct {
-	a uint32
-	b uint32
+type Size = uint4
+
+func main(a, b Size) (uint, uint) {
+	sum := count(a, b)
+	sum2 := count(b, a)
+
+	return sum, sum2
 }
 
-func main(a, b Arg) uint {
-	return math.Exp(a.a, a.b, b.a)
+func count(a, b uint) uint {
+	sumType := make(uint, size(b))
+
+	var sum sumType
+
+	for i := 0; i < size(a); i++ {
+		if a>>i&1 == 1 {
+			sum += b
+		}
+	}
+	return sum
 }

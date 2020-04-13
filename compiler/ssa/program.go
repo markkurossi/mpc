@@ -158,10 +158,17 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 	if ok {
 		return fmt.Errorf("wires already set for %v", v)
 	}
-	prog.wires[v] = &wireAlloc{
-		Base:  w[0].ID,
+	alloc := &wireAlloc{
 		Wires: w,
 	}
+	if len(w) == 0 {
+		alloc.Base = circuits.UnassignedID
+	} else {
+		alloc.Base = w[0].ID
+	}
+
+	prog.wires[v] = alloc
+
 	return nil
 }
 
@@ -178,12 +185,14 @@ func (prog *Program) liveness() {
 		}
 		switch step.Instr.Op {
 		case Slice, Mov:
-			// Now `out' is an alias for `in[0]' and we must make `in]
-			// live in all steps where `out' is live.
-			for j := i + 1; j < len(prog.Steps); j++ {
-				s := &prog.Steps[j]
-				if s.Live.Contains(step.Instr.Out.String()) {
-					s.Live.Add(step.Instr.In[0].String())
+			if !step.Instr.In[0].Const {
+				// Now `out' is an alias for `in[0]' and we must make
+				// `in] live in all steps where `out' is live.
+				for j := i + 1; j < len(prog.Steps); j++ {
+					s := &prog.Steps[j]
+					if s.Live.Contains(step.Instr.Out.String()) {
+						s.Live.Add(step.Instr.In[0].String())
+					}
 				}
 			}
 		}
@@ -279,8 +288,10 @@ func (prog *Program) PP(out io.Writer) {
 			fmt.Fprintf(out, "# %s:\n", step.Label)
 		}
 		step.Instr.PP(out)
-		for live, _ := range step.Live {
-			fmt.Fprintf(out, "#\t\t- %s\n", live)
+		if false {
+			for live, _ := range step.Live {
+				fmt.Fprintf(out, "#\t\t- %s\n", live)
+			}
 		}
 	}
 }
