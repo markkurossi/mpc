@@ -210,6 +210,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 		}
 
+		if params.Verbose && circuit.StreamDebug {
+			fmt.Printf("%05d: %s\n", idx, instr.String())
+		}
+
 		switch instr.Op {
 
 		case Slice:
@@ -253,7 +257,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 					if err != nil {
 						return nil, err
 					}
-					out[bit] = w
+					out[bit].ID = w.ID
 				}
 			}
 
@@ -275,12 +279,14 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			conn.Flush()
 
 		case GC:
-			wires, ok := prog.wires[instr.GC]
-			if ok {
-				delete(prog.wires, instr.GC)
-				prog.recycleWires(wires)
-			} else {
-				fmt.Printf("GC: %s not known\n", instr.GC)
+			if false {
+				wires, ok := prog.wires[instr.GC]
+				if ok {
+					delete(prog.wires, instr.GC)
+					prog.recycleWires(wires)
+				} else {
+					fmt.Printf("GC: %s not known\n", instr.GC)
+				}
 			}
 
 		default:
@@ -288,6 +294,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			if !ok {
 				return nil, fmt.Errorf("Program.Stream: %s not implemented yet",
 					instr.Op)
+			}
+			if params.Verbose && circuit.StreamDebug {
+				fmt.Printf(" - %s\n", instr.StringTyped())
 			}
 			circ, ok := cache[instr.StringTyped()]
 			if !ok {
@@ -309,21 +318,20 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				if err != nil {
 					return nil, err
 				}
-				if params.Verbose {
-					fmt.Printf("%05d: %s\n", idx, instr.StringTyped())
-				}
-				err = f(cc, instr, cIn, cOut)
+				cacheable, err := f(cc, instr, cIn, cOut)
 				if err != nil {
 					return nil, err
 				}
 				pruned := cc.Prune()
-				if params.Verbose {
+				if params.Verbose && circuit.StreamDebug {
 					fmt.Printf("%05d: - pruned %d gates\n",
 						idx, pruned)
 				}
 				circ = cc.Compile()
-				cache[instr.StringTyped()] = circ
-				if params.Verbose {
+				if cacheable {
+					cache[instr.StringTyped()] = circ
+				}
+				if params.Verbose && circuit.StreamDebug {
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
 			}
@@ -549,32 +557,32 @@ func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {
 }
 
 type NewCircuit func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-	out []*circuits.Wire) error
+	out []*circuits.Wire) (cacheable bool, err error)
 
 type NewBinary func(cc *circuits.Compiler, a, b []*circuits.Wire,
 	out []*circuits.Wire) error
 
 func newBinary(bin NewBinary) NewCircuit {
 	return func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-		out []*circuits.Wire) error {
-		return bin(cc, in[0], in[1], out)
+		out []*circuits.Wire) (bool, error) {
+		return true, bin(cc, in[0], in[1], out)
 	}
 }
 
 func newMultiplier(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-	out []*circuits.Wire) error {
-	return circuits.NewMultiplier(cc, cc.Params.CircMultArrayTreshold,
+	out []*circuits.Wire) (bool, error) {
+	return true, circuits.NewMultiplier(cc, cc.Params.CircMultArrayTreshold,
 		in[0], in[1], out)
 }
 
 func newDivider(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-	out []*circuits.Wire) error {
-	return circuits.NewDivider(cc, in[0], in[1], out, nil)
+	out []*circuits.Wire) (bool, error) {
+	return true, circuits.NewDivider(cc, in[0], in[1], out, nil)
 }
 
 func newModulo(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-	out []*circuits.Wire) error {
-	return circuits.NewDivider(cc, in[0], in[1], nil, out)
+	out []*circuits.Wire) (bool, error) {
+	return true, circuits.NewDivider(cc, in[0], in[1], nil, out)
 }
 
 var circuitGenerators = map[Operand]NewCircuit{
@@ -606,39 +614,43 @@ var circuitGenerators = map[Operand]NewCircuit{
 	Bxor:  newBinary(circuits.NewBinaryXOR),
 
 	Builtin: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-		out []*circuits.Wire) error {
-		return instr.Builtin(cc, in[0], in[1], out)
+		out []*circuits.Wire) (bool, error) {
+		return true, instr.Builtin(cc, in[0], in[1], out)
 	},
 	Phi: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-		out []*circuits.Wire) error {
-		return circuits.NewMUX(cc, in[0], in[1], in[2], out)
+		out []*circuits.Wire) (bool, error) {
+		return true, circuits.NewMUX(cc, in[0], in[1], in[2], out)
 	},
 	Bts: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-		out []*circuits.Wire) error {
+		out []*circuits.Wire) (bool, error) {
 		if !instr.In[1].Const {
-			return fmt.Errorf("%s only constant index supported", instr.Op)
+			return false,
+				fmt.Errorf("%s only constant index supported", instr.Op)
 		}
 		var index int
 		switch val := instr.In[1].ConstValue.(type) {
 		case int32:
 			index = int(val)
 		default:
-			return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			return false,
+				fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 		}
-		return circuits.NewBitSetTest(cc, in[0], index, out)
+		return false, circuits.NewBitSetTest(cc, in[0], index, out)
 	},
 	Btc: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
-		out []*circuits.Wire) error {
+		out []*circuits.Wire) (bool, error) {
 		if !instr.In[1].Const {
-			return fmt.Errorf("%s only constant index supported", instr.Op)
+			return false,
+				fmt.Errorf("%s only constant index supported", instr.Op)
 		}
 		var index int
 		switch val := instr.In[1].ConstValue.(type) {
 		case int32:
 			index = int(val)
 		default:
-			return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+			return false,
+				fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 		}
-		return circuits.NewBitClrTest(cc, in[0], index, out)
+		return false, circuits.NewBitClrTest(cc, in[0], index, out)
 	},
 }

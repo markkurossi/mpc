@@ -131,7 +131,7 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 
 func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	if StreamDebug {
-		fmt.Printf("Streaming.Garble: in=%v, out=%v\n", in, out)
+		fmt.Printf(" - Streaming.Garble: in=%v, out=%v\n", in, out)
 	}
 
 	stream.initCircuit(c, in, out)
@@ -285,7 +285,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 			return err
 		}
 		if StreamDebug {
-			fmt.Printf("Gate%d:\t%s %s %s %s\n", id,
+			fmt.Printf(" - Gate%d:\t%s %s %s %s\n", id,
 				ws(aIndex, aTmp), ws(bIndex, bTmp),
 				g.Op, ws(cIndex, cTmp))
 		}
