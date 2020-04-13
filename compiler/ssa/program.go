@@ -11,6 +11,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -18,20 +19,21 @@ import (
 )
 
 type Program struct {
-	Params      *utils.Params
-	Inputs      circuit.IO
-	Outputs     circuit.IO
-	InputWires  []*circuits.Wire
-	OutputWires []*circuits.Wire
-	Constants   map[string]ConstantInst
-	Steps       []Step
-	wires       map[string][]*circuits.Wire
-	freeWires   map[int][][]*circuits.Wire
-	nextWireID  uint32
-	zeroWire    *circuits.Wire
-	oneWire     *circuits.Wire
-	numGates    uint64
-	numNonXOR   uint64
+	Params         *utils.Params
+	Inputs         circuit.IO
+	Outputs        circuit.IO
+	InputWires     []*circuits.Wire
+	OutputWires    []*circuits.Wire
+	Constants      map[string]ConstantInst
+	Steps          []Step
+	wires          map[string][]*circuits.Wire
+	freeWires      map[int][][]*circuits.Wire
+	nextWireID     uint32
+	zeroWire       *circuits.Wire
+	oneWire        *circuits.Wire
+	numGates       uint64
+	numNonXOR      uint64
+	garbleDuration time.Duration
 }
 
 func NewProgram(params *utils.Params, in, out circuit.IO,

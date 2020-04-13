@@ -22,6 +22,8 @@ import (
 func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	inputs *big.Int) ([]*big.Int, error) {
 
+	timing := circuit.NewTiming()
+
 	var key [32]byte
 	_, err := rand.Read(key[:])
 	if err != nil {
@@ -95,6 +97,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 	}
 
+	ioStats := conn.Stats
+	timing.Sample("Init", []string{circuit.FileSize(ioStats.Sum()).String()})
+
 	// Init oblivious transfer.
 	sender, err := ot.NewSender(2048)
 	if err != nil {
@@ -111,6 +116,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		return nil, err
 	}
 	conn.Flush()
+
+	xfer := conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("OT Init", []string{circuit.FileSize(xfer.Sum()).String()})
 
 	// Peer OTs its inputs.
 	for i := 0; i < prog.Inputs[1].Size; i++ {
@@ -155,6 +164,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 		conn.Flush()
 	}
+
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Peer Inputs",
+		[]string{circuit.FileSize(xfer.Sum()).String()})
 
 	zero, err := prog.ZeroWire(conn, streaming)
 	if err != nil {
@@ -405,6 +419,14 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	}
 	conn.Flush()
 
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Eval", []string{circuit.FileSize(xfer.Sum()).String()})
+
+	if params.Verbose {
+		timing.Print(circuit.FileSize(conn.Stats.Sum()).String())
+	}
+
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
 		prog.nextWireID, len(cache))
 	fmt.Printf("#gates=%d, #non-XOR=%d\n", prog.numGates, prog.numNonXOR)
@@ -455,6 +477,7 @@ func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
 		fmt.Printf("%05d: - garbled %10.0f gates/s (%s)\n",
 			step, float64(circ.NumGates)/elapsed, dt)
 	}
+	prog.garbleDuration += dt
 	prog.numGates += uint64(circ.NumGates)
 	prog.numNonXOR += uint64(circ.Stats[circuit.AND])
 	prog.numNonXOR += uint64(circ.Stats[circuit.OR])

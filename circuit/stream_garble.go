@@ -269,19 +269,26 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	if cTmp {
 		op |= 0b00100000
 	}
+	var sendWire func(w int) error
+	if aIndex <= 0xffff && bIndex <= 0xffff && cIndex <= 0xffff {
+		op |= 0b00010000
+		sendWire = stream.conn.SendUint16
+	} else {
+		sendWire = stream.conn.SendUint32
+	}
 
 	if err := stream.conn.SendByte(op); err != nil {
 		return err
 	}
 	switch count {
 	case 0, 4:
-		if err := stream.conn.SendUint32(int(aIndex)); err != nil {
+		if err := sendWire(int(aIndex)); err != nil {
 			return err
 		}
-		if err := stream.conn.SendUint32(int(bIndex)); err != nil {
+		if err := sendWire(int(bIndex)); err != nil {
 			return err
 		}
-		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
+		if err := sendWire(int(cIndex)); err != nil {
 			return err
 		}
 		if StreamDebug {
@@ -291,10 +298,10 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		}
 
 	case 2:
-		if err := stream.conn.SendUint32(int(aIndex)); err != nil {
+		if err := sendWire(int(aIndex)); err != nil {
 			return err
 		}
-		if err := stream.conn.SendUint32(int(cIndex)); err != nil {
+		if err := sendWire(int(cIndex)); err != nil {
 			return err
 		}
 		if StreamDebug {

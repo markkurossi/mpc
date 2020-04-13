@@ -233,7 +233,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	timing.Sample("Eval", []string{FileSize(ioStats.Sum()).String()}).
 		SubSample("OT", lastOT)
 	if verbose {
-		timing.Print()
+		timing.Print(FileSize(conn.Stats.Sum()).String())
 	}
 
 	return circ.Outputs.Split(result), nil

@@ -243,7 +243,14 @@ loop:
 				if gop&0b00100000 != 0 {
 					cTmp = true
 				}
-				gop &^= 0b11100000
+				var recvWire func() (int, error)
+				if gop&0b00010000 != 0 {
+					recvWire = conn.ReceiveUint16
+				} else {
+					recvWire = conn.ReceiveUint32
+				}
+
+				gop &^= 0b11110000
 
 				var aIndex, bIndex, cIndex int
 				var count int
@@ -254,26 +261,26 @@ loop:
 					fallthrough
 
 				case XOR, XNOR:
-					aIndex, err = conn.ReceiveUint32()
+					aIndex, err = recvWire()
 					if err != nil {
 						return nil, err
 					}
-					bIndex, err = conn.ReceiveUint32()
+					bIndex, err = recvWire()
 					if err != nil {
 						return nil, err
 					}
-					cIndex, err = conn.ReceiveUint32()
+					cIndex, err = recvWire()
 					if err != nil {
 						return nil, err
 					}
 
 				case INV:
 					count = 2
-					aIndex, err = conn.ReceiveUint32()
+					aIndex, err = recvWire()
 					if err != nil {
 						return nil, err
 					}
-					cIndex, err = conn.ReceiveUint32()
+					cIndex, err = recvWire()
 					if err != nil {
 						return nil, err
 					}
@@ -386,7 +393,7 @@ loop:
 	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
 
 	if verbose {
-		timing.Print()
+		timing.Print(FileSize(conn.Stats.Sum()).String())
 	}
 
 	return outputs.Split(rawResult), nil

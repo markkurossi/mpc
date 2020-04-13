@@ -76,6 +76,15 @@ func (c *Conn) SendByte(val byte) error {
 	return nil
 }
 
+func (c *Conn) SendUint16(val int) error {
+	err := binary.Write(c.io, binary.BigEndian, uint16(val))
+	if err != nil {
+		return err
+	}
+	c.Stats.Sent += 2
+	return nil
+}
+
 func (c *Conn) SendUint32(val int) error {
 	err := binary.Write(c.io, binary.BigEndian, uint32(val))
 	if err != nil {
@@ -118,6 +127,18 @@ func (c *Conn) ReceiveByte() (byte, error) {
 	}
 	c.Stats.Recvd += 1
 	return val, nil
+}
+
+func (c *Conn) ReceiveUint16() (int, error) {
+	var buf [2]byte
+
+	_, err := io.ReadFull(c.io, buf[:])
+	if err != nil {
+		return 0, err
+	}
+	c.Stats.Recvd += 2
+
+	return int(binary.BigEndian.Uint16(buf[:])), nil
 }
 
 func (c *Conn) ReceiveUint32() (int, error) {
