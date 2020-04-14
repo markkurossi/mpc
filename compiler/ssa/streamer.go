@@ -306,6 +306,45 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 			conn.Flush()
 
+		case Circ:
+			// Collect input and output IDs
+			var iIDs, oIDs []circuit.Wire
+			for i := 0; i < len(wires); i++ {
+				for j := 0; j < instr.Circ.Inputs[i].Size; j++ {
+					if j < len(wires[i]) {
+						iIDs = append(iIDs, circuit.Wire(wires[i][j].ID))
+					} else {
+						iIDs = append(iIDs, circuit.Wire(prog.zeroWire.ID))
+					}
+				}
+			}
+			// Return wires.
+			for i, ret := range instr.Ret {
+				wires, err := prog.AssignedWires(ret.String(), ret.Type.Bits)
+				if err != nil {
+					return nil, err
+				}
+				for j := 0; j < instr.Circ.Outputs[i].Size; j++ {
+					if j < len(wires) {
+						oIDs = append(oIDs, circuit.Wire(wires[j].ID))
+					} else {
+						oIDs = append(oIDs, circuit.Wire(prog.zeroWire.ID))
+					}
+				}
+			}
+			if len(oIDs) != instr.Circ.Outputs.Size() {
+				return nil, fmt.Errorf("%s: output mismatch: %d vs. %d",
+					instr.Op, len(oIDs), instr.Circ.Outputs.Size())
+			}
+			if true {
+				fmt.Printf("%05d: - circuit: %s\n", idx, instr.Circ)
+			}
+
+			err = prog.garble(conn, streaming, idx, instr.Circ, iIDs, oIDs)
+			if err != nil {
+				return nil, err
+			}
+
 		case GC:
 			if true {
 				alloc, ok := prog.wires[instr.GC]
