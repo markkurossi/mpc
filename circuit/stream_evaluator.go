@@ -189,6 +189,7 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	var rawResult *big.Int
 
 	start := time.Now()
+	lastReport := start
 loop:
 	for {
 		op, err := conn.ReceiveUint32()
@@ -213,19 +214,24 @@ loop:
 			if err != nil {
 				return nil, err
 			}
-			if step-lastStep >= 100 && verbose {
+			if step-lastStep >= 10 && verbose {
 				lastStep = step
-				elapsed := time.Now().Sub(start)
-				done := float64(step) / float64(numSteps)
-				if done > 0 {
-					total := time.Duration(float64(elapsed) / done)
-					fmt.Printf("%d/%d\t%s remaining, ready at %s\n",
-						step, numSteps,
-						total-elapsed, start.Add(total).Format(time.Stamp))
-				} else {
-					fmt.Printf("%d/%d\n", step, numSteps)
+				now := time.Now()
+				if now.Sub(lastReport) > time.Second*5 {
+					lastReport = now
+					elapsed := time.Now().Sub(start)
+					done := float64(step) / float64(numSteps)
+					if done > 0 {
+						total := time.Duration(float64(elapsed) / done)
+						progress := fmt.Sprintf("%d/%d", step, numSteps)
+						remaining := fmt.Sprintf("%24s", total-elapsed)
+						fmt.Printf("%-14s\t%s remaining\tETA %s\n",
+							progress, remaining,
+							start.Add(total).Format(time.Stamp))
+					} else {
+						fmt.Printf("%d/%d\n", step, numSteps)
+					}
 				}
-
 			}
 			streaming.InitCircuit(numWires, numTmpWires)
 			for i := 0; i < numGates; i++ {

@@ -190,18 +190,25 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	var returnIDs []uint32
 
 	start := time.Now()
+	lastReport := start
 
 	for idx, step := range prog.Steps {
-		if idx%100 == 0 {
-			elapsed := time.Now().Sub(start)
-			done := float64(idx) / float64(len(prog.Steps))
-			if done > 0 {
-				total := time.Duration(float64(elapsed) / done)
-				fmt.Printf("%d/%d\t%s remaining, ready at %s\n",
-					idx, len(prog.Steps),
-					total-elapsed, start.Add(total).Format(time.Stamp))
-			} else {
-				fmt.Printf("%d/%d\n", idx, len(prog.Steps))
+		if idx%10 == 0 && params.Verbose {
+			now := time.Now()
+			if now.Sub(lastReport) > time.Second*5 {
+				lastReport = now
+				elapsed := now.Sub(start)
+				done := float64(idx) / float64(len(prog.Steps))
+				if done > 0 {
+					total := time.Duration(float64(elapsed) / done)
+					progress := fmt.Sprintf("%d/%d", idx, len(prog.Steps))
+					remaining := fmt.Sprintf("%24s", total-elapsed)
+					fmt.Printf("%-14s\t%s remaining\tETA %s\n",
+						progress, remaining,
+						start.Add(total).Format(time.Stamp))
+				} else {
+					fmt.Printf("%d/%d\n", idx, len(prog.Steps))
+				}
 			}
 		}
 		instr := step.Instr
@@ -346,14 +353,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 
 		case GC:
-			if true {
-				alloc, ok := prog.wires[instr.GC]
-				if ok {
-					delete(prog.wires, instr.GC)
-					prog.recycleWires(alloc)
-				} else {
-					fmt.Printf("GC: %s not known\n", instr.GC)
-				}
+			alloc, ok := prog.wires[instr.GC]
+			if ok {
+				delete(prog.wires, instr.GC)
+				prog.recycleWires(alloc)
+			} else {
+				fmt.Printf("GC: %s not known\n", instr.GC)
 			}
 
 		default:
