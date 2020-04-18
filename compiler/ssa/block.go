@@ -9,6 +9,9 @@ package ssa
 import (
 	"fmt"
 	"io"
+	"strings"
+
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 type Block struct {
@@ -94,7 +97,14 @@ func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 		return vTrue, true
 	}
 
-	v = gen.AnonVar(vTrue.Type)
+	var rType types.Info
+	if vTrue.Type.Bits > vFalse.Type.Bits {
+		rType = vTrue.Type
+	} else {
+		rType = vFalse.Type
+	}
+
+	v = gen.AnonVar(rType)
 	retBlock.AddInstr(NewPhiInstr(b.BranchCond, vTrue, vFalse, v))
 
 	return v, true
@@ -162,7 +172,8 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 		}
 	}
 
-	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b.ID, label)
+	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b.ID,
+		strings.ReplaceAll(label, `"`, `\"`))
 
 	if b.Next != nil {
 		b.Next.DotNodes(out, seen)

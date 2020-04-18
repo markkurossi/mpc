@@ -20,42 +20,42 @@ import (
 )
 
 func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
-	inputs *big.Int) ([]*big.Int, error) {
+	inputs *big.Int) (circuit.IO, []*big.Int, error) {
 
 	timing := circuit.NewTiming()
 
 	var key [32]byte
 	_, err := rand.Read(key[:])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if params.Verbose {
 		fmt.Printf(" - Sending program info...\n")
 	}
 	if err := conn.SendData(key[:]); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Our input.
 	if err := sendArgument(conn, prog.Inputs[0]); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Peer input.
 	if err := sendArgument(conn, prog.Inputs[1]); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Program outputs.
 	if err := conn.SendUint32(len(prog.Outputs)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for _, o := range prog.Outputs {
 		if err := sendArgument(conn, o); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	// Number of program steps.
 	if err := conn.SendUint32(len(prog.Steps)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Collect input wire IDs.
@@ -70,7 +70,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	streaming, err := circuit.NewStreaming(key[:], ids, conn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Select our inputs.
@@ -93,7 +93,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			fmt.Printf("N1[%d]:\t%s\n", idx, i)
 		}
 		if err := conn.SendLabel(i); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -103,17 +103,17 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	// Init oblivious transfer.
 	sender, err := ot.NewSender(2048)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Send our public key.
 	pub := sender.PublicKey()
 	data := pub.N.Bytes()
 	if err := conn.SendData(data); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := conn.SendUint32(pub.E); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	conn.Flush()
 
@@ -125,7 +125,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	for i := 0; i < prog.Inputs[1].Size; i++ {
 		bit, err := conn.ReceiveUint32()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		wire := streaming.GetInput(circuit.Wire(bit))
 
@@ -134,33 +134,33 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		xfer, err := sender.NewTransfer(m0Data, m1Data)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		x0, x1 := xfer.RandomMessages()
 		if err := conn.SendData(x0); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := conn.SendData(x1); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		conn.Flush()
 
 		v, err := conn.ReceiveData()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		xfer.ReceiveV(v)
 
 		m0p, m1p, err := xfer.Messages()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := conn.SendData(m0p); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := conn.SendData(m1p); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		conn.Flush()
 	}
@@ -172,16 +172,16 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	zero, err := prog.ZeroWire(conn, streaming)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	one, err := prog.OneWire(conn, streaming)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = prog.DefineConstants(zero, one)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Stream circuit.
@@ -216,7 +216,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		for _, in := range instr.In {
 			w, err := prog.AssignedWires(in.String(), in.Type.Bits)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			wires = append(wires, w)
 		}
@@ -227,7 +227,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			out, err = prog.AssignedWires(instr.Out.String(),
 				instr.Out.Type.Bits)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 
@@ -239,7 +239,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		case Slice:
 			if !instr.In[1].Const {
-				return nil,
+				return nil, nil,
 					fmt.Errorf("%s only constant index supported", instr.Op)
 			}
 			var from int
@@ -247,12 +247,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			case int32:
 				from = int(val)
 			default:
-				return nil,
+				return nil, nil,
 					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
 
 			if !instr.In[2].Const {
-				return nil,
+				return nil, nil,
 					fmt.Errorf("%s only constant index supported", instr.Op)
 			}
 			var to int
@@ -260,11 +260,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			case int32:
 				to = int(val)
 			default:
-				return nil,
+				return nil, nil,
 					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
 			if from >= to {
-				return nil, fmt.Errorf("%s bounds out of range [%d:%d]",
+				return nil, nil, fmt.Errorf("%s bounds out of range [%d:%d]",
 					instr.Op, from, to)
 			}
 			for bit := from; bit < to; bit++ {
@@ -274,7 +274,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				} else {
 					w, err := prog.ZeroWire(conn, streaming)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					id = w.ID
 				}
@@ -289,7 +289,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				} else {
 					w, err := prog.ZeroWire(conn, streaming)
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					id = w.ID
 				}
@@ -298,12 +298,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		case Ret:
 			if err := conn.SendUint32(circuit.OP_RETURN); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			for _, arg := range wires {
 				for _, w := range arg {
 					if err := conn.SendUint32(int(w.ID)); err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					returnIDs = append(returnIDs, w.ID)
 				}
@@ -329,7 +329,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			for i, ret := range instr.Ret {
 				wires, err := prog.AssignedWires(ret.String(), ret.Type.Bits)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				for j := 0; j < instr.Circ.Outputs[i].Size; j++ {
 					if j < len(wires) {
@@ -340,7 +340,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				}
 			}
 			if len(oIDs) != instr.Circ.Outputs.Size() {
-				return nil, fmt.Errorf("%s: output mismatch: %d vs. %d",
+				return nil, nil, fmt.Errorf("%s: output mismatch: %d vs. %d",
 					instr.Op, len(oIDs), instr.Circ.Outputs.Size())
 			}
 			if true {
@@ -349,7 +349,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 			err = prog.garble(conn, streaming, idx, instr.Circ, iIDs, oIDs)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 		case GC:
@@ -364,8 +364,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		default:
 			f, ok := circuitGenerators[instr.Op]
 			if !ok {
-				return nil, fmt.Errorf("Program.Stream: %s not implemented yet",
-					instr.Op)
+				return nil, nil,
+					fmt.Errorf("Program.Stream: %s not implemented yet",
+						instr.Op)
 			}
 			if params.Verbose && circuit.StreamDebug {
 				fmt.Printf(" - %s\n", instr.StringTyped())
@@ -388,11 +389,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 				cc, err := circuits.NewCompiler(params, nil, nil, flat, cOut)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				cacheable, err := f(cc, instr, cIn, cOut)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				pruned := cc.Prune()
 				if params.Verbose && circuit.StreamDebug {
@@ -425,17 +426,17 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 			err = prog.garble(conn, streaming, idx, circ, iIDs, oIDs)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 
 	op, err := conn.ReceiveUint32()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if op != circuit.OP_RESULT {
-		return nil, fmt.Errorf("unexpected operation: %d", op)
+		return nil, nil, fmt.Errorf("unexpected operation: %d", op)
 	}
 
 	result := new(big.Int)
@@ -443,7 +444,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	for i := 0; i < prog.Outputs.Size(); i++ {
 		label, err := conn.ReceiveLabel()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		wire := streaming.GetInput(circuit.Wire(returnIDs[i]))
 		var bit uint
@@ -452,14 +453,14 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		} else if label.Equal(wire.L1) {
 			bit = 1
 		} else {
-			return nil, fmt.Errorf("unknown label %s for result %d",
+			return nil, nil, fmt.Errorf("unknown label %s for result %d",
 				label, i)
 		}
 		result.SetBit(result, i, bit)
 	}
 	data = result.Bytes()
 	if err := conn.SendData(data); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	conn.Flush()
 
@@ -475,7 +476,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		prog.nextWireID, len(cache))
 	fmt.Printf("#gates=%d, #non-XOR=%d\n", prog.numGates, prog.numNonXOR)
 
-	return prog.Outputs.Split(result), nil
+	return prog.Outputs, prog.Outputs.Split(result), nil
 }
 
 func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,

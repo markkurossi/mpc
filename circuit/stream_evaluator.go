@@ -65,7 +65,7 @@ func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
 }
 
 func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
-	[]*big.Int, error) {
+	IO, []*big.Int, error) {
 
 	timing := NewTiming()
 
@@ -75,43 +75,43 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	}
 	key, err := conn.ReceiveData()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	alg, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Peer input.
 	in1, err := receiveArgument(conn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Our input.
 	in2, err := receiveArgument(conn)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	inputs, err := in2.Parse(inputFlag)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// Program outputs.
 	numOutputs, err := conn.ReceiveUint32()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var outputs IO
 	for i := 0; i < numOutputs; i++ {
 		out, err := receiveArgument(conn)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		outputs = append(outputs, out)
 	}
 
 	numSteps, err := conn.ReceiveUint32()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fmt.Printf(" - In1: %s\n", in1)
@@ -121,14 +121,14 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 
 	streaming, err := NewStreamEval(key, in1.Size+in2.Size, outputs.Size())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Receive peer inputs.
 	for w := 0; w < in1.Size; w++ {
 		label, err := conn.ReceiveLabel()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		streaming.Set(false, w, label)
 	}
@@ -136,11 +136,11 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	// Init oblivious transfer.
 	pubN, err := conn.ReceiveData()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pubE, err := conn.ReceiveUint32()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pub := &rsa.PublicKey{
 		N: big.NewInt(0).SetBytes(pubN),
@@ -148,7 +148,7 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	}
 	receiver, err := ot.NewReceiver(pub)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ioStats := conn.Stats
@@ -161,7 +161,7 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	for w := 0; w < in2.Size; w++ {
 		n, err := conn.Receive(receiver, uint(in1.Size+w), inputs.Bit(w))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		var label ot.Label
 		label.SetBytes(n)
@@ -194,25 +194,25 @@ loop:
 	for {
 		op, err := conn.ReceiveUint32()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		switch op {
 		case OP_CIRCUIT:
 			step, err := conn.ReceiveUint32()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			numGates, err := conn.ReceiveUint32()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			numTmpWires, err := conn.ReceiveUint32()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			numWires, err := conn.ReceiveUint32()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if step-lastStep >= 10 && verbose {
 				lastStep = step
@@ -237,7 +237,7 @@ loop:
 			for i := 0; i < numGates; i++ {
 				gop, err := conn.ReceiveByte()
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				var aTmp, bTmp, cTmp bool
 				if gop&0b10000000 != 0 {
@@ -269,36 +269,36 @@ loop:
 				case XOR, XNOR:
 					aIndex, err = recvWire()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					bIndex, err = recvWire()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					cIndex, err = recvWire()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 				case INV:
 					count = 2
 					aIndex, err = recvWire()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 					cIndex, err = recvWire()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				default:
-					return nil, fmt.Errorf("invalid operation %s",
+					return nil, nil, fmt.Errorf("invalid operation %s",
 						Operation(gop))
 				}
 
 				for c := 0; c < count; c++ {
 					garbled[c], err = conn.ReceiveLabel()
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				}
 
@@ -332,25 +332,25 @@ loop:
 				case AND, OR:
 					index := idx(a, b)
 					if index >= count {
-						return nil,
+						return nil, nil,
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, count)
 					}
 					output, err = decrypt(alg, a, b, uint32(i), garbled[index])
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 
 				case INV:
 					index := idxUnary(a)
 					if index >= count {
-						return nil,
+						return nil, nil,
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, count)
 					}
 					output, err = decrypt(alg, a, b, uint32(i), garbled[index])
 					if err != nil {
-						return nil, err
+						return nil, nil, err
 					}
 				}
 				streaming.Set(cTmp, cIndex, output)
@@ -365,7 +365,7 @@ loop:
 			for i := 0; i < outputs.Size(); i++ {
 				id, err := conn.ReceiveUint32()
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				label := streaming.Get(false, id)
 				labels = append(labels, label)
@@ -373,24 +373,24 @@ loop:
 
 			// Resolve result values.
 			if err := conn.SendUint32(OP_RESULT); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			for _, l := range labels {
 				if err := conn.SendLabel(l); err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 			}
 			conn.Flush()
 
 			result, err := conn.ReceiveData()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			rawResult = new(big.Int).SetBytes(result)
 			break loop
 
 		default:
-			return nil, fmt.Errorf("unknown operation %d", op)
+			return nil, nil, fmt.Errorf("unknown operation %d", op)
 		}
 	}
 
@@ -402,7 +402,7 @@ loop:
 		timing.Print(FileSize(conn.Stats.Sum()).String())
 	}
 
-	return outputs.Split(rawResult), nil
+	return outputs, outputs.Split(rawResult), nil
 }
 
 func receiveArgument(conn *p2p.Conn) (arg IOArg, err error) {

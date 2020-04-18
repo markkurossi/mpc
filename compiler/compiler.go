@@ -72,38 +72,38 @@ func (c *Compiler) compile(source string, in io.Reader) (
 }
 
 func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
-	input []string) ([]*big.Int, error) {
+	input []string) (circuit.IO, []*big.Int, error) {
 
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer f.Close()
 	return c.stream(conn, file, f, input)
 }
 
 func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
-	inputFlag []string) ([]*big.Int, error) {
+	inputFlag []string) (circuit.IO, []*big.Int, error) {
 
 	logger := utils.NewLogger(os.Stdout)
 	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	program, _, err := pkg.Compile(c.packages, logger, c.params)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(program.Inputs) != 2 {
-		return nil,
+		return nil, nil,
 			fmt.Errorf("invalid program for 2-party computation: %d parties",
 				len(program.Inputs))
 	}
 	input, err := program.Inputs[0].Parse(inputFlag)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	fmt.Printf(" + In1: %s\n", program.Inputs[0])

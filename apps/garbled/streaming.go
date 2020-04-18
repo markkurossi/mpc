@@ -33,14 +33,14 @@ func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
 		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
 		conn := p2p.NewConn(nc)
-		result, err := circuit.StreamEvaluator(conn, input, verbose)
+		outputs, result, err := circuit.StreamEvaluator(conn, input, verbose)
 		conn.Close()
 
 		if err != nil && err != io.EOF {
 			return err
 		}
 
-		printResult(result)
+		printResult(result, outputs)
 		if once {
 			return nil
 		}
@@ -58,10 +58,11 @@ func streamGarblerMode(params *utils.Params, input input, args []string) error {
 	conn := p2p.NewConn(nc)
 	defer conn.Close()
 
-	result, err := compiler.NewCompiler(params).StreamFile(conn, args[0], input)
+	outputs, result, err := compiler.NewCompiler(params).StreamFile(
+		conn, args[0], input)
 	if err != nil {
 		return err
 	}
-	printResult(result)
+	printResult(result, outputs)
 	return nil
 }

@@ -91,13 +91,20 @@ func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
 			if bTrue.Bound.Equal(bFalse.Bound) {
 				result = append(result, bTrue)
 			} else {
+				var phiType types.Info
+				if bTrue.Type.Bits > bFalse.Type.Bits {
+					phiType = bTrue.Type
+				} else {
+					phiType = bFalse.Type
+				}
+
 				result = append(result, Binding{
 					Name:  name,
 					Scope: bTrue.Scope,
-					Type:  bTrue.Type,
+					Type:  phiType,
 					Bound: &Select{
 						Cond:  cond,
-						Type:  bTrue.Type,
+						Type:  phiType,
 						True:  bTrue.Bound,
 						False: bFalse.Bound,
 					},

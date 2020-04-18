@@ -19,6 +19,7 @@ import (
 	"os"
 	"runtime/pprof"
 	"strings"
+	"unicode"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
@@ -277,7 +278,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
 			return err
 		}
 
-		printResult(result)
+		printResult(result, circ.Outputs)
 		if once {
 			return nil
 		}
@@ -296,20 +297,52 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	if err != nil {
 		return err
 	}
-	printResult(result)
+	printResult(result, circ.Outputs)
 
 	return nil
 }
 
-func printResult(results []*big.Int) {
+func printResult(results []*big.Int, outputs circuit.IO) {
 	for idx, result := range results {
-		fmt.Printf("Result[%d]: %v\n", idx, result)
-		fmt.Printf("Result[%d]: 0b%s\n", idx, result.Text(2))
-		bytes := result.Bytes()
-		if len(bytes) == 0 {
-			bytes = []byte{0}
+		if outputs == nil {
+			fmt.Printf("Result[%d]: %v\n", idx, result)
+			fmt.Printf("Result[%d]: 0b%s\n", idx, result.Text(2))
+			bytes := result.Bytes()
+			if len(bytes) == 0 {
+				bytes = []byte{0}
+			}
+			fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
+		} else {
+			output := outputs[idx]
+			if strings.HasPrefix(output.Type, "string") {
+				mask := big.NewInt(0xff)
+				var str string
+
+				for i := 0; i < output.Size/8; i++ {
+					tmp := new(big.Int).Rsh(result, uint(i*8))
+					r := rune(tmp.And(tmp, mask).Uint64())
+					if unicode.IsPrint(r) {
+						str += string(r)
+					}
+				}
+				fmt.Printf("Result[%d]: %s\n", idx, str)
+			} else if strings.HasPrefix(output.Type, "uint") {
+				bytes := result.Bytes()
+				if len(bytes) == 0 {
+					bytes = []byte{0}
+				}
+				if output.Size <= 64 {
+					fmt.Printf("Result[%d]: 0x%x\t%v\n", idx, bytes, result)
+				} else {
+					fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
+				}
+			} else if strings.HasPrefix(output.Type, "bool") {
+				fmt.Printf("Result[%d]: %v\n", idx, result.Uint64() != 0)
+			} else {
+				fmt.Printf("Result[%d]: %v (%s)\n", idx, result,
+					outputs[idx].Type)
+			}
 		}
-		fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
 	}
 }
 

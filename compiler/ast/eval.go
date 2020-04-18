@@ -352,7 +352,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	}
 	if !ok {
 		return nil, false, ctx.logger.Errorf(ast.Loc,
-			"undefined variable '%s' (%s)", ast.Name.String(), b)
+			"undefined variable '%s'", ast.Name.String())
 	}
 
 	val, ok := b.Bound.(*ssa.Variable)

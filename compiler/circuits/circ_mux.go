@@ -13,6 +13,7 @@ import (
 )
 
 func NewMUX(compiler *Compiler, cond, t, f, out []*Wire) error {
+	t, f = compiler.ZeroPad(t, f)
 	if len(cond) != 1 || len(t) != len(f) || len(t) != len(out) {
 		return fmt.Errorf("invalid mux arguments: cond=%d, l=%d, r=%d, out=%d",
 			len(cond), len(t), len(f), len(out))

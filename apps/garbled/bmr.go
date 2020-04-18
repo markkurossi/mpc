@@ -43,7 +43,7 @@ func bmrMode(circ *circuit.Circuit, input *big.Int, player int) error {
 		return err
 	}
 
-	printResult(result)
+	printResult(result, circ.Outputs)
 	return nil
 }
 
