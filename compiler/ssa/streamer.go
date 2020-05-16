@@ -543,21 +543,21 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			NumGates: 1,
 			NumWires: 2,
 			Inputs: []circuit.IOArg{
-				circuit.IOArg{
+				{
 					Name: "i0",
 					Type: "uint1",
 					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
-				circuit.IOArg{
+				{
 					Name: "o0",
 					Type: "uint1",
 					Size: 1,
 				},
 			},
 			Gates: []circuit.Gate{
-				circuit.Gate{
+				{
 					Input0: 0,
 					Input1: 0,
 					Output: 1,
@@ -585,21 +585,21 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			NumGates: 1,
 			NumWires: 2,
 			Inputs: []circuit.IOArg{
-				circuit.IOArg{
+				{
 					Name: "i0",
 					Type: "uint1",
 					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
-				circuit.IOArg{
+				{
 					Name: "o0",
 					Type: "uint1",
 					Size: 1,
 				},
 			},
 			Gates: []circuit.Gate{
-				circuit.Gate{
+				{
 					Input0: 0,
 					Input1: 0,
 					Output: 1,
