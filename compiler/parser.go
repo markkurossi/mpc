@@ -291,6 +291,9 @@ func (p *Parser) parseTypeDecl() error {
 		var fields []ast.StructField
 		for {
 			t, err := p.lexer.Get()
+			if err != nil {
+				return err
+			}
 			if t.Type == T_RBrace {
 				break
 			}
@@ -443,6 +446,9 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 				Type: typeInfo,
 			})
 			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
 			if n.Type == T_RParen {
 				break
 			}
@@ -532,6 +538,9 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}
 
 		t, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
 		var expr ast.AST
 		if t.Type == T_Assign {
 			// Initializer.
@@ -1002,6 +1011,9 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				arguments = append(arguments, expr)
 
 				n, err := p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
 				if n.Type == T_RParen {
 					break
 				} else if n.Type != T_Comma {
