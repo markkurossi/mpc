@@ -119,7 +119,7 @@ func matchVar(env map[string]Variable, pattern string, v Variable) bool {
 }
 
 var rules = []*Rule{
-	&Rule{
+	{
 		Name: "Constant-shift-test => bts",
 		Source: `rshift V1 C1 V2
                  band   V2 $1 V3
@@ -127,7 +127,7 @@ var rules = []*Rule{
               =>
                  bts    V1 C1 V4`,
 	},
-	&Rule{
+	{
 		Name: "Constant-shift-test => btc",
 		Source: `rshift V1 C1 V2
                  band   V2 $1 V3
@@ -135,7 +135,7 @@ var rules = []*Rule{
               =>
                  btc    V1 C1 V4`,
 	},
-	&Rule{
+	{
 		Name: "Constant-shift-test => bts",
 		Source: `rshift V1 C1 V2
                  band   V2 $1 V3
@@ -143,7 +143,7 @@ var rules = []*Rule{
               =>
                  bts    V1 C1 V4`,
 	},
-	&Rule{
+	{
 		Name: "Constant-shift-test => btc",
 		Source: `rshift V1 C1 V2
                  band   V2 $1 V3
