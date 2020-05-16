@@ -249,6 +249,9 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
 			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
 			err = circuits.NewBitSetTest(cc, wires[0], index, o)
 			if err != nil {
 				return err
@@ -266,6 +269,9 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
 			}
 			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
 			err = circuits.NewBitClrTest(cc, wires[0], index, o)
 			if err != nil {
 				return err

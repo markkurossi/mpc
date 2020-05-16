@@ -83,7 +83,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			"can't make specified type %s", typeInfo)
 	}
 
-	constVal, ok, err := args[1].Eval(env, ctx, gen)
+	constVal, _, err := args[1].Eval(env, ctx, gen)
 	if err != nil {
 		return nil, false, ctx.logger.Errorf(args[1].Location(), "%s", err)
 	}
@@ -230,7 +230,8 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		var ok bool
 
 		if len(arg.Name.Package) > 0 {
-			pkg, ok := ctx.Packages[arg.Name.Package]
+			var pkg *Package
+			pkg, ok = ctx.Packages[arg.Name.Package]
 			if !ok {
 				return nil, false, ctx.logger.Errorf(loc,
 					"package '%s' not found", arg.Name.Package)
