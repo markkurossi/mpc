@@ -164,7 +164,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	X2LongBg := make([][]ot.Label, numPlayers)
 	X2LongCg := make([][]ot.Label, numPlayers)
 
-	for peerID, _ := range nw.Peers {
+	for peerID := range nw.Peers {
 		X1LongAg[peerID] = make([]ot.Label, len(circ.Gates))
 		X1LongBg[peerID] = make([]ot.Label, len(circ.Gates))
 		X1LongCg[peerID] = make([]ot.Label, len(circ.Gates))

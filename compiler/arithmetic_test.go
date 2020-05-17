@@ -27,7 +27,7 @@ type Test struct {
 }
 
 var tests = []Test{
-	Test{
+	{
 		Name:    "Add",
 		Heavy:   true,
 		Operand: "+",
@@ -45,7 +45,7 @@ func main(a, b int3) int3 {
 `,
 	},
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
-	Test{
+	{
 		Name:    "Multiply 1-bit",
 		Heavy:   false,
 		Operand: "*",
@@ -62,7 +62,7 @@ func main(a, b int1) int1 {
 }
 `,
 	},
-	Test{
+	{
 		Name:    "Multiply 2-bits",
 		Heavy:   true,
 		Operand: "*",
@@ -79,7 +79,7 @@ func main(a, b int4) int4 {
 }
 `,
 	},
-	Test{
+	{
 		Name:    "Multiply n-bits",
 		Heavy:   true,
 		Operand: "*",

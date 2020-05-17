@@ -24,7 +24,7 @@ type IteratorTest struct {
 }
 
 var iteratorTests = []IteratorTest{
-	IteratorTest{
+	{
 		Name:    "Add",
 		Operand: "+",
 		Bits:    2,
@@ -38,7 +38,7 @@ func main(a, b uint3) uint3 {
 }
 `,
 	},
-	IteratorTest{
+	{
 		Name:    "Sub",
 		Operand: "-",
 		Bits:    2,
@@ -53,7 +53,7 @@ func main(a, b uint64) uint {
 `,
 	},
 	// 1-bit, 2-bit, and n-bit multipliers have a bit different wiring.
-	IteratorTest{
+	{
 		Name:    "Multiply 1-bit",
 		Operand: "*",
 		Bits:    1,
@@ -67,7 +67,7 @@ func main(a, b uint1) uint1 {
 }
 `,
 	},
-	IteratorTest{
+	{
 		Name:    "Multiply 2-bits",
 		Operand: "*",
 		Bits:    2,
@@ -81,7 +81,7 @@ func main(a, b uint4) uint4 {
 }
 `,
 	},
-	IteratorTest{
+	{
 		Name:    "Multiply n-bits",
 		Operand: "*",
 		Bits:    2,
@@ -138,7 +138,7 @@ type FixedTest struct {
 }
 
 var fixedTests = []FixedTest{
-	FixedTest{
+	{
 		N1: 5,
 		N2: 3,
 		N3: 5,
@@ -152,7 +152,7 @@ func main(a, b int4) int4 {
 }
 `,
 	},
-	FixedTest{
+	{
 		N1: 5,
 		N2: 3,
 		N3: 6,
@@ -169,7 +169,7 @@ func add1(val int) int {
 }
 `,
 	},
-	FixedTest{
+	{
 		N1: 5,
 		N2: 3,
 		N3: 7,
@@ -189,7 +189,7 @@ func add2(val int) int {
 }
 `,
 	},
-	FixedTest{
+	{
 		N1: 5,
 		N2: 3,
 		N3: 8,
@@ -211,7 +211,7 @@ func MinMax(a, b int) (int, int) {
 	},
 	// For raw sha256 without padding, the digest is as follow:
 	// da5698be17b9b46962335799779fbeca8ce5d491c0d26243bafef9ea1837a9d8
-	FixedTest{
+	{
 		N1: 0,
 		N2: 0,
 		N3: -4972262154746484264,
@@ -227,7 +227,7 @@ func main(a, b uint512) uint256 {
 	},
 	// For raw sha512 without padding, the digest is as follow:
 	// 0xcf7881d5774acbe8533362e0fbc780700267639d87460eda3086cb40e85931b0717dc95288a023a396bab2c14ce0b5e06fc4fe04eae33e0b91f4d80cbd668bee
-	FixedTest{
+	{
 		N1: 0,
 		N2: 0,
 		N3: -7929475494663779346,

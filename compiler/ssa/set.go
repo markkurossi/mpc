@@ -38,14 +38,14 @@ func (set Set) Copy() Set {
 }
 
 func (set Set) Subtract(o Set) {
-	for k, _ := range o {
+	for k := range o {
 		set.Remove(k)
 	}
 }
 
 func (set Set) Array() []string {
 	var result []string
-	for k, _ := range set {
+	for k := range set {
 		result = append(result, k)
 	}
 	sort.Strings(result)

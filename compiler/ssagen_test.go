@@ -22,7 +22,7 @@ type SSAGenTest struct {
 }
 
 var ssagenTests = []SSAGenTest{
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "constant",
 		Code: `
@@ -32,7 +32,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "add",
 		Code: `
@@ -42,7 +42,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "add3",
 		Code: `
@@ -52,7 +52,7 @@ func main(a, b, e int32) (int32) {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: false,
 		Name:    "ret2",
 		Code: `
@@ -62,7 +62,7 @@ func main(a, b int32) (int32, int32) {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: false,
 		Name:    "if",
 		Code: `
@@ -75,7 +75,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: false,
 		Name:    "ifelse",
 		Code: `
@@ -89,7 +89,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: false,
 		Name:    "if-else-assign",
 		Code: `
@@ -109,7 +109,7 @@ func main(a, b int32) (int32, int32) {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: false,
 		Name:    "max3",
 		Code: `
@@ -133,7 +133,7 @@ func main(a, b, c int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Millionaire",
 		Code: `
@@ -147,7 +147,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Mult",
 		Code: `
@@ -157,7 +157,7 @@ func main(a, b int32) int32 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Bool",
 		Code: `
@@ -170,7 +170,7 @@ func main(a, b int32) bool {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Call",
 		Code: `
@@ -186,7 +186,7 @@ func max(a, b int) int {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Multiple-value-call",
 		Code: `
@@ -205,7 +205,7 @@ func MinMax(a, b int) (int, int) {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Constants",
 		Code: `
@@ -219,7 +219,7 @@ func main(a, b int32) uint256 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Constants block",
 		Code: `
@@ -235,7 +235,7 @@ func main(a, b int32) uint256 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Packages",
 		Code: `
@@ -250,7 +250,7 @@ func main(a, b uint64) uint64 {
 }
 `,
 	},
-	SSAGenTest{
+	{
 		Enabled: true,
 		Name:    "Packages",
 		Code: `

@@ -201,7 +201,7 @@ func (prog *Program) liveness() {
 			delete(live, step.Instr.Out.String())
 		}
 		step.Live = NewSet()
-		for k, _ := range live {
+		for k := range live {
 			step.Live.Add(k)
 		}
 	}
@@ -289,7 +289,7 @@ func (prog *Program) PP(out io.Writer) {
 		}
 		step.Instr.PP(out)
 		if false {
-			for live, _ := range step.Live {
+			for live := range step.Live {
 				fmt.Fprintf(out, "#\t\t- %s\n", live)
 			}
 		}

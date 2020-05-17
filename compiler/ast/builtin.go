@@ -39,17 +39,17 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 // Predeclared identifiers.
 var builtins = []Builtin{
-	Builtin{
+	{
 		Name: "make",
 		Type: BuiltinFunc,
 		Eval: makeEval,
 	},
-	Builtin{
+	{
 		Name: "native",
 		Type: BuiltinFunc,
 		SSA:  nativeSSA,
 	},
-	Builtin{
+	{
 		Name: "size",
 		Type: BuiltinFunc,
 		SSA:  sizeSSA,

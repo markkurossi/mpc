@@ -78,7 +78,7 @@ func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
 	}
 
 	var result Bindings
-	for name, _ := range names {
+	for name := range names {
 		bTrue, ok1 := tBindings.Get(name)
 		bFalse, ok2 := fBindings.Get(name)
 		if !ok1 && !ok2 {
