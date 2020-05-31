@@ -16,8 +16,11 @@ import (
 	"io"
 )
 
+// EncryptionBlockType specifies the encryption block type and how the
+// padding is detected.
 type EncryptionBlockType byte
 
+// Block types.
 const (
 	BT0 EncryptionBlockType = iota
 	BT1
@@ -25,15 +28,22 @@ const (
 )
 
 const (
+	// MinPadLen specifies the minimum padding length.
 	MinPadLen = 8
 )
 
 var (
+	// ErrorInvalidEncryptionBlock error is returned in the encryption
+	// block is malformed.
 	ErrorInvalidEncryptionBlock = errors.New("Invalid encryption block")
 )
 
-// A block type BT, a padding string PS, and the data D shall be
-// formatted into an octet string EB, the encryption block.
+// NewEncryptionBlock creates a new encryption block with the given
+// type and data. The argument blockLen specifies the length of the
+// resulting block. The function will return an error if the blockLen
+// is too long to contain valid block formatting and MinPadLen of
+// padding. A block type BT, a padding string PS, and the data D shall
+// be formatted into an octet string EB, the encryption block.
 //
 //            EB = 00 || BT || PS || 00 || D .           (1)
 func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
@@ -75,6 +85,8 @@ func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 	return block, nil
 }
 
+// ParseEncryptionBlock parses the argument encryption block and
+// returns its data.
 func ParseEncryptionBlock(block []byte) ([]byte, error) {
 	if len(block) < 4 {
 		return nil, errors.New("Truncated encryption block")
