@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/markkurossi/tabulate"
 )
 
 type Timing struct {
@@ -43,11 +45,11 @@ func (t *Timing) Print(xfer string) {
 		return
 	}
 
-	tab := NewTabulateUnicode()
-	tab.Header(AlignLeft, "Op")
-	tab.Header(AlignRight, "Time")
-	tab.Header(AlignRight, "%")
-	tab.Header(AlignRight, "Xfer")
+	tab := tabulate.NewUnicode()
+	tab.Header("Op").SetAlign(tabulate.ML)
+	tab.Header("Time").SetAlign(tabulate.MR)
+	tab.Header("%").SetAlign(tabulate.MR)
+	tab.Header("Xfer").SetAlign(tabulate.MR)
 
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
@@ -65,7 +67,7 @@ func (t *Timing) Print(xfer string) {
 
 		for _, sub := range sample.Samples {
 			row := tab.Row()
-			row.ColumnAttrs(AlignLeft, sub.Label, FmtItalic)
+			row.Column(sub.Label).SetFormat(tabulate.FmtItalic)
 
 			var d time.Duration
 			if sub.Abs > 0 {
@@ -73,19 +75,20 @@ func (t *Timing) Print(xfer string) {
 			} else {
 				d = sub.End.Sub(sub.Start)
 			}
-			row.ColumnAttrs(AlignRight, d.String(), FmtItalic)
-			row.ColumnAttrs(AlignRight,
-				fmt.Sprintf("%.2f%%", float64(d)/float64(duration)*100),
-				FmtItalic)
+			row.Column(d.String()).SetFormat(tabulate.FmtItalic)
+
+			row.Column(
+				fmt.Sprintf("%.2f%%", float64(d)/float64(duration)*100)).
+				SetFormat(tabulate.FmtItalic)
+
 		}
 	}
 	row := tab.Row()
-	row.ColumnAttrs(AlignLeft, "Total", FmtBold)
-	row.ColumnAttrs(AlignRight,
-		t.Samples[len(t.Samples)-1].End.Sub(t.Start).String(),
-		FmtBold)
-	row.ColumnAttrs(AlignRight, "", FmtBold)
-	row.ColumnAttrs(AlignRight, xfer, FmtBold)
+	row.Column("Total").SetFormat(tabulate.FmtBold)
+	row.Column(t.Samples[len(t.Samples)-1].End.Sub(t.Start).String()).
+		SetFormat(tabulate.FmtBold)
+	row.Column("").SetFormat(tabulate.FmtBold)
+	row.Column(xfer).SetFormat(tabulate.FmtBold)
 
 	tab.Print(os.Stdout)
 }
