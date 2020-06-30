@@ -45,7 +45,7 @@ func (t *Timing) Print(xfer string) {
 		return
 	}
 
-	tab := tabulate.NewUnicode()
+	tab := tabulate.New(tabulate.Unicode)
 	tab.Header("Op").SetAlign(tabulate.ML)
 	tab.Header("Time").SetAlign(tabulate.MR)
 	tab.Header("%").SetAlign(tabulate.MR)
