@@ -22,7 +22,7 @@ const (
 	StreamDebug = false
 )
 
-// Streaming is a streaming garbler.
+// Streaming is a streaming garbled circuit garbler.
 type Streaming struct {
 	conn     *p2p.Conn
 	key      []byte
@@ -36,7 +36,7 @@ type Streaming struct {
 	firstOut Wire
 }
 
-// NewStreaming creates a new streaming garbler.
+// NewStreaming creates a new streaming garbled circuit garbler.
 func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 	*Streaming, error) {
 

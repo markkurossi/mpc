@@ -18,6 +18,7 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// StreamEval is a streaming garbled circuit evaluator.
 type StreamEval struct {
 	key   []byte
 	alg   cipher.Block
@@ -25,6 +26,7 @@ type StreamEval struct {
 	tmp   []ot.Label
 }
 
+// NewStreamEval creates a new streaming garbled circuit evaluator.
 func NewStreamEval(key []byte, numInputs, numOutputs int) (*StreamEval, error) {
 	alg, err := aes.NewCipher(key)
 	if err != nil {
@@ -37,6 +39,7 @@ func NewStreamEval(key []byte, numInputs, numOutputs int) (*StreamEval, error) {
 	}, nil
 }
 
+// Get gets the value of the wire.
 func (stream *StreamEval) Get(tmp bool, w int) ot.Label {
 	if tmp {
 		return stream.tmp[w]
@@ -45,6 +48,7 @@ func (stream *StreamEval) Get(tmp bool, w int) ot.Label {
 	}
 }
 
+// Set sets the value of the wire.
 func (stream *StreamEval) Set(tmp bool, w int, label ot.Label) {
 	if tmp {
 		stream.tmp[w] = label
@@ -53,6 +57,7 @@ func (stream *StreamEval) Set(tmp bool, w int, label ot.Label) {
 	}
 }
 
+// InitCircuit initializes the stream evaluator with wires.
 func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
 	if numWires > len(stream.wires) {
 		n := make([]ot.Label, numWires)
@@ -64,6 +69,7 @@ func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
 	}
 }
 
+// StreamEvaluator runs the stream evaluator on the connection.
 func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	IO, []*big.Int, error) {
 
@@ -174,9 +180,8 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	ws := func(i int, tmp bool) string {
 		if tmp {
 			return fmt.Sprintf("~%d", i)
-		} else {
-			return fmt.Sprintf("w%d", i)
 		}
+		return fmt.Sprintf("w%d", i)
 	}
 
 	// Evaluate program.
