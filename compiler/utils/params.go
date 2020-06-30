@@ -10,6 +10,7 @@ import (
 	"io"
 )
 
+// Params specify compiler parameters.
 type Params struct {
 	Verbose   bool
 	SSAOut    io.WriteCloser
@@ -25,6 +26,7 @@ type Params struct {
 	OptPruneGates bool
 }
 
+// Close closes all open resources.
 func (p *Params) Close() {
 	if p.SSAOut != nil {
 		p.SSAOut.Close()
