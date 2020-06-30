@@ -21,6 +21,7 @@ var (
 	debug = false
 )
 
+// Evaluator runs the evaluator on the P2P network.
 func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 

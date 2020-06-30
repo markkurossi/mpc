@@ -13,6 +13,7 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
+// Eval evaluates the circuit.
 func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	garbled [][]ot.Label) error {
 

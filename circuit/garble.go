@@ -22,9 +22,8 @@ var (
 func idxUnary(l0 ot.Label) int {
 	if l0.S() {
 		return 1
-	} else {
-		return 0
 	}
+	return 0
 }
 
 func idx(l0, l1 ot.Label) int {
@@ -43,13 +42,13 @@ func idx(l0, l1 ot.Label) int {
 func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
 	k := makeK(a, b, t)
 
-	var kData ot.LabelData
-	k.GetData(&kData)
+	var data ot.LabelData
+	k.GetData(&data)
 
-	alg.Encrypt(kData[:], kData[:])
+	alg.Encrypt(data[:], data[:])
 
 	var pi ot.Label
-	pi.SetData(&kData)
+	pi.SetData(&data)
 
 	pi.Xor(k)
 	pi.Xor(c)
@@ -62,13 +61,13 @@ func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label) (
 
 	k := makeK(a, b, t)
 
-	var kData ot.LabelData
-	k.GetData(&kData)
+	var data ot.LabelData
+	k.GetData(&data)
 
-	alg.Encrypt(kData[:], kData[:])
+	alg.Encrypt(data[:], data[:])
 
 	var crypted ot.Label
-	crypted.SetData(&kData)
+	crypted.SetData(&data)
 
 	c.Xor(crypted)
 	c.Xor(k)
@@ -101,12 +100,14 @@ func makeLabels(r ot.Label) (ot.Wire, error) {
 	}, nil
 }
 
+// Garbled contains garbled circuit information.
 type Garbled struct {
 	R     ot.Label
 	Wires []ot.Wire
 	Gates [][]ot.Label
 }
 
+// Lambda returns the lambda value of the wire.
 func (g *Garbled) Lambda(wire Wire) uint {
 	if g.Wires[int(wire)].L0.S() {
 		return 1
@@ -114,6 +115,7 @@ func (g *Garbled) Lambda(wire Wire) uint {
 	return 0
 }
 
+// SetLambda sets the lambda value of the wire.
 func (g *Garbled) SetLambda(wire Wire, val uint) {
 	w := g.Wires[int(wire)]
 	if val == 0 {
@@ -124,6 +126,7 @@ func (g *Garbled) SetLambda(wire Wire, val uint) {
 	g.Wires[int(wire)] = w
 }
 
+// Garble garbles the circuit.
 func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	// Create R.
 	r, err := ot.NewLabel(rand.Reader)
@@ -168,6 +171,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}, nil
 }
 
+// Garble garbles the gate and returns it labels.
 func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	id uint32) ([]ot.Label, error) {
 

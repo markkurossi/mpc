@@ -20,11 +20,13 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// Compiler implements MPCL compiler.
 type Compiler struct {
 	params   *utils.Params
 	packages map[string]*ast.Package
 }
 
+// NewCompiler creates a new compiler instance.
 func NewCompiler(params *utils.Params) *Compiler {
 	return &Compiler{
 		params:   params,
@@ -32,11 +34,13 @@ func NewCompiler(params *utils.Params) *Compiler {
 	}
 }
 
+// Compile compiles the input program.
 func (c *Compiler) Compile(data string) (*circuit.Circuit, ast.Annotations,
 	error) {
 	return c.compile("{data}", strings.NewReader(data))
 }
 
+// CompileFile compiles the input file.
 func (c *Compiler) CompileFile(file string) (*circuit.Circuit, ast.Annotations,
 	error) {
 
@@ -71,6 +75,8 @@ func (c *Compiler) compile(source string, in io.Reader) (
 	return circ, annotation, nil
 }
 
+// StreamFile compiles the input program and uses the streaming mode
+// to garble and stream the circuit to the evaluator node.
 func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
 	input []string) (circuit.IO, []*big.Int, error) {
 

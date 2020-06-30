@@ -11,8 +11,10 @@ import (
 	"math/big"
 )
 
+// Operation specifies gate function.
 type Operation byte
 
+// Gate functions.
 const (
 	XOR Operation = iota
 	XNOR
@@ -38,6 +40,7 @@ func (op Operation) String() string {
 	}
 }
 
+// IOArg describes circuit input argument.
 type IOArg struct {
 	Name     string
 	Type     string
@@ -56,6 +59,7 @@ func (io IOArg) String() string {
 	return io.Type
 }
 
+// Parse parses the I/O argument from the input string values.
 func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 	if len(io.Compound) == 0 {
 		if len(inputs) != 1 {
@@ -94,8 +98,11 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 	return result, nil
 }
 
+// IO specifies circuit input and output arguments.
 type IO []IOArg
 
+// Size computes the size of the circuit input and output arguments in
+// bits.
 func (io IO) Size() int {
 	var sum int
 	for _, a := range io {
@@ -118,6 +125,7 @@ func (io IO) String() string {
 	return str
 }
 
+// Split splits the value into separate I/O arguments.
 func (io IO) Split(in *big.Int) []*big.Int {
 	var result []*big.Int
 	var bit int
@@ -134,6 +142,7 @@ func (io IO) Split(in *big.Int) []*big.Int {
 	return result
 }
 
+// Circuit specifies a boolean circuit.
 type Circuit struct {
 	NumGates int
 	NumWires int
@@ -156,10 +165,12 @@ func (c *Circuit) String() string {
 	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, stats, c.NumWires)
 }
 
+// Cost computes the relative computational cost of the circuit.
 func (c *Circuit) Cost() int {
 	return (c.Stats[AND]+c.Stats[OR])*4 + c.Stats[INV]*2
 }
 
+// Dump prints a debug dump of the circuit.
 func (c *Circuit) Dump() {
 	fmt.Printf("circuit %s\n", c)
 	for id, gate := range c.Gates {
@@ -167,6 +178,7 @@ func (c *Circuit) Dump() {
 	}
 }
 
+// Gate specifies a boolean gate.
 type Gate struct {
 	Input0 Wire
 	Input1 Wire
@@ -178,6 +190,7 @@ func (g Gate) String() string {
 	return fmt.Sprintf("%v %v %v", g.Inputs(), g.Op, g.Output)
 }
 
+// Inputs returns gate input wires.
 func (g Gate) Inputs() []Wire {
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
@@ -189,8 +202,10 @@ func (g Gate) Inputs() []Wire {
 	}
 }
 
+// Wire specifies a wire ID.
 type Wire uint32
 
+// ID returns the wire ID as integer.
 func (w Wire) ID() int {
 	return int(w)
 }

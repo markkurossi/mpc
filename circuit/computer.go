@@ -11,6 +11,7 @@ import (
 	"math/big"
 )
 
+// Compute evaluates the circuit with the given input values.
 func (c *Circuit) Compute(inputs []*big.Int) ([]*big.Int, error) {
 	// Flatten circuit arguments.
 	var args IO

@@ -16,6 +16,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Parser implements MPCL parser.
 type Parser struct {
 	compiler *Compiler
 	logger   *utils.Logger
@@ -23,7 +24,9 @@ type Parser struct {
 	pkg      *ast.Package
 }
 
-func NewParser(source string, compiler *Compiler, logger *utils.Logger, in io.Reader) *Parser {
+// NewParser creates a new parser.
+func NewParser(source string, compiler *Compiler, logger *utils.Logger,
+	in io.Reader) *Parser {
 	return &Parser{
 		compiler: compiler,
 		logger:   logger,
@@ -31,6 +34,7 @@ func NewParser(source string, compiler *Compiler, logger *utils.Logger, in io.Re
 	}
 }
 
+// Parse parses a package.
 func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 	name, err := p.parsePackage()
 	if err != nil {
@@ -53,9 +57,9 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 		}
 		return p.pkg, nil
 	}
-	if token.Type == T_SymImport {
+	if token.Type == TSymImport {
 		imports := make(map[string]string)
-		_, err = p.needToken(T_LParen)
+		_, err = p.needToken(TLParen)
 		if err != nil {
 			return nil, err
 		}
@@ -64,24 +68,24 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == T_RParen {
+			if t.Type == TRParen {
 				break
 			}
 
 			var alias string
-			if t.Type == T_Identifier {
+			if t.Type == TIdentifier {
 				alias = t.StrVal
 				t, err = p.lexer.Get()
 				if err != nil {
 					return nil, err
 				}
 			}
-			if t.Type != T_Constant {
-				return nil, p.errUnexpected(t, T_Constant)
+			if t.Type != TConstant {
+				return nil, p.errUnexpected(t, TConstant)
 			}
 			str, ok := t.ConstVal.(string)
 			if !ok {
-				return nil, p.errUnexpected(t, T_Constant)
+				return nil, p.errUnexpected(t, TConstant)
 			}
 			_, ok = imports[str]
 			if ok {
@@ -167,11 +171,11 @@ func (p *Parser) sameLine(current utils.Point) bool {
 }
 
 func (p *Parser) parsePackage() (string, error) {
-	t, err := p.needToken(T_SymPackage)
+	t, err := p.needToken(TSymPackage)
 	if err != nil {
 		return "", err
 	}
-	t, err = p.needToken(T_Identifier)
+	t, err = p.needToken(TIdentifier)
 	if err != nil {
 		return "", err
 	}
@@ -185,13 +189,13 @@ func (p *Parser) parseToplevel() error {
 		return err
 	}
 	switch token.Type {
-	case T_SymConst:
+	case TSymConst:
 		return p.parseConst()
 
-	case T_SymType:
+	case TSymType:
 		return p.parseTypeDecl()
 
-	case T_SymFunc:
+	case TSymFunc:
 		f, err := p.parseFunc(p.lexer.Annotations(token.From))
 		if err != nil {
 			return err
@@ -215,16 +219,16 @@ func (p *Parser) parseConst() error {
 		return err
 	}
 	switch token.Type {
-	case T_Identifier:
+	case TIdentifier:
 		return p.parseConstDef(token)
 
-	case T_LParen:
+	case TLParen:
 		for {
 			t, err := p.lexer.Get()
 			if err != nil {
 				return err
 			}
-			if t.Type == T_RParen {
+			if t.Type == TRParen {
 				return nil
 			}
 			err = p.parseConstDef(t)
@@ -239,7 +243,7 @@ func (p *Parser) parseConst() error {
 }
 
 func (p *Parser) parseConstDef(token *Token) error {
-	if token.Type != T_Identifier {
+	if token.Type != TIdentifier {
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
 
@@ -248,13 +252,13 @@ func (p *Parser) parseConstDef(token *Token) error {
 		return err
 	}
 	var constType *ast.TypeInfo
-	if t.Type != T_Assign {
+	if t.Type != TAssign {
 		p.lexer.Unget(t)
 		constType, err = p.parseType()
 		if err != nil {
 			return err
 		}
-		_, err = p.needToken(T_Assign)
+		_, err = p.needToken(TAssign)
 		if err != nil {
 			return nil
 		}
@@ -275,7 +279,7 @@ func (p *Parser) parseConstDef(token *Token) error {
 }
 
 func (p *Parser) parseTypeDecl() error {
-	name, err := p.needToken(T_Identifier)
+	name, err := p.needToken(TIdentifier)
 	if err != nil {
 		return err
 	}
@@ -284,8 +288,8 @@ func (p *Parser) parseTypeDecl() error {
 		return err
 	}
 	switch t.Type {
-	case T_SymStruct:
-		_, err := p.needToken(T_LBrace)
+	case TSymStruct:
+		_, err := p.needToken(TLBrace)
 		if err != nil {
 		}
 		var fields []ast.StructField
@@ -294,12 +298,12 @@ func (p *Parser) parseTypeDecl() error {
 			if err != nil {
 				return err
 			}
-			if t.Type == T_RBrace {
+			if t.Type == TRBrace {
 				break
 			}
 			var names []string
 			for {
-				if t.Type != T_Identifier {
+				if t.Type != TIdentifier {
 					return p.errf(t.From, "unexpected token '%s'", t.Type)
 				}
 				names = append(names, t.StrVal)
@@ -307,7 +311,7 @@ func (p *Parser) parseTypeDecl() error {
 				if err != nil {
 					return err
 				}
-				if t.Type != T_Comma {
+				if t.Type != TComma {
 					p.lexer.Unget(t)
 					break
 				}
@@ -337,7 +341,7 @@ func (p *Parser) parseTypeDecl() error {
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
 
-	case T_Assign:
+	case TAssign:
 		ti, err := p.parseType()
 		if err != nil {
 			return err
@@ -356,12 +360,12 @@ func (p *Parser) parseTypeDecl() error {
 }
 
 func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
-	name, err := p.needToken(T_Identifier)
+	name, err := p.needToken(TIdentifier)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = p.needToken(T_LParen)
+	_, err = p.needToken(TLParen)
 	if err != nil {
 		return nil, err
 	}
@@ -374,10 +378,10 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 	if err != nil {
 		return nil, err
 	}
-	if t.Type != T_RParen {
+	if t.Type != TRParen {
 		p.lexer.Unget(t)
 		for {
-			t, err = p.needToken(T_Identifier)
+			t, err = p.needToken(TIdentifier)
 			if err != nil {
 				return nil, err
 			}
@@ -390,7 +394,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == T_Comma {
+			if t.Type == TComma {
 				arguments = append(arguments, arg)
 				continue
 			}
@@ -418,11 +422,11 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == T_RParen {
+			if t.Type == TRParen {
 				break
 			}
-			if t.Type != T_Comma {
-				return nil, p.errUnexpected(t, T_Comma)
+			if t.Type != TComma {
+				return nil, p.errUnexpected(t, TComma)
 			}
 		}
 	}
@@ -435,7 +439,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		return nil, err
 	}
 	switch n.Type {
-	case T_LParen:
+	case TLParen:
 		for {
 			typeInfo, err := p.parseType()
 			if err != nil {
@@ -449,19 +453,19 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if n.Type == T_RParen {
+			if n.Type == TRParen {
 				break
 			}
-			if n.Type != T_Comma {
-				return nil, p.errUnexpected(n, T_Comma)
+			if n.Type != TComma {
+				return nil, p.errUnexpected(n, TComma)
 			}
 		}
-		_, err = p.needToken(T_LBrace)
+		_, err = p.needToken(TLBrace)
 		if err != nil {
 			return nil, err
 		}
 
-	case T_LBrace:
+	case TLBrace:
 
 	default:
 		p.lexer.Unget(n)
@@ -473,7 +477,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			Loc:  n.From,
 			Type: typeInfo,
 		})
-		_, err = p.needToken(T_LBrace)
+		_, err = p.needToken(TLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -495,7 +499,7 @@ func (p *Parser) parseBlock() (ast.List, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type == T_RBrace {
+		if t.Type == TRBrace {
 			break
 		}
 		p.lexer.Unget(t)
@@ -515,10 +519,10 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		return nil, err
 	}
 	switch tStmt.Type {
-	case T_SymVar:
+	case TSymVar:
 		var names []string
 		for {
-			tName, err := p.needToken(T_Identifier)
+			tName, err := p.needToken(TIdentifier)
 			if err != nil {
 				return nil, err
 			}
@@ -527,7 +531,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type != T_Comma {
+			if t.Type != TComma {
 				p.lexer.Unget(t)
 				break
 			}
@@ -542,7 +546,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			return nil, err
 		}
 		var expr ast.AST
-		if t.Type == T_Assign {
+		if t.Type == TAssign {
 			// Initializer.
 			expr, err = p.parseExpr()
 			if err != nil {
@@ -559,12 +563,12 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			Init:  expr,
 		}, nil
 
-	case T_SymIf:
+	case TSymIf:
 		expr, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(T_LBrace)
+		_, err = p.needToken(TLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -578,8 +582,8 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type == T_SymElse {
-			_, err = p.needToken(T_LBrace)
+		if t.Type == TSymElse {
+			_, err = p.needToken(TLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -596,7 +600,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			False: b2,
 		}, nil
 
-	case T_SymReturn:
+	case TSymReturn:
 		var exprs []ast.AST
 		if p.sameLine(tStmt.To) {
 			expr, err := p.parseExpr()
@@ -609,7 +613,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				if t.Type != T_Comma {
+				if t.Type != TComma {
 					p.lexer.Unget(t)
 					break
 				}
@@ -625,12 +629,12 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			Exprs: exprs,
 		}, nil
 
-	case T_SymFor:
+	case TSymFor:
 		init, err := p.parseStatement()
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(T_Semicolon)
+		_, err = p.needToken(TSemicolon)
 		if err != nil {
 			return nil, err
 		}
@@ -638,7 +642,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(T_Semicolon)
+		_, err = p.needToken(TSemicolon)
 		if err != nil {
 			return nil, err
 		}
@@ -646,7 +650,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(T_LBrace)
+		_, err = p.needToken(TLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -673,7 +677,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Assign, T_DefAssign:
+		case TAssign, TDefAssign:
 			values, err := p.parseExprList()
 			if err != nil {
 				return nil, err
@@ -682,16 +686,16 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				Loc:     t.From,
 				LValues: lvalues,
 				Exprs:   values,
-				Define:  t.Type == T_DefAssign,
+				Define:  t.Type == TDefAssign,
 			}, nil
 
-		case T_PlusEq, T_MinusEq:
+		case TPlusEq, TMinusEq:
 			if len(lvalues) != 1 {
 				return nil, p.errf(tStmt.From, "expected 1 expression")
 			}
 
 			var op ast.BinaryType
-			if t.Type == T_PlusEq {
+			if t.Type == TPlusEq {
 				op = ast.BinaryPlus
 			} else {
 				op = ast.BinaryMinus
@@ -713,13 +717,13 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 				},
 			}, nil
 
-		case T_PlusPlus, T_MinusMinus:
+		case TPlusPlus, TMinusMinus:
 			if len(lvalues) != 1 {
 				return nil, p.errf(tStmt.From, "expected 1 expression")
 			}
 
 			var op ast.BinaryType
-			if t.Type == T_PlusPlus {
+			if t.Type == TPlusPlus {
 				op = ast.BinaryPlus
 			} else {
 				op = ast.BinaryMinus
@@ -760,7 +764,7 @@ func (p *Parser) parseExprList() ([]ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type != T_Comma {
+		if t.Type != TComma {
 			p.lexer.Unget(t)
 			break
 		}
@@ -790,7 +794,7 @@ func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type != T_Or {
+		if t.Type != TOr {
 			p.lexer.Unget(t)
 			return left, nil
 		}
@@ -817,7 +821,7 @@ func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type != T_And {
+		if t.Type != TAnd {
 			p.lexer.Unget(t)
 			return left, nil
 		}
@@ -845,7 +849,7 @@ func (p *Parser) parseExprComparative() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Eq, T_Neq, T_Lt, T_Le, T_Gt, T_Ge:
+		case TEq, TNeq, TLt, TLe, TGt, TGe:
 			right, err := p.parseExprAdditive()
 			if err != nil {
 				return nil, err
@@ -875,7 +879,7 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Plus, T_Minus, T_BitOr, T_BitXor:
+		case TPlus, TMinus, TBitOr, TBitXor:
 			right, err := p.parseExprMultiplicative()
 			if err != nil {
 				return nil, err
@@ -905,7 +909,7 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Mult, T_Div, T_Mod, T_Lshift, T_Rshift, T_BitAnd, T_BitClear:
+		case TMult, TDiv, TMod, TLshift, TRshift, TBitAnd, TBitClear:
 			right, err := p.parseExprPrimary()
 			if err != nil {
 				return nil, err
@@ -956,24 +960,24 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case T_Dot:
+		case TDot:
 			// Selector.
 			return nil, fmt.Errorf("Selector not implemented yet")
 
-		case T_LBracket:
+		case TLBracket:
 			var expr1, expr2 ast.AST
 
 			n, err := p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
-			if n.Type != T_Colon {
+			if n.Type != TColon {
 				p.lexer.Unget(n)
 				expr1, err = p.parseExpr()
 				if err != nil {
 					return nil, err
 				}
-				_, err = p.needToken(T_Colon)
+				_, err = p.needToken(TColon)
 				if err != nil {
 					return nil, err
 				}
@@ -982,13 +986,13 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			if n.Type != T_RBracket {
+			if n.Type != TRBracket {
 				p.lexer.Unget(n)
 				expr2, err = p.parseExpr()
 				if err != nil {
 					return nil, err
 				}
-				_, err = p.needToken(T_RBracket)
+				_, err = p.needToken(TRBracket)
 				if err != nil {
 					return nil, err
 				}
@@ -1000,7 +1004,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				To:   expr2,
 			}, nil
 
-		case T_LParen:
+		case TLParen:
 			// Arguments.
 			var arguments []ast.AST
 			for {
@@ -1014,9 +1018,9 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				if n.Type == T_RParen {
+				if n.Type == TRParen {
 					break
-				} else if n.Type != T_Comma {
+				} else if n.Type != TComma {
 					return nil, p.errf(n.From, "unexpected token %s", n)
 				}
 			}
@@ -1051,19 +1055,19 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case T_Constant: // Literal
+	case TConstant: // Literal
 		return &ast.Constant{
 			Loc:   t.From,
 			Value: t.ConstVal,
 		}, nil
 
-	case T_Identifier: // OperandName
+	case TIdentifier: // OperandName
 		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		if n.Type == T_Dot {
-			id, err := p.needToken(T_Identifier)
+		if n.Type == TDot {
+			id, err := p.needToken(TIdentifier)
 			if err != nil {
 				return nil, err
 			}
@@ -1075,23 +1079,22 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 					Name:    id.StrVal,
 				},
 			}, nil
-		} else {
-			// Identifier in current package.
-			p.lexer.Unget(n)
-			return &ast.VariableRef{
-				Loc: t.From,
-				Name: ast.Identifier{
-					Name: t.StrVal,
-				},
-			}, nil
 		}
+		// Identifier in current package.
+		p.lexer.Unget(n)
+		return &ast.VariableRef{
+			Loc: t.From,
+			Name: ast.Identifier{
+				Name: t.StrVal,
+			},
+		}, nil
 
-	case T_LParen: // '(' Expression ')'
+	case TLParen: // '(' Expression ')'
 		expr, err := p.parseExpr()
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(T_RParen)
+		_, err = p.needToken(TRParen)
 		if err != nil {
 			return nil, err
 		}
@@ -1113,18 +1116,18 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case T_Identifier:
+	case TIdentifier:
 		var name string
 		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		if n.Type == T_Dot {
+		if n.Type == TDot {
 			n, err = p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
-			if n.Type == T_Identifier {
+			if n.Type == TIdentifier {
 				name = n.StrVal
 			} else {
 				p.lexer.Unget(n)
@@ -1146,19 +1149,19 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			},
 		}, nil
 
-	case T_LBracket:
+	case TLBracket:
 		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
 		var length ast.AST
-		if n.Type != T_RBracket {
+		if n.Type != TRBracket {
 			p.lexer.Unget(n)
 			length, err = p.parseExpr()
 			if err != nil {
 				return nil, err
 			}
-			_, err := p.needToken(T_RBracket)
+			_, err := p.needToken(TRBracket)
 			if err != nil {
 				return nil, err
 			}

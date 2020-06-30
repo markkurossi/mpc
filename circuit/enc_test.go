@@ -152,12 +152,12 @@ func NewTweakX(tweak uint32) LabelX {
 func encryptX(alg cipher.Block, a, b, c LabelX, t uint32) LabelX {
 	k := makeKX(a, b, t)
 
-	var kData [16]byte
-	k.GetData(&kData)
-	alg.Encrypt(kData[:], kData[:])
+	var data [16]byte
+	k.GetData(&data)
+	alg.Encrypt(data[:], data[:])
 
 	var pi LabelX
-	pi.SetData(&kData)
+	pi.SetData(&data)
 
 	pi.Xor(k)
 	pi.Xor(c)

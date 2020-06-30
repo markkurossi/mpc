@@ -21,116 +21,118 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// TokenType specifies input token types.
 type TokenType int
 
+// Input tokens.
 const (
-	T_Identifier TokenType = iota
-	T_Constant
-	T_Symbol
-	T_SymPackage
-	T_SymImport
-	T_SymFunc
-	T_SymIf
-	T_SymElse
-	T_SymReturn
-	T_SymStruct
-	T_SymVar
-	T_SymConst
-	T_SymType
-	T_SymFor
-	T_Assign
-	T_DefAssign
-	T_Mult
-	T_MultEq
-	T_Div
-	T_DivEq
-	T_Mod
-	T_Lshift
-	T_Rshift
-	T_Plus
-	T_PlusPlus
-	T_PlusEq
-	T_Minus
-	T_MinusMinus
-	T_MinusEq
-	T_LParen
-	T_RParen
-	T_LBrace
-	T_RBrace
-	T_LBracket
-	T_RBracket
-	T_Comma
-	T_Semicolon
-	T_Colon
-	T_Dot
-	T_Lt
-	T_Le
-	T_Gt
-	T_Ge
-	T_Eq
-	T_Neq
-	T_And
-	T_Or
-	T_Not
-	T_BitAnd
-	T_BitOr
-	T_BitXor
-	T_BitClear
+	TIdentifier TokenType = iota
+	TConstant
+	TSymbol
+	TSymPackage
+	TSymImport
+	TSymFunc
+	TSymIf
+	TSymElse
+	TSymReturn
+	TSymStruct
+	TSymVar
+	TSymConst
+	TSymType
+	TSymFor
+	TAssign
+	TDefAssign
+	TMult
+	TMultEq
+	TDiv
+	TDivEq
+	TMod
+	TLshift
+	TRshift
+	TPlus
+	TPlusPlus
+	TPlusEq
+	TMinus
+	TMinusMinus
+	TMinusEq
+	TLParen
+	TRParen
+	TLBrace
+	TRBrace
+	TLBracket
+	TRBracket
+	TComma
+	TSemicolon
+	TColon
+	TDot
+	TLt
+	TLe
+	TGt
+	TGe
+	TEq
+	TNeq
+	TAnd
+	TOr
+	TNot
+	TBitAnd
+	TBitOr
+	TBitXor
+	TBitClear
 )
 
 var tokenTypes = map[TokenType]string{
-	T_Identifier: "identifier",
-	T_Constant:   "constant",
-	T_Symbol:     "symbol",
-	T_SymPackage: "package",
-	T_SymImport:  "import",
-	T_SymFunc:    "func",
-	T_SymIf:      "if",
-	T_SymElse:    "else",
-	T_SymReturn:  "return",
-	T_SymStruct:  "struct",
-	T_SymVar:     "var",
-	T_SymConst:   "const",
-	T_SymType:    "type",
-	T_SymFor:     "for",
-	T_Assign:     "=",
-	T_DefAssign:  ":=",
-	T_Mult:       "*",
-	T_MultEq:     "*=",
-	T_Div:        "/",
-	T_DivEq:      "/=",
-	T_Mod:        "%",
-	T_Lshift:     "<<",
-	T_Rshift:     ">>",
-	T_Plus:       "+",
-	T_PlusPlus:   "++",
-	T_PlusEq:     "+=",
-	T_Minus:      "-",
-	T_MinusMinus: "--",
-	T_MinusEq:    "-=",
-	T_LParen:     "(",
-	T_RParen:     ")",
-	T_LBrace:     "{",
-	T_RBrace:     "}",
-	T_LBracket:   "[",
-	T_RBracket:   "]",
-	T_Comma:      ",",
-	T_Semicolon:  ";",
-	T_Colon:      ":",
-	T_Dot:        ".",
-	T_Lt:         "<",
-	T_Le:         "<=",
-	T_Gt:         ">",
-	T_Ge:         ">=",
-	T_Eq:         "==",
-	T_Neq:        "!=",
-	T_And:        "&&",
-	T_Or:         "||",
-	T_Not:        "!",
-	T_BitAnd:     "&",
-	T_BitOr:      "|",
-	T_BitXor:     "^",
-	T_BitClear:   "&^",
+	TIdentifier: "identifier",
+	TConstant:   "constant",
+	TSymbol:     "symbol",
+	TSymPackage: "package",
+	TSymImport:  "import",
+	TSymFunc:    "func",
+	TSymIf:      "if",
+	TSymElse:    "else",
+	TSymReturn:  "return",
+	TSymStruct:  "struct",
+	TSymVar:     "var",
+	TSymConst:   "const",
+	TSymType:    "type",
+	TSymFor:     "for",
+	TAssign:     "=",
+	TDefAssign:  ":=",
+	TMult:       "*",
+	TMultEq:     "*=",
+	TDiv:        "/",
+	TDivEq:      "/=",
+	TMod:        "%",
+	TLshift:     "<<",
+	TRshift:     ">>",
+	TPlus:       "+",
+	TPlusPlus:   "++",
+	TPlusEq:     "+=",
+	TMinus:      "-",
+	TMinusMinus: "--",
+	TMinusEq:    "-=",
+	TLParen:     "(",
+	TRParen:     ")",
+	TLBrace:     "{",
+	TRBrace:     "}",
+	TLBracket:   "[",
+	TRBracket:   "]",
+	TComma:      ",",
+	TSemicolon:  ";",
+	TColon:      ":",
+	TDot:        ".",
+	TLt:         "<",
+	TLe:         "<=",
+	TGt:         ">",
+	TGe:         ">=",
+	TEq:         "==",
+	TNeq:        "!=",
+	TAnd:        "&&",
+	TOr:         "||",
+	TNot:        "!",
+	TBitAnd:     "&",
+	TBitOr:      "|",
+	TBitXor:     "^",
+	TBitClear:   "&^",
 }
 
 func (t TokenType) String() string {
@@ -142,27 +144,28 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	T_Mult:     ast.BinaryMult,
-	T_Plus:     ast.BinaryPlus,
-	T_Minus:    ast.BinaryMinus,
-	T_Div:      ast.BinaryDiv,
-	T_Mod:      ast.BinaryMod,
-	T_Lt:       ast.BinaryLt,
-	T_Le:       ast.BinaryLe,
-	T_Gt:       ast.BinaryGt,
-	T_Ge:       ast.BinaryGe,
-	T_Eq:       ast.BinaryEq,
-	T_Neq:      ast.BinaryNeq,
-	T_And:      ast.BinaryAnd,
-	T_Or:       ast.BinaryOr,
-	T_BitAnd:   ast.BinaryBand,
-	T_BitOr:    ast.BinaryBor,
-	T_BitXor:   ast.BinaryBxor,
-	T_BitClear: ast.BinaryBclear,
-	T_Lshift:   ast.BinaryLshift,
-	T_Rshift:   ast.BinaryRshift,
+	TMult:     ast.BinaryMult,
+	TPlus:     ast.BinaryPlus,
+	TMinus:    ast.BinaryMinus,
+	TDiv:      ast.BinaryDiv,
+	TMod:      ast.BinaryMod,
+	TLt:       ast.BinaryLt,
+	TLe:       ast.BinaryLe,
+	TGt:       ast.BinaryGt,
+	TGe:       ast.BinaryGe,
+	TEq:       ast.BinaryEq,
+	TNeq:      ast.BinaryNeq,
+	TAnd:      ast.BinaryAnd,
+	TOr:       ast.BinaryOr,
+	TBitAnd:   ast.BinaryBand,
+	TBitOr:    ast.BinaryBor,
+	TBitXor:   ast.BinaryBxor,
+	TBitClear: ast.BinaryBclear,
+	TLshift:   ast.BinaryLshift,
+	TRshift:   ast.BinaryRshift,
 }
 
+// BinaryType returns token's binary type.
 func (t TokenType) BinaryType() ast.BinaryType {
 	bt, ok := binaryTypes[t]
 	if ok {
@@ -172,19 +175,20 @@ func (t TokenType) BinaryType() ast.BinaryType {
 }
 
 var symbols = map[string]TokenType{
-	"import":  T_SymImport,
-	"const":   T_SymConst,
-	"type":    T_SymType,
-	"for":     T_SymFor,
-	"else":    T_SymElse,
-	"func":    T_SymFunc,
-	"if":      T_SymIf,
-	"package": T_SymPackage,
-	"return":  T_SymReturn,
-	"struct":  T_SymStruct,
-	"var":     T_SymVar,
+	"import":  TSymImport,
+	"const":   TSymConst,
+	"type":    TSymType,
+	"for":     TSymFor,
+	"else":    TSymElse,
+	"func":    TSymFunc,
+	"if":      TSymIf,
+	"package": TSymPackage,
+	"return":  TSymReturn,
+	"struct":  TSymStruct,
+	"var":     TSymVar,
 }
 
+// Token specifies an input token.
 type Token struct {
 	Type     TokenType
 	From     utils.Point
@@ -213,6 +217,7 @@ func (t *Token) String() string {
 	return str
 }
 
+// Lexer implements MPCL lexical analyzer.
 type Lexer struct {
 	source      string
 	in          *bufio.Reader
@@ -227,6 +232,7 @@ type Lexer struct {
 	lastComment Comment
 }
 
+// NewLexer creates a new lexer for the input.
 func NewLexer(source string, in io.Reader) *Lexer {
 	return &Lexer{
 		in: bufio.NewReader(in),
@@ -239,6 +245,7 @@ func NewLexer(source string, in io.Reader) *Lexer {
 	}
 }
 
+// ReadRune reads the next input rune.
 func (l *Lexer) ReadRune() (rune, int, error) {
 	if l.unread {
 		l.point, l.unreadPoint = l.unreadPoint, l.point
@@ -264,12 +271,15 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 	return r, size, nil
 }
 
+// UnreadRune unreads the last rune.
 func (l *Lexer) UnreadRune() error {
 	l.point, l.unreadPoint = l.unreadPoint, l.point
 	l.unread = true
 	return nil
 }
 
+// FlushEOL discards all remaining input from the current source code
+// line.
 func (l *Lexer) FlushEOL() error {
 	for {
 		r, _, err := l.ReadRune()
@@ -285,6 +295,7 @@ func (l *Lexer) FlushEOL() error {
 	}
 }
 
+// Get gets the next token.
 func (l *Lexer) Get() (*Token, error) {
 	if l.ungot != nil {
 		token := l.ungot
@@ -306,60 +317,60 @@ func (l *Lexer) Get() (*Token, error) {
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Plus), nil
+					return l.Token(TPlus), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '+':
-				return l.Token(T_PlusPlus), nil
+				return l.Token(TPlusPlus), nil
 			case '=':
-				return l.Token(T_PlusEq), nil
+				return l.Token(TPlusEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Plus), nil
+				return l.Token(TPlus), nil
 			}
 
 		case '-':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Minus), nil
+					return l.Token(TMinus), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '-':
-				return l.Token(T_MinusMinus), nil
+				return l.Token(TMinusMinus), nil
 			case '=':
-				return l.Token(T_MinusEq), nil
+				return l.Token(TMinusEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Minus), nil
+				return l.Token(TMinus), nil
 			}
 
 		case '*':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Mult), nil
+					return l.Token(TMult), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '=':
-				return l.Token(T_MultEq), nil
+				return l.Token(TMultEq), nil
 
 			default:
 				l.UnreadRune()
-				return l.Token(T_Mult), nil
+				return l.Token(TMult), nil
 			}
 
 		case '/':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Div), nil
+					return l.Token(TDiv), nil
 				}
 				return nil, err
 			}
@@ -381,132 +392,132 @@ func (l *Lexer) Get() (*Token, error) {
 				continue
 
 			case '=':
-				return l.Token(T_DivEq), nil
+				return l.Token(TDivEq), nil
 
 			default:
 				l.UnreadRune()
-				return l.Token(T_Div), nil
+				return l.Token(TDiv), nil
 			}
 		case '%':
-			return l.Token(T_Mod), nil
+			return l.Token(TMod), nil
 		case '(':
-			return l.Token(T_LParen), nil
+			return l.Token(TLParen), nil
 		case ')':
-			return l.Token(T_RParen), nil
+			return l.Token(TRParen), nil
 		case '{':
-			return l.Token(T_LBrace), nil
+			return l.Token(TLBrace), nil
 		case '}':
-			return l.Token(T_RBrace), nil
+			return l.Token(TRBrace), nil
 		case '[':
-			return l.Token(T_LBracket), nil
+			return l.Token(TLBracket), nil
 		case ']':
-			return l.Token(T_RBracket), nil
+			return l.Token(TRBracket), nil
 		case ',':
-			return l.Token(T_Comma), nil
+			return l.Token(TComma), nil
 		case ';':
-			return l.Token(T_Semicolon), nil
+			return l.Token(TSemicolon), nil
 		case '.':
-			return l.Token(T_Dot), nil
+			return l.Token(TDot), nil
 
 		case '<':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Lt), nil
+					return l.Token(TLt), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '=':
-				return l.Token(T_Le), nil
+				return l.Token(TLe), nil
 			case '<':
-				return l.Token(T_Lshift), nil
+				return l.Token(TLshift), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Lt), nil
+				return l.Token(TLt), nil
 			}
 
 		case '>':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Gt), nil
+					return l.Token(TGt), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '=':
-				return l.Token(T_Ge), nil
+				return l.Token(TGe), nil
 			case '>':
-				return l.Token(T_Rshift), nil
+				return l.Token(TRshift), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Gt), nil
+				return l.Token(TGt), nil
 			}
 
 		case '=':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Assign), nil
+					return l.Token(TAssign), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '=':
-				return l.Token(T_Eq), nil
+				return l.Token(TEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Assign), nil
+				return l.Token(TAssign), nil
 			}
 
 		case ':':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Colon), nil
+					return l.Token(TColon), nil
 				}
 			}
 			switch r {
 			case '=':
-				return l.Token(T_DefAssign), nil
+				return l.Token(TDefAssign), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Colon), nil
+				return l.Token(TColon), nil
 			}
 
 		case '|':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_BitOr), nil
+					return l.Token(TBitOr), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '|':
-				return l.Token(T_Or), nil
+				return l.Token(TOr), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_BitOr), nil
+				return l.Token(TBitOr), nil
 			}
 
 		case '&':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_BitAnd), nil
+					return l.Token(TBitAnd), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '&':
-				return l.Token(T_And), nil
+				return l.Token(TAnd), nil
 			case '^':
-				return l.Token(T_BitClear), nil
+				return l.Token(TBitClear), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_BitAnd), nil
+				return l.Token(TBitAnd), nil
 			}
 
 		case '"':
@@ -522,7 +533,7 @@ func (l *Lexer) Get() (*Token, error) {
 				// XXX escapes
 				val += string(r)
 			}
-			token := l.Token(T_Constant)
+			token := l.Token(TConstant)
 			token.ConstVal = val
 			return token, nil
 
@@ -530,20 +541,20 @@ func (l *Lexer) Get() (*Token, error) {
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(T_Not), nil
+					return l.Token(TNot), nil
 				}
 				return nil, err
 			}
 			switch r {
 			case '=':
-				return l.Token(T_Neq), nil
+				return l.Token(TNeq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(T_Not), nil
+				return l.Token(TNot), nil
 			}
 
 		case '^':
-			return l.Token(T_BitXor), nil
+			return l.Token(TBitXor), nil
 
 		default:
 			if unicode.IsLetter(r) {
@@ -567,12 +578,12 @@ func (l *Lexer) Get() (*Token, error) {
 					return l.Token(tt), nil
 				}
 				if symbol == "true" || symbol == "false" {
-					token := l.Token(T_Constant)
+					token := l.Token(TConstant)
 					token.ConstVal = symbol == "true"
 					return token, nil
 				}
 
-				token := l.Token(T_Identifier)
+				token := l.Token(TIdentifier)
 				token.StrVal = symbol
 				return token, nil
 			}
@@ -600,7 +611,7 @@ func (l *Lexer) Get() (*Token, error) {
 							}
 							input += string(r)
 						}
-						token := l.Token(T_Constant)
+						token := l.Token(TConstant)
 						if len(input) > 16 {
 							val := new(big.Int)
 							_, ok := val.SetString(input, 16)
@@ -617,9 +628,8 @@ func (l *Lexer) Get() (*Token, error) {
 							token.ConstVal = u
 						}
 						return token, nil
-					} else {
-						l.UnreadRune()
 					}
+					l.UnreadRune()
 					input += "0"
 				} else {
 					input += string(r)
@@ -644,7 +654,7 @@ func (l *Lexer) Get() (*Token, error) {
 					// XXX bigint constants
 					return nil, err
 				}
-				token := l.Token(T_Constant)
+				token := l.Token(TConstant)
 
 				if u <= math.MaxInt32 {
 					token.ConstVal = int32(u)
@@ -662,10 +672,13 @@ func (l *Lexer) Get() (*Token, error) {
 	}
 }
 
+// Unget pushes the token back to the lexer input stream. The next
+// call to Get will return it.
 func (l *Lexer) Unget(t *Token) {
 	l.ungot = t
 }
 
+// Token returns a new token for the argument token type.
 func (l *Lexer) Token(t TokenType) *Token {
 	return &Token{
 		Type: t,
@@ -674,12 +687,14 @@ func (l *Lexer) Token(t TokenType) *Token {
 	}
 }
 
+// Comment describes a comment.
 type Comment struct {
 	Start utils.Point
 	End   utils.Point
 	Lines []string
 }
 
+// Empty tests if the comment is empty.
 func (c Comment) Empty() bool {
 	return len(c.Lines) == 0
 }
@@ -698,6 +713,8 @@ func (l *Lexer) commentLine(line string, loc utils.Point) {
 	}
 }
 
+// Annotations returns the annotations immediately preceding the
+// current lexer location.
 func (l *Lexer) Annotations(loc utils.Point) ast.Annotations {
 	if l.lastComment.Empty() || l.lastComment.End.Line+1 != loc.Line {
 		return nil
