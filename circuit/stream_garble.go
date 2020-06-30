@@ -17,9 +17,12 @@ import (
 )
 
 const (
+	// StreamDebug controls the debugging output of the streaming
+	// garbling.
 	StreamDebug = false
 )
 
+// Streaming is a streaming garbler.
 type Streaming struct {
 	conn     *p2p.Conn
 	key      []byte
@@ -33,6 +36,7 @@ type Streaming struct {
 	firstOut Wire
 }
 
+// NewStreaming creates a new streaming garbler.
 func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 	*Streaming, error) {
 
@@ -98,10 +102,12 @@ func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
 	stream.firstOut = Wire(c.NumWires - len(out))
 }
 
+// GetInput gets the value of the input wire.
 func (stream *Streaming) GetInput(w Wire) ot.Wire {
 	return stream.wires[w]
 }
 
+// Get gets the value of the wire.
 func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
 	if w < stream.firstTmp {
 		index := stream.in[w]
@@ -114,6 +120,7 @@ func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
 	}
 }
 
+// Set sets the value of the wire.
 func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 	if w < stream.firstTmp {
 		index = stream.in[w]
@@ -129,6 +136,8 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 	return index, tmp
 }
 
+// Garble garbles the circuit and streams the garbled tables into the
+// stream.
 func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	if StreamDebug {
 		fmt.Printf(" - Streaming.Garble: in=%v, out=%v\n", in, out)
@@ -148,6 +157,7 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	return nil
 }
 
+// GarbleGate garbles the gate and streams it to the stream.
 func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	table []ot.Label) error {
 
@@ -203,9 +213,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	ws := func(i Wire, tmp bool) string {
 		if tmp {
 			return fmt.Sprintf("~%d", i)
-		} else {
-			return i.String()
 		}
+		return i.String()
 	}
 
 	cIndex, cTmp = stream.Set(g.Output, c)
@@ -259,7 +268,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		return fmt.Errorf("Invalid operand %s", g.Op)
 	}
 
-	var op byte = byte(g.Op)
+	op := byte(g.Op)
 	if aTmp {
 		op |= 0b10000000
 	}

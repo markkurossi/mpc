@@ -14,17 +14,20 @@ import (
 	"github.com/markkurossi/tabulate"
 )
 
+// Timing records timing samples and renders a profiling report.
 type Timing struct {
 	Start   time.Time
 	Samples []*Sample
 }
 
+// NewTiming creates a new Timing instance.
 func NewTiming() *Timing {
 	return &Timing{
 		Start: time.Now(),
 	}
 }
 
+// Sample adds a timing sample with label and data columns.
 func (t *Timing) Sample(label string, cols []string) *Sample {
 	start := t.Start
 	if len(t.Samples) > 0 {
@@ -40,6 +43,7 @@ func (t *Timing) Sample(label string, cols []string) *Sample {
 	return sample
 }
 
+// Print prints profiling report to standard output.
 func (t *Timing) Print(xfer string) {
 	if len(t.Samples) == 0 {
 		return
@@ -93,6 +97,7 @@ func (t *Timing) Print(xfer string) {
 	tab.Print(os.Stdout)
 }
 
+// Sample contains information about one timing sample.
 type Sample struct {
 	Label   string
 	Start   time.Time
@@ -102,6 +107,7 @@ type Sample struct {
 	Samples []*Sample
 }
 
+// SubSample adds a sub-sample for a timing sample.
 func (s *Sample) SubSample(label string, end time.Time) {
 	start := s.Start
 	if len(s.Samples) > 0 {
@@ -114,6 +120,7 @@ func (s *Sample) SubSample(label string, end time.Time) {
 	})
 }
 
+// AbsSubSample adds an absolute sub-sample for a timing sample.
 func (s *Sample) AbsSubSample(label string, duration time.Duration) {
 	s.Samples = append(s.Samples, &Sample{
 		Label: label,
