@@ -11,12 +11,14 @@ import (
 	"io"
 )
 
+// Placement specifies gate placement.
 type Placement struct {
 	Col int
 	Row float64
 	G   Gate
 }
 
+// Render creates a 2D rendering of the circuit.
 func (c *Circuit) Render() {
 	from := make(map[int]Gate)
 	to := make(map[int]Gate)
@@ -60,6 +62,7 @@ func (c *Circuit) Render() {
 	}
 }
 
+// Dot creates graphviz dot output of the circuit.
 func (c *Circuit) Dot(out io.Writer) {
 	fmt.Fprintf(out, "digraph circuit\n{\n")
 	fmt.Fprintf(out, "  overlap=scale;\n")

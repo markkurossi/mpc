@@ -104,7 +104,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 	var w int
 	for i := 0; i < circ.Inputs[1].Size; i++ {
-		if err := conn.SendUint32(OP_OT); err != nil {
+		if err := conn.SendUint32(OpOT); err != nil {
 			return nil, err
 		}
 		n, err := conn.Receive(receiver, uint(circ.Inputs[0].Size+w),
@@ -137,7 +137,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 
 	// Resolve result values.
-	if err := conn.SendUint32(OP_RESULT); err != nil {
+	if err := conn.SendUint32(OpResult); err != nil {
 		return nil, err
 	}
 	for _, l := range labels {

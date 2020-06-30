@@ -297,7 +297,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 
 		case Ret:
-			if err := conn.SendUint32(circuit.OP_RETURN); err != nil {
+			if err := conn.SendUint32(circuit.OpReturn); err != nil {
 				return nil, nil, err
 			}
 			for _, arg := range wires {
@@ -435,7 +435,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	if err != nil {
 		return nil, nil, err
 	}
-	if op != circuit.OP_RESULT {
+	if op != circuit.OpResult {
 		return nil, nil, fmt.Errorf("unexpected operation: %d", op)
 	}
 
@@ -494,7 +494,7 @@ func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
 		}
 	}
 
-	if err := conn.SendUint32(circuit.OP_CIRCUIT); err != nil {
+	if err := conn.SendUint32(circuit.OpCircuit); err != nil {
 		return err
 	}
 	if err := conn.SendUint32(step); err != nil {

@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	// MAGIC is a magic number for the MPCL circuit format version 0.
 	MAGIC = 0x63726300 // crc0
 )
 
@@ -20,6 +21,7 @@ var (
 	bo = binary.BigEndian
 )
 
+// Marshal marshals circuit in the MPCL circuit format.
 func (c *Circuit) Marshal(out io.Writer) error {
 	var data = []interface{}{
 		uint32(MAGIC),
@@ -99,6 +101,7 @@ func marshalString(out io.Writer, val string) error {
 	return err
 }
 
+// MarshalBristol marshals the circuit in the Bristol format.
 func (c *Circuit) MarshalBristol(out io.Writer) {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
 	fmt.Fprintf(out, "%d", len(c.Inputs))

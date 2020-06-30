@@ -18,13 +18,15 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// Protocol operation codes.
 const (
-	OP_OT = iota
-	OP_RESULT
-	OP_CIRCUIT
-	OP_RETURN
+	OpOT = iota
+	OpResult
+	OpCircuit
+	OpReturn
 )
 
+// FileSize specifies a file (or data transfer) size in bytes.
 type FileSize uint64
 
 func (s FileSize) String() string {
@@ -41,6 +43,7 @@ func (s FileSize) String() string {
 	}
 }
 
+// Garbler runs the garbler on the P2P network.
 func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 
@@ -154,7 +157,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 		}
 
 		switch op {
-		case OP_OT:
+		case OpOT:
 			bit, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, err
@@ -202,7 +205,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 			conn.Flush()
 			lastOT = time.Now()
 
-		case OP_RESULT:
+		case OpResult:
 			for i := 0; i < circ.Outputs.Size(); i++ {
 				label, err := conn.ReceiveLabel()
 				if err != nil {

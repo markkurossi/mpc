@@ -20,8 +20,10 @@ import (
 
 var reParts = regexp.MustCompilePOSIX("[[:space:]]+")
 
+// Seen describes whether wire has been seen.
 type Seen []bool
 
+// Set marks the wire seen.
 func (s Seen) Set(index int) error {
 	if index < 0 || index >= len(s) {
 		return fmt.Errorf("invalid wire %d [0...%d[", index, len(s))
@@ -30,6 +32,7 @@ func (s Seen) Set(index int) error {
 	return nil
 }
 
+// Parse parses the circuit file.
 func Parse(file string) (*Circuit, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -45,6 +48,7 @@ func Parse(file string) (*Circuit, error) {
 	return nil, fmt.Errorf("unsupported circuit format")
 }
 
+// ParseMPCLC parses an MPCL circuit file.
 func ParseMPCLC(in io.Reader) (*Circuit, error) {
 	r := bufio.NewReader(in)
 
@@ -225,6 +229,7 @@ func parseString(r *bufio.Reader) (string, error) {
 	return string(buf), nil
 }
 
+// ParseBristol parses a Briston circuit file.
 func ParseBristol(in io.Reader) (*Circuit, error) {
 	r := bufio.NewReader(in)
 

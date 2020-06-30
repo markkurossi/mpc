@@ -43,9 +43,8 @@ func NewStreamEval(key []byte, numInputs, numOutputs int) (*StreamEval, error) {
 func (stream *StreamEval) Get(tmp bool, w int) ot.Label {
 	if tmp {
 		return stream.tmp[w]
-	} else {
-		return stream.wires[w]
 	}
+	return stream.wires[w]
 }
 
 // Set sets the value of the wire.
@@ -202,7 +201,7 @@ loop:
 			return nil, nil, err
 		}
 		switch op {
-		case OP_CIRCUIT:
+		case OpCircuit:
 			step, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, nil, err
@@ -361,7 +360,7 @@ loop:
 				streaming.Set(cTmp, cIndex, output)
 			}
 
-		case OP_RETURN:
+		case OpReturn:
 			xfer := conn.Stats.Sub(ioStats)
 			ioStats = conn.Stats
 			timing.Sample("Eval", []string{FileSize(xfer.Sum()).String()})
@@ -377,7 +376,7 @@ loop:
 			}
 
 			// Resolve result values.
-			if err := conn.SendUint32(OP_RESULT); err != nil {
+			if err := conn.SendUint32(OpResult); err != nil {
 				return nil, nil, err
 			}
 			for _, l := range labels {

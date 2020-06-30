@@ -20,6 +20,7 @@ import (
 // XXX check this
 var key [32]byte
 
+// Player runs the BMR protocol client on the P2P network.
 func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
 
@@ -367,6 +368,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	return []*big.Int{new(big.Int)}, nil
 }
 
+// OTLambdaResult contain oblivious transfer lambda results.
 type OTLambdaResult struct {
 	peerID int
 	x1     *big.Int
@@ -374,6 +376,7 @@ type OTLambdaResult struct {
 	err    error
 }
 
+// OTRResult contain oblivious transfer results.
 type OTRResult struct {
 	peerID int
 	Ra     []ot.Label
@@ -382,6 +385,7 @@ type OTRResult struct {
 	err    error
 }
 
+// GateResults contain gate exchange results.
 type GateResults struct {
 	peerID int
 	Ra     [][]ot.Label
@@ -392,6 +396,7 @@ type GateResults struct {
 	err    error
 }
 
+// GateValues specify player's gate values.
 type GateValues struct {
 	Ag [][]ot.Label
 	Bg [][]ot.Label
@@ -399,6 +404,7 @@ type GateValues struct {
 	Dg [][]ot.Label
 }
 
+// NewGateValues creates GateValues for a player.
 func NewGateValues(numGates, numPlayers, we int) *GateValues {
 	v := &GateValues{
 		Ag: make([][]ot.Label, numPlayers),
