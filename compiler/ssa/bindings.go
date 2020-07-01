@@ -17,8 +17,10 @@ var (
 	_ BindingValue = &Select{}
 )
 
+// Bindings defines variable bindings.
 type Bindings []Binding
 
+// Set adds a new binding for the variable.
 func (bindings *Bindings) Set(v Variable, val *Variable) {
 	for idx, b := range *bindings {
 		if b.Name == v.Name && b.Scope == v.Scope {
@@ -47,6 +49,7 @@ func (bindings *Bindings) Set(v Variable, val *Variable) {
 	*bindings = append(*bindings, b)
 }
 
+// Get gets the variable binding.
 func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
 	for _, b := range bindings {
 		if b.Name == name {
@@ -61,26 +64,29 @@ func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
 	return ret, true
 }
 
-func (b Bindings) Clone() Bindings {
-	result := make(Bindings, len(b))
-	copy(result, b)
+// Clone makes a copy of the bindings.
+func (bindings Bindings) Clone() Bindings {
+	result := make(Bindings, len(bindings))
+	copy(result, bindings)
 	return result
 }
 
-func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
+// Merge merges the argument false-branch bindings into this bindings
+// instance that represents the true-branch values.
+func (bindings Bindings) Merge(cond Variable, falseBindings Bindings) Bindings {
 	names := make(map[string]bool)
 
-	for _, b := range tBindings {
+	for _, b := range bindings {
 		names[b.Name] = true
 	}
-	for _, b := range fBindings {
+	for _, b := range falseBindings {
 		names[b.Name] = true
 	}
 
 	var result Bindings
 	for name := range names {
-		bTrue, ok1 := tBindings.Get(name)
-		bFalse, ok2 := fBindings.Get(name)
+		bTrue, ok1 := bindings.Get(name)
+		bFalse, ok2 := falseBindings.Get(name)
 		if !ok1 && !ok2 {
 			continue
 		} else if !ok1 {
@@ -115,6 +121,7 @@ func (tBindings Bindings) Merge(cond Variable, fBindings Bindings) Bindings {
 	return result
 }
 
+// Binding implements a variable binding.
 type Binding struct {
 	Name  string
 	Scope int
@@ -126,15 +133,18 @@ func (b Binding) String() string {
 	return fmt.Sprintf("%s@%d/%s=%s", b.Name, b.Scope, b.Type, b.Bound)
 }
 
+// Value returns the binding value.
 func (b Binding) Value(block *Block, gen *Generator) Variable {
 	return b.Bound.Value(block, gen)
 }
 
+// BindingValue represents variable binding.
 type BindingValue interface {
 	Equal(o BindingValue) bool
 	Value(block *Block, gen *Generator) Variable
 }
 
+// Select implements Phi-bindings for variable.
 type Select struct {
 	Cond     Variable
 	Type     types.Info
@@ -148,6 +158,8 @@ func (phi *Select) String() string {
 		phi.Cond, phi.True, phi.False, phi.Type)
 }
 
+// Equal tests if this select binding is equal to the argument bindind
+// value.
 func (phi *Select) Equal(other BindingValue) bool {
 	o, ok := other.(*Select)
 	if !ok {
@@ -159,6 +171,7 @@ func (phi *Select) Equal(other BindingValue) bool {
 	return phi.True.Equal(o.True) && phi.False.Equal(o.False)
 }
 
+// Value returns the binding value.
 func (phi *Select) Value(block *Block, gen *Generator) Variable {
 	if phi.Resolved.Type.Type != types.Undefined {
 		return phi.Resolved
