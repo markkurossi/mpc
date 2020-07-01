@@ -12,6 +12,7 @@ import (
 	"fmt"
 )
 
+// Type specifies an MPCL type.
 type Type int
 
 func (t Type) String() string {
@@ -23,6 +24,7 @@ func (t Type) String() string {
 	return fmt.Sprintf("{Type %d}", t)
 }
 
+// ShortString returns a short string name for the type.
 func (t Type) ShortString() string {
 	name, ok := shortTypes[t]
 	if ok {
@@ -31,6 +33,7 @@ func (t Type) ShortString() string {
 	return t.String()
 }
 
+// MPCL types.
 const (
 	Undefined Type = iota
 	Bool
@@ -41,6 +44,7 @@ const (
 	Struct
 )
 
+// Types define MPCL types and their names.
 var Types = map[string]Type{
 	"<Undefined>": Undefined,
 	"bool":        Bool,
@@ -61,6 +65,7 @@ var shortTypes = map[Type]string{
 	Struct:    "struct",
 }
 
+// Info specifies information about a type.
 type Info struct {
 	Type    Type
 	Bits    int
@@ -69,6 +74,7 @@ type Info struct {
 	Offset  int
 }
 
+// StructField defines a structure field name and type.
 type StructField struct {
 	Name string
 	Type Info
@@ -86,6 +92,7 @@ func (i Info) String() string {
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
 }
 
+// ShortString returns a short string name for the type info.
 func (i Info) ShortString() string {
 	if i.Bits == 0 {
 		return i.Type.ShortString()
@@ -93,10 +100,12 @@ func (i Info) ShortString() string {
 	return fmt.Sprintf("%s%d", i.Type.ShortString(), i.Bits)
 }
 
+// Undefined tests if type is undefined.
 func (i Info) Undefined() bool {
 	return i.Type == Undefined
 }
 
+// Equal tests if the argument type is equal to this type info.
 func (i Info) Equal(o Info) bool {
 	return i.Type == o.Type && i.Bits == o.Bits
 }
@@ -113,6 +122,7 @@ func (i Info) CanAssignConst(o Info) bool {
 	}
 }
 
+// BoolType returns type information for the boolean type.
 func BoolType() Info {
 	return Info{
 		Type: Bool,

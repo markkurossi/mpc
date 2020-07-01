@@ -19,6 +19,7 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// StreamCircuit streams the program circuit into the P2P connection.
 func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	inputs *big.Int) (circuit.IO, []*big.Int, error) {
 
@@ -531,6 +532,7 @@ func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
 	return nil
 }
 
+// ZeroWire returns a wire with value 0.
 func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
@@ -573,6 +575,7 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	return prog.zeroWire, nil
 }
 
+// OneWire returns wire with value 1.
 func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
@@ -638,9 +641,11 @@ func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {
 	return nil
 }
 
+// NewCircuit creates a new circuit.
 type NewCircuit func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 	out []*circuits.Wire) (cacheable bool, err error)
 
+// NewBinary creates a new binary circuit.
 type NewBinary func(cc *circuits.Compiler, a, b []*circuits.Wire,
 	out []*circuits.Wire) error
 

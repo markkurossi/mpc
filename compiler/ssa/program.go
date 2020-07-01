@@ -18,6 +18,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Program implements SSA program.
 type Program struct {
 	Params         *utils.Params
 	Inputs         circuit.IO
@@ -41,6 +42,8 @@ type wireAlloc struct {
 	Wires []*circuits.Wire
 }
 
+// NewProgram creates a new program for the constants and program
+// steps.
 func NewProgram(params *utils.Params, in, out circuit.IO,
 	consts map[string]ConstantInst, steps []Step) (*Program, error) {
 
@@ -69,12 +72,14 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 	return prog, nil
 }
 
+// Step defines one SSA program step.
 type Step struct {
 	Label string
 	Instr Instr
 	Live  Set
 }
 
+// Wires allocates unassigned wires for the argument variable.
 func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for variable %v", v)
@@ -87,6 +92,7 @@ func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	return alloc.Wires, nil
 }
 
+// AssignedWires allocates assigned wires for the argument variable.
 func (prog *Program) AssignedWires(v string, bits int) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
@@ -153,6 +159,7 @@ func (prog *Program) recycleWires(alloc *wireAlloc) {
 	}
 }
 
+// SetWires allocates wire IDs for the variable's wires.
 func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 	_, ok := prog.wires[v]
 	if ok {
@@ -207,6 +214,8 @@ func (prog *Program) liveness() {
 	}
 }
 
+// GC adds garbage collect (gc) instructions to recycle dead
+// variable wires.
 func (prog *Program) GC() {
 	steps := make([]Step, 0, len(prog.Steps))
 	last := NewSet()
@@ -229,6 +238,7 @@ func (prog *Program) GC() {
 	prog.Steps = steps
 }
 
+// DefineConstants defines the program constants.
 func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
 	var consts []Variable
@@ -276,6 +286,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 	return nil
 }
 
+// PP pretty-prints the program to the argument io.Writer.
 func (prog *Program) PP(out io.Writer) {
 	for i, in := range prog.Inputs {
 		fmt.Fprintf(out, "# Input%d: %s\n", i, in)
