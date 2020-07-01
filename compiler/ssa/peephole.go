@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// Rule defines a peephole optimization rule.
 type Rule struct {
 	Name    string
 	Source  string
@@ -19,12 +20,14 @@ type Rule struct {
 	Replace []Template
 }
 
+// Template defines an instruction template.
 type Template struct {
 	Op  Operand
 	In  []string
 	Out string
 }
 
+// Expand expands the template with given environment bindings.
 func (t Template) Expand(env map[string]Variable) (Instr, error) {
 	var in []Variable
 	var out Variable
@@ -48,6 +51,7 @@ func (t Template) Expand(env map[string]Variable) (Instr, error) {
 	}, nil
 }
 
+// Match tests if the rule matches the steps span.
 func (rule Rule) Match(steps []Step) []Step {
 	env := make(map[string]Variable)
 
@@ -195,6 +199,7 @@ func init() {
 	}
 }
 
+// Peephole runs the peephole optimizer for the program.
 func (prog *Program) Peephole() error {
 
 	prog.liveness()

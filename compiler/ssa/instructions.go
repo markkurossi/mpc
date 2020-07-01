@@ -16,8 +16,10 @@ import (
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
+// Operand specifies SSA assembly operand
 type Operand uint8
 
+// SSA assembly operands.
 const (
 	Iadd Operand = iota
 	Uadd
@@ -134,6 +136,7 @@ func (op Operand) String() string {
 	return fmt.Sprintf("{Operand %d}", op)
 }
 
+// Instr implements SSA assembly instruction.
 type Instr struct {
 	Op      Operand
 	In      []Variable
@@ -145,6 +148,7 @@ type Instr struct {
 	Ret     []Variable
 }
 
+// NewAddInstr creates a new addition instruction based on the type t.
 func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -165,6 +169,8 @@ func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewSubInstr creates a new subtraction instruction based on the type
+// t.
 func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -184,6 +190,8 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewMultInstr creates a new multiplication instruction based on the
+// type t.
 func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -203,6 +211,7 @@ func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewDivInstr creates a new division instruction based on the type t.
 func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -213,7 +222,7 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fdiv
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for division", t)
 	}
 	return Instr{
 		Op:  op,
@@ -222,6 +231,7 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewModInstr creates a new modulo instruction based on the type t.
 func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -232,7 +242,7 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fmod
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
+		return Instr{}, fmt.Errorf("Invalid type %s for modulo", t)
 	}
 	return Instr{
 		Op:  op,
@@ -241,6 +251,7 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewLshiftInstr creates a new Lshift instruction.
 func NewLshiftInstr(l, r, o Variable) Instr {
 	return Instr{
 		Op:  Lshift,
@@ -249,6 +260,7 @@ func NewLshiftInstr(l, r, o Variable) Instr {
 	}
 }
 
+// NewRshiftInstr creates a new Rshift instruction.
 func NewRshiftInstr(l, r, o Variable) Instr {
 	return Instr{
 		Op:  Rshift,
@@ -257,6 +269,7 @@ func NewRshiftInstr(l, r, o Variable) Instr {
 	}
 }
 
+// NewSliceInstr creates a new Slice instruction.
 func NewSliceInstr(v, from, to, o Variable) Instr {
 	return Instr{
 		Op:  Slice,
@@ -265,6 +278,7 @@ func NewSliceInstr(v, from, to, o Variable) Instr {
 	}
 }
 
+// NewLtInstr creates a new less-than instruction based on the type t.
 func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -284,6 +298,8 @@ func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewLeInstr creates a new less-equal instruction based on the type
+// t.
 func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -303,6 +319,8 @@ func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewGtInstr creates a new greater-than instruction based on the type
+// t.
 func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -322,6 +340,8 @@ func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewGeInstr creates a new greater-equal instruction based on the
+// type t.
 func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
@@ -341,6 +361,7 @@ func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewEqInstr creates a new Eq instruction.
 func NewEqInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Eq,
@@ -349,6 +370,7 @@ func NewEqInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewNeqInstr creates a new Neq instruction.
 func NewNeqInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Neq,
@@ -357,6 +379,7 @@ func NewNeqInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewAndInstr creates a new And instruction.
 func NewAndInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  And,
@@ -365,6 +388,7 @@ func NewAndInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewOrInstr creates a new Or instruction.
 func NewOrInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Or,
@@ -373,6 +397,7 @@ func NewOrInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewBandInstr creates a new Band instruction.
 func NewBandInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Band,
@@ -381,6 +406,7 @@ func NewBandInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewBclrInstr creates a new Bclr instruction.
 func NewBclrInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Bclr,
@@ -389,6 +415,7 @@ func NewBclrInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewBorInstr creates a new Bor instruction.
 func NewBorInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Bor,
@@ -397,6 +424,7 @@ func NewBorInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewBxorInstr creates a new Bxor instruction.
 func NewBxorInstr(l, r, o Variable) (Instr, error) {
 	return Instr{
 		Op:  Bxor,
@@ -405,6 +433,7 @@ func NewBxorInstr(l, r, o Variable) (Instr, error) {
 	}, nil
 }
 
+// NewMovInstr creates a new Mov instruction.
 func NewMovInstr(from, to Variable) Instr {
 	return Instr{
 		Op:  Mov,
@@ -413,6 +442,7 @@ func NewMovInstr(from, to Variable) Instr {
 	}
 }
 
+// NewPhiInstr creates a new Phi instruction.
 func NewPhiInstr(cond, l, r, v Variable) Instr {
 	return Instr{
 		Op:  Phi,
@@ -421,6 +451,7 @@ func NewPhiInstr(cond, l, r, v Variable) Instr {
 	}
 }
 
+// NewRetInstr creates a new Ret instruction.
 func NewRetInstr(ret []Variable) Instr {
 	return Instr{
 		Op: Ret,
@@ -428,6 +459,7 @@ func NewRetInstr(ret []Variable) Instr {
 	}
 }
 
+// NewCircInstr creates a new Circ instruction.
 func NewCircInstr(args []Variable, circ *circuit.Circuit,
 	ret []Variable) Instr {
 	return Instr{
@@ -438,6 +470,7 @@ func NewCircInstr(args []Variable, circ *circuit.Circuit,
 	}
 }
 
+// NewBuiltinInstr creates a new Builtin instruction.
 func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
 	return Instr{
 		Op:      Builtin,
@@ -447,6 +480,7 @@ func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
 	}
 }
 
+// NewGCInstr creates a new GC instruction.
 func NewGCInstr(v string) Instr {
 	return Instr{
 		Op: GC,
@@ -458,6 +492,7 @@ func (i Instr) String() string {
 	return i.string(maxOperandLength, false)
 }
 
+// StringTyped returns a typed string representation of the instruction.
 func (i Instr) StringTyped() string {
 	return i.string(0, true)
 }
@@ -506,10 +541,12 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 	return result
 }
 
+// PP pretty-prints instruction to the specified io.Writer.
 func (i Instr) PP(out io.Writer) {
 	fmt.Fprintf(out, "\t%s\n", i)
 }
 
+// Variable implements SSA variable binding.
 type Variable struct {
 	Name       string
 	Scope      int
@@ -537,6 +574,7 @@ func (v Variable) String() string {
 		v.Name, v.Scope, version, v.Type.ShortString())
 }
 
+// Equal tests if this variable is equal to the argument binding value.
 func (v *Variable) Equal(other BindingValue) bool {
 	o, ok := other.(*Variable)
 	if !ok {
@@ -545,10 +583,12 @@ func (v *Variable) Equal(other BindingValue) bool {
 	return o.Name == v.Name && o.Scope == v.Scope && o.Version == v.Version
 }
 
+// Value returns the variables value.
 func (v *Variable) Value(block *Block, gen *Generator) Variable {
 	return *v
 }
 
+// Bit tests if the argument bit is set in the variable.
 func (v *Variable) Bit(bit int) bool {
 	switch val := v.ConstValue.(type) {
 	case bool:
@@ -587,11 +627,12 @@ func (v *Variable) Bit(bit int) bool {
 func LValueFor(l types.Info, o Variable) bool {
 	if o.Const {
 		return l.CanAssignConst(o.Type)
-	} else {
-		return l.Equal(o.Type)
 	}
+	return l.Equal(o.Type)
 }
 
+// TypeCompatible tests if the argument variable is type compatible
+// with this variable.
 func (v Variable) TypeCompatible(o Variable) bool {
 	if v.Const && o.Const {
 		return v.Type.Type == o.Type.Type
@@ -599,11 +640,11 @@ func (v Variable) TypeCompatible(o Variable) bool {
 		return o.Type.CanAssignConst(v.Type)
 	} else if o.Const {
 		return v.Type.CanAssignConst(o.Type)
-	} else {
-		return v.Type.Equal(o.Type)
 	}
+	return v.Type.Equal(o.Type)
 }
 
+// Constant creates a constant variable for the argument value.
 func Constant(value interface{}) (Variable, error) {
 	v := Variable{
 		Const:      true,
