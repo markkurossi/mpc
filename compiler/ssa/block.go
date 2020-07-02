@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
+// Block implements a basic block.
 type Block struct {
 	ID         string
 	Name       string
@@ -31,10 +32,12 @@ func (b *Block) String() string {
 	return b.ID
 }
 
+// Equals tests if the argument block is equal to this basic block.
 func (b *Block) Equals(o *Block) bool {
 	return b.ID == o.ID
 }
 
+// SetNext sets the next basic block.
 func (b *Block) SetNext(o *Block) {
 	if b.Next != nil && b.Next.ID != o.ID {
 		panic(fmt.Sprintf("%s.Next already set to %s, now setting to %s",
@@ -44,6 +47,8 @@ func (b *Block) SetNext(o *Block) {
 	o.addFrom(b)
 }
 
+// SetBranch sets the argument block being a branch block for this
+// basic block.
 func (b *Block) SetBranch(o *Block) {
 	if b.Branch != nil && b.Branch.ID != o.ID {
 		panic(fmt.Sprintf("%s.Branch already set to %s, now setting to %s",
@@ -62,10 +67,15 @@ func (b *Block) addFrom(o *Block) {
 	b.From = append(b.From, o)
 }
 
+// AddInstr adds an instruction to this basic block.
 func (b *Block) AddInstr(instr Instr) {
 	b.Instr = append(b.Instr, instr)
 }
 
+// ReturnBinding returns the return statement binding for the argument
+// variable. If the block contains a branch and variable's value is
+// modified in both branches, the function adds a Phi instruction to
+// resolve the variable's value after this basic block.
 func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 	v Variable, ok bool) {
 
@@ -110,6 +120,7 @@ func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 	return v, true
 }
 
+// Serialize serializes the basic block's instructions.
 func (b *Block) Serialize() []Step {
 	seen := make(map[string]bool)
 	return b.serialize(nil, seen)
@@ -149,6 +160,7 @@ func (b *Block) serialize(code []Step, seen map[string]bool) []Step {
 	return code
 }
 
+// DotNodes creates graphviz dot description of this basic block.
 func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 	if seen[b.ID] {
 		return
@@ -183,6 +195,8 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 	}
 }
 
+// DotLinks creates graphviz dot description of the links to and from
+// this basic block.
 func (b *Block) DotLinks(out io.Writer, seen map[string]bool) {
 	if seen[b.ID] {
 		return
@@ -205,6 +219,7 @@ func (b *Block) DotLinks(out io.Writer, seen map[string]bool) {
 	}
 }
 
+// Dot creates a graphviz dot description of this basic block.
 func Dot(out io.Writer, block *Block) {
 	fontname := "Courier"
 	fontsize := 10

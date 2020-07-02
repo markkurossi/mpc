@@ -17,6 +17,7 @@ const (
 	anon = "%_"
 )
 
+// Generator implements code generator.
 type Generator struct {
 	Params    *utils.Params
 	versions  map[string]Variable
@@ -24,11 +25,13 @@ type Generator struct {
 	constants map[string]ConstantInst
 }
 
+// ConstantInst defines a constant variable instance.
 type ConstantInst struct {
 	Count int
 	Const Variable
 }
 
+// NewGenerator creates a new code generator.
 func NewGenerator(params *utils.Params) *Generator {
 	return &Generator{
 		Params:    params,
@@ -37,10 +40,12 @@ func NewGenerator(params *utils.Params) *Generator {
 	}
 }
 
+// Constants returns the constants.
 func (gen *Generator) Constants() map[string]ConstantInst {
 	return gen.constants
 }
 
+// UndefVar creates a new undefined variable.
 func (gen *Generator) UndefVar() Variable {
 	v, ok := gen.versions[anon]
 	if !ok {
@@ -58,6 +63,7 @@ func (gen *Generator) UndefVar() Variable {
 	return v
 }
 
+// AnonVar creates a new anonymous variable.
 func (gen *Generator) AnonVar(t types.Info) Variable {
 	v, ok := gen.versions[anon]
 	if !ok {
@@ -73,6 +79,7 @@ func (gen *Generator) AnonVar(t types.Info) Variable {
 	return v
 }
 
+// NewVar creates a new variable with the name, type, and scope.
 func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 	Variable, error) {
 
@@ -93,6 +100,7 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 	return v, nil
 }
 
+// AddConstant adds a reference to the constant.
 func (gen *Generator) AddConstant(c Variable) {
 	inst, ok := gen.constants[c.Name]
 	if !ok {
@@ -106,6 +114,7 @@ func (gen *Generator) AddConstant(c Variable) {
 	gen.constants[c.Name] = inst
 }
 
+// RemoveConstant drops a reference from the constant.
 func (gen *Generator) RemoveConstant(c Variable) {
 	inst, ok := gen.constants[c.Name]
 	if !ok {
@@ -123,6 +132,7 @@ func fmtKey(name string, scope int) string {
 	return fmt.Sprintf("%s@%d", name, scope)
 }
 
+// Block creates a new basic block.
 func (gen *Generator) Block() *Block {
 	block := &Block{
 		ID: fmt.Sprintf("l%d", gen.blockID),
@@ -132,6 +142,7 @@ func (gen *Generator) Block() *Block {
 	return block
 }
 
+// NextBlock adds the next basic block to the argument block.
 func (gen *Generator) NextBlock(b *Block) *Block {
 	n := gen.Block()
 	n.Bindings = b.Bindings.Clone()
@@ -139,6 +150,7 @@ func (gen *Generator) NextBlock(b *Block) *Block {
 	return n
 }
 
+// BranchBlock creates a new branch basic block.
 func (gen *Generator) BranchBlock(b *Block) *Block {
 	n := gen.Block()
 	n.Bindings = b.Bindings.Clone()

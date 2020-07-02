@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// CompileCircuit compiles the MPCL program into a boolean circuit.
 func (prog *Program) CompileCircuit(params *utils.Params) (
 	*circuit.Circuit, error) {
 
@@ -69,6 +70,7 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 	return circ, nil
 }
 
+// Circuit creates the boolean circuits for the program steps.
 func (prog *Program) Circuit(cc *circuits.Compiler) error {
 
 	for _, step := range prog.Steps {
