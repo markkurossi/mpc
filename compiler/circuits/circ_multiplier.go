@@ -14,15 +14,15 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+// NewMultiplier creates a multiplier circuit implementing x*y=z.
 func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 	if false {
 		return NewArrayMultiplier(c, x, y, z)
-	} else {
-		if arrayTreshold < 12 {
-			arrayTreshold = 18
-		}
-		return NewKaratsubaMultiplier(c, arrayTreshold, x, y, z)
 	}
+	if arrayTreshold < 12 {
+		arrayTreshold = 18
+	}
+	return NewKaratsubaMultiplier(c, arrayTreshold, x, y, z)
 }
 
 // NewArrayMultiplier creates a multiplier circuit implementing

@@ -59,6 +59,7 @@ func NewLeComparator(compiler *Compiler, x, y, r []*Wire) error {
 	return comparator(compiler, compiler.OneWire(), y, x, r)
 }
 
+// NewNeqComparator tewsts if x!=y.
 func NewNeqComparator(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != 1 {
@@ -89,6 +90,7 @@ func NewNeqComparator(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewEqComparator tests if x==y.
 func NewEqComparator(compiler *Compiler, x, y, r []*Wire) error {
 	if len(r) != 1 {
 		return fmt.Errorf("invalid eq comparator arguments: r=%d", len(r))
@@ -105,6 +107,8 @@ func NewEqComparator(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewLogicalAND implements logical AND implementing r=x&y. The input
+// and output wires must be 1 bit wide.
 func NewLogicalAND(compiler *Compiler, x, y, r []*Wire) error {
 	if len(x) != 1 || len(y) != 1 || len(r) != 1 {
 		return fmt.Errorf("invalid logical and arguments: x=%d, y=%d, r=%d",
@@ -114,6 +118,8 @@ func NewLogicalAND(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewLogicalOR implements logical OR implementing r=x|y.  The input
+// and output wires must be 1 bit wide.
 func NewLogicalOR(compiler *Compiler, x, y, r []*Wire) error {
 	if len(x) != 1 || len(y) != 1 || len(r) != 1 {
 		return fmt.Errorf("invalid logical or arguments: x=%d, y=%d, r=%d",
@@ -123,6 +129,7 @@ func NewLogicalOR(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewBitSetTest tests if the index'th bit of x is set.
 func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 	if len(r) != 1 {
 		return fmt.Errorf("invalid bit set test arguments: x=%d, r=%d",
@@ -137,6 +144,7 @@ func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 	return nil
 }
 
+// NewBitClrTest tests if the index'th bit of x is unset.
 func NewBitClrTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 	if len(r) != 1 {
 		return fmt.Errorf("invalid bit clear test arguments: x=%d, r=%d",

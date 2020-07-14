@@ -12,6 +12,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+// NewBinaryAND creates a new binary AND circuit implementing r=x&y
 func NewBinaryAND(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != len(x) {
@@ -23,6 +24,7 @@ func NewBinaryAND(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewBinaryClear creates a new binary clear circuit implementing r=x&^y.
 func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != len(x) {
@@ -36,6 +38,7 @@ func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewBinaryOR creates a new binary OR circuit implementing r=x|y.
 func NewBinaryOR(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != len(x) {
@@ -47,6 +50,7 @@ func NewBinaryOR(compiler *Compiler, x, y, r []*Wire) error {
 	return nil
 }
 
+// NewBinaryXOR creates a new binary XOR circuit implementing r=x^y.
 func NewBinaryXOR(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(r) != len(x) {

@@ -6,6 +6,7 @@
 
 package circuits
 
+// NewDivider creates a division circuit computing r=a/b, q=a%b.
 func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 	a, b = compiler.ZeroPad(a, b)
 

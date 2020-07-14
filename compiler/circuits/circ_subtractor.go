@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+// NewFullSubtractor creates a full subtractor circuit.
 func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
 	w1 := NewWire()
 	compiler.AddGate(NewBinary(circuit.XNOR, y, cin, w1))
@@ -30,6 +31,7 @@ func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
 	}
 }
 
+// NewSubtractor creates a new subtractor circuit implementing z=x-y.
 func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(z) < len(x) {

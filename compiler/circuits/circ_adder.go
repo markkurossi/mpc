@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+// NewHalfAdder creates a half adder circuit.
 func NewHalfAdder(compiler *Compiler, a, b, s, c *Wire) {
 	// S = XOR(A, B)
 	compiler.AddGate(NewBinary(circuit.XOR, a, b, s))
@@ -24,6 +25,7 @@ func NewHalfAdder(compiler *Compiler, a, b, s, c *Wire) {
 	}
 }
 
+// NewFullAdder creates a full adder circuit
 func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 	w1 := NewWire()
 	w2 := NewWire()
@@ -50,6 +52,7 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 	}
 }
 
+// NewAdder creates a new adder circuit implementing z=x+y.
 func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(z) < len(x) {
