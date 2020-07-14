@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 )
 
+// Gate implements binary gates.
 type Gate struct {
 	Op       circuit.Operation
 	Visited  bool
@@ -24,6 +25,7 @@ type Gate struct {
 	O        *Wire
 }
 
+// NewBinary creates a new binary gate.
 func NewBinary(op circuit.Operation, a, b, o *Wire) *Gate {
 	gate := &Gate{
 		Op: op,
@@ -42,6 +44,7 @@ func (g *Gate) String() string {
 	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID, g.B.ID, g.O.ID)
 }
 
+// Visit adds gate to the list of pending gates to be compiled.
 func (g *Gate) Visit(c *Compiler) {
 	if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
 		g.Visited = true
@@ -49,6 +52,8 @@ func (g *Gate) Visit(c *Compiler) {
 	}
 }
 
+// Prune removes gate from the circuit if gate is dead i.e. its output
+// wire is not connected into circuit's output wires.
 func (g *Gate) Prune() bool {
 	if g.Dead || g.O.Output || g.O.NumOutputs > 0 {
 		return false
@@ -59,6 +64,7 @@ func (g *Gate) Prune() bool {
 	return true
 }
 
+// Assign assigns gate's output wire ID.
 func (g *Gate) Assign(c *Compiler) {
 	if !g.Dead {
 		g.O.Assign(c)
@@ -66,6 +72,7 @@ func (g *Gate) Assign(c *Compiler) {
 	}
 }
 
+// Compile adds gate's binary circuit into compile circuit.
 func (g *Gate) Compile(c *Compiler) {
 	if g.Dead || g.Compiled {
 		return

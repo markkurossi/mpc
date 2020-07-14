@@ -14,8 +14,11 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Builtin implements a buitin circuit that uses input wires a and b
+// and returns the circuit result in r.
 type Builtin func(cc *Compiler, a, b, r []*Wire) error
 
+// Compiler implements binary circuit compiler.
 type Compiler struct {
 	Params          *utils.Params
 	OutputsAssigned bool
@@ -33,6 +36,8 @@ type Compiler struct {
 	oneWire         *Wire
 }
 
+// NewCompiler creates a new circuit compiler for the specified
+// circuit input and output values.
 func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 	inputWires, outputWires []*Wire) (*Compiler, error) {
 
@@ -49,6 +54,7 @@ func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 	}, nil
 }
 
+// ZeroWire returns a wire holding value 0.
 func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
 		c.zeroWire = NewWire()
@@ -58,6 +64,7 @@ func (c *Compiler) ZeroWire() *Wire {
 	return c.zeroWire
 }
 
+// OneWire returns a wire holding value 1.
 func (c *Compiler) OneWire() *Wire {
 	if c.oneWire == nil {
 		c.oneWire = NewWire()
@@ -67,6 +74,8 @@ func (c *Compiler) OneWire() *Wire {
 	return c.oneWire
 }
 
+// ZeroPad pads the argument wires x and y with zero values so that
+// the resulting wires have the same number of bits.
 func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 	if len(x) == len(y) {
 		return x, y
@@ -98,6 +107,8 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 	return rx, ry
 }
 
+// ShiftLeft shifts the size number of bits of the input wires w,
+// count bits left.
 func (c *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
 	result := make([]*Wire, size)
 
@@ -113,22 +124,29 @@ func (c *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
 	return result
 }
 
+// INV creates an inverse wire inverting the input wire i's value to
+// the output wire o.
 func (c *Compiler) INV(i, o *Wire) {
 	c.AddGate(NewBinary(circuit.XOR, i, c.OneWire(), o))
 }
 
+// ID creates an identity wire passing the input wire i's value to the
+// output wire o.
 func (c *Compiler) ID(i, o *Wire) {
 	c.AddGate(NewBinary(circuit.XOR, i, c.ZeroWire(), o))
 }
 
+// AddGate adds a get into the circuit.
 func (c *Compiler) AddGate(gate *Gate) {
 	c.Gates = append(c.Gates, gate)
 }
 
+// SetNextWireID sets the next unique wire ID to use.
 func (c *Compiler) SetNextWireID(next uint32) {
 	c.nextWireID = next
 }
 
+// NextWireID returns the next unique wire ID.
 func (c *Compiler) NextWireID() uint32 {
 	ret := c.nextWireID
 	c.nextWireID++
@@ -153,6 +171,7 @@ func (c *Compiler) Prune() int {
 	return nPos
 }
 
+// Compile compiles the circuit.
 func (c *Compiler) Compile() *circuit.Circuit {
 	if len(c.pending) != 0 {
 		panic("Compile: pending set")
@@ -211,9 +230,11 @@ func (c *Compiler) Compile() *circuit.Circuit {
 }
 
 const (
+	// UnassignedID identifies an unassigned wire ID.
 	UnassignedID uint32 = math.MaxUint32
 )
 
+// Wire implements a wire connecting binary gates.
 type Wire struct {
 	Output     bool
 	ID         uint32
@@ -222,10 +243,12 @@ type Wire struct {
 	Outputs    []*Gate
 }
 
+// Assigned tests if the wire is assigned with an unique ID.
 func (w *Wire) Assigned() bool {
 	return w.ID != UnassignedID
 }
 
+// NewWire creates an unassigned wire.
 func NewWire() *Wire {
 	return &Wire{
 		ID:      UnassignedID,
@@ -233,6 +256,7 @@ func NewWire() *Wire {
 	}
 }
 
+// MakeWires creates bits number of wires.
 func MakeWires(bits int) []*Wire {
 	result := make([]*Wire, bits)
 	for i := 0; i < bits; i++ {
@@ -246,6 +270,7 @@ func (w *Wire) String() string {
 		w.ID, w.Input, w.NumOutputs, w.Output)
 }
 
+// Assign assings wire ID.
 func (w *Wire) Assign(c *Compiler) {
 	if w.Output {
 		return
@@ -258,6 +283,7 @@ func (w *Wire) Assign(c *Compiler) {
 	}
 }
 
+// SetInput sets the wire's input gate.
 func (w *Wire) SetInput(gate *Gate) {
 	if w.Input != nil {
 		panic("Input gate already set")
@@ -265,11 +291,13 @@ func (w *Wire) SetInput(gate *Gate) {
 	w.Input = gate
 }
 
+// AddOutput adds gate to the wire's output gates.
 func (w *Wire) AddOutput(gate *Gate) {
 	w.Outputs = append(w.Outputs, gate)
 	w.NumOutputs++
 }
 
+// RemoveOutput removes gate from the wire's output gates.
 func (w *Wire) RemoveOutput(gate *Gate) {
 	w.NumOutputs--
 }
