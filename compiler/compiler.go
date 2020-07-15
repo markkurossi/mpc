@@ -140,6 +140,24 @@ func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
 	return pkg, nil
 }
 
+type packagePath struct {
+	precond string
+	env     string
+	prefix  string
+}
+
+var packagePaths = []packagePath{
+	{
+		env:    "HOME",
+		prefix: "go/src/github.com/markkurossi/mpc/pkg",
+	},
+	{
+		precond: "GITHUB_WORKFLOW",
+		env:     "GITHUB_WORKSPACE",
+		prefix:  "pkg",
+	},
+}
+
 func (c *Compiler) parsePkg(alias, name string) (*ast.Package, error) {
 	pkg, ok := c.packages[alias]
 	if ok {
@@ -150,14 +168,28 @@ func (c *Compiler) parsePkg(alias, name string) (*ast.Package, error) {
 	if c.params.Verbose {
 		fmt.Printf("looking for package %s (%s)\n", alias, name)
 	}
-	prefix := "go/src/github.com/markkurossi/mpc/pkg"
 
-	dir := path.Join(os.Getenv("HOME"), prefix, name)
-	df, err := os.Open(dir)
-	if err != nil {
-		return nil, fmt.Errorf("package %s not found: %s", name, err)
+	var dir string
+	var df *os.File
+	var err error
+	for _, pkgPath := range packagePaths {
+		// Check path precondition.
+		if len(pkgPath.precond) > 0 {
+			_, ok := os.LookupEnv(pkgPath.precond)
+			if !ok {
+				continue
+			}
+		}
+		dir = path.Join(os.Getenv(pkgPath.env), pkgPath.prefix, name)
+		df, err = os.Open(dir)
+		if err == nil {
+			defer df.Close()
+			break
+		}
 	}
-	defer df.Close()
+	if df == nil {
+		return nil, fmt.Errorf("package %s not found", name)
+	}
 
 	files, err := df.Readdirnames(-1)
 	if err != nil {
