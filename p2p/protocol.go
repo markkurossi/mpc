@@ -14,17 +14,20 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
+// Conn implements a protocol connection.
 type Conn struct {
 	closer io.Closer
 	io     *bufio.ReadWriter
 	Stats  IOStats
 }
 
+// IOStats implements I/O statistics.
 type IOStats struct {
 	Sent  uint64
 	Recvd uint64
 }
 
+// Add adds the argument stats to this IOStats and returns the sum.
 func (stats IOStats) Add(o IOStats) IOStats {
 	return IOStats{
 		Sent:  stats.Sent + o.Sent,
@@ -32,6 +35,8 @@ func (stats IOStats) Add(o IOStats) IOStats {
 	}
 }
 
+// Sub subtracts the argument stats from this IOStats and returns the
+// difference.
 func (stats IOStats) Sub(o IOStats) IOStats {
 	return IOStats{
 		Sent:  stats.Sent - o.Sent,
@@ -39,10 +44,12 @@ func (stats IOStats) Sub(o IOStats) IOStats {
 	}
 }
 
+// Sum returns sum of sent and received bytes.
 func (stats IOStats) Sum() uint64 {
 	return stats.Sent + stats.Recvd
 }
 
+// NewConn creates a new connection around the argument connection.
 func NewConn(conn io.ReadWriter) *Conn {
 	closer, _ := conn.(io.Closer)
 
@@ -53,10 +60,12 @@ func NewConn(conn io.ReadWriter) *Conn {
 	}
 }
 
+// Flush flushed any pending data in the connection.
 func (c *Conn) Flush() error {
 	return c.io.Flush()
 }
 
+// Close flushes any pending data and closes the connection.
 func (c *Conn) Close() error {
 	if err := c.Flush(); err != nil {
 		return err
@@ -67,15 +76,17 @@ func (c *Conn) Close() error {
 	return nil
 }
 
+// SendByte sends a byte value.
 func (c *Conn) SendByte(val byte) error {
 	err := c.io.WriteByte(val)
 	if err != nil {
 		return err
 	}
-	c.Stats.Sent += 1
+	c.Stats.Sent++
 	return nil
 }
 
+// SendUint16 sends an uint16 value.
 func (c *Conn) SendUint16(val int) error {
 	err := binary.Write(c.io, binary.BigEndian, uint16(val))
 	if err != nil {
@@ -85,6 +96,7 @@ func (c *Conn) SendUint16(val int) error {
 	return nil
 }
 
+// SendUint32 sends an uint32 value.
 func (c *Conn) SendUint32(val int) error {
 	err := binary.Write(c.io, binary.BigEndian, uint32(val))
 	if err != nil {
@@ -94,6 +106,7 @@ func (c *Conn) SendUint32(val int) error {
 	return nil
 }
 
+// SendData sends binary data.
 func (c *Conn) SendData(val []byte) error {
 	err := c.SendUint32(len(val))
 	if err != nil {
@@ -107,6 +120,7 @@ func (c *Conn) SendData(val []byte) error {
 	return nil
 }
 
+// SendLabel sends an OT label.
 func (c *Conn) SendLabel(val ot.Label) error {
 	n, err := c.io.Write(val.Bytes())
 	if err != nil {
@@ -116,19 +130,22 @@ func (c *Conn) SendLabel(val ot.Label) error {
 	return nil
 }
 
+// SendString sends a string value.
 func (c *Conn) SendString(val string) error {
 	return c.SendData([]byte(val))
 }
 
+// ReceiveByte receives a byte value.
 func (c *Conn) ReceiveByte() (byte, error) {
 	val, err := c.io.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	c.Stats.Recvd += 1
+	c.Stats.Recvd++
 	return val, nil
 }
 
+// ReceiveUint16 receives an uint16 value.
 func (c *Conn) ReceiveUint16() (int, error) {
 	var buf [2]byte
 
@@ -141,6 +158,7 @@ func (c *Conn) ReceiveUint16() (int, error) {
 	return int(binary.BigEndian.Uint16(buf[:])), nil
 }
 
+// ReceiveUint32 receives an uint32 value.
 func (c *Conn) ReceiveUint32() (int, error) {
 	var buf [4]byte
 
@@ -153,6 +171,7 @@ func (c *Conn) ReceiveUint32() (int, error) {
 	return int(binary.BigEndian.Uint32(buf[:])), nil
 }
 
+// ReceiveData receives binary data.
 func (c *Conn) ReceiveData() ([]byte, error) {
 	len, err := c.ReceiveUint32()
 	if err != nil {
@@ -169,6 +188,7 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	return result, nil
 }
 
+// ReceiveLabel receives an OT label.
 func (c *Conn) ReceiveLabel() (ot.Label, error) {
 	var buf ot.LabelData
 	n, err := io.ReadFull(c.io, buf[:])
@@ -182,6 +202,7 @@ func (c *Conn) ReceiveLabel() (ot.Label, error) {
 	return result, nil
 }
 
+// ReceiveString receives a string value.
 func (c *Conn) ReceiveString() (string, error) {
 	data, err := c.ReceiveData()
 	if err != nil {
@@ -190,6 +211,7 @@ func (c *Conn) ReceiveString() (string, error) {
 	return string(data), nil
 }
 
+// Receive implements OT receive for the bit value of a wire.
 func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {
 
 	if err := c.SendUint32(int(wire)); err != nil {

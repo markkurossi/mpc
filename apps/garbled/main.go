@@ -27,11 +27,6 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-const (
-	OP_OT = iota
-	OP_RESULT
-)
-
 var (
 	port    = ":8080"
 	verbose = false
@@ -365,6 +360,7 @@ func makeOutput(base, suffix string) (io.WriteCloser, error) {
 	}, nil
 }
 
+// OutputFile implements a buffered output file.
 type OutputFile struct {
 	File     *os.File
 	Buffered *bufio.Writer
@@ -374,6 +370,7 @@ func (out *OutputFile) Write(p []byte) (nn int, err error) {
 	return out.Buffered.Write(p)
 }
 
+// Close implements io.Closer.Close for the buffered output file.
 func (out *OutputFile) Close() error {
 	if err := out.Buffered.Flush(); err != nil {
 		return err
