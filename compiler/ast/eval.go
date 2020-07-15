@@ -270,7 +270,7 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 	}
 }
 
-// Eval implements the compiler.ast.AST.Eval for slice values.
+// Eval implements the compiler.ast.AST.Eval for slice expressions.
 func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 

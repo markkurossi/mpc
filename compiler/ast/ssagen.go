@@ -821,7 +821,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, []ssa.Variable{t}, nil
 }
 
-// SSA implements the compiler.ast.AST.SSA for slices.
+// SSA implements the compiler.ast.AST.SSA for slice expressions.
 func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
