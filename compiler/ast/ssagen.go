@@ -13,6 +13,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/types"
 )
 
+// SSA implements the compiler.ast.AST.SSA for list statements.
 func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -32,6 +33,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for function definitions.
 func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -80,6 +82,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, vars, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for constant definitions.
 func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
@@ -125,6 +128,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for variable definitions.
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
@@ -177,6 +181,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for assignment expressions.
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
@@ -252,6 +257,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	return block, values, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for if statements.
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -348,6 +354,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return next, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for call expressions.
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -522,6 +529,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, returnValues, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for return statements.
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -623,6 +631,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for for statements.
 func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -681,6 +690,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for binary expressions.
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -811,6 +821,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, []ssa.Variable{t}, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for slices.
 func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
@@ -888,6 +899,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, []ssa.Variable{t}, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for variable references.
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
@@ -967,6 +979,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	return block, []ssa.Variable{value}, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for constant values.
 func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 

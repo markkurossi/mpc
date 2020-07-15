@@ -18,6 +18,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Builtin implements MPCL builtin elements.
 type Builtin struct {
 	Name string
 	Type BuiltinType
@@ -25,15 +26,19 @@ type Builtin struct {
 	Eval Eval
 }
 
+// BuiltinType specifies the different MPCL builtin elements.
 type BuiltinType int
 
+// Builtin types.
 const (
 	BuiltinFunc BuiltinType = iota
 )
 
+// SSA implements the builtin SSA generation.
 type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error)
 
+// Eval implements the builtin evaluation in constant folding.
 type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error)
 

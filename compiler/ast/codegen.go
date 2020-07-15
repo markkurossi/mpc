@@ -13,6 +13,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Codegen implements compilation stack.
 type Codegen struct {
 	logger   *utils.Logger
 	Verbose  bool
@@ -21,6 +22,7 @@ type Codegen struct {
 	Stack    []Compilation
 }
 
+// NewCodegen creates a new compilation.
 func NewCodegen(logger *utils.Logger, pkg *Package,
 	packages map[string]*Package, verbose bool) *Codegen {
 	return &Codegen{
@@ -31,6 +33,7 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 	}
 }
 
+// Func returns the current function in the current compilation.
 func (ctx *Codegen) Func() *Func {
 	if len(ctx.Stack) == 0 {
 		return nil
@@ -38,6 +41,7 @@ func (ctx *Codegen) Func() *Func {
 	return ctx.Stack[len(ctx.Stack)-1].Called
 }
 
+// Scope returns the variable scope in the current compilation.
 func (ctx *Codegen) Scope() int {
 	if ctx.Func() != nil {
 		return 1
@@ -45,6 +49,7 @@ func (ctx *Codegen) Scope() int {
 	return 0
 }
 
+// PushCompilation pushes a new compilation to the compilation stack.
 func (ctx *Codegen) PushCompilation(start, ret, caller *ssa.Block,
 	called *Func) {
 
@@ -56,6 +61,8 @@ func (ctx *Codegen) PushCompilation(start, ret, caller *ssa.Block,
 	})
 }
 
+// PopCompilation pops the topmost compilation from the compilation
+// stack.
 func (ctx *Codegen) PopCompilation() {
 	if len(ctx.Stack) == 0 {
 		panic("compilation stack underflow")
@@ -63,18 +70,22 @@ func (ctx *Codegen) PopCompilation() {
 	ctx.Stack = ctx.Stack[:len(ctx.Stack)-1]
 }
 
+// Start returns the start block of the current compilation.
 func (ctx *Codegen) Start() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Start
 }
 
+// Return returns the return block of the current compilation.
 func (ctx *Codegen) Return() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Return
 }
 
+// Caller returns the caller block of the current compilation.
 func (ctx *Codegen) Caller() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Caller
 }
 
+// Compilation contains information about a function call compilation.
 type Compilation struct {
 	Start  *ssa.Block
 	Return *ssa.Block

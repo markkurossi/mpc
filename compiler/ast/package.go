@@ -15,6 +15,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Package implements a MPCL package.
 type Package struct {
 	Name        string
 	Initialized bool
@@ -25,6 +26,7 @@ type Package struct {
 	Functions   map[string]*Func
 }
 
+// NewPackage creates a new package.
 func NewPackage(name string) *Package {
 	return &Package{
 		Name:      name,
@@ -33,6 +35,7 @@ func NewPackage(name string) *Package {
 	}
 }
 
+// Compile compiles the package.
 func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	params *utils.Params) (*ssa.Program, Annotations, error) {
 
@@ -168,6 +171,7 @@ func flattenStruct(t types.Info) circuit.IO {
 	return result
 }
 
+// Init initializes the package.
 func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 	gen *ssa.Generator) error {
 

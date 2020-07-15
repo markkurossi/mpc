@@ -15,26 +15,31 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+// Eval implements the compiler.ast.AST.Eval for list statements.
 func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, fmt.Errorf("List.Eval not implemented yet")
 }
 
+// Eval implements the compiler.ast.AST.Eval for function definitions.
 func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for constant definitions.
 func (ast *ConstantDef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for variable definitions.
 func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for assignment expressions.
 func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
@@ -92,11 +97,13 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return values, true, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for if statements.
 func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for call expressions.
 func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
@@ -135,16 +142,19 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for return statements.
 func (ast *Return) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for for statements.
 func (ast *For) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return nil, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for binary expressions.
 func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	l, ok, err := ast.Left.Eval(env, ctx, gen)
@@ -260,6 +270,7 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 	}
 }
 
+// Eval implements the compiler.ast.AST.Eval for slice values.
 func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
@@ -324,6 +335,7 @@ func intVal(val interface{}) (int, error) {
 	}
 }
 
+// Eval implements the compiler.ast.AST.Eval for variable references.
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
 
@@ -366,6 +378,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	return val.ConstValue, true, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *Constant) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
