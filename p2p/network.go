@@ -18,6 +18,7 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
+// Network implements peer-to-peer network.
 type Network struct {
 	ID       int
 	m        sync.Mutex
@@ -26,6 +27,7 @@ type Network struct {
 	listener net.Listener
 }
 
+// NewNetwork creats a new peer-to-peer network.
 func NewNetwork(addr string, id int) (*Network, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -41,10 +43,12 @@ func NewNetwork(addr string, id int) (*Network, error) {
 	return nw, nil
 }
 
+// Close closes the network.
 func (nw *Network) Close() error {
 	return nw.listener.Close()
 }
 
+// AddPeer adds a peer to the network.
 func (nw *Network) AddPeer(addr string, id int) error {
 	// Try to connect to peer.
 	for {
@@ -82,12 +86,14 @@ func (nw *Network) AddPeer(addr string, id int) error {
 	}
 }
 
+// Ping sends a ping message to all peers.
 func (nw *Network) Ping() {
 	for _, peer := range nw.Peers {
 		peer.Ping()
 	}
 }
 
+// Stats returns the I/O stats from the network.
 func (nw *Network) Stats() IOStats {
 	var result IOStats
 	for _, peer := range nw.Peers {
@@ -139,6 +145,7 @@ func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 	return peer.init()
 }
 
+// Peer implements a peer in the peer-to-peer network.
 type Peer struct {
 	id         int
 	conn       *Conn
@@ -147,10 +154,12 @@ type Peer struct {
 	otReceiver *ot.Receiver
 }
 
+// Close closes the peer connection.
 func (peer *Peer) Close() error {
 	return peer.conn.Close()
 }
 
+// Ping sends a ping message to the peer.
 func (peer *Peer) Ping() error {
 	if err := peer.conn.SendUint32(0xffffffff); err != nil {
 		return err
@@ -211,6 +220,7 @@ func (peer *Peer) init() error {
 	return <-finished
 }
 
+// OTLambda runs the lambda oblivious transfers with peers.
 func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 	result *big.Int, err error) {
 
@@ -225,25 +235,25 @@ func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 
 	if peer.client {
 		// Client queries first.
-		result, err = peer.OTLambdaQuery(count, choices)
+		result, err = peer.otLambdaQuery(count, choices)
 		if err != nil {
 			return
 		}
 
 		// Serve peer queries.
-		err = peer.OTLambdaRespond(count, x1, x2)
+		err = peer.otLambdaRespond(count, x1, x2)
 		if err != nil {
 			return
 		}
 	} else {
 		// Serve peer queries.
-		err = peer.OTLambdaRespond(count, x1, x2)
+		err = peer.otLambdaRespond(count, x1, x2)
 		if err != nil {
 			return
 		}
 
 		// Server queries second.
-		result, err = peer.OTLambdaQuery(count, choices)
+		result, err = peer.otLambdaQuery(count, choices)
 		if err != nil {
 			return
 		}
@@ -251,7 +261,7 @@ func (peer *Peer) OTLambda(count int, choices, x1, x2 *big.Int) (
 	return
 }
 
-func (peer *Peer) OTLambdaQuery(count int, choices *big.Int) (
+func (peer *Peer) otLambdaQuery(count int, choices *big.Int) (
 	*big.Int, error) {
 
 	// Number of OTs following
@@ -279,7 +289,7 @@ func (peer *Peer) OTLambdaQuery(count int, choices *big.Int) (
 	return result, nil
 }
 
-func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
+func (peer *Peer) otLambdaRespond(count int, x1, x2 *big.Int) error {
 	pc, err := peer.conn.ReceiveUint32()
 	if err != nil {
 		return err
@@ -340,6 +350,7 @@ func (peer *Peer) OTLambdaRespond(count int, x1, x2 *big.Int) error {
 	return nil
 }
 
+// OTR runs the R share oblivious transfers with peers.
 func (peer *Peer) OTR(chA, chB, chC *big.Int,
 	x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg []ot.Label) (
 	ra, rb, rc []ot.Label, err error) {
@@ -354,20 +365,20 @@ func (peer *Peer) OTR(chA, chB, chC *big.Int,
 	fmt.Printf("   - %s for peer %d: count=%d\n", mode, peer.id, len(x1Ag))
 
 	if peer.client {
-		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), chA, chB, chC)
+		ra, rb, rc, err = peer.otrQueries(len(x1Ag), chA, chB, chC)
 		if err != nil {
 			return
 		}
-		err = peer.OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
+		err = peer.otrResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
 		if err != nil {
 			return
 		}
 	} else {
-		err = peer.OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
+		err = peer.otrResponses(x1Ag, x2Ag, x1Bg, x2Bg, x1Cg, x2Cg)
 		if err != nil {
 			return
 		}
-		ra, rb, rc, err = peer.OTRQueries(len(x1Ag), chA, chB, chC)
+		ra, rb, rc, err = peer.otrQueries(len(x1Ag), chA, chB, chC)
 		if err != nil {
 			return
 		}
@@ -376,25 +387,25 @@ func (peer *Peer) OTR(chA, chB, chC *big.Int,
 	return
 }
 
-func (peer *Peer) OTRQueries(count int, chA, chB, chC *big.Int) (
+func (peer *Peer) otrQueries(count int, chA, chB, chC *big.Int) (
 	ra, rb, rc []ot.Label, err error) {
 
-	ra, err = peer.OTRQuery(count, chA)
+	ra, err = peer.otrQuery(count, chA)
 	if err != nil {
 		return
 	}
-	rb, err = peer.OTRQuery(count, chB)
+	rb, err = peer.otrQuery(count, chB)
 	if err != nil {
 		return
 	}
-	rc, err = peer.OTRQuery(count, chC)
+	rc, err = peer.otrQuery(count, chC)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
+func (peer *Peer) otrQuery(count int, choices *big.Int) ([]ot.Label, error) {
 
 	// Number of OTs following
 	if err := peer.conn.SendUint32(count); err != nil {
@@ -416,21 +427,21 @@ func (peer *Peer) OTRQuery(count int, choices *big.Int) ([]ot.Label, error) {
 	return result, nil
 }
 
-func (peer *Peer) OTRResponses(x1Ag, x2Ag, x1Bg, x2Bg,
+func (peer *Peer) otrResponses(x1Ag, x2Ag, x1Bg, x2Bg,
 	x1Cg, x2Cg []ot.Label) error {
-	if err := peer.OTRRespond(x1Ag, x2Ag); err != nil {
+	if err := peer.otrRespond(x1Ag, x2Ag); err != nil {
 		return err
 	}
-	if err := peer.OTRRespond(x1Bg, x2Bg); err != nil {
+	if err := peer.otrRespond(x1Bg, x2Bg); err != nil {
 		return err
 	}
-	if err := peer.OTRRespond(x1Cg, x2Cg); err != nil {
+	if err := peer.otrRespond(x1Cg, x2Cg); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
+func (peer *Peer) otrRespond(x1, x2 []ot.Label) error {
 
 	pc, err := peer.conn.ReceiveUint32()
 	if err != nil {
@@ -487,6 +498,7 @@ func (peer *Peer) OTRRespond(x1, x2 []ot.Label) error {
 	return nil
 }
 
+// ExchangeGates exchanges gate values with peers.
 func (peer *Peer) ExchangeGates(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	ra, rb, rc, rd [][]ot.Label, ro *big.Int, err error) {
 
@@ -500,20 +512,20 @@ func (peer *Peer) ExchangeGates(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	fmt.Printf("   - %s for peer %d\n", mode, peer.id)
 
 	if peer.client {
-		err = peer.ExchangeSend(ag, bg, cg, dg, lo)
+		err = peer.exchangeSend(ag, bg, cg, dg, lo)
 		if err != nil {
 			return
 		}
-		ra, rb, rc, rd, ro, err = peer.ExchangeReceive()
+		ra, rb, rc, rd, ro, err = peer.exchangeReceive()
 		if err != nil {
 			return
 		}
 	} else {
-		ra, rb, rc, rd, ro, err = peer.ExchangeReceive()
+		ra, rb, rc, rd, ro, err = peer.exchangeReceive()
 		if err != nil {
 			return
 		}
-		err = peer.ExchangeSend(ag, bg, cg, dg, lo)
+		err = peer.exchangeSend(ag, bg, cg, dg, lo)
 		if err != nil {
 			return
 		}
@@ -522,7 +534,7 @@ func (peer *Peer) ExchangeGates(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	return
 }
 
-func (peer *Peer) ExchangeSend(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
+func (peer *Peer) exchangeSend(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	err error) {
 	// Number of peers
 	if err := peer.conn.SendUint32(len(ag)); err != nil {
@@ -530,16 +542,16 @@ func (peer *Peer) ExchangeSend(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	}
 	// Gates for all peers.
 	for p := 0; p < len(ag); p++ {
-		if err := peer.ExchangeSendArr(ag[p]); err != nil {
+		if err := peer.exchangeSendArr(ag[p]); err != nil {
 			return err
 		}
-		if err := peer.ExchangeSendArr(bg[p]); err != nil {
+		if err := peer.exchangeSendArr(bg[p]); err != nil {
 			return err
 		}
-		if err := peer.ExchangeSendArr(cg[p]); err != nil {
+		if err := peer.exchangeSendArr(cg[p]); err != nil {
 			return err
 		}
-		if err := peer.ExchangeSendArr(dg[p]); err != nil {
+		if err := peer.exchangeSendArr(dg[p]); err != nil {
 			return err
 		}
 	}
@@ -549,7 +561,7 @@ func (peer *Peer) ExchangeSend(ag, bg, cg, dg [][]ot.Label, lo *big.Int) (
 	return peer.conn.Flush()
 }
 
-func (peer *Peer) ExchangeSendArr(arr []ot.Label) (err error) {
+func (peer *Peer) exchangeSendArr(arr []ot.Label) (err error) {
 	if err := peer.conn.SendUint32(len(arr)); err != nil {
 		return err
 	}
@@ -561,7 +573,7 @@ func (peer *Peer) ExchangeSendArr(arr []ot.Label) (err error) {
 	return nil
 }
 
-func (peer *Peer) ExchangeReceive() (
+func (peer *Peer) exchangeReceive() (
 	ras, rbs, rcs, rds [][]ot.Label, ro *big.Int, err error) {
 
 	// Number of peers.
@@ -572,22 +584,22 @@ func (peer *Peer) ExchangeReceive() (
 	}
 	for p := 0; p < count; p++ {
 		var arr []ot.Label
-		arr, err = peer.ExchangeReceiveArr()
+		arr, err = peer.exchangeReceiveArr()
 		if err != nil {
 			return
 		}
 		ras = append(ras, arr)
-		arr, err = peer.ExchangeReceiveArr()
+		arr, err = peer.exchangeReceiveArr()
 		if err != nil {
 			return
 		}
 		rbs = append(rbs, arr)
-		arr, err = peer.ExchangeReceiveArr()
+		arr, err = peer.exchangeReceiveArr()
 		if err != nil {
 			return
 		}
 		rcs = append(rcs, arr)
-		arr, err = peer.ExchangeReceiveArr()
+		arr, err = peer.exchangeReceiveArr()
 		if err != nil {
 			return
 		}
@@ -604,7 +616,7 @@ func (peer *Peer) ExchangeReceive() (
 	return
 }
 
-func (peer *Peer) ExchangeReceiveArr() ([]ot.Label, error) {
+func (peer *Peer) exchangeReceiveArr() ([]ot.Label, error) {
 	count, err := peer.conn.ReceiveUint32()
 	if err != nil {
 		return nil, err
