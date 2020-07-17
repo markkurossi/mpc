@@ -23,6 +23,7 @@ type Generator struct {
 	versions  map[string]Variable
 	blockID   int
 	constants map[string]ConstantInst
+	nextVarID VariableID
 }
 
 // ConstantInst defines a constant variable instance.
@@ -37,12 +38,19 @@ func NewGenerator(params *utils.Params) *Generator {
 		Params:    params,
 		versions:  make(map[string]Variable),
 		constants: make(map[string]ConstantInst),
+		nextVarID: 1,
 	}
 }
 
 // Constants returns the constants.
 func (gen *Generator) Constants() map[string]ConstantInst {
 	return gen.constants
+}
+
+func (gen *Generator) nextVariableID() VariableID {
+	ret := gen.nextVarID
+	gen.nextVarID++
+	return ret
 }
 
 // UndefVar creates a new undefined variable.
@@ -59,6 +67,7 @@ func (gen *Generator) UndefVar() Variable {
 		Type: types.Undefined,
 		Bits: 0,
 	}
+	v.ID = gen.nextVariableID()
 	gen.versions[anon] = v
 	return v
 }
@@ -74,6 +83,7 @@ func (gen *Generator) AnonVar(t types.Info) Variable {
 		v.Version = v.Version + 1
 	}
 	v.Type = t
+	v.ID = gen.nextVariableID()
 	gen.versions[anon] = v
 
 	return v
@@ -95,6 +105,7 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 		v.Version = v.Version + 1
 		v.Type = t
 	}
+	v.ID = gen.nextVariableID()
 	gen.versions[key] = v
 
 	return v, nil

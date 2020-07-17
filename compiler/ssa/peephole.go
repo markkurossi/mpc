@@ -88,7 +88,7 @@ func (rule Rule) Match(steps []Step) []Step {
 		// Base liveness from the first replaced instruction.
 		live := steps[0].Live.Copy()
 		if instr.Out != nil {
-			live.Add(instr.Out.String())
+			live.Add(*instr.Out)
 		}
 
 		result = append(result, Step{

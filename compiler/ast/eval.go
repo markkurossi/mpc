@@ -61,7 +61,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 	for idx, lv := range ast.LValues {
 
-		constVal, err := ssa.Constant(values[idx])
+		constVal, err := ssa.Constant(gen, values[idx])
 		if err != nil {
 			return nil, false, err
 		}

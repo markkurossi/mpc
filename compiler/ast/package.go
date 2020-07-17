@@ -260,7 +260,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			Struct:  fields,
 		}
 
-		v, err := ssa.Constant(info)
+		v, err := ssa.Constant(gen, info)
 		if err != nil {
 			return err
 		}
@@ -280,7 +280,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		if err != nil {
 			return err
 		}
-		v, err := ssa.Constant(info)
+		v, err := ssa.Constant(gen, info)
 		if err != nil {
 			return err
 		}

@@ -548,6 +548,7 @@ func (i Instr) PP(out io.Writer) {
 
 // Variable implements SSA variable binding.
 type Variable struct {
+	ID         VariableID
 	Name       string
 	Scope      int
 	Version    int
@@ -556,6 +557,9 @@ type Variable struct {
 	Const      bool
 	ConstValue interface{}
 }
+
+// VariableID defines unique variable IDs.
+type VariableID uint32
 
 func (v Variable) String() string {
 	if v.Const {
@@ -645,7 +649,7 @@ func (v Variable) TypeCompatible(o Variable) bool {
 }
 
 // Constant creates a constant variable for the argument value.
-func Constant(value interface{}) (Variable, error) {
+func Constant(gen *Generator, value interface{}) (Variable, error) {
 	v := Variable{
 		Const:      true,
 		ConstValue: value,
@@ -740,5 +744,7 @@ func Constant(value interface{}) (Variable, error) {
 	default:
 		return v, fmt.Errorf("Constant: %v (%T) not implemented yet", val, val)
 	}
+	v.ID = gen.nextVariableID()
+
 	return v, nil
 }

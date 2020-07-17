@@ -72,18 +72,81 @@ func (b *Block) AddInstr(instr Instr) {
 	b.Instr = append(b.Instr, instr)
 }
 
+type returnBindingKey struct {
+	BlockID string
+	Name    string
+}
+
+// ReturnBindingValue define return binding value for a return variable.
+type ReturnBindingValue struct {
+	v  Variable
+	ok bool
+}
+
+// ReturnBindingCTX defines a context for return binding resolve
+// operation.
+type ReturnBindingCTX struct {
+	cache map[returnBindingKey]ReturnBindingValue
+}
+
+// Get gets the return binding for the return variable in the basic
+// block.
+func (ctx *ReturnBindingCTX) Get(b *Block, name string) (
+	ReturnBindingValue, bool) {
+	value, ok := ctx.cache[returnBindingKey{
+		BlockID: b.ID,
+		Name:    name,
+	}]
+	return value, ok
+}
+
+// Set sets the return binding for the return variable in the basic
+// block.
+func (ctx *ReturnBindingCTX) Set(b *Block, name string, v Variable, ok bool) {
+	ctx.cache[returnBindingKey{
+		BlockID: b.ID,
+		Name:    name,
+	}] = ReturnBindingValue{
+		v:  v,
+		ok: ok,
+	}
+}
+
+// NewReturnBindingCTX creates a new return binding resolve context.
+func NewReturnBindingCTX() *ReturnBindingCTX {
+	return &ReturnBindingCTX{
+		cache: make(map[returnBindingKey]ReturnBindingValue),
+	}
+}
+
 // ReturnBinding returns the return statement binding for the argument
 // variable. If the block contains a branch and variable's value is
 // modified in both branches, the function adds a Phi instruction to
 // resolve the variable's value after this basic block.
-func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
-	v Variable, ok bool) {
+func (b *Block) ReturnBinding(ctx *ReturnBindingCTX, name string,
+	retBlock *Block, gen *Generator) (v Variable, ok bool) {
+
+	if ctx == nil {
+		return b.returnBinding(ctx, name, retBlock, gen)
+	}
+
+	binding, ok := ctx.Get(b, name)
+	if ok {
+		return binding.v, binding.ok
+	}
+	v, ok = b.returnBinding(ctx, name, retBlock, gen)
+	ctx.Set(b, name, v, ok)
+	return v, ok
+}
+
+func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
+	retBlock *Block, gen *Generator) (v Variable, ok bool) {
 
 	// XXX Check if the if-ssagen could omit branch in this case?
 	if b.Branch == nil || b.Next == b.Branch {
 		// Sequential block, return latest value
 		if b.Next != nil {
-			v, ok = b.Next.ReturnBinding(name, retBlock, gen)
+			v, ok = b.Next.ReturnBinding(ctx, name, retBlock, gen)
 			if ok {
 				return v, true
 			}
@@ -95,11 +158,11 @@ func (b *Block) ReturnBinding(name string, retBlock *Block, gen *Generator) (
 		}
 		return bind.Value(retBlock, gen), true
 	}
-	vTrue, ok := b.Branch.ReturnBinding(name, retBlock, gen)
+	vTrue, ok := b.Branch.ReturnBinding(ctx, name, retBlock, gen)
 	if !ok {
 		return v, false
 	}
-	vFalse, ok := b.Next.ReturnBinding(name, retBlock, gen)
+	vFalse, ok := b.Next.ReturnBinding(ctx, name, retBlock, gen)
 	if !ok {
 		return v, false
 	}

@@ -188,7 +188,7 @@ func (prog *Program) liveness() {
 			if in.Const {
 				continue
 			}
-			live[in.String()] = true
+			live.Add(in)
 		}
 		switch step.Instr.Op {
 		case Slice, Mov:
@@ -197,19 +197,19 @@ func (prog *Program) liveness() {
 				// `in] live in all steps where `out' is live.
 				for j := i + 1; j < len(prog.Steps); j++ {
 					s := &prog.Steps[j]
-					if s.Live.Contains(step.Instr.Out.String()) {
-						s.Live.Add(step.Instr.In[0].String())
+					if s.Live.Contains(step.Instr.Out.ID) {
+						s.Live.Add(step.Instr.In[0])
 					}
 				}
 			}
 		}
 
 		if step.Instr.Out != nil {
-			delete(live, step.Instr.Out.String())
+			delete(live, step.Instr.Out.ID)
 		}
 		step.Live = NewSet()
-		for k := range live {
-			step.Live.Add(k)
+		for _, v := range live {
+			step.Live.Add(v)
 		}
 	}
 }
@@ -226,7 +226,7 @@ func (prog *Program) GC() {
 		if len(last) > 0 {
 			for _, d := range deleted.Array() {
 				steps = append(steps, Step{
-					Instr: NewGCInstr(d),
+					Instr: NewGCInstr(d.String()),
 					Live:  last.Copy(),
 				})
 				last.Remove(d)
@@ -300,7 +300,7 @@ func (prog *Program) PP(out io.Writer) {
 		}
 		step.Instr.PP(out)
 		if false {
-			for live := range step.Live {
+			for _, live := range step.Live {
 				fmt.Fprintf(out, "#\t\t- %s\n", live)
 			}
 		}
