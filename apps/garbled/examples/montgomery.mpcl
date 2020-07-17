@@ -1,0 +1,30 @@
+// -*- go -*-
+//
+
+package main
+
+import (
+	"math"
+)
+
+type Size = uint64
+
+type Garbler struct {
+	msg       Size
+	privShare Size
+	pubN      Size
+	pubE      Size
+}
+
+func main(g Garbler, privShare Size) uint {
+
+	priv := g.privShare + privShare
+
+	cipher := Encrypt(g.msg, g.pubE, g.pubN)
+
+	return cipher
+}
+
+func Encrypt(msg, e, n uint) uint {
+	return math.ExpMontgomery(msg, e, n)
+}
