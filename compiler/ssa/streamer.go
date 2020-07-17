@@ -238,10 +238,72 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		switch instr.Op {
 
+		case Lshift:
+			if !instr.In[1].Const {
+				return nil, nil,
+					fmt.Errorf("%s: only constant shift supported", instr.Op)
+			}
+			var count int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				count = int(val)
+			default:
+				return nil, nil,
+					fmt.Errorf("%s: unsupported index type %T", instr.Op, val)
+			}
+			if count < 0 {
+				return nil, nil,
+					fmt.Errorf("%s: negative shift count %d", instr.Op, count)
+			}
+			for bit := 0; bit < len(out); bit++ {
+				var id uint32
+				if bit-count >= 0 && bit-count < len(wires[0]) {
+					id = wires[0][bit-count].ID
+				} else {
+					w, err := prog.ZeroWire(conn, streaming)
+					if err != nil {
+						return nil, nil, err
+					}
+					id = w.ID
+				}
+				out[bit].ID = id
+			}
+
+		case Rshift:
+			if !instr.In[1].Const {
+				return nil, nil,
+					fmt.Errorf("%s: only constant shift supported", instr.Op)
+			}
+			var count int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				count = int(val)
+			default:
+				return nil, nil,
+					fmt.Errorf("%s: unsupported index type %T", instr.Op, val)
+			}
+			if count < 0 {
+				return nil, nil,
+					fmt.Errorf("%s: negative shift count %d", instr.Op, count)
+			}
+			for bit := 0; bit < len(out); bit++ {
+				var id uint32
+				if bit+count < len(wires[0]) {
+					id = wires[0][bit+count].ID
+				} else {
+					w, err := prog.ZeroWire(conn, streaming)
+					if err != nil {
+						return nil, nil, err
+					}
+					id = w.ID
+				}
+				out[bit].ID = id
+			}
+
 		case Slice:
 			if !instr.In[1].Const {
 				return nil, nil,
-					fmt.Errorf("%s only constant index supported", instr.Op)
+					fmt.Errorf("%s: only constant index supported", instr.Op)
 			}
 			var from int
 			switch val := instr.In[1].ConstValue.(type) {
@@ -249,12 +311,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				from = int(val)
 			default:
 				return nil, nil,
-					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+					fmt.Errorf("%s: unsupported index type %T", instr.Op, val)
 			}
 
 			if !instr.In[2].Const {
 				return nil, nil,
-					fmt.Errorf("%s only constant index supported", instr.Op)
+					fmt.Errorf("%s: only constant index supported", instr.Op)
 			}
 			var to int
 			switch val := instr.In[2].ConstValue.(type) {
@@ -262,10 +324,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				to = int(val)
 			default:
 				return nil, nil,
-					fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+					fmt.Errorf("%s: unsupported index type %T", instr.Op, val)
 			}
 			if from >= to {
-				return nil, nil, fmt.Errorf("%s bounds out of range [%d:%d]",
+				return nil, nil, fmt.Errorf("%s: bounds out of range [%d:%d]",
 					instr.Op, from, to)
 			}
 			for bit := from; bit < to; bit++ {

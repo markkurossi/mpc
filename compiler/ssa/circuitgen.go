@@ -137,30 +137,94 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Lshift:
+			if !instr.In[1].Const {
+				return fmt.Errorf("%s: only constant shift supported", instr.Op)
+			}
+			var count int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				count = int(val)
+			default:
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+			if count < 0 {
+				return fmt.Errorf("%s: negative shift count %d",
+					instr.Op, count)
+			}
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+			for bit := 0; bit < len(o); bit++ {
+				var w *circuits.Wire
+				if bit-count >= 0 && bit-count < len(wires[0]) {
+					w = wires[0][bit-count]
+				} else {
+					w = cc.ZeroWire()
+				}
+				o[bit] = w
+			}
+			err := prog.SetWires(instr.Out.String(), o)
+			if err != nil {
+				return err
+			}
+
+		case Rshift:
+			if !instr.In[1].Const {
+				return fmt.Errorf("%s: only constant shift supported", instr.Op)
+			}
+			var count int
+			switch val := instr.In[1].ConstValue.(type) {
+			case int32:
+				count = int(val)
+			default:
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+			if count < 0 {
+				return fmt.Errorf("%s: negative shift count %d",
+					instr.Op, count)
+			}
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+			for bit := 0; bit < len(o); bit++ {
+				var w *circuits.Wire
+				if bit+count < len(wires[0]) {
+					w = wires[0][bit+count]
+				} else {
+					w = cc.ZeroWire()
+				}
+				o[bit] = w
+			}
+			err := prog.SetWires(instr.Out.String(), o)
+			if err != nil {
+				return err
+			}
+
 		case Slice:
 			if !instr.In[1].Const {
-				return fmt.Errorf("%s only constant index supported", instr.Op)
+				return fmt.Errorf("%s: only constant index supported", instr.Op)
 			}
 			var from int
 			switch val := instr.In[1].ConstValue.(type) {
 			case int32:
 				from = int(val)
 			default:
-				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
 			}
 
 			if !instr.In[2].Const {
-				return fmt.Errorf("%s only constant index supported", instr.Op)
+				return fmt.Errorf("%s: only constant index supported", instr.Op)
 			}
 			var to int
 			switch val := instr.In[2].ConstValue.(type) {
 			case int32:
 				to = int(val)
 			default:
-				return fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
 			}
 			if from >= to {
-				return fmt.Errorf("%s bounds out of range [%d:%d]",
+				return fmt.Errorf("%s: bounds out of range [%d:%d]",
 					instr.Op, from, to)
 			}
 			o := make([]*circuits.Wire, instr.Out.Type.Bits)
