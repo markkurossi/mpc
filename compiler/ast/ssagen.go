@@ -656,7 +656,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		if !ok {
 			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
-				"condition is not compile-time constant: %s", err)
+				"condition is not compile-time constant: %s", ast.Cond)
 		}
 		val, ok := constVal.(bool)
 		if !ok {
