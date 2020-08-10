@@ -180,6 +180,20 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 }
 
 func (prog *Program) liveness() {
+	aliases := make(map[VariableID]Variable)
+
+	// Collect variable aliases.
+	for i := 0; i < len(prog.Steps); i++ {
+		step := &prog.Steps[i]
+		switch step.Instr.Op {
+		case Slice, Mov:
+			if !step.Instr.In[0].Const {
+				// The `out' will be an alias for `in[0]'.
+				aliases[step.Instr.Out.ID] = step.Instr.In[0]
+			}
+		}
+	}
+
 	live := NewSet()
 
 	for i := len(prog.Steps) - 1; i >= 0; i-- {
@@ -190,19 +204,6 @@ func (prog *Program) liveness() {
 			}
 			live.Add(in)
 		}
-		switch step.Instr.Op {
-		case Slice, Mov:
-			if !step.Instr.In[0].Const {
-				// Now `out' is an alias for `in[0]' and we must make
-				// `in] live in all steps where `out' is live.
-				for j := i + 1; j < len(prog.Steps); j++ {
-					s := &prog.Steps[j]
-					if s.Live.Contains(step.Instr.Out.ID) {
-						s.Live.Add(step.Instr.In[0])
-					}
-				}
-			}
-		}
 
 		if step.Instr.Out != nil {
 			delete(live, step.Instr.Out.ID)
@@ -210,6 +211,16 @@ func (prog *Program) liveness() {
 		step.Live = NewSet()
 		for _, v := range live {
 			step.Live.Add(v)
+			// Follow alias chains.
+			from := v
+			for {
+				to, ok := aliases[from.ID]
+				if !ok {
+					break
+				}
+				step.Live.Add(to)
+				from = to
+			}
 		}
 	}
 }

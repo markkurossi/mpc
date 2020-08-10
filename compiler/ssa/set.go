@@ -18,12 +18,6 @@ func NewSet() Set {
 	return make(map[VariableID]Variable)
 }
 
-// Contains tests if the argument value exists in the set.
-func (set Set) Contains(val VariableID) bool {
-	_, ok := set[val]
-	return ok
-}
-
 // Add adds a value to the set.
 func (set Set) Add(val Variable) {
 	set[val.ID] = val
