@@ -1031,7 +1031,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			}
 			return &ast.Call{
 				Loc:   primary.Location(),
-				Name:  vr.Name,
+				Ref:   vr,
 				Exprs: arguments,
 			}, nil
 
@@ -1085,7 +1085,8 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		return &ast.VariableRef{
 			Loc: t.From,
 			Name: ast.Identifier{
-				Name: t.StrVal,
+				Defined: p.pkg.Name,
+				Name:    t.StrVal,
 			},
 		}, nil
 

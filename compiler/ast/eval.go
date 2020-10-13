@@ -108,25 +108,24 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 
 	// Resolve called.
-	var pkg *Package
-	var ok bool
-	if len(ast.Name.Package) > 0 {
-		pkg, ok = ctx.Packages[ast.Name.Package]
-		if !ok {
-			return nil, false,
-				ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-					ast.Name.Package)
-		}
+	var pkgName string
+	if len(ast.Ref.Name.Package) > 0 {
+		pkgName = ast.Ref.Name.Package
 	} else {
-		pkg = ctx.Package
+		pkgName = ast.Ref.Name.Defined
 	}
-	_, ok = pkg.Functions[ast.Name.Name]
+	pkg, ok := ctx.Packages[pkgName]
+	if !ok {
+		return nil, false,
+			ctx.logger.Errorf(ast.Loc, "package '%s' not found", pkgName)
+	}
+	_, ok = pkg.Functions[ast.Ref.Name.Name]
 	if ok {
 		return nil, false, nil
 	}
 	// Check builtin functions.
 	for _, bi := range builtins {
-		if bi.Name != ast.Name.Name {
+		if bi.Name != ast.Ref.Name.Name {
 			continue
 		}
 		if bi.Type != BuiltinFunc {

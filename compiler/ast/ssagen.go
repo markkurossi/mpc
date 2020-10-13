@@ -374,22 +374,22 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Resolve called.
-	var pkg *Package
-	if len(ast.Name.Package) > 0 {
-		var ok bool
-		pkg, ok = ctx.Packages[ast.Name.Package]
-		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"package '%s' not found", ast.Name.Package)
-		}
+	var pkgName string
+	if len(ast.Ref.Name.Package) > 0 {
+		pkgName = ast.Ref.Name.Package
 	} else {
-		pkg = ctx.Package
+		pkgName = ast.Ref.Name.Defined
 	}
-	called, ok := pkg.Functions[ast.Name.Name]
+	pkg, ok := ctx.Packages[pkgName]
+	if !ok {
+		return nil, nil,
+			ctx.logger.Errorf(ast.Loc, "package '%s' not found", pkgName)
+	}
+	called, ok := pkg.Functions[ast.Ref.Name.Name]
 	if !ok {
 		// Check builtin functions.
 		for _, bi := range builtins {
-			if bi.Name != ast.Name.Name {
+			if bi.Name != ast.Ref.Name.Name {
 				continue
 			}
 			if bi.Type != BuiltinFunc {
@@ -407,16 +407,16 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		// Resolve name as type.
 		typeName := &TypeInfo{
 			Type: TypeName,
-			Name: ast.Name,
+			Name: ast.Ref.Name,
 		}
 		typeInfo, err := typeName.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
-				ast.Name)
+				ast.Ref)
 		}
 		if len(callValues) != 1 {
 			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
-				ast.Name)
+				ast.Ref)
 		}
 		if len(callValues[0]) == 0 {
 			return nil, nil, ctx.logger.Errorf(ast.Exprs[0].Location(),
@@ -439,19 +439,19 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments in call to %s", ast.Name)
+				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		}
 	} else if len(callValues) == 1 {
 		if len(callValues[0]) < len(called.Args) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments in call to %s", ast.Name)
+				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		} else if len(callValues[0]) > len(called.Args) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"too many arguments in call to %s", ast.Name)
+				"too many arguments in call to %s", ast.Ref)
 			// TODO \thave (int, int)
 			// TODO \twant ()
 		}
@@ -459,12 +459,12 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	} else {
 		if len(callValues) < len(called.Args) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments in call to %s", ast.Name)
+				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		} else if len(callValues) > len(called.Args) {
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"too many arguments in call to %s", ast.Name)
+				"too many arguments in call to %s", ast.Ref)
 			// TODO \thave (int, int)
 			// TODO \twant ()
 		} else {

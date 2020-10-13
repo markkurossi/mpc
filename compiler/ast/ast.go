@@ -120,7 +120,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				return val.Type, nil
 			}
 		}
-		return result, fmt.Errorf("unknown type %s", ti)
+		return result, fmt.Errorf("undefined name: %s", ti)
 
 	default:
 		return result, fmt.Errorf("unsupported type %s", ti)
@@ -158,6 +158,7 @@ func (ti *TypeInfo) String() string {
 
 // Identifier implements an AST identifier.
 type Identifier struct {
+	Defined string
 	Package string
 	Name    string
 }
@@ -360,12 +361,12 @@ func (ast *If) Location() utils.Point {
 // Call implements an AST call expression.
 type Call struct {
 	Loc   utils.Point
-	Name  Identifier
+	Ref   *VariableRef
 	Exprs []AST
 }
 
 func (ast *Call) String() string {
-	return fmt.Sprintf("%s()", ast.Name)
+	return fmt.Sprintf("%s()", ast.Ref)
 }
 
 // Location implements the compiler.ast.AST.Location for call

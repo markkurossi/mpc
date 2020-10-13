@@ -39,8 +39,7 @@ func reduce(m, rrm, t uint) uint {
 func ExpMontgomery(b, e, m uint) uint {
 	cType := make(uint, size(m)*2)
 
-	// XXX makeMontgomery can't be found without package name
-	rrm := math.makeMontgomery(m)
+	rrm := makeMontgomery(m)
 
 	t1 := cType(b) * cType(rrm)
 	t2 := cType(e) * cType(rrm)
