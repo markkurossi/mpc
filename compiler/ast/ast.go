@@ -32,6 +32,7 @@ var (
 	_ AST = &For{}
 	_ AST = &Binary{}
 	_ AST = &Slice{}
+	_ AST = &Index{}
 	_ AST = &VariableRef{}
 	_ AST = &Constant{}
 )
@@ -507,6 +508,23 @@ func (ast *Slice) String() string {
 // Location implements the compiler.ast.AST.Location for slice
 // expressions.
 func (ast *Slice) Location() utils.Point {
+	return ast.Loc
+}
+
+// Index implements an AST array index expression.
+type Index struct {
+	Loc   utils.Point
+	Expr  AST
+	Index AST
+}
+
+func (ast *Index) String() string {
+	return fmt.Sprintf("%s[%s]", ast.Expr, ast.Index)
+}
+
+// Location implements the compiler.ast.AST.Location for index
+// expressions.
+func (ast *Index) Location() utils.Point {
 	return ast.Loc
 }
 

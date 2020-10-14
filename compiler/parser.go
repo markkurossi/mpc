@@ -977,9 +977,20 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				_, err = p.needToken(TColon)
+				n, err = p.lexer.Get()
 				if err != nil {
 					return nil, err
+				}
+				if n.Type == TRBracket {
+					return &ast.Index{
+						Loc:   primary.Location(),
+						Expr:  primary,
+						Index: expr1,
+					}, nil
+				}
+				if n.Type != TColon {
+					p.lexer.Unget(n)
+					return nil, p.errUnexpected(n, TColon)
 				}
 			}
 			n, err = p.lexer.Get()

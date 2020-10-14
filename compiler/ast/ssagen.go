@@ -900,6 +900,39 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, []ssa.Variable{t}, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for index expressions.
+func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Variable, error) {
+
+	block, expr, err := ast.Expr.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(expr) != 1 {
+		return nil, nil, ctx.logger.Errorf(ast.Loc, "invalid expression")
+	}
+
+	block, val, err := ast.Index.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(val) != 1 || !val[0].Const {
+		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+			"invalid index")
+	}
+	var index int32
+	switch v := val[0].ConstValue.(type) {
+	case int32:
+		index = v
+	default:
+		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+			"invalid index: %T", v)
+	}
+
+	return nil, nil, ctx.logger.Errorf(ast.Loc,
+		"index expression not implemented yet: %s[%d]", ast.Expr, index)
+}
+
 // SSA implements the compiler.ast.AST.SSA for variable references.
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {

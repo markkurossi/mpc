@@ -334,6 +334,31 @@ func intVal(val interface{}) (int, error) {
 	}
 }
 
+// Eval implements the compiler.ast.AST.Eval() for index expressions.
+func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	interface{}, bool, error) {
+
+	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+
+	val, ok, err := ast.Index.Eval(env, ctx, gen)
+	if err != nil || !ok {
+		return nil, ok, err
+	}
+	_, err = intVal(val)
+	if err != nil {
+		return nil, false, ctx.logger.Errorf(ast.Index.Location(), err.Error())
+	}
+
+	switch val := expr.(type) {
+	default:
+		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
+			"Index.Eval: expr %T not implemented yet", val)
+	}
+}
+
 // Eval implements the compiler.ast.AST.Eval for variable references.
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (interface{}, bool, error) {
