@@ -23,6 +23,7 @@ type Package struct {
 	Bindings    ssa.Bindings
 	Types       []*TypeInfo
 	Constants   []*ConstantDef
+	Variables   []*VariableDef
 	Functions   map[string]*Func
 }
 
@@ -48,14 +49,17 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	gen := ssa.NewGenerator(params)
 	ctx := NewCodegen(logger, pkg, packages, params.Verbose)
 
+	// Init is the program start point.
+	init := gen.Block()
+
 	// Init package.
-	err := pkg.Init(packages, ctx, gen)
+	block, err := pkg.Init(packages, init, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	ctx.PushCompilation(gen.Block(), gen.Block(), nil, main)
-	ctx.Start().Bindings = pkg.Bindings.Clone()
+	// Main block derives package's bindings from block with NextBlock().
+	ctx.PushCompilation(gen.NextBlock(block), gen.Block(), nil, main)
 
 	// Arguments.
 	var inputs circuit.IO
@@ -126,7 +130,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		})
 	}
 
-	steps := ctx.Start().Serialize()
+	steps := init.Serialize()
 
 	program, err := ssa.NewProgram(params, inputs, outputs, gen.Constants(),
 		steps)
@@ -143,7 +147,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		program.PP(params.SSAOut)
 	}
 	if params.SSADotOut != nil {
-		ssa.Dot(params.SSADotOut, ctx.Start())
+		ssa.Dot(params.SSADotOut, init)
 	}
 
 	return program, main.Annotations, nil
@@ -172,11 +176,11 @@ func flattenStruct(t types.Info) circuit.IO {
 }
 
 // Init initializes the package.
-func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
-	gen *ssa.Generator) error {
+func (pkg *Package) Init(packages map[string]*Package, block *ssa.Block,
+	ctx *Codegen, gen *ssa.Generator) (*ssa.Block, error) {
 
 	if pkg.Initialized {
-		return nil
+		return block, nil
 	}
 	pkg.Initialized = true
 	if ctx.Verbose {
@@ -187,11 +191,12 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 	for alias, name := range pkg.Imports {
 		p, ok := packages[alias]
 		if !ok {
-			return fmt.Errorf("imported and not used: \"%s\"", name)
+			return nil, fmt.Errorf("imported and not used: \"%s\"", name)
 		}
-		err := p.Init(packages, ctx, gen)
+		var err error
+		block, err = p.Init(packages, block, ctx, gen)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -199,25 +204,38 @@ func (pkg *Package) Init(packages map[string]*Package, ctx *Codegen,
 	for _, typeDef := range pkg.Types {
 		err := pkg.defineType(typeDef, ctx, gen)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	// Define constants.
+	// Package initializer block.
+	block = gen.NextBlock(block)
+	block.Name = fmt.Sprintf(".%s", pkg.Name)
 
-	block := gen.Block()
+	// Package sees only its bindings.
 	block.Bindings = pkg.Bindings.Clone()
 
+	var err error
+
+	// Define constants.
 	for _, def := range pkg.Constants {
-		var err error
 		block, _, err = def.SSA(block, ctx, gen)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
+
+	// Define variables.
+	for _, def := range pkg.Variables {
+		block, _, err = def.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	pkg.Bindings = block.Bindings
 
-	return nil
+	return block, nil
 }
 
 func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,

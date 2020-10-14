@@ -190,7 +190,10 @@ func (p *Parser) parseToplevel() error {
 	}
 	switch token.Type {
 	case TSymConst:
-		return p.parseConst()
+		return p.parseGlobalVar(true)
+
+	case TSymVar:
+		return p.parseGlobalVar(false)
 
 	case TSymType:
 		return p.parseTypeDecl()
@@ -213,14 +216,14 @@ func (p *Parser) parseToplevel() error {
 	return nil
 }
 
-func (p *Parser) parseConst() error {
+func (p *Parser) parseGlobalVar(isConst bool) error {
 	token, err := p.lexer.Get()
 	if err != nil {
 		return err
 	}
 	switch token.Type {
 	case TIdentifier:
-		return p.parseConstDef(token)
+		return p.parseGlobalVarDef(token, isConst)
 
 	case TLParen:
 		for {
@@ -231,7 +234,7 @@ func (p *Parser) parseConst() error {
 			if t.Type == TRParen {
 				return nil
 			}
-			err = p.parseConstDef(t)
+			err = p.parseGlobalVarDef(t, isConst)
 			if err != nil {
 				return err
 			}
@@ -242,7 +245,7 @@ func (p *Parser) parseConst() error {
 	}
 }
 
-func (p *Parser) parseConstDef(token *Token) error {
+func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 	if token.Type != TIdentifier {
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
@@ -251,10 +254,10 @@ func (p *Parser) parseConstDef(token *Token) error {
 	if err != nil {
 		return err
 	}
-	var constType *ast.TypeInfo
+	var varType *ast.TypeInfo
 	if t.Type != TAssign {
 		p.lexer.Unget(t)
-		constType, err = p.parseType()
+		varType, err = p.parseType()
 		if err != nil {
 			return err
 		}
@@ -268,12 +271,21 @@ func (p *Parser) parseConstDef(token *Token) error {
 		return err
 	}
 
-	p.pkg.Constants = append(p.pkg.Constants, &ast.ConstantDef{
-		Loc:  token.From,
-		Name: token.StrVal,
-		Type: constType,
-		Init: value,
-	})
+	if isConst {
+		p.pkg.Constants = append(p.pkg.Constants, &ast.ConstantDef{
+			Loc:  token.From,
+			Name: token.StrVal,
+			Type: varType,
+			Init: value,
+		})
+	} else {
+		p.pkg.Variables = append(p.pkg.Variables, &ast.VariableDef{
+			Loc:   token.From,
+			Names: []string{token.StrVal},
+			Type:  varType,
+			Init:  value,
+		})
+	}
 
 	return nil
 }
