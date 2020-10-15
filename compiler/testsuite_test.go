@@ -49,7 +49,7 @@ loop:
 		name := path.Join(testsuite, file)
 		circ, annotations, err := compiler.CompileFile(name)
 		if err != nil {
-			t.Errorf("failed to compiler '%s': %s", file, err)
+			t.Errorf("failed to compile '%s': %s", file, err)
 			continue
 		}
 
