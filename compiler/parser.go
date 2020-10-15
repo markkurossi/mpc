@@ -190,9 +190,19 @@ func (p *Parser) parseToplevel() error {
 	}
 	switch token.Type {
 	case TSymConst:
+		// XXX not fully according to syntax:
+		//
+		// ConstDecl = 'const', ( ConstSpec | '(', { ConstSpec }, ')' );
+		// ConstSpec = IdentifierList, [ Type ], '=', ExpressionList;
+		// ExpressionList = Expression, { ',', Expression };
 		return p.parseGlobalVar(true)
 
 	case TSymVar:
+		// XXX not fully according to syntax:
+		//
+		// VarDecl = 'var', ( VarSpec | '(', { VarSpec }, ')' );
+		// VarSpec = IdentifierList, (   Type, [ '=', ExpressionList ]
+		//                             |         '=', ExpressionList   );
 		return p.parseGlobalVar(false)
 
 	case TSymType:
@@ -595,6 +605,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			return nil, err
 		}
 		if t.Type == TSymElse {
+			// XXX parse IfStmt
 			_, err = p.needToken(TLBrace)
 			if err != nil {
 				return nil, err

@@ -28,7 +28,6 @@ type TokenType int
 const (
 	TIdentifier TokenType = iota
 	TConstant
-	TSymbol
 	TSymPackage
 	TSymImport
 	TSymFunc
@@ -83,7 +82,6 @@ const (
 var tokenTypes = map[TokenType]string{
 	TIdentifier: "identifier",
 	TConstant:   "constant",
-	TSymbol:     "symbol",
 	TSymPackage: "package",
 	TSymImport:  "import",
 	TSymFunc:    "func",
@@ -219,7 +217,6 @@ func (t *Token) String() string {
 
 // Lexer implements MPCL lexical analyzer.
 type Lexer struct {
-	source      string
 	in          *bufio.Reader
 	point       utils.Point
 	tokenStart  utils.Point
@@ -556,6 +553,44 @@ func (l *Lexer) Get() (*Token, error) {
 		case '^':
 			return l.Token(TBitXor), nil
 
+		case '0':
+			var ui64 uint64
+			var bigInt *big.Int
+
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err != io.EOF {
+					return nil, err
+				}
+			} else {
+				switch r {
+				case 'b', 'B':
+					ui64, err = l.readBinaryLiteral([]rune{'0', r})
+				case 'o', 'O':
+					ui64, err = l.readOctalLiteral([]rune{'0', r})
+				case 'x', 'X':
+					ui64, bigInt, err = l.readHexLiteral([]rune{'0', r})
+				case '0', '1', '2', '3', '4', '5', '6', '7':
+					ui64, err = l.readOctalLiteral([]rune{'0', r})
+				default:
+					l.UnreadRune()
+				}
+				if err != nil {
+					return nil, err
+				}
+			}
+			token := l.Token(TConstant)
+			if bigInt != nil {
+				token.ConstVal = bigInt
+			} else if ui64 <= math.MaxInt32 {
+				token.ConstVal = int32(ui64)
+			} else if ui64 <= math.MaxInt64 {
+				token.ConstVal = int64(ui64)
+			} else {
+				token.ConstVal = ui64
+			}
+			return token, nil
+
 		default:
 			if unicode.IsLetter(r) {
 				symbol := string(r)
@@ -588,53 +623,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return token, nil
 			}
 			if unicode.IsDigit(r) {
-				var input string
-
-				if r == '0' {
-					// XXX 0b, 0x, etc.
-					r, _, err := l.ReadRune()
-					if err != nil {
-						return nil, err
-					}
-					if r == 'x' {
-						for {
-							r, _, err := l.ReadRune()
-							if err != nil {
-								if err != io.EOF {
-									return nil, err
-								}
-								break
-							}
-							if !unicode.Is(unicode.ASCII_Hex_Digit, r) {
-								l.UnreadRune()
-								break
-							}
-							input += string(r)
-						}
-						token := l.Token(TConstant)
-						if len(input) > 16 {
-							val := new(big.Int)
-							_, ok := val.SetString(input, 16)
-							if !ok {
-								return nil,
-									fmt.Errorf("malformed constant '%s'", input)
-							}
-							token.ConstVal = val
-						} else {
-							u, err := strconv.ParseUint(input, 16, 64)
-							if err != nil {
-								return nil, err
-							}
-							token.ConstVal = u
-						}
-						return token, nil
-					}
-					l.UnreadRune()
-					input += "0"
-				} else {
-					input += string(r)
-				}
-
+				val := []rune{r}
 				for {
 					r, _, err := l.ReadRune()
 					if err != nil {
@@ -643,13 +632,14 @@ func (l *Lexer) Get() (*Token, error) {
 						}
 						break
 					}
-					if !unicode.IsDigit(r) {
+					if unicode.IsDigit(r) {
+						val = append(val, r)
+					} else {
 						l.UnreadRune()
 						break
 					}
-					input += string(r)
 				}
-				u, err := strconv.ParseUint(input, 10, 64)
+				u, err := strconv.ParseUint(string(val), 10, 64)
 				if err != nil {
 					// XXX bigint constants
 					return nil, err
@@ -670,6 +660,81 @@ func (l *Lexer) Get() (*Token, error) {
 				l.point, string(r))
 		}
 	}
+}
+
+func (l *Lexer) readBinaryLiteral(val []rune) (uint64, error) {
+loop:
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				return 0, err
+			}
+			break
+		}
+		switch r {
+		case '0', '1':
+			val = append(val, r)
+		default:
+			l.UnreadRune()
+			break loop
+		}
+	}
+	return strconv.ParseUint(string(val), 0, 64)
+}
+
+func (l *Lexer) readOctalLiteral(val []rune) (uint64, error) {
+loop:
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				return 0, err
+			}
+			break
+		}
+		switch r {
+		case '0', '1', '2', '3', '4', '5', '6', '7':
+			val = append(val, r)
+		default:
+			l.UnreadRune()
+			break loop
+		}
+	}
+	return strconv.ParseUint(string(val), 0, 64)
+}
+
+func (l *Lexer) readHexLiteral(val []rune) (uint64, *big.Int, error) {
+	for {
+		r, _, err := l.ReadRune()
+		if err != nil {
+			if err != io.EOF {
+				return 0, nil, err
+			}
+			break
+		}
+		if unicode.Is(unicode.Hex_Digit, r) {
+			val = append(val, r)
+		} else {
+			l.UnreadRune()
+			break
+		}
+	}
+	// 0xffffffffffffffff
+	if len(val) > 18 {
+		bigInt := new(big.Int)
+		_, ok := bigInt.SetString(string(val[2:]), 16)
+		if !ok {
+			return 0, nil, fmt.Errorf("malformed constant '%s'", string(val))
+		}
+		return 0, bigInt, nil
+	}
+
+	ui64, err := strconv.ParseUint(string(val), 0, 64)
+	if err != nil {
+		return 0, nil, err
+	}
+	return ui64, nil, nil
 }
 
 // Unget pushes the token back to the lexer input stream. The next

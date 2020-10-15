@@ -671,6 +671,29 @@ func Constant(gen *Generator, value interface{}) (Variable, error) {
 			MinBits: minBits,
 		}
 
+	case int64:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 64; minBits++ {
+			if (0xffffffffffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		var bits int
+		if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.Uint,
+			Bits:    bits,
+			MinBits: minBits,
+		}
+
 	case uint64:
 		var minBits int
 		// Count minimum bits needed to represent the value.
