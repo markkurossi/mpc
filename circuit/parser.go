@@ -24,8 +24,8 @@ var reParts = regexp.MustCompilePOSIX("[[:space:]]+")
 type Seen []bool
 
 // Set marks the wire seen.
-func (s Seen) Set(index int) error {
-	if index < 0 || index >= len(s) {
+func (s Seen) Set(index Wire) error {
+	if index >= Wire(len(s)) {
 		return fmt.Errorf("invalid wire %d [0...%d[", index, len(s))
 	}
 	s[index] = true
@@ -86,7 +86,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 
 	// Mark input wires seen.
 	for i := 0; i < inputWires; i++ {
-		if err := wiresSeen.Set(i); err != nil {
+		if err := wiresSeen.Set(Wire(i)); err != nil {
 			return nil, err
 		}
 	}
@@ -120,7 +120,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 				return nil, fmt.Errorf("input %d of gate %d not set",
 					bin.Input1, gate)
 			}
-			if err := wiresSeen.Set(int(bin.Output)); err != nil {
+			if err := wiresSeen.Set(Wire(bin.Output)); err != nil {
 				return nil, err
 			}
 			gates[gate] = Gate{
@@ -142,7 +142,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 				return nil, fmt.Errorf("input %d of gate %d not set",
 					unary.Input0, gate)
 			}
-			if err := wiresSeen.Set(int(unary.Output)); err != nil {
+			if err := wiresSeen.Set(Wire(unary.Output)); err != nil {
 				return nil, err
 			}
 			gates[gate] = Gate{
@@ -285,7 +285,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 
 	// Mark input wires seen.
 	for i := 0; i < inputWires; i++ {
-		if err := wiresSeen.Set(i); err != nil {
+		if err := wiresSeen.Set(Wire(i)); err != nil {
 			return nil, err
 		}
 	}
@@ -346,7 +346,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 
 		var inputs []Wire
 		for i := 0; i < n1; i++ {
-			v, err := strconv.Atoi(line[2+i])
+			v, err := strconv.ParseUint(line[2+i], 10, 32)
 			if err != nil {
 				return nil, err
 			}
@@ -358,11 +358,11 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 
 		var outputs []Wire
 		for i := 0; i < n2; i++ {
-			v, err := strconv.Atoi(line[2+n1+i])
+			v, err := strconv.ParseUint(line[2+n1+i], 10, 32)
 			if err != nil {
 				return nil, err
 			}
-			err = wiresSeen.Set(v)
+			err = wiresSeen.Set(Wire(v))
 			if err != nil {
 				return nil, err
 			}
