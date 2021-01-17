@@ -1,5 +1,8 @@
 /* -*- sql -*- */
 
+-- Internet Querly Language (IQL) file for processing 32bit RSA
+-- performance numbers (https://github.com/markkurossi/iql).
+
 -- Print percentages and values with two digits.
 SET REALFMT = '%.2f';
 
