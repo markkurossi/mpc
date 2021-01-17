@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html>
+
+ <head>
+  <style>
+      rect, line, path { stroke-width: 1.5px; stroke: black; fill: transparent; }
+      rect, line, path { stroke-linecap: square; stroke-linejoin: rounded; }
+      path { fill: transparent; }
+      text.literal { font-family: monospace; }
+      a { fill: blue; }
+      a:hover rect { fill: aliceblue; }
+      h2 { font-size: inherit; font-weight: inherit; }
+      line.ellipsis { stroke-dasharray: 1 3.5; }
+      tspan.hex { font-family: monospace; font-size: 90%; }
+      path.arrow { fill: black; }
+      svg { margin-left: 30px; }
+  </style>
+ </head>
+
+ <body>
+ <section>
+  <h2><a name='SourceFile'>SourceFile:</a></h2>
+  <svg height='65' width='550'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M540.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#PackageClause'>
+    <rect x='30' y='10' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='95' y='25' text-anchor='middle' class='rule'>PackageClause</text>
+    </a>
+    <a href='#ImportDecl'>
+    <rect x='210' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='255' y='55' text-anchor='middle' class='rule'>ImportDecl</text>
+    </a>
+    <a href='#TopLevelDecl'>
+    <rect x='380' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='435' y='55' text-anchor='middle' class='rule'>TopLevelDecl</text>
+    </a>
+    <path d='M360 30 v10 q0 10 10 10 h10'/>
+    <path d='M490 50 h10 q10 0 10 -10'/>
+    <path d='M500 20 q10 0 10 10 v10'/>
+    <path d='M360 30 q0 -10 10 -10'/>
+    <path d='M190 30 v10 q0 10 10 10 h10'/>
+    <path d='M300 50 h10 q10 0 10 -10'/>
+    <path d='M310 20 q10 0 10 10 v10'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M160 20 h380'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='PackageClause'>PackageClause:</a></h2>
+  <svg height='35' width='250'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M240.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='80' rx='8' ry='8' class='literal'/>
+    <text x='70' y='25' text-anchor='middle' class='literal'>package</text>
+    <rect x='130' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='175' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <path d='M110 20 h20'/>
+    <path d='M220 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ImportDecl'>ImportDecl:</a></h2>
+  <svg height='65' width='400'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M390.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='70' rx='8' ry='8' class='literal'/>
+    <text x='65' y='25' text-anchor='middle' class='literal'>import</text>
+    <rect x='120' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='130' y='25' text-anchor='middle' class='literal'>(</text>
+    <a href='#ImportSpec'>
+    <rect x='190' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='245' y='55' text-anchor='middle' class='rule'>ImportSpec</text>
+    </a>
+    <rect x='350' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='360' y='25' text-anchor='middle' class='literal'>)</text>
+    <path d='M170 30 v10 q0 10 10 10 h10'/>
+    <path d='M300 50 h10 q10 0 10 -10'/>
+    <path d='M310 20 q10 0 10 10 v10'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M140 20 h210'/>
+    <path d='M100 20 h20'/>
+    <path d='M370 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ImportSpec'>ImportSpec:</a></h2>
+  <svg height='65' width='320'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M310.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='60' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='55' text-anchor='middle' class='rule'>identifier</text>
+    <rect x='200' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='245' y='25' text-anchor='middle' class='rule'>string_lit</text>
+    <path d='M40 30 v10 q0 10 10 10 h10'/>
+    <path d='M150 50 h10 q10 0 10 -10'/>
+    <path d='M160 20 q10 0 10 10 v10'/>
+    <path d='M40 30 q0 -10 10 -10'/>
+    <path d='M290 20 h20'/>
+    <path d='M10 20 h190'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TopLevelDecl'>TopLevelDecl:</a></h2>
+  <svg height='95' width='230'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#Declaration'>
+    <rect x='60' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>Declaration</text>
+    </a>
+    <a href='#FunctionDecl'>
+    <rect x='60' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>FunctionDecl</text>
+    </a>
+    <rect x='60' y='70' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='85' text-anchor='middle' class='rule'>MethodDecl</text>
+    <path d='M190 30 v40'/>
+    <path d='M170 80 h10 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h10'/>
+    <path d='M170 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M170 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v40'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Declaration'>Declaration:</a></h2>
+  <svg height='95' width='210'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M200.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#ConstDecl'>
+    <rect x='60' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>ConstDecl</text>
+    </a>
+    <a href='#TypeDecl'>
+    <rect x='60' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='55' text-anchor='middle' class='rule'>TypeDecl</text>
+    </a>
+    <a href='#VarDecl'>
+    <rect x='70' y='70' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='105' y='85' text-anchor='middle' class='rule'>VarDecl</text>
+    </a>
+    <path d='M170 30 v40'/>
+    <path d='M140 80 h20 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h20'/>
+    <path d='M150 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M150 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v40'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ConstDecl'>ConstDecl:</a></h2>
+  <svg height='95' width='430'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M420.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='60' rx='8' ry='8' class='literal'/>
+    <text x='60' y='25' text-anchor='middle' class='literal'>const</text>
+    <a href='#ConstSpec'>
+    <rect x='210' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='255' y='25' text-anchor='middle' class='rule'>ConstSpec</text>
+    </a>
+    <rect x='140' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='150' y='55' text-anchor='middle' class='literal'>(</text>
+    <a href='#ConstSpec'>
+    <rect x='210' y='70' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='255' y='85' text-anchor='middle' class='rule'>ConstSpec</text>
+    </a>
+    <rect x='350' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='360' y='55' text-anchor='middle' class='literal'>)</text>
+    <path d='M390 30 v10'/>
+    <path d='M370 50 h10 q10 0 10 -10'/>
+    <path d='M190 60 v10 q0 10 10 10 h10'/>
+    <path d='M300 80 h10 q10 0 10 -10'/>
+    <path d='M310 50 q10 0 10 10 v10'/>
+    <path d='M190 60 q0 -10 10 -10'/>
+    <path d='M160 50 h190'/>
+    <path d='M120 40 q0 10 10 10 h10'/>
+    <path d='M390 30 q0 -10 10 -10'/>
+    <path d='M300 20 h120'/>
+    <path d='M110 20 q10 0 10 10 v10'/>
+    <path d='M90 20 h120'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ConstSpec'>ConstSpec:</a></h2>
+  <svg height='55' width='490'>
+    <path d='M5.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M480.5 34 v12 m 4 0 v-12' class='station'/>
+    <a href='#IdentifierList'>
+    <rect x='30' y='30' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='45' text-anchor='middle' class='rule'>IdentifierList</text>
+    </a>
+    <path d='M217 10 l-4 3 v-6 z' class='arrow'/>
+    <a href='#Type'>
+    <rect x='190' y='30' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='215' y='45' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <rect x='290' y='30' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='300' y='45' text-anchor='middle' class='literal'>=</text>
+    <a href='#ExpressionList'>
+    <rect x='330' y='30' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='395' y='45' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <path d='M310 40 h20'/>
+    <path d='M170 20 v10'/>
+    <path d='M260 30 q0 10 10 10'/>
+    <path d='M240 40 h50'/>
+    <path d='M160 40 q10 0 10 -10'/>
+    <path d='M170 20 q0 -10 10 -10 h70 q10 0 10 10 v10'/>
+    <path d='M140 40 h50'/>
+    <path d='M460 40 h20'/>
+    <path d='M10 40 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TypeDecl'>TypeDecl:</a></h2>
+  <svg height='95' width='420'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M410.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='50' rx='8' ry='8' class='literal'/>
+    <text x='55' y='25' text-anchor='middle' class='literal'>type</text>
+    <a href='#TypeSpec'>
+    <rect x='200' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='245' y='25' text-anchor='middle' class='rule'>TypeSpec</text>
+    </a>
+    <rect x='130' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='140' y='55' text-anchor='middle' class='literal'>(</text>
+    <a href='#TypeSpec'>
+    <rect x='200' y='70' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='245' y='85' text-anchor='middle' class='rule'>TypeSpec</text>
+    </a>
+    <rect x='340' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='350' y='55' text-anchor='middle' class='literal'>)</text>
+    <path d='M380 30 v10'/>
+    <path d='M360 50 h10 q10 0 10 -10'/>
+    <path d='M180 60 v10 q0 10 10 10 h10'/>
+    <path d='M290 80 h10 q10 0 10 -10'/>
+    <path d='M300 50 q10 0 10 10 v10'/>
+    <path d='M180 60 q0 -10 10 -10'/>
+    <path d='M150 50 h190'/>
+    <path d='M110 40 q0 10 10 10 h10'/>
+    <path d='M380 30 q0 -10 10 -10'/>
+    <path d='M290 20 h120'/>
+    <path d='M100 20 q10 0 10 10 v10'/>
+    <path d='M80 20 h120'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TypeSpec'>TypeSpec:</a></h2>
+  <svg height='65' width='210'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M200.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#AliasDecl'>
+    <rect x='60' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>AliasDecl</text>
+    </a>
+    <a href='#TypeDef'>
+    <rect x='70' y='40' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='105' y='55' text-anchor='middle' class='rule'>TypeDef</text>
+    </a>
+    <path d='M170 30 v10'/>
+    <path d='M140 50 h20 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h20'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M150 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v10'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='AliasDecl'>AliasDecl:</a></h2>
+  <svg height='35' width='260'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M250.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='75' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <rect x='140' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='150' y='25' text-anchor='middle' class='literal'>=</text>
+    <a href='#Type'>
+    <rect x='180' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='205' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M160 20 h20'/>
+    <path d='M120 20 h20'/>
+    <path d='M230 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TypeDef'>TypeDef:</a></h2>
+  <svg height='35' width='220'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M210.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='75' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <a href='#Type'>
+    <rect x='140' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='165' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M120 20 h20'/>
+    <path d='M190 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Type'>Type:</a></h2>
+  <svg height='95' width='250'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M240.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#TypeName'>
+    <rect x='80' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='125' y='25' text-anchor='middle' class='rule'>TypeName</text>
+    </a>
+    <a href='#TypeLit'>
+    <rect x='90' y='40' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='125' y='55' text-anchor='middle' class='rule'>TypeLit</text>
+    </a>
+    <rect x='60' y='70' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='70' y='85' text-anchor='middle' class='literal'>(</text>
+    <a href='#Type'>
+    <rect x='100' y='70' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='125' y='85' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <rect x='170' y='70' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='180' y='85' text-anchor='middle' class='literal'>)</text>
+    <path d='M210 30 v40'/>
+    <path d='M190 80 h10 q10 0 10 -10'/>
+    <path d='M150 80 h20'/>
+    <path d='M80 80 h20'/>
+    <path d='M40 70 q0 10 10 10 h10'/>
+    <path d='M160 50 h40 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h40'/>
+    <path d='M210 30 q0 -10 10 -10'/>
+    <path d='M170 20 h70'/>
+    <path d='M30 20 q10 0 10 10 v40'/>
+    <path d='M10 20 h70'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TypeName'>TypeName:</a></h2>
+  <svg height='65' width='230'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='70' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <a href='#QualifiedIdent'>
+    <rect x='60' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>QualifiedIdent</text>
+    </a>
+    <path d='M190 30 v10'/>
+    <path d='M170 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M160 20 h60'/>
+    <path d='M30 20 q10 0 10 10 v10'/>
+    <path d='M10 20 h60'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='TypeLit'>TypeLit:</a></h2>
+  <svg height='95' width='210'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M200.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#ArrayType'>
+    <rect x='60' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>ArrayType</text>
+    </a>
+    <a href='#StructType'>
+    <rect x='60' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='55' text-anchor='middle' class='rule'>StructType</text>
+    </a>
+    <a href='#SliceType'>
+    <rect x='60' y='70' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='85' text-anchor='middle' class='rule'>SliceType</text>
+    </a>
+    <path d='M170 30 v40'/>
+    <path d='M150 80 h10 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h10'/>
+    <path d='M150 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M150 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v40'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ArrayType'>ArrayType:</a></h2>
+  <svg height='35' width='300'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M290.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='40' y='25' text-anchor='middle' class='literal'>[</text>
+    <rect x='70' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>Expression</text>
+    <rect x='180' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='190' y='25' text-anchor='middle' class='literal'>]</text>
+    <a href='#Type'>
+    <rect x='220' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='245' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M200 20 h20'/>
+    <path d='M160 20 h20'/>
+    <path d='M50 20 h20'/>
+    <path d='M270 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='StructType'>StructType:</a></h2>
+  <svg height='65' width='380'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M370.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='70' rx='8' ry='8' class='literal'/>
+    <text x='65' y='25' text-anchor='middle' class='literal'>struct</text>
+    <rect x='120' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='130' y='25' text-anchor='middle' class='literal'>{</text>
+    <a href='#FieldDecl'>
+    <rect x='190' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='235' y='55' text-anchor='middle' class='rule'>FieldDecl</text>
+    </a>
+    <rect x='330' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='340' y='25' text-anchor='middle' class='literal'>}</text>
+    <path d='M170 30 v10 q0 10 10 10 h10'/>
+    <path d='M280 50 h10 q10 0 10 -10'/>
+    <path d='M290 20 q10 0 10 10 v10'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M140 20 h190'/>
+    <path d='M100 20 h20'/>
+    <path d='M350 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='FieldDecl'>FieldDecl:</a></h2>
+  <svg height='35' width='240'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M230.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#IdentifierList'>
+    <rect x='30' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='25' text-anchor='middle' class='rule'>IdentifierList</text>
+    </a>
+    <a href='#Type'>
+    <rect x='160' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='185' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M140 20 h20'/>
+    <path d='M210 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='SliceType'>SliceType:</a></h2>
+  <svg height='35' width='160'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M150.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='45' y='25' text-anchor='middle' class='literal'>[]</text>
+    <a href='#Type'>
+    <rect x='80' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M60 20 h20'/>
+    <path d='M130 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='QualifiedIdent'>QualifiedIdent:</a></h2>
+  <svg height='35' width='300'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M290.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='75' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <rect x='140' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='150' y='25' text-anchor='middle' class='literal'>.</text>
+    <rect x='180' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='225' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <path d='M160 20 h20'/>
+    <path d='M120 20 h20'/>
+    <path d='M270 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='VarDecl'>VarDecl:</a></h2>
+  <svg height='95' width='410'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M400.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='40' rx='8' ry='8' class='literal'/>
+    <text x='50' y='25' text-anchor='middle' class='literal'>var</text>
+    <a href='#VarSpec'>
+    <rect x='190' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='235' y='25' text-anchor='middle' class='rule'>VarSpec</text>
+    </a>
+    <rect x='120' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='130' y='55' text-anchor='middle' class='literal'>(</text>
+    <a href='#VarSpec'>
+    <rect x='190' y='70' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='235' y='85' text-anchor='middle' class='rule'>VarSpec</text>
+    </a>
+    <rect x='330' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='340' y='55' text-anchor='middle' class='literal'>)</text>
+    <path d='M370 30 v10'/>
+    <path d='M350 50 h10 q10 0 10 -10'/>
+    <path d='M170 60 v10 q0 10 10 10 h10'/>
+    <path d='M280 80 h10 q10 0 10 -10'/>
+    <path d='M290 50 q10 0 10 10 v10'/>
+    <path d='M170 60 q0 -10 10 -10'/>
+    <path d='M140 50 h190'/>
+    <path d='M100 40 q0 10 10 10 h10'/>
+    <path d='M370 30 q0 -10 10 -10'/>
+    <path d='M280 20 h120'/>
+    <path d='M90 20 q10 0 10 10 v10'/>
+    <path d='M70 20 h120'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='VarSpec'>VarSpec:</a></h2>
+  <svg height='85' width='550'>
+    <path d='M5.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M540.5 34 v12 m 4 0 v-12' class='station'/>
+    <a href='#IdentifierList'>
+    <rect x='30' y='30' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='45' text-anchor='middle' class='rule'>IdentifierList</text>
+    </a>
+    <a href='#Type'>
+    <rect x='190' y='30' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='215' y='45' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M377 10 l-4 3 v-6 z' class='arrow'/>
+    <rect x='290' y='30' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='300' y='45' text-anchor='middle' class='literal'>=</text>
+    <a href='#ExpressionList'>
+    <rect x='330' y='30' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='395' y='45' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <rect x='255' y='60' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='265' y='75' text-anchor='middle' class='literal'>=</text>
+    <a href='#ExpressionList'>
+    <rect x='295' y='60' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='360' y='75' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <path d='M510 50 v10'/>
+    <path d='M425 70 h75 q10 0 10 -10'/>
+    <path d='M275 70 h20'/>
+    <path d='M170 60 q0 10 10 10 h75'/>
+    <path d='M510 50 q0 -10 10 -10'/>
+    <path d='M270 20 v10'/>
+    <path d='M480 30 q0 10 10 10'/>
+    <path d='M460 40 h80'/>
+    <path d='M310 40 h20'/>
+    <path d='M260 40 q10 0 10 -10'/>
+    <path d='M270 20 q0 -10 10 -10 h190 q10 0 10 10 v10'/>
+    <path d='M240 40 h50'/>
+    <path d='M160 40 q10 0 10 10 v10'/>
+    <path d='M140 40 h50'/>
+    <path d='M10 40 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ExpressionList'>ExpressionList:</a></h2>
+  <svg height='65' width='210'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M200.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='60' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>Expression</text>
+    <rect x='95' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='105' y='55' text-anchor='middle' class='literal'>,</text>
+    <path d='M40 30 v10 q0 10 10 10 h45'/>
+    <path d='M115 50 h45 q10 0 10 -10'/>
+    <path d='M160 20 q10 0 10 10 v10'/>
+    <path d='M150 20 h50'/>
+    <path d='M40 30 q0 -10 10 -10'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='FunctionDecl'>FunctionDecl:</a></h2>
+  <svg height='35' width='400'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M390.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='50' rx='8' ry='8' class='literal'/>
+    <text x='55' y='25' text-anchor='middle' class='literal'>func</text>
+    <rect x='100' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='145' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <a href='#Signature'>
+    <rect x='210' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='255' y='25' text-anchor='middle' class='rule'>Signature</text>
+    </a>
+    <a href='#Block'>
+    <rect x='320' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='345' y='25' text-anchor='middle' class='rule'>Block</text>
+    </a>
+    <path d='M300 20 h20'/>
+    <path d='M190 20 h20'/>
+    <path d='M80 20 h20'/>
+    <path d='M370 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Signature'>Signature:</a></h2>
+  <svg height='65' width='320'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M310.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#Parameters'>
+    <rect x='30' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='25' text-anchor='middle' class='rule'>Parameters</text>
+    </a>
+    <a href='#Result'>
+    <rect x='190' y='40' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='225' y='55' text-anchor='middle' class='rule'>Result</text>
+    </a>
+    <path d='M170 30 v10 q0 10 10 10 h10'/>
+    <path d='M260 50 h10 q10 0 10 -10'/>
+    <path d='M270 20 q10 0 10 10 v10'/>
+    <path d='M170 30 q0 -10 10 -10'/>
+    <path d='M140 20 h170'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Result'>Result:</a></h2>
+  <svg height='65' width='230'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#Parameters'>
+    <rect x='60' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>Parameters</text>
+    </a>
+    <a href='#Type'>
+    <rect x='90' y='40' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M190 30 v10'/>
+    <path d='M140 50 h40 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h40'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M170 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v10'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Parameters'>Parameters:</a></h2>
+  <svg height='65' width='330'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M320.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='40' y='25' text-anchor='middle' class='literal'>(</text>
+    <a href='#ParameterList'>
+    <rect x='100' y='40' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='165' y='55' text-anchor='middle' class='rule'>ParameterList</text>
+    </a>
+    <rect x='280' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='290' y='25' text-anchor='middle' class='literal'>)</text>
+    <path d='M80 30 v10 q0 10 10 10 h10'/>
+    <path d='M230 50 h10 q10 0 10 -10'/>
+    <path d='M240 20 q10 0 10 10 v10'/>
+    <path d='M80 30 q0 -10 10 -10'/>
+    <path d='M50 20 h230'/>
+    <path d='M300 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ParameterList'>ParameterList:</a></h2>
+  <svg height='65' width='250'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M240.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#ParameterDecl'>
+    <rect x='60' y='10' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='125' y='25' text-anchor='middle' class='rule'>ParameterDecl</text>
+    </a>
+    <rect x='115' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='125' y='55' text-anchor='middle' class='literal'>,</text>
+    <path d='M40 30 v10 q0 10 10 10 h65'/>
+    <path d='M135 50 h65 q10 0 10 -10'/>
+    <path d='M200 20 q10 0 10 10 v10'/>
+    <path d='M190 20 h50'/>
+    <path d='M40 30 q0 -10 10 -10'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ParameterDecl'>ParameterDecl:</a></h2>
+  <svg height='65' width='300'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M290.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#IdentifierList'>
+    <rect x='60' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>IdentifierList</text>
+    </a>
+    <a href='#Type'>
+    <rect x='220' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='245' y='25' text-anchor='middle' class='rule'>Type</text>
+    </a>
+    <path d='M40 30 v10 q0 10 10 10 h10'/>
+    <path d='M170 50 h10 q10 0 10 -10'/>
+    <path d='M180 20 q10 0 10 10 v10'/>
+    <path d='M40 30 q0 -10 10 -10'/>
+    <path d='M270 20 h20'/>
+    <path d='M10 20 h210'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='IdentifierList'>IdentifierList:</a></h2>
+  <svg height='65' width='210'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M200.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='60' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='105' y='25' text-anchor='middle' class='rule'>identifier</text>
+    <rect x='95' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='105' y='55' text-anchor='middle' class='literal'>,</text>
+    <path d='M40 30 v10 q0 10 10 10 h45'/>
+    <path d='M115 50 h45 q10 0 10 -10'/>
+    <path d='M160 20 q10 0 10 10 v10'/>
+    <path d='M150 20 h50'/>
+    <path d='M40 30 q0 -10 10 -10'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Block'>Block:</a></h2>
+  <svg height='65' width='290'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M280.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='40' y='25' text-anchor='middle' class='literal'>{</text>
+    <a href='#Statement'>
+    <rect x='100' y='40' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='145' y='55' text-anchor='middle' class='rule'>Statement</text>
+    </a>
+    <rect x='240' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='250' y='25' text-anchor='middle' class='literal'>}</text>
+    <path d='M80 30 v10 q0 10 10 10 h10'/>
+    <path d='M190 50 h10 q10 0 10 -10'/>
+    <path d='M200 20 q10 0 10 10 v10'/>
+    <path d='M80 30 q0 -10 10 -10'/>
+    <path d='M50 20 h190'/>
+    <path d='M260 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Statement'>Statement:</a></h2>
+  <svg height='155' width='230'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#Declaration'>
+    <rect x='60' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>Declaration</text>
+    </a>
+    <a href='#IfStmt'>
+    <rect x='80' y='40' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>IfStmt</text>
+    </a>
+    <a href='#ReturnStmt'>
+    <rect x='70' y='70' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='115' y='85' text-anchor='middle' class='rule'>ReturnStmt</text>
+    </a>
+    <a href='#ForStmt'>
+    <rect x='80' y='100' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='115' y='115' text-anchor='middle' class='rule'>ForStmt</text>
+    </a>
+    <a href='#SimpleStmt'>
+    <rect x='60' y='130' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='145' text-anchor='middle' class='rule'>SimpleStmt</text>
+    </a>
+    <path d='M190 30 v100'/>
+    <path d='M170 140 h10 q10 0 10 -10'/>
+    <path d='M40 130 q0 10 10 10 h10'/>
+    <path d='M150 110 h30 q10 0 10 -10'/>
+    <path d='M40 100 q0 10 10 10 h30'/>
+    <path d='M160 80 h20 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h20'/>
+    <path d='M150 50 h30 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h30'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M170 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v100'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='IfStmt'>IfStmt:</a></h2>
+  <svg height='85' width='550'>
+    <path d='M5.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M540.5 34 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='30' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='45' y='45' text-anchor='middle' class='literal'>if</text>
+    <rect x='80' y='30' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='125' y='45' text-anchor='middle' class='rule'>Expression</text>
+    <a href='#Block'>
+    <rect x='190' y='30' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='215' y='45' text-anchor='middle' class='rule'>Block</text>
+    </a>
+    <path d='M392 10 l-4 3 v-6 z' class='arrow'/>
+    <rect x='290' y='30' height='20' width='50' rx='8' ry='8' class='literal'/>
+    <text x='315' y='45' text-anchor='middle' class='literal'>else</text>
+    <a href='#IfStmt'>
+    <rect x='390' y='30' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='425' y='45' text-anchor='middle' class='rule'>IfStmt</text>
+    </a>
+    <a href='#Block'>
+    <rect x='400' y='60' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='425' y='75' text-anchor='middle' class='rule'>Block</text>
+    </a>
+    <path d='M270 20 v10'/>
+    <path d='M510 30 q0 10 10 10'/>
+    <path d='M480 50 v10'/>
+    <path d='M450 70 h20 q10 0 10 -10'/>
+    <path d='M370 60 q0 10 10 10 h20'/>
+    <path d='M480 50 q0 -10 10 -10'/>
+    <path d='M460 40 h80'/>
+    <path d='M360 40 q10 0 10 10 v10'/>
+    <path d='M340 40 h50'/>
+    <path d='M260 40 q10 0 10 -10'/>
+    <path d='M270 20 q0 -10 10 -10 h220 q10 0 10 10 v10'/>
+    <path d='M240 40 h50'/>
+    <path d='M170 40 h20'/>
+    <path d='M60 40 h20'/>
+    <path d='M10 40 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ReturnStmt'>ReturnStmt:</a></h2>
+  <svg height='55' width='340'>
+    <path d='M5.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M330.5 34 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='30' height='20' width='70' rx='8' ry='8' class='literal'/>
+    <text x='65' y='45' text-anchor='middle' class='literal'>return</text>
+    <path d='M217 10 l-4 3 v-6 z' class='arrow'/>
+    <a href='#ExpressionList'>
+    <rect x='150' y='30' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='215' y='45' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <path d='M130 20 v10'/>
+    <path d='M300 30 q0 10 10 10'/>
+    <path d='M280 40 h50'/>
+    <path d='M120 40 q10 0 10 -10'/>
+    <path d='M130 20 q0 -10 10 -10 h150 q10 0 10 10 v10'/>
+    <path d='M100 40 h50'/>
+    <path d='M10 40 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ForStmt'>ForStmt:</a></h2>
+  <svg height='35' width='280'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M270.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='40' rx='8' ry='8' class='literal'/>
+    <text x='50' y='25' text-anchor='middle' class='literal'>for</text>
+    <a href='#ForClause'>
+    <rect x='90' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='135' y='25' text-anchor='middle' class='rule'>ForClause</text>
+    </a>
+    <a href='#Block'>
+    <rect x='200' y='10' height='20' width='50' rx='0' ry='0' class='rule'/>
+    <text x='225' y='25' text-anchor='middle' class='rule'>Block</text>
+    </a>
+    <path d='M180 20 h20'/>
+    <path d='M70 20 h20'/>
+    <path d='M250 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ForClause'>ForClause:</a></h2>
+  <svg height='35' width='490'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M480.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#SimpleStmt'>
+    <rect x='30' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='25' text-anchor='middle' class='rule'>SimpleStmt</text>
+    </a>
+    <rect x='160' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='170' y='25' text-anchor='middle' class='literal'>;</text>
+    <rect x='200' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='245' y='25' text-anchor='middle' class='rule'>Expression</text>
+    <rect x='310' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='320' y='25' text-anchor='middle' class='literal'>;</text>
+    <a href='#SimpleStmt'>
+    <rect x='350' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='405' y='25' text-anchor='middle' class='rule'>SimpleStmt</text>
+    </a>
+    <path d='M330 20 h20'/>
+    <path d='M290 20 h20'/>
+    <path d='M180 20 h20'/>
+    <path d='M140 20 h20'/>
+    <path d='M460 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='SimpleStmt'>SimpleStmt:</a></h2>
+  <svg height='125' width='230'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='70' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='115' y='25' text-anchor='middle' class='rule'>Expression</text>
+    <a href='#IncDecStmt'>
+    <rect x='60' y='40' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='55' text-anchor='middle' class='rule'>IncDecStmt</text>
+    </a>
+    <a href='#Assignment'>
+    <rect x='60' y='70' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='85' text-anchor='middle' class='rule'>Assignment</text>
+    </a>
+    <a href='#ShortVarDecl'>
+    <rect x='60' y='100' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='115' y='115' text-anchor='middle' class='rule'>ShortVarDecl</text>
+    </a>
+    <path d='M190 30 v70'/>
+    <path d='M170 110 h10 q10 0 10 -10'/>
+    <path d='M40 100 q0 10 10 10 h10'/>
+    <path d='M170 80 h10 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h10'/>
+    <path d='M170 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M190 30 q0 -10 10 -10'/>
+    <path d='M160 20 h60'/>
+    <path d='M30 20 q10 0 10 10 v70'/>
+    <path d='M10 20 h60'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='IncDecStmt'>IncDecStmt:</a></h2>
+  <svg height='65' width='260'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M250.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='30' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='75' y='25' text-anchor='middle' class='rule'>Expression</text>
+    <rect x='170' y='10' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='185' y='25' text-anchor='middle' class='literal'>++</text>
+    <rect x='170' y='40' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='185' y='55' text-anchor='middle' class='literal'>--</text>
+    <path d='M220 30 v10'/>
+    <path d='M200 50 h10 q10 0 10 -10'/>
+    <path d='M150 40 q0 10 10 10 h10'/>
+    <path d='M220 30 q0 -10 10 -10'/>
+    <path d='M200 20 h50'/>
+    <path d='M140 20 q10 0 10 10 v10'/>
+    <path d='M120 20 h50'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='Assignment'>Assignment:</a></h2>
+  <svg height='35' width='450'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M440.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#ExpressionList'>
+    <rect x='30' y='10' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='95' y='25' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <a href='#assign_op'>
+    <rect x='180' y='10' height='20' width='90' rx='0' ry='0' class='rule'/>
+    <text x='225' y='25' text-anchor='middle' class='rule'>assign_op</text>
+    </a>
+    <a href='#ExpressionList'>
+    <rect x='290' y='10' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='355' y='25' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <path d='M270 20 h20'/>
+    <path d='M160 20 h20'/>
+    <path d='M420 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='assign_op'>assign_op:</a></h2>
+  <svg height='85' width='230'>
+    <path d='M5.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M220.5 34 v12 m 4 0 v-12' class='station'/>
+    <path d='M97 10 l-4 3 v-6 z' class='arrow'/>
+    <a href='#add_op'>
+    <rect x='60' y='30' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='95' y='45' text-anchor='middle' class='rule'>add_op</text>
+    </a>
+    <a href='#mul_op'>
+    <rect x='60' y='60' height='20' width='70' rx='0' ry='0' class='rule'/>
+    <text x='95' y='75' text-anchor='middle' class='rule'>mul_op</text>
+    </a>
+    <rect x='180' y='30' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='190' y='45' text-anchor='middle' class='literal'>=</text>
+    <path d='M150 50 v10'/>
+    <path d='M40 20 v10'/>
+    <path d='M130 70 h10 q10 0 10 -10'/>
+    <path d='M40 60 q0 10 10 10 h10'/>
+    <path d='M150 30 q0 10 10 10'/>
+    <path d='M150 50 q0 -10 10 -10'/>
+    <path d='M130 40 h50'/>
+    <path d='M30 40 q10 0 10 10 v10'/>
+    <path d='M30 40 q10 0 10 -10'/>
+    <path d='M40 20 q0 -10 10 -10 h90 q10 0 10 10 v10'/>
+    <path d='M200 40 h20'/>
+    <path d='M10 40 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='add_op'>add_op:</a></h2>
+  <svg height='125' width='140'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M130.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='60' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='70' y='25' text-anchor='middle' class='literal'>+</text>
+    <rect x='60' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='70' y='55' text-anchor='middle' class='literal'>-</text>
+    <rect x='60' y='70' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='70' y='85' text-anchor='middle' class='literal'>^</text>
+    <rect x='60' y='100' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='70' y='115' text-anchor='middle' class='literal'>|</text>
+    <path d='M100 30 v70'/>
+    <path d='M80 110 h10 q10 0 10 -10'/>
+    <path d='M40 100 q0 10 10 10 h10'/>
+    <path d='M80 80 h10 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h10'/>
+    <path d='M80 50 h10 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h10'/>
+    <path d='M100 30 q0 -10 10 -10'/>
+    <path d='M80 20 h50'/>
+    <path d='M30 20 q10 0 10 10 v70'/>
+    <path d='M10 20 h50'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='mul_op'>mul_op:</a></h2>
+  <svg height='215' width='150'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M140.5 14 v12 m 4 0 v-12' class='station'/>
+    <rect x='65' y='10' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='75' y='25' text-anchor='middle' class='literal'>%</text>
+    <rect x='65' y='40' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='75' y='55' text-anchor='middle' class='literal'>&amp;</text>
+    <rect x='65' y='70' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='75' y='85' text-anchor='middle' class='literal'>*</text>
+    <rect x='65' y='100' height='20' width='20' rx='8' ry='8' class='literal'/>
+    <text x='75' y='115' text-anchor='middle' class='literal'>/</text>
+    <rect x='60' y='130' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='75' y='145' text-anchor='middle' class='literal'>&lt;&lt;</text>
+    <rect x='60' y='160' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='75' y='175' text-anchor='middle' class='literal'>&gt;&gt;</text>
+    <rect x='60' y='190' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='75' y='205' text-anchor='middle' class='literal'>&amp;^</text>
+    <path d='M110 30 v160'/>
+    <path d='M90 200 h10 q10 0 10 -10'/>
+    <path d='M40 190 q0 10 10 10 h10'/>
+    <path d='M90 170 h10 q10 0 10 -10'/>
+    <path d='M40 160 q0 10 10 10 h10'/>
+    <path d='M90 140 h10 q10 0 10 -10'/>
+    <path d='M40 130 q0 10 10 10 h10'/>
+    <path d='M85 110 h15 q10 0 10 -10'/>
+    <path d='M40 100 q0 10 10 10 h15'/>
+    <path d='M85 80 h15 q10 0 10 -10'/>
+    <path d='M40 70 q0 10 10 10 h15'/>
+    <path d='M85 50 h15 q10 0 10 -10'/>
+    <path d='M40 40 q0 10 10 10 h15'/>
+    <path d='M110 30 q0 -10 10 -10'/>
+    <path d='M85 20 h55'/>
+    <path d='M30 20 q10 0 10 10 v160'/>
+    <path d='M10 20 h55'/>
+  </svg>
+ </section>
+
+ <section>
+  <h2><a name='ShortVarDecl'>ShortVarDecl:</a></h2>
+  <svg height='35' width='370'>
+    <path d='M5.5 14 v12 m 4 0 v-12' class='station'/>
+    <path d='M360.5 14 v12 m 4 0 v-12' class='station'/>
+    <a href='#IdentifierList'>
+    <rect x='30' y='10' height='20' width='110' rx='0' ry='0' class='rule'/>
+    <text x='85' y='25' text-anchor='middle' class='rule'>IdentifierList</text>
+    </a>
+    <rect x='160' y='10' height='20' width='30' rx='8' ry='8' class='literal'/>
+    <text x='175' y='25' text-anchor='middle' class='literal'>:=</text>
+    <a href='#ExpressionList'>
+    <rect x='210' y='10' height='20' width='130' rx='0' ry='0' class='rule'/>
+    <text x='275' y='25' text-anchor='middle' class='rule'>ExpressionList</text>
+    </a>
+    <path d='M190 20 h20'/>
+    <path d='M140 20 h20'/>
+    <path d='M340 20 h20'/>
+    <path d='M10 20 h20'/>
+  </svg>
+ </section>
+
+ </body>
+</html>

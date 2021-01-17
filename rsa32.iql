@@ -1,0 +1,12 @@
+/* -*- sql -*- */
+
+-- Print percentages and values with two digits.
+SET REALFMT = '%.2f';
+
+SELECT Version,
+       Time,
+       "Total Gates"          AS Gates,
+       "Non-XOR Gates"        AS NonXOR,
+       "Total Gates" / Time   AS "Gates/s",
+       "Non-XOR Gates" / Time AS "NonXOR/s"
+FROM 'rsa32.csv';

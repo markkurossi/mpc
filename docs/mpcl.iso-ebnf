@@ -1,0 +1,78 @@
+SourceFile = PackageClause, { ImportDecl }, { TopLevelDecl };
+
+PackageClause = 'package', identifier;
+
+ImportDecl = 'import', '(', { ImportSpec }, ')';
+ImportSpec = { identifier }, string_lit;
+
+TopLevelDecl = Declaration | FunctionDecl | MethodDecl;
+
+Declaration = ConstDecl | TypeDecl | VarDecl;
+
+
+ConstDecl = 'const', ( ConstSpec | '(', { ConstSpec }, ')' );
+ConstSpec = IdentifierList, [ Type ], '=', ExpressionList;
+
+TypeDecl = 'type', ( TypeSpec | '(', { TypeSpec }, ')' );
+TypeSpec = AliasDecl | TypeDef;
+AliasDecl = identifier, '=', Type;
+TypeDef = identifier, Type;
+
+Type      = TypeName | TypeLit | '(', Type, ')';
+TypeName  = identifier | QualifiedIdent;
+TypeLit   = ArrayType | StructType | SliceType;
+
+ArrayType   = '[', Expression, ']', Type;
+
+StructType = 'struct', '{', { FieldDecl }, '}';
+FieldDecl  = IdentifierList, Type;
+
+SliceType = '[]', Type;
+
+
+QualifiedIdent = identifier, '.', identifier;
+
+
+VarDecl = 'var', ( VarSpec | '(', { VarSpec }, ')' );
+VarSpec = IdentifierList, (   Type, [ '=', ExpressionList ]
+	  		    |         '=', ExpressionList   );
+
+
+ExpressionList = Expression, { ',', Expression };
+
+
+FunctionDecl = 'func', identifier, Signature, Block;
+
+Signature = Parameters, { Result };
+
+Result = Parameters | Type;
+
+Parameters = '(', { ParameterList }, ')';
+
+ParameterList = ParameterDecl, { ',', ParameterDecl };
+
+ParameterDecl = { IdentifierList }, Type;
+
+IdentifierList = identifier, { ',', identifier };
+
+Block = '{', { Statement }, '}';
+
+Statement = Declaration | IfStmt | ReturnStmt | ForStmt | SimpleStmt;
+
+IfStmt = 'if', Expression, Block, [ 'else', ( IfStmt | Block ) ];
+ReturnStmt = 'return', [ ExpressionList ];
+ForStmt = 'for', ForClause, Block;
+ForClause = SimpleStmt, ';', Expression, ';', SimpleStmt;
+
+SimpleStmt = Expression | IncDecStmt | Assignment | ShortVarDecl;
+
+IncDecStmt = Expression, ( '++' | '--' );
+
+Assignment = ExpressionList, assign_op, ExpressionList;
+
+assign_op = [ add_op | mul_op ], '=';
+
+add_op = '+' | '-' | '|' | '^';
+mul_op = '*' | '/' | '%' | '<<' | '>>' | '&' | '&^';
+
+ShortVarDecl = IdentifierList, ':=', ExpressionList;
