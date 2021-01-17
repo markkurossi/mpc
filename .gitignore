@@ -14,7 +14,6 @@
 .DS_Store
 *~
 *.dot
-*.svg
 *.pdf
 *.ssa
 *.prof
