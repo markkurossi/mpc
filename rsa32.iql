@@ -6,10 +6,13 @@
 -- Print percentages and values with two digits.
 SET REALFMT = '%.2f';
 
-SELECT Version,
+SELECT Version				    AS V,
        Time,
-       "Total Gates"          AS Gates,
-       "Non-XOR Gates"        AS NonXOR,
-       "Total Gates" / Time   AS "Gates/s",
-       "Non-XOR Gates" / Time AS "NonXOR/s"
+       HBAR(Time, MAX(Time), 6)		    AS "[Time]",
+       "Total Gates"          		    AS Gates,
+       "Non-XOR Gates"        		    AS NonXOR,
+       "Total Gates" / Time   		    AS "Gates/s",
+       "Non-XOR Gates" / Time 		    AS "NonXOR/s",
+       HBAR("Non-XOR Gates" / Time,
+            MAX("Non-XOR Gates" / Time), 8) AS "[!XOR/s]"
 FROM 'rsa32.csv';
