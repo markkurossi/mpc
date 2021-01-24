@@ -277,7 +277,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid input bits: %s", err)
 		}
-		if bits <= 0 {
+		if bits < 0 {
 			return nil, fmt.Errorf("invalid input bits: %d", bits)
 		}
 		inputs = append(inputs, IOArg{
@@ -316,7 +316,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid output bits: %s", err)
 		}
-		if bits <= 0 {
+		if bits < 0 {
 			return nil, fmt.Errorf("invalid output bits: %d", bits)
 		}
 		outputs = append(outputs, IOArg{
