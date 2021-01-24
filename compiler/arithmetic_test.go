@@ -104,7 +104,7 @@ func TestArithmetics(t *testing.T) {
 			fmt.Printf("Skipping %s\n", test.Name)
 			continue
 		}
-		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
+		circ, _, err := New(utils.NewParams()).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
@@ -156,7 +156,7 @@ func main(a, b int512) int512 {
 `
 
 func BenchmarkMult(b *testing.B) {
-	circ, _, err := NewCompiler(&utils.Params{}).Compile(mult512)
+	circ, _, err := New(utils.NewParams()).Compile(mult512)
 	if err != nil {
 		b.Fatalf("failed to compile test: %s", err)
 	}

@@ -22,7 +22,7 @@ const (
 )
 
 var (
-	params = &utils.Params{}
+	params = utils.NewParams()
 )
 
 func makeWires(count int, output bool) []*Wire {

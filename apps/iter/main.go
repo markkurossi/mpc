@@ -30,10 +30,11 @@ func main() {
 		var bestLimit int
 		var bestCost int
 
+		params := utils.NewParams()
+
 		for limit := 4; limit < 64; limit += 2 {
-			circ, _, err := compiler.NewCompiler(&utils.Params{
-				CircMultArrayTreshold: limit,
-			}).Compile(code)
+			params.CircMultArrayTreshold = limit
+			circ, _, err := compiler.New(params).Compile(code)
 			if err != nil {
 				log.Fatalf("Compilation %d:%d failed: %s", bits, limit, err)
 			}

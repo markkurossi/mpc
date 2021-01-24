@@ -99,7 +99,7 @@ func main(a, b uint6) uint6 {
 
 func TestIterator(t *testing.T) {
 	for idx, test := range iteratorTests {
-		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
+		circ, _, err := New(utils.NewParams()).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
@@ -245,7 +245,7 @@ func main(a, b uint1024) uint512 {
 
 func TestFixed(t *testing.T) {
 	for idx, test := range fixedTests {
-		circ, _, err := NewCompiler(&utils.Params{}).Compile(test.Code)
+		circ, _, err := New(utils.NewParams()).Compile(test.Code)
 		if err != nil {
 			t.Errorf("Failed to compile test %d: %s", idx, err)
 			continue
@@ -265,7 +265,7 @@ func TestFixed(t *testing.T) {
 }
 
 func TestSubtraction(t *testing.T) {
-	circ, _, err := NewCompiler(&utils.Params{}).Compile(`package main
+	circ, _, err := New(utils.NewParams()).Compile(`package main
 func main(a, b uint64) uint64 {
     return a - b
 }

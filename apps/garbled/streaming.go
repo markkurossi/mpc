@@ -58,7 +58,7 @@ func streamGarblerMode(params *utils.Params, input input, args []string) error {
 	conn := p2p.NewConn(nc)
 	defer conn.Close()
 
-	outputs, result, err := compiler.NewCompiler(params).StreamFile(
+	outputs, result, err := compiler.New(params).StreamFile(
 		conn, args[0], input)
 	if err != nil {
 		return err

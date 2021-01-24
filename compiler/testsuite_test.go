@@ -39,7 +39,7 @@ func TestSuite(t *testing.T) {
 		t.Fatalf("Failed to list tests directory: %s", err)
 	}
 
-	compiler := NewCompiler(&utils.Params{})
+	compiler := New(utils.NewParams())
 
 loop:
 	for _, file := range files {

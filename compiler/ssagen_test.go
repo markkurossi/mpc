@@ -283,10 +283,10 @@ func TestSSAGen(t *testing.T) {
 `,
 				test.Name, test.Code)
 		}
-		_, _, err := NewCompiler(&utils.Params{
-			Verbose: verbose,
-			SSAOut:  ssaOut,
-		}).Compile(test.Code)
+		params := utils.NewParams()
+		params.Verbose = verbose
+		params.SSAOut = ssaOut
+		_, _, err := New(params).Compile(test.Code)
 		if err != nil {
 			t.Fatalf("SSA test %s (%d) failed: %s", test.Name, idx, err)
 		}

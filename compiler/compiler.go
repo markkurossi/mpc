@@ -26,8 +26,8 @@ type Compiler struct {
 	packages map[string]*ast.Package
 }
 
-// NewCompiler creates a new compiler instance.
-func NewCompiler(params *utils.Params) *Compiler {
+// New creates a new compiler instance.
+func New(params *utils.Params) *Compiler {
 	return &Compiler{
 		params:   params,
 		packages: make(map[string]*ast.Package),

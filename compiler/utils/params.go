@@ -16,6 +16,9 @@ type Params struct {
 	SSAOut    io.WriteCloser
 	SSADotOut io.WriteCloser
 
+	// MaxWireBits specifies the maximum variable width in bits.
+	MaxWireBits int
+
 	NoCircCompile bool
 	CircOut       io.WriteCloser
 	CircDotOut    io.WriteCloser
@@ -24,6 +27,14 @@ type Params struct {
 	CircMultArrayTreshold int
 
 	OptPruneGates bool
+}
+
+// NewParams returns new compiler params object, initialized with the
+// default values.
+func NewParams() *Params {
+	return &Params{
+		MaxWireBits: 0x20000,
+	}
 }
 
 // Close closes all open resources.

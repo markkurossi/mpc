@@ -85,10 +85,10 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	params := &utils.Params{
-		Verbose: *fVerbose,
-	}
+	params := utils.NewParams()
 	defer params.Close()
+
+	params.Verbose = *fVerbose
 
 	if *optimize > 0 {
 		params.OptPruneGates = true
@@ -155,7 +155,7 @@ func main() {
 					}
 				}
 			}
-			circ, _, err = compiler.NewCompiler(params).CompileFile(arg)
+			circ, _, err = compiler.New(params).CompileFile(arg)
 			if err != nil {
 				fmt.Printf("%s\n", err)
 				return
