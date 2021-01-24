@@ -11,6 +11,7 @@ package ast
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -96,7 +97,11 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 					if err != nil {
 						return result, err
 					}
-					bits = int(bits64)
+					if bits64 > math.MaxInt32 {
+						bits = math.MaxInt32
+					} else {
+						bits = int(bits64)
+					}
 				} else {
 					// Undefined size.
 					bits = 0
