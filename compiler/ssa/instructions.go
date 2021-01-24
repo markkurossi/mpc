@@ -604,6 +604,12 @@ func (v *Variable) Bit(bit int) bool {
 	case int32:
 		return (val & (1 << bit)) != 0
 
+	case uint32:
+		return (val & (1 << bit)) != 0
+
+	case int64:
+		return (val & (1 << bit)) != 0
+
 	case uint64:
 		return (val & (1 << bit)) != 0
 
