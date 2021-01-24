@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -265,15 +266,15 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 	if err != nil {
 		return nil, err
 	}
-	if numGates < 0 {
-		return nil, fmt.Errorf("negative numGates: %d", numGates)
+	if numGates < 0 || numGates > math.MaxInt32 {
+		return nil, fmt.Errorf("invalid numGates: %d", numGates)
 	}
 	numWires, err := strconv.Atoi(line[1])
 	if err != nil {
 		return nil, err
 	}
-	if numWires < 0 {
-		return nil, fmt.Errorf("negative numWires: %d", numWires)
+	if numWires < 0 || numWires > math.MaxInt32 {
+		return nil, fmt.Errorf("invalid numWires: %d", numWires)
 	}
 	wiresSeen := make(Seen, numWires)
 
