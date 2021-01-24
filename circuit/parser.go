@@ -23,6 +23,14 @@ var reParts = regexp.MustCompilePOSIX("[[:space:]]+")
 // Seen describes whether wire has been seen.
 type Seen []bool
 
+// Get gets the wire seen flag.
+func (s Seen) Get(index Wire) (bool, error) {
+	if index >= Wire(len(s)) {
+		return false, fmt.Errorf("invalid wire %d [0...%d[", index, len(s))
+	}
+	return s[index], nil
+}
+
 // Set marks the wire seen.
 func (s Seen) Set(index Wire) error {
 	if index >= Wire(len(s)) {
@@ -112,11 +120,19 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			if err := binary.Read(r, bo, &bin); err != nil {
 				return nil, err
 			}
-			if !wiresSeen[bin.Input0] {
+			seen, err := wiresSeen.Get(Wire(bin.Input0))
+			if err != nil {
+				return nil, err
+			}
+			if !seen {
 				return nil, fmt.Errorf("input %d of gate %d not set",
 					bin.Input0, gate)
 			}
-			if !wiresSeen[bin.Input1] {
+			seen, err = wiresSeen.Get(Wire(bin.Input1))
+			if err != nil {
+				return nil, err
+			}
+			if !seen {
 				return nil, fmt.Errorf("input %d of gate %d not set",
 					bin.Input1, gate)
 			}
@@ -138,7 +154,11 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			if err := binary.Read(r, bo, &unary); err != nil {
 				return nil, err
 			}
-			if !wiresSeen[unary.Input0] {
+			seen, err := wiresSeen.Get(Wire(unary.Input0))
+			if err != nil {
+				return nil, err
+			}
+			if !seen {
 				return nil, fmt.Errorf("input %d of gate %d not set",
 					unary.Input0, gate)
 			}
@@ -367,11 +387,11 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 			if err != nil {
 				return nil, err
 			}
-			if v >= uint64(numWires) {
-				return nil, fmt.Errorf("wire out of range: %d >= %d",
-					v, numWires)
+			seen, err := wiresSeen.Get(Wire(v))
+			if err != nil {
+				return nil, err
 			}
-			if !wiresSeen[v] {
+			if !seen {
 				return nil, fmt.Errorf("input %d of gate %d not set", v, gate)
 			}
 			inputs = append(inputs, Wire(v))
