@@ -392,7 +392,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			if bi.Name != ast.Ref.Name.Name {
 				continue
 			}
-			if bi.Type != BuiltinFunc {
+			if bi.Type != BuiltinFunc || bi.SSA == nil {
 				return nil, nil, ctx.logger.Errorf(ast.Loc,
 					"builtin %s used as function", bi.Name)
 			}
