@@ -19,6 +19,9 @@ type Params struct {
 	// MaxVarBits specifies the maximum variable width in bits.
 	MaxVarBits int
 
+	// MaxLoopUnroll specifies the upper limit for loop unrolling.
+	MaxLoopUnroll int
+
 	NoCircCompile bool
 	CircOut       io.WriteCloser
 	CircDotOut    io.WriteCloser
@@ -33,7 +36,8 @@ type Params struct {
 // default values.
 func NewParams() *Params {
 	return &Params{
-		MaxVarBits: 0x20000,
+		MaxVarBits:    0x20000,
+		MaxLoopUnroll: 0x20000,
 	}
 }
 

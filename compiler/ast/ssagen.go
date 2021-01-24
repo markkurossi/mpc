@@ -650,7 +650,11 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Expand body as long as condition is true.
-	for {
+	for i := 0; ; i++ {
+		if i >= gen.Params.MaxLoopUnroll {
+			return nil, nil, ctx.logger.Errorf(ast.Location(),
+				"for-loop unroll limit exceeded: %d", i)
+		}
 		constVal, ok, err := ast.Cond.Eval(env, ctx, gen)
 		if err != nil {
 			return nil, nil, err
