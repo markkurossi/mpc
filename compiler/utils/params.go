@@ -16,8 +16,8 @@ type Params struct {
 	SSAOut    io.WriteCloser
 	SSADotOut io.WriteCloser
 
-	// MaxWireBits specifies the maximum variable width in bits.
-	MaxWireBits int
+	// MaxVarBits specifies the maximum variable width in bits.
+	MaxVarBits int
 
 	NoCircCompile bool
 	CircOut       io.WriteCloser
@@ -33,7 +33,7 @@ type Params struct {
 // default values.
 func NewParams() *Params {
 	return &Params{
-		MaxWireBits: 0x20000,
+		MaxVarBits: 0x20000,
 	}
 }
 

@@ -80,7 +80,6 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	types.Info, error) {
 
 	var result types.Info
-	var err error
 	if ti == nil {
 		return result, nil
 	}
@@ -93,13 +92,18 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			if ok {
 				var bits int
 				if len(matches[2]) > 0 {
-					bits, err = strconv.Atoi(matches[2])
+					bits64, err := strconv.ParseUint(matches[2], 10, 64)
 					if err != nil {
 						return result, err
 					}
+					bits = int(bits64)
 				} else {
 					// Undefined size.
 					bits = 0
+				}
+				if bits > gen.Params.MaxVarBits {
+					return result, fmt.Errorf("bit size too large: %d > %d",
+						bits, gen.Params.MaxVarBits)
 				}
 				return types.Info{
 					Type: tt,
