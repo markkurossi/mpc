@@ -179,6 +179,10 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryMult:
 			return lval * rval, true, nil
 		case BinaryDiv:
+			if rval == 0 {
+				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+					"integer divide by zero")
+			}
 			return lval / rval, true, nil
 		case BinaryMod:
 			return lval % rval, true, nil
@@ -222,6 +226,10 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryMult:
 			return lval * rval, true, nil
 		case BinaryDiv:
+			if rval == 0 {
+				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+					"integer divide by zero")
+			}
 			return lval / rval, true, nil
 		case BinaryMod:
 			return lval % rval, true, nil
