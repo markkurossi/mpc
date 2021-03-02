@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -122,18 +122,23 @@ func TestArithmetics(t *testing.T) {
 				gInput := big.NewInt(int64(g))
 				eInput := big.NewInt(int64(e))
 
+				gerr := make(chan error)
+
 				go func() {
 					_, err := circuit.Garbler(p2p.NewConn(gio), circ,
 						gInput, false)
-					if err != nil {
-						t.Fatalf("Garbler failed: %s\n", err)
-					}
+					gerr <- err
 				}()
 
 				result, err := circuit.Evaluator(p2p.NewConn(eio), circ,
 					eInput, false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
+				}
+
+				err = <-gerr
+				if err != nil {
+					t.Fatalf("Garbler failed: %s\n", err)
 				}
 
 				expected := test.Eval(gInput, eInput)
@@ -170,16 +175,21 @@ func BenchmarkMult(b *testing.B) {
 	gInput := big.NewInt(int64(11))
 	eInput := big.NewInt(int64(13))
 
+	gerr := make(chan error)
+
 	go func() {
 		_, err := circuit.Garbler(p2p.NewConn(gio), circ, gInput, false)
-		if err != nil {
-			b.Fatalf("Garbler failed: %s\n", err)
-		}
+		gerr <- err
 	}()
 
 	_, err = circuit.Evaluator(p2p.NewConn(eio), circ, eInput, false)
 	if err != nil {
 		b.Fatalf("Evaluator failed: %s\n", err)
+	}
+
+	err = <-gerr
+	if err != nil {
+		b.Fatalf("Garbler failed: %s\n", err)
 	}
 }
 
