@@ -1,7 +1,7 @@
 //
 // circ_multiplier.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -19,8 +19,13 @@ func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 	if false {
 		return NewArrayMultiplier(c, x, y, z)
 	}
-	if arrayTreshold < 12 {
-		arrayTreshold = 18
+	if arrayTreshold < 8 {
+		var ok bool
+
+		arrayTreshold, ok = multiplierArrayTresholds[len(x)]
+		if !ok {
+			arrayTreshold = 19
+		}
 	}
 	return NewKaratsubaMultiplier(c, arrayTreshold, x, y, z)
 }
