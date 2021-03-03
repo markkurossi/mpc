@@ -24,7 +24,7 @@ func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 
 		arrayTreshold, ok = multiplierArrayTresholds[len(x)]
 		if !ok {
-			arrayTreshold = 19
+			arrayTreshold = 21
 		}
 	}
 	return NewKaratsubaMultiplier(c, arrayTreshold, x, y, z)

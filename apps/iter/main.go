@@ -9,6 +9,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -35,18 +36,19 @@ type result struct {
 	costs      []int
 }
 
-const (
-	numWorkers = 8
-	startBits  = 8
-)
-
 func main() {
+	numWorkers := flag.Int("workers", 8, "number of workers")
+	startBits := flag.Int("start", 8, "start bit cound")
+	minLimit := flag.Int("min", 8, "treshold minimum limit")
+	maxLimit := flag.Int("max", 22, "treshold maximum limit")
+	flag.Parse()
+
 	results := make(map[int]*result)
 	ch := make(chan *result)
 
-	for i := 0; i < numWorkers; i++ {
+	for i := 0; i < *numWorkers; i++ {
 		go func(bits int) {
-			for ; ; bits += numWorkers {
+			for ; ; bits += *numWorkers {
 				code := fmt.Sprintf(template, bits)
 				var bestLimit int
 				var bestCost int
@@ -56,7 +58,7 @@ func main() {
 
 				params := utils.NewParams()
 
-				for limit := 8; limit <= 22; limit++ {
+				for limit := *minLimit; limit <= *maxLimit; limit++ {
 					params.CircMultArrayTreshold = limit
 					circ, _, err := compiler.New(params).Compile(code)
 					if err != nil {
@@ -66,7 +68,8 @@ func main() {
 					cost := circ.Cost()
 					costs = append(costs, cost)
 
-					if bestCost == 0 || cost < bestCost {
+					if bestCost == 0 || cost < bestCost ||
+						(limit == 21 && cost <= bestCost) {
 						bestCost = cost
 						bestLimit = limit
 					}
@@ -84,10 +87,10 @@ func main() {
 					costs:      costs,
 				}
 			}
-		}(startBits + i)
+		}(*startBits + i)
 	}
 
-	next := startBits
+	next := *startBits
 
 	for result := range ch {
 		results[result.bits] = result
@@ -96,13 +99,13 @@ func main() {
 			if !ok {
 				break
 			}
-			if r.bestLimit == 19 {
-				fmt.Printf("\t// %d: %d,\t%d\t%.4f\t%s\n",
+			if r.bestLimit == 21 {
+				fmt.Printf("\t// %d: %d, %10d\t%.4f\t%s\n",
 					r.bits, r.bestLimit,
 					r.bestCost, float64(r.bestCost)/float64(r.worstCost),
 					Sparkline(r.costs))
 			} else {
-				fmt.Printf("\t%d: %d, //\t%d\t%.4f\t%s\n",
+				fmt.Printf("\t%d: %d, // %10d\t%.4f\t%s\n",
 					r.bits, r.bestLimit,
 					r.bestCost, float64(r.bestCost)/float64(r.worstCost),
 					Sparkline(r.costs))
