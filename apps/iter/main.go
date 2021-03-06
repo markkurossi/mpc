@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
+	"runtime/pprof"
 	"strings"
 
 	"github.com/markkurossi/mpc/compiler"
@@ -39,16 +41,30 @@ type result struct {
 func main() {
 	numWorkers := flag.Int("workers", 8, "number of workers")
 	startBits := flag.Int("start", 8, "start bit cound")
+	endBits := flag.Int("end", 0xffffffff, "end bit cound")
 	minLimit := flag.Int("min", 8, "treshold minimum limit")
 	maxLimit := flag.Int("max", 22, "treshold maximum limit")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	flag.Parse()
+
+	if len(*cpuprofile) > 0 {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 
 	results := make(map[int]*result)
 	ch := make(chan *result)
 
 	for i := 0; i < *numWorkers; i++ {
 		go func(bits int) {
-			for ; ; bits += *numWorkers {
+			for ; bits <= *endBits; bits += *numWorkers {
 				code := fmt.Sprintf(template, bits)
 				var bestLimit int
 				var bestCost int
@@ -92,6 +108,7 @@ func main() {
 
 	next := *startBits
 
+outer:
 	for result := range ch {
 		results[result.bits] = result
 		for {
@@ -109,6 +126,9 @@ func main() {
 					r.bits, r.bestLimit,
 					r.bestCost, float64(r.bestCost)/float64(r.worstCost),
 					Sparkline(r.costs))
+			}
+			if next >= *endBits {
+				break outer
 			}
 			next++
 		}
