@@ -40,8 +40,8 @@ type result struct {
 
 func main() {
 	numWorkers := flag.Int("workers", 8, "number of workers")
-	startBits := flag.Int("start", 8, "start bit cound")
-	endBits := flag.Int("end", 0xffffffff, "end bit cound")
+	startBits := flag.Int("start", 8, "start bit count")
+	endBits := flag.Int("end", 0xffffffff, "end bit count")
 	minLimit := flag.Int("min", 8, "treshold minimum limit")
 	maxLimit := flag.Int("max", 22, "treshold maximum limit")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
