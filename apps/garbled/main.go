@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -321,7 +321,9 @@ func printResult(results []*big.Int, outputs circuit.IO) {
 					}
 				}
 				fmt.Printf("Result[%d]: %s\n", idx, str)
-			} else if strings.HasPrefix(output.Type, "uint") {
+			} else if strings.HasPrefix(output.Type, "uint") ||
+				strings.HasPrefix(output.Type, "int") {
+
 				bytes := result.Bytes()
 				if len(bytes) == 0 {
 					bytes = []byte{0}
