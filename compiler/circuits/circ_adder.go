@@ -1,7 +1,7 @@
 //
 // circ_adder.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -56,7 +56,7 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(z) < len(x) {
-		return fmt.Errorf("Invalid adder arguments: x=%d, y=%d, z=%d",
+		return fmt.Errorf("invalid adder arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
 

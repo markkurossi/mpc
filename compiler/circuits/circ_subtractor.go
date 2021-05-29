@@ -1,7 +1,7 @@
 //
 // circ_subtractor.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -35,7 +35,7 @@ func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
 func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(z) < len(x) {
-		return fmt.Errorf("Invalid subtractor arguments: x=%d, y=%d, z=%d",
+		return fmt.Errorf("invalid subtractor arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
 	cin := compiler.ZeroWire()

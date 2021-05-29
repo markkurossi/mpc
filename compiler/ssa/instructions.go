@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -160,7 +160,7 @@ func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 		op = Fadd
 	default:
 		fmt.Printf("%v + %v (%v)\n", l, r, t)
-		return Instr{}, fmt.Errorf("Invalid type %s for addition", t)
+		return Instr{}, fmt.Errorf("invalid type %s for addition", t)
 	}
 	return Instr{
 		Op:  op,
@@ -181,7 +181,7 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fsub
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for subtraction", t)
+		return Instr{}, fmt.Errorf("invalid type %s for subtraction", t)
 	}
 	return Instr{
 		Op:  op,
@@ -202,7 +202,7 @@ func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fmult
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for multiplication", t)
+		return Instr{}, fmt.Errorf("invalid type %s for multiplication", t)
 	}
 	return Instr{
 		Op:  op,
@@ -222,7 +222,7 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fdiv
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for division", t)
+		return Instr{}, fmt.Errorf("invalid type %s for division", t)
 	}
 	return Instr{
 		Op:  op,
@@ -242,7 +242,7 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fmod
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for modulo", t)
+		return Instr{}, fmt.Errorf("invalid type %s for modulo", t)
 	}
 	return Instr{
 		Op:  op,
@@ -289,7 +289,7 @@ func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Flt
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for < comparison", t)
+		return Instr{}, fmt.Errorf("invalid type %s for < comparison", t)
 	}
 	return Instr{
 		Op:  op,
@@ -310,7 +310,7 @@ func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fle
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for <= comparison", t)
+		return Instr{}, fmt.Errorf("invalid type %s for <= comparison", t)
 	}
 	return Instr{
 		Op:  op,
@@ -331,7 +331,7 @@ func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fgt
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for > comparison", t)
+		return Instr{}, fmt.Errorf("invalid type %s for > comparison", t)
 	}
 	return Instr{
 		Op:  op,
@@ -352,7 +352,7 @@ func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	case types.Float:
 		op = Fge
 	default:
-		return Instr{}, fmt.Errorf("Invalid type %s for >= comparison", t)
+		return Instr{}, fmt.Errorf("invalid type %s for >= comparison", t)
 	}
 	return Instr{
 		Op:  op,

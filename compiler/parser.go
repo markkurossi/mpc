@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -985,7 +985,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 		switch t.Type {
 		case TDot:
 			// Selector.
-			return nil, fmt.Errorf("Selector not implemented yet")
+			return nil, fmt.Errorf("selector not implemented yet")
 
 		case TLBracket:
 			var expr1, expr2 ast.AST
@@ -1082,6 +1082,16 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 // OperandName = identifier | QualifiedIdent .
 //
 // QualifiedIdent = PackageName "." identifier .
+//
+// CompositeLit  = LiteralType LiteralValue .
+// LiteralType   = StructType | ArrayType | "[" "..." "]" ElementType |
+//                 SliceType | MapType | TypeName .
+// LiteralValue  = "{" [ ElementList [ "," ] ] "}" .
+// ElementList   = KeyedElement { "," KeyedElement } .
+// KeyedElement  = [ Key ":" ] Element .
+// Key           = FieldName | Expression | LiteralValue .
+// FieldName     = identifier .
+// Element       = Expression | LiteralValue .
 
 func (p *Parser) parseOperand() (ast.AST, error) {
 	t, err := p.lexer.Get()

@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -309,7 +309,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 	for _, result := range gResults {
 		if result.err != nil {
-			return nil, fmt.Errorf("Gate exchange with peer %d failed: %s",
+			return nil, fmt.Errorf("gate exchange with peer %d failed: %s",
 				result.peerID, result.err)
 		}
 		for p := 0; p < numPlayers; p++ {

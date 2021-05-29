@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -265,7 +265,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		count = 2
 
 	default:
-		return fmt.Errorf("Invalid operand %s", g.Op)
+		return fmt.Errorf("invalid operand %s", g.Op)
 	}
 
 	op := byte(g.Op)

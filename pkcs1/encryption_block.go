@@ -1,7 +1,7 @@
 //
 // encryption_block.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -35,7 +35,7 @@ const (
 var (
 	// ErrorInvalidEncryptionBlock error is returned in the encryption
 	// block is malformed.
-	ErrorInvalidEncryptionBlock = errors.New("Invalid encryption block")
+	ErrorInvalidEncryptionBlock = errors.New("invalid encryption block")
 )
 
 // NewEncryptionBlock creates a new encryption block with the given
@@ -51,7 +51,7 @@ func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 
 	padLen := blockLen - 3 - len(data)
 	if padLen < MinPadLen {
-		return nil, errors.New("Data too long")
+		return nil, errors.New("data too long")
 	}
 
 	block := make([]byte, blockLen)
@@ -60,7 +60,7 @@ func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 
 	switch bt {
 	case BT0:
-		return nil, errors.New("Block type 0 not supported")
+		return nil, errors.New("block type 0 not supported")
 
 	case BT1:
 		for i := 0; i < padLen; i++ {
@@ -89,7 +89,7 @@ func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 // returns its data.
 func ParseEncryptionBlock(block []byte) ([]byte, error) {
 	if len(block) < 4 {
-		return nil, errors.New("Truncated encryption block")
+		return nil, errors.New("truncated encryption block")
 	}
 	if block[0] != 0 {
 		return nil, ErrorInvalidEncryptionBlock
@@ -97,7 +97,7 @@ func ParseEncryptionBlock(block []byte) ([]byte, error) {
 	switch EncryptionBlockType(block[1]) {
 	case BT1, BT2:
 	default:
-		return nil, fmt.Errorf("Invalid encryption block type %d", block[1])
+		return nil, fmt.Errorf("invalid encryption block type %d", block[1])
 	}
 
 	for i := 2; i < len(block); i++ {

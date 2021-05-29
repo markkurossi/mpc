@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -502,7 +502,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				case circuit.INV:
 					cc.INV(circWires[gate.Input0], circWires[gate.Output])
 				default:
-					return fmt.Errorf("Unknown gate %s", gate)
+					return fmt.Errorf("unknown gate %s", gate)
 				}
 			}
 

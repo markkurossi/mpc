@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -266,7 +266,7 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		count = 2
 
 	default:
-		return nil, fmt.Errorf("Invalid operand %s", g.Op)
+		return nil, fmt.Errorf("invalid operand %s", g.Op)
 	}
 
 	return table[:count], nil

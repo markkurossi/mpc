@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -219,7 +219,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 				} else if label.Equal(wire.L1) {
 					bit = 1
 				} else {
-					return nil, fmt.Errorf("Unknown label %s for result %d",
+					return nil, fmt.Errorf("unknown label %s for result %d",
 						label, i)
 				}
 				result = big.NewInt(0).SetBit(result, i, bit)

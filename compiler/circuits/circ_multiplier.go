@@ -35,7 +35,7 @@ func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(x) > len(z) {
-		return fmt.Errorf("Invalid multiplier arguments: x=%d, y=%d, z=%d",
+		return fmt.Errorf("invalid multiplier arguments: x=%d, y=%d, z=%d",
 			len(x), len(y), len(z))
 	}
 
@@ -154,7 +154,7 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 
 	a, b = cc.ZeroPad(a, b)
 	if len(a) > len(r) {
-		return fmt.Errorf("Invalid multiplier arguments: a=%d, b=%d, r=%d",
+		return fmt.Errorf("invalid multiplier arguments: a=%d, b=%d, r=%d",
 			len(a), len(b), len(r))
 	}
 

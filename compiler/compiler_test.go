@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -247,7 +247,7 @@ func TestFixed(t *testing.T) {
 	for idx, test := range fixedTests {
 		circ, _, err := New(utils.NewParams()).Compile(test.Code)
 		if err != nil {
-			t.Errorf("Failed to compile test %d: %s", idx, err)
+			t.Errorf("failed to compile test %d: %s", idx, err)
 			continue
 		}
 		n1 := big.NewInt(test.N1)
