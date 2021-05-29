@@ -121,11 +121,11 @@ converted) to be or correct type.
 | stringN | N    	  | no     |
 
 The unsized `uint` and `int` types can be used as function arguments
-and return values. Their are resolved during compilation time. The
-only exception is the `main` function. Its arguments must use fixed
-type sizes. The following example shows a `MinMax` function that
-returns the minimum and maximum arguments. This function works for all
-argument sizes.
+and return values. Their sizes are resolved during compilation
+time. The only exception is the `main` function. Its arguments must
+use fixed type sizes. The following example shows a `MinMax` function
+that returns the minimum and maximum arguments. This function works
+for all argument sizes.
 
 ```go
 func MinMax(a, b int) (int, int) {
