@@ -42,61 +42,52 @@ First, start the evaluator (these examples are run in the
 
 ```
 $ ./garbled -e -i 800000 examples/millionaire.mpcl
-Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
- - N1: a{1,0}i64:int64
- + N2: b{1,0}i64:int64
- - N3: %_{0,1}b1:bool1
- - In: [800000]
+ - In1: a{1,0}i64:int64
+ + In2: b{1,0}i64:int64
+ - Out: %_{0,1}b1:bool1
+ -  In: [800000]
 Listening for connections at :8080
 ```
 
 The evaluator's input is 800000 and it is set to the circuit inputs
-`N2`. The evaluator is now waiting for garblers to connect to the TCP
+`In2`. The evaluator is now waiting for garblers to connect to the TCP
 port `:8080`.
 
 Next, let's start the garbler:
 
 ```
 $ ./garbled -i 750000 examples/millionaire.mpcl
-Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
- + N1: a{1,0}i64:int64
- - N2: b{1,0}i64:int64
- - N3: %_{0,1}b1:bool1
- - In: [750000]
-Result[0]: 0
-Result[0]: 0b0
-Result[0]: 0x00
+ + In1: a{1,0}i64:int64
+ - In2: b{1,0}i64:int64
+ - Out: %_{0,1}b1:bool1
+ -  In: [750000]
+Result[0]: false
 ```
 
 The garbler's input is 750000 and it is set to the circuit inputs
-`N1`. The garbler connects to the evaluator's TCP port and they run
+`In1`. The garbler connects to the evaluator's TCP port and they run
 the garbled circuit protocol. At the end, garbler (and evaluator)
 print the result of the circuit, which is this case is single `bool`
-value `N3`:
+value `Result[0]`:
 
 ```
-Result[0]: 0
-Result[0]: 0b0
-Result[0]: 0x00
+Result[0]: false
 ```
 
-In our example, the evaluator's argument N2 is bound to the MPCL
-program's `b int64` argument, and garblers' N1 to `a
+In our example, the evaluator's argument In2 is bound to the MPCL
+program's `b int64` argument, and garblers' In1 to `a
 int64`. Therefore, the result of the computation is `false` because
-N1=750000 <= N2=800000. If we increase the garbler's input to 900000,
+In1=750000 <= In2=800000. If we increase the garbler's input to 900000,
 we see that the result is now `true` since the garbler's input is now
 bigger than the evaluator's input:
 
 ```
 $ ./garbled -i 900000 examples/millionaire.mpcl
-Circuit: #gates=262 (XOR=132 XNOR=64 AND=65 OR=0 INV=1)
- + N1: a{1,0}i64:int64
- - N2: b{1,0}i64:int64
- - N3: %_{0,1}b1:bool1
- - In: [900000]
-Result[0]: 1
-Result[0]: 0b1
-Result[0]: 0x01
+ + In1: a{1,0}i64:int64
+ - In2: b{1,0}i64:int64
+ - Out: %_{0,1}b1:bool1
+ -  In: [900000]
+Result[0]: true
 ```
 
 # Multi-Party Computation Language (MPCL)
