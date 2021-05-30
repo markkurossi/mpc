@@ -1,7 +1,7 @@
 //
 // types.go
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -42,6 +42,7 @@ const (
 	Float
 	String
 	Struct
+	Array
 )
 
 // Types define MPCL types and their names.
@@ -53,6 +54,7 @@ var Types = map[string]Type{
 	"float":       Float,
 	"string":      String,
 	"struct":      Struct,
+	"array":       Array,
 }
 
 var shortTypes = map[Type]string{
@@ -63,6 +65,7 @@ var shortTypes = map[Type]string{
 	Float:     "f",
 	String:    "str",
 	Struct:    "struct",
+	Array:     "arr",
 }
 
 // Info specifies information about a type.
@@ -71,6 +74,7 @@ type Info struct {
 	Bits    int
 	MinBits int
 	Struct  []StructField
+	Element *Info
 	Offset  int
 }
 

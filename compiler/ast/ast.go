@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -58,6 +58,7 @@ const (
 
 // TypeInfo contains AST type information.
 type TypeInfo struct {
+	Loc          utils.Point
 	Type         Type
 	Name         Identifier
 	ElementType  *TypeInfo
@@ -572,6 +573,8 @@ func ConstantName(value interface{}) string {
 		return fmt.Sprintf("$%s", val)
 	case bool:
 		return fmt.Sprintf("$%v", val)
+	case string:
+		return fmt.Sprintf("%q", val)
 	default:
 		return fmt.Sprintf("{undefined constant %v (%T)}", val, val)
 	}

@@ -311,6 +311,7 @@ func (p *Parser) parseTypeDecl() error {
 	}
 	switch t.Type {
 	case TSymStruct:
+		loc := t.From
 		_, err := p.needToken(TLBrace)
 		if err != nil {
 		}
@@ -356,6 +357,7 @@ func (p *Parser) parseTypeDecl() error {
 			}
 		}
 		typeInfo := &ast.TypeInfo{
+			Loc:          loc,
 			Type:         ast.TypeStruct,
 			TypeName:     name.StrVal,
 			StructFields: fields,
@@ -369,6 +371,7 @@ func (p *Parser) parseTypeDecl() error {
 			return err
 		}
 		typeInfo := &ast.TypeInfo{
+			Loc:       ti.Loc,
 			Type:      ast.TypeAlias,
 			TypeName:  name.StrVal,
 			AliasType: ti,
@@ -377,7 +380,14 @@ func (p *Parser) parseTypeDecl() error {
 		return nil
 
 	default:
-		return p.errf(t.From, "unexpected token '%s'", t.Type)
+		// TypeDef = identifier Type .
+		p.lexer.Unget(t)
+		typeInfo, err := p.parseType()
+		if err != nil {
+			return err
+		}
+		p.pkg.Types = append(p.pkg.Types, typeInfo)
+		return nil
 	}
 }
 
@@ -1162,6 +1172,8 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 	}
 	switch t.Type {
 	case TIdentifier:
+		loc := t.From
+
 		var name string
 		n, err := p.lexer.Get()
 		if err != nil {
@@ -1174,6 +1186,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			}
 			if n.Type == TIdentifier {
 				name = n.StrVal
+				loc = n.From
 			} else {
 				p.lexer.Unget(n)
 			}
@@ -1187,6 +1200,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			name = t.StrVal
 		}
 		return &ast.TypeInfo{
+			Loc:  loc,
 			Type: ast.TypeName,
 			Name: ast.Identifier{
 				Package: pkg,
@@ -1195,6 +1209,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		}, nil
 
 	case TLBracket:
+		loc := t.From
 		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
@@ -1217,12 +1232,14 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		}
 		if length != nil {
 			return &ast.TypeInfo{
+				Loc:         loc,
 				Type:        ast.TypeArray,
 				ElementType: elType,
 				ArrayLength: length,
 			}, nil
 		}
 		return &ast.TypeInfo{
+			Loc:         loc,
 			Type:        ast.TypeSlice,
 			ElementType: elType,
 		}, nil

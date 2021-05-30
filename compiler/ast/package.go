@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -241,15 +241,19 @@ func (pkg *Package) Init(packages map[string]*Package, block *ssa.Block,
 func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 	gen *ssa.Generator) error {
 
+	_, ok := pkg.Bindings.Get(def.TypeName)
+	if ok {
+		return ctx.logger.Errorf(def.Loc, "type %s already defined",
+			def.TypeName)
+	}
 	env := &Env{
 		Bindings: pkg.Bindings,
 	}
+	var info types.Info
+	var err error
+
 	switch def.Type {
 	case TypeStruct:
-		_, ok := pkg.Bindings.Get(def.TypeName)
-		if ok {
-			return fmt.Errorf("type %s already defined", def.TypeName)
-		}
 		// Construct compound type.
 		var fields []types.StructField
 		var bits int
@@ -271,45 +275,63 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			minBits += info.MinBits
 			offset += info.Bits
 		}
-		info := types.Info{
+		info = types.Info{
 			Type:    types.Struct,
 			Bits:    bits,
 			MinBits: minBits,
 			Struct:  fields,
 		}
 
-		v, err := ssa.Constant(gen, info)
+	case TypeArray:
+		constSize, ok, err := def.ArrayLength.Eval(env, ctx, gen)
 		if err != nil {
 			return err
 		}
-		lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
+		if !ok {
+			return ctx.logger.Errorf(def.ArrayLength.Location(),
+				"array size is not constant: %s", def.ArrayLength)
+		}
+		var size int
+		switch s := constSize.(type) {
+		case int:
+			size = s
+		case int32:
+			size = int(s)
+		case uint64:
+			size = int(s)
+		default:
+			return ctx.logger.Errorf(def.ArrayLength.Location(),
+				"invalid array size: %s", def.ArrayLength)
+		}
+		elInfo, err := def.ElementType.Resolve(env, ctx, gen)
 		if err != nil {
 			return err
 		}
-		pkg.Bindings.Set(lval, &v)
-		return nil
+		info = types.Info{
+			Type:    types.Array,
+			Bits:    size * elInfo.Bits,
+			MinBits: size * elInfo.MinBits,
+			Element: &elInfo,
+		}
 
 	case TypeAlias:
-		_, ok := pkg.Bindings.Get(def.TypeName)
-		if ok {
-			return fmt.Errorf("type %s already defined", def.TypeName)
-		}
-		info, err := def.AliasType.Resolve(env, ctx, gen)
+		info, err = def.AliasType.Resolve(env, ctx, gen)
 		if err != nil {
 			return err
 		}
-		v, err := ssa.Constant(gen, info)
-		if err != nil {
-			return err
-		}
-		lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
-		if err != nil {
-			return err
-		}
-		pkg.Bindings.Set(lval, &v)
-		return nil
 
 	default:
-		return fmt.Errorf("invalid type definition: %s", def)
+		return ctx.logger.Errorf(def.Loc, "invalid type definition: %s", def)
 	}
+
+	v, err := ssa.Constant(gen, info)
+	if err != nil {
+		return err
+	}
+	lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
+	if err != nil {
+		return err
+	}
+	pkg.Bindings.Set(lval, &v)
+	return nil
 }
