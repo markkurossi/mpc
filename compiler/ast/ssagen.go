@@ -236,38 +236,109 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			len(values), len(ast.LValues))
 	}
 
-	for idx, lv := range ast.LValues {
-		ref, ok := lv.(*VariableRef)
-		if !ok {
+	for idx, lvalue := range ast.LValues {
+		switch lv := lvalue.(type) {
+		case *VariableRef:
+			// XXX package.name below
+			var lValue ssa.Variable
+			b, ok := block.Bindings.Get(lv.Name.Name)
+			if ast.Define {
+				if ok {
+					return nil, nil, ctx.logger.Errorf(ast.Loc,
+						"no new variables on left side of :=")
+				}
+				lValue, err = gen.NewVar(lv.Name.Name, values[idx].Type,
+					ctx.Scope())
+				if err != nil {
+					return nil, nil, err
+				}
+			} else {
+				if !ok {
+					return nil, nil, ctx.logger.Errorf(ast.Loc,
+						"undefined: %s", lv.Name)
+				}
+				lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+				if err != nil {
+					return nil, nil, err
+				}
+			}
+
+			block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
+			block.Bindings.Set(lValue, &values[idx])
+
+		case *Index:
+			if ast.Define {
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"a non-name %s on left side of :=", lv)
+			}
+			switch arr := lv.Expr.(type) {
+			case *VariableRef:
+				// XXX package.name below
+				b, ok := block.Bindings.Get(arr.Name.Name)
+				if !ok {
+					return nil, nil, ctx.logger.Errorf(ast.Loc,
+						"undefined: %s", arr.Name)
+				}
+				lValue, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
+				if err != nil {
+					return nil, nil, err
+				}
+
+				block, val, err := lv.Index.SSA(block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				if len(val) != 1 || !val[0].Const {
+					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
+						"invalid index")
+				}
+				var index int
+				switch v := val[0].ConstValue.(type) {
+				case int32:
+					index = int(v)
+				default:
+					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
+						"invalid index")
+				}
+
+				// Convert index to bit range.
+				if index >= b.Type.ArraySize {
+					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
+						"invalid array index %d (out of bounds for %d-element array)",
+						index, b.Type.ArraySize)
+				}
+				from := int32(index * b.Type.ArrayElement.Bits)
+				to := int32((index + 1) * b.Type.ArrayElement.Bits)
+
+				indexType := types.Info{
+					Type:    types.Uint,
+					Bits:    32,
+					MinBits: 32,
+				}
+				fromConst, err := ssa.Constant(gen, from, indexType)
+				if err != nil {
+					return nil, nil, err
+				}
+				toConst, err := ssa.Constant(gen, to, indexType)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				block.AddInstr(ssa.NewAmovInstr(values[idx],
+					b.Value(block, gen), fromConst, toConst, lValue))
+				block.Bindings.Set(lValue, nil)
+
+				return block, []ssa.Variable{lValue}, nil
+
+			default:
+				return nil, nil, ctx.logger.Errorf(ast.Loc,
+					"array expression not supported: %T", arr)
+			}
+
+		default:
 			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"cannot assign to %s", lv)
+				"cannot assign to %s (%T)", lv, lv)
 		}
-		// XXX package.name below
-
-		var lValue ssa.Variable
-		b, ok := block.Bindings.Get(ref.Name.Name)
-		if ast.Define {
-			if ok {
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
-					"no new variables on left side of :=")
-			}
-			lValue, err = gen.NewVar(ref.Name.Name, values[0].Type, ctx.Scope())
-			if err != nil {
-				return nil, nil, err
-			}
-		} else {
-			if !ok {
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
-					"undefined: %s", ref.Name)
-			}
-			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
-			if err != nil {
-				return nil, nil, err
-			}
-		}
-
-		block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
-		block.Bindings.Set(lValue, &values[idx])
 	}
 
 	return block, values, nil
@@ -899,20 +970,25 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			"slice bounds out of range [%d:%d]", from, to)
 	}
 
+	indexType := types.Info{
+		Type:    types.Uint,
+		Bits:    32,
+		MinBits: 32,
+	}
+	fromConst, err := ssa.Constant(gen, from, indexType)
+	if err != nil {
+		return nil, nil, err
+	}
+	toConst, err := ssa.Constant(gen, to, indexType)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	t := gen.AnonVar(types.Info{
 		Type:    expr[0].Type.Type,
 		Bits:    int(to - from),
 		MinBits: int(to - from),
 	})
-
-	fromConst, err := ssa.Constant(gen, from, t.Type)
-	if err != nil {
-		return nil, nil, err
-	}
-	toConst, err := ssa.Constant(gen, to, t.Type)
-	if err != nil {
-		return nil, nil, err
-	}
 
 	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
 

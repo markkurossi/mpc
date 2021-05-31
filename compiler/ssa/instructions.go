@@ -62,6 +62,7 @@ const (
 	And
 	Or
 	Mov
+	Amov
 	Phi
 	Ret
 	Circ
@@ -111,6 +112,7 @@ var operands = map[Operand]string{
 	And:     "and",
 	Or:      "or",
 	Mov:     "mov",
+	Amov:    "amov",
 	Phi:     "phi",
 	Ret:     "ret",
 	Circ:    "circ",
@@ -439,6 +441,15 @@ func NewMovInstr(from, to Variable) Instr {
 		Op:  Mov,
 		In:  []Variable{from},
 		Out: &to,
+	}
+}
+
+// NewAmovInstr creates a new Amov instruction.
+func NewAmovInstr(v, arr, from, to, o Variable) Instr {
+	return Instr{
+		Op:  Amov,
+		In:  []Variable{v, arr, from, to},
+		Out: &o,
 	}
 }
 
@@ -786,31 +797,30 @@ func Constant(gen *Generator, value interface{}, ti types.Info) (
 		}
 
 	case []interface{}:
-		if ti.Undefined() {
-			var bits int
-			var length string
-			var name string
+		var bits int
+		var length string
+		var name string
 
-			if len(val) > 0 {
-				ev, err := Constant(gen, val[0], types.UndefinedInfo)
-				if err != nil {
-					return v, err
-				}
-				bits = ev.Type.Bits * len(val)
-				name = ev.Type.String()
-				length = fmt.Sprintf("%d", len(val))
-			} else {
-				name = "interface{}"
+		if len(val) > 0 {
+			ev, err := Constant(gen, val[0], types.UndefinedInfo)
+			if err != nil {
+				return v, err
 			}
+			bits = ev.Type.Bits * len(val)
+			name = ev.Type.String()
+			length = fmt.Sprintf("%d", len(val))
+		} else {
+			name = "interface{}"
+		}
 
-			v.Name = fmt.Sprintf("[%s]%s", length, name)
+		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, val)
+		if ti.Undefined() {
 			v.Type = types.Info{
 				Type:    types.Array,
 				Bits:    bits,
 				MinBits: bits,
 			}
 		} else {
-			v.Name = ti.String()
 			v.Type = ti
 			v.Type.Bits = len(val) * ti.ArrayElement.Bits
 			v.Type.MinBits = ti.Bits

@@ -420,6 +420,62 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Amov:
+			// v arr from to:
+			// array[from:to] = v
+
+			if !instr.In[2].Const {
+				return fmt.Errorf("%s: only constant index supported", instr.Op)
+			}
+			var from int
+			switch val := instr.In[2].ConstValue.(type) {
+			case int32:
+				from = int(val)
+			default:
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+
+			if !instr.In[3].Const {
+				return fmt.Errorf("%s: only constant index supported", instr.Op)
+			}
+			var to int
+			switch val := instr.In[3].ConstValue.(type) {
+			case int32:
+				to = int(val)
+			default:
+				return fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+			if from < 0 || from >= to {
+				return fmt.Errorf("%s: bounds out of range [%d:%d]",
+					instr.Op, from, to)
+			}
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+
+			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+				var w *circuits.Wire
+				if bit < from || bit >= to {
+					if bit < len(wires[1]) {
+						w = wires[1][bit]
+					} else {
+						w = cc.ZeroWire()
+					}
+				} else {
+					idx := bit - from
+					if idx < len(wires[0]) {
+						w = wires[0][idx]
+					} else {
+						w = cc.ZeroWire()
+					}
+				}
+				o[bit] = w
+			}
+			err := prog.SetWires(instr.Out.String(), o)
+			if err != nil {
+				return err
+			}
+
 		case Phi:
 			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {

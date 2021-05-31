@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -190,6 +190,18 @@ func (prog *Program) liveness() {
 			if !step.Instr.In[0].Const {
 				// The `out' will be an alias for `in[0]'.
 				aliases[step.Instr.Out.ID] = step.Instr.In[0]
+			}
+		case Amov:
+			// v arr from to o: v | arr[from:to] = o
+			// XXX aliases are 1:1 mapping but here amov's output
+			// aliases two inputs.
+			if !step.Instr.In[0].Const && false {
+				// The `out' will be an alias for `in[0]'
+				aliases[step.Instr.Out.ID] = step.Instr.In[0]
+			}
+			if !step.Instr.In[1].Const {
+				// The `out' will be an alias for `in[1]'
+				aliases[step.Instr.Out.ID] = step.Instr.In[1]
 			}
 		}
 	}
