@@ -133,6 +133,42 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return result, fmt.Errorf("undefined name: %s", ti)
 
+	case TypeArray:
+		// Array length.
+		constLength, ok, err := ti.ArrayLength.Eval(env, ctx, gen)
+		if err != nil {
+			return result, err
+		}
+		if !ok {
+			return result, ctx.logger.Errorf(ti.ArrayLength.Location(),
+				"array length is not constant: %s", ti.ArrayLength)
+		}
+		var length int
+		switch l := constLength.(type) {
+		case int:
+			length = l
+		case int32:
+			length = int(l)
+		case uint64:
+			length = int(l)
+		default:
+			return result, ctx.logger.Errorf(ti.ArrayLength.Location(),
+				"invalid array length: %s", ti.ArrayLength)
+		}
+
+		// Element type.
+		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
+		if err != nil {
+			return result, err
+		}
+		return types.Info{
+			Type:         types.Array,
+			Bits:         length * elInfo.Bits,
+			MinBits:      length * elInfo.MinBits,
+			ArrayElement: &elInfo,
+			ArraySize:    length,
+		}, nil
+
 	default:
 		return result, fmt.Errorf("unsupported type %s", ti)
 	}

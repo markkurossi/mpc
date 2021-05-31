@@ -136,7 +136,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
 	if err != nil {
 		return nil, nil, ctx.logger.Errorf(ast.Location(),
-			"invalid return type: %s", err)
+			"invalid variable type: %s", err)
 	}
 
 	for _, n := range ast.Names {

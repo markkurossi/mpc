@@ -283,36 +283,9 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		}
 
 	case TypeArray:
-		constSize, ok, err := def.ArrayLength.Eval(env, ctx, gen)
+		info, err = def.Resolve(env, ctx, gen)
 		if err != nil {
 			return err
-		}
-		if !ok {
-			return ctx.logger.Errorf(def.ArrayLength.Location(),
-				"array size is not constant: %s", def.ArrayLength)
-		}
-		var size int
-		switch s := constSize.(type) {
-		case int:
-			size = s
-		case int32:
-			size = int(s)
-		case uint64:
-			size = int(s)
-		default:
-			return ctx.logger.Errorf(def.ArrayLength.Location(),
-				"invalid array size: %s", def.ArrayLength)
-		}
-		elInfo, err := def.ElementType.Resolve(env, ctx, gen)
-		if err != nil {
-			return err
-		}
-		info = types.Info{
-			Type:         types.Array,
-			Bits:         size * elInfo.Bits,
-			MinBits:      size * elInfo.MinBits,
-			ArrayElement: &elInfo,
-			ArraySize:    size,
 		}
 
 	case TypeAlias:
