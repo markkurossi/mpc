@@ -102,7 +102,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
 			"init value is not constant")
 	}
-	constVar, err := ssa.Constant(gen, constVal)
+	constVar, err := ssa.Constant(gen, constVal, typeInfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -152,7 +152,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			if err != nil {
 				return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err)
 			}
-			init, err = ssa.Constant(gen, initVal)
+			init, err = ssa.Constant(gen, initVal, typeInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -212,7 +212,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			return nil, nil, err
 		}
 		if ok {
-			constVar, err := ssa.Constant(gen, constVal)
+			constVar, err := ssa.Constant(gen, constVal, types.UndefinedInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -724,7 +724,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			fmt.Printf("ConstFold: %v %s %v => %v\n",
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
-		v, err := ssa.Constant(gen, constVal)
+		v, err := ssa.Constant(gen, constVal, types.UndefinedInfo)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -905,11 +905,11 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		MinBits: int(to - from),
 	})
 
-	fromConst, err := ssa.Constant(gen, from)
+	fromConst, err := ssa.Constant(gen, from, t.Type)
 	if err != nil {
 		return nil, nil, err
 	}
-	toConst, err := ssa.Constant(gen, to)
+	toConst, err := ssa.Constant(gen, to, t.Type)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -988,12 +988,12 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 			MinBits: field.Type.Bits,
 		})
 
-		fromConst, err := ssa.Constant(gen, int32(field.Type.Offset))
+		fromConst, err := ssa.Constant(gen, int32(field.Type.Offset), t.Type)
 		if err != nil {
 			return nil, nil, err
 		}
 		toConst, err := ssa.Constant(gen,
-			int32(field.Type.Offset+field.Type.Bits))
+			int32(field.Type.Offset+field.Type.Bits), t.Type)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1037,7 +1037,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	v, err := ssa.Constant(gen, ast.Value)
+	v, err := ssa.Constant(gen, ast.Value, types.UndefinedInfo)
 	if err != nil {
 		return nil, nil, err
 	}

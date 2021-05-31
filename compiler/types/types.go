@@ -79,6 +79,11 @@ type Info struct {
 	Offset       int
 }
 
+// UndefinedInfo defines type info for undefined types.
+var UndefinedInfo = Info{
+	Type: Undefined,
+}
+
 // StructField defines a structure field name and type.
 type StructField struct {
 	Name string
@@ -93,6 +98,9 @@ func (f StructField) String() string {
 func (i Info) String() string {
 	if i.Bits == 0 {
 		return i.Type.String()
+	}
+	if i.Type == Array {
+		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ArrayElement)
 	}
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
 }

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,7 @@ import (
 	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -61,7 +62,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 	for idx, lv := range ast.LValues {
 
-		constVal, err := ssa.Constant(gen, values[idx])
+		constVal, err := ssa.Constant(gen, values[idx], types.UndefinedInfo)
 		if err != nil {
 			return nil, false, err
 		}

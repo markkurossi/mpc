@@ -298,7 +298,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		return ctx.logger.Errorf(def.Loc, "invalid type definition: %s", def)
 	}
 
-	v, err := ssa.Constant(gen, info)
+	v, err := ssa.Constant(gen, info, types.UndefinedInfo)
 	if err != nil {
 		return err
 	}

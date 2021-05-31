@@ -670,8 +670,12 @@ func (v Variable) TypeCompatible(o Variable) bool {
 	return v.Type.Equal(o.Type)
 }
 
-// Constant creates a constant variable for the argument value.
-func Constant(gen *Generator, value interface{}) (Variable, error) {
+// Constant creates a constant variable for the argument value. Type
+// info is optional. If it is undefined, the type info will be
+// resolved from the constant value.
+func Constant(gen *Generator, value interface{}, ti types.Info) (
+	Variable, error) {
+
 	v := Variable{
 		Const:      true,
 		ConstValue: value,
@@ -782,27 +786,34 @@ func Constant(gen *Generator, value interface{}) (Variable, error) {
 		}
 
 	case []interface{}:
-		var bits int
-		var length string
-		var name string
+		if ti.Undefined() {
+			var bits int
+			var length string
+			var name string
 
-		if len(val) > 0 {
-			ev, err := Constant(gen, val[0])
-			if err != nil {
-				return v, err
+			if len(val) > 0 {
+				ev, err := Constant(gen, val[0], types.UndefinedInfo)
+				if err != nil {
+					return v, err
+				}
+				bits = ev.Type.Bits * len(val)
+				name = ev.Type.String()
+				length = fmt.Sprintf("%d", len(val))
+			} else {
+				name = "interface{}"
 			}
-			bits = ev.Type.Bits * len(val)
-			name = ev.Type.String()
-			length = fmt.Sprintf("%d", len(val))
-		} else {
-			name = "interface{}"
-		}
 
-		v.Name = fmt.Sprintf("[%s]%s", length, name)
-		v.Type = types.Info{
-			Type:    types.Array,
-			Bits:    bits,
-			MinBits: bits,
+			v.Name = fmt.Sprintf("[%s]%s", length, name)
+			v.Type = types.Info{
+				Type:    types.Array,
+				Bits:    bits,
+				MinBits: bits,
+			}
+		} else {
+			v.Name = ti.String()
+			v.Type = ti
+			v.Type.Bits = len(val) * ti.ArrayElement.Bits
+			v.Type.MinBits = ti.Bits
 		}
 
 	case types.Info:
