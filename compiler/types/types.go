@@ -70,12 +70,13 @@ var shortTypes = map[Type]string{
 
 // Info specifies information about a type.
 type Info struct {
-	Type    Type
-	Bits    int
-	MinBits int
-	Struct  []StructField
-	Element *Info
-	Offset  int
+	Type         Type
+	Bits         int
+	MinBits      int
+	Struct       []StructField
+	ArrayElement *Info
+	ArraySize    int
+	Offset       int
 }
 
 // StructField defines a structure field name and type.

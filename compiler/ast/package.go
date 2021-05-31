@@ -308,10 +308,11 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			return err
 		}
 		info = types.Info{
-			Type:    types.Array,
-			Bits:    size * elInfo.Bits,
-			MinBits: size * elInfo.MinBits,
-			Element: &elInfo,
+			Type:         types.Array,
+			Bits:         size * elInfo.Bits,
+			MinBits:      size * elInfo.MinBits,
+			ArrayElement: &elInfo,
+			ArraySize:    size,
 		}
 
 	case TypeAlias:

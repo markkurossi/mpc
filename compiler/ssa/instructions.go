@@ -594,7 +594,23 @@ func (v *Variable) Value(block *Block, gen *Generator) Variable {
 
 // Bit tests if the argument bit is set in the variable.
 func (v *Variable) Bit(bit int) bool {
-	switch val := v.ConstValue.(type) {
+	arr, ok := v.ConstValue.([]interface{})
+	if ok {
+		length := len(arr)
+		elBits := v.Type.Bits / length
+		idx := bit / elBits
+		ofs := bit % elBits
+		if idx >= length {
+			return false
+		}
+		return isSet(arr[idx], ofs)
+	}
+
+	return isSet(v.ConstValue, bit)
+}
+
+func isSet(v interface{}, bit int) bool {
+	switch val := v.(type) {
 	case bool:
 		if bit == 0 {
 			return val
@@ -629,7 +645,7 @@ func (v *Variable) Bit(bit int) bool {
 		return bytes[idx]&(1<<mod) != 0
 
 	default:
-		panic(fmt.Sprintf("Variable.Bit called for non const %v (%T)", v, val))
+		panic(fmt.Sprintf("isSet called for non const %v (%T)", v, val))
 	}
 }
 
@@ -765,13 +781,38 @@ func Constant(gen *Generator, value interface{}) (Variable, error) {
 			MinBits: bits,
 		}
 
+	case []interface{}:
+		var bits int
+		var length string
+		var name string
+
+		if len(val) > 0 {
+			ev, err := Constant(gen, val[0])
+			if err != nil {
+				return v, err
+			}
+			bits = ev.Type.Bits * len(val)
+			name = ev.Type.String()
+			length = fmt.Sprintf("%d", len(val))
+		} else {
+			name = "interface{}"
+		}
+
+		v.Name = fmt.Sprintf("[%s]%s", length, name)
+		v.Type = types.Info{
+			Type:    types.Array,
+			Bits:    bits,
+			MinBits: bits,
+		}
+
 	case types.Info:
 		v.Name = fmt.Sprintf("$%s", val)
 		v.Type = val
 		v.TypeRef = true
 
 	default:
-		return v, fmt.Errorf("Constant: %v (%T) not implemented yet", val, val)
+		return v, fmt.Errorf("ssa.Constant: %v (%T) not implemented yet",
+			val, val)
 	}
 	v.ID = gen.nextVariableID()
 

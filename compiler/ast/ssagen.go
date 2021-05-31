@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -148,17 +148,9 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 
 		var init ssa.Variable
 		if ast.Init == nil {
-			var initVal interface{}
-			switch lValue.Type.Type {
-			case types.Bool:
-				initVal = false
-			case types.Int, types.Uint:
-				initVal = int32(0)
-			case types.String:
-				initVal = ""
-			default:
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
-					"unsupported variable type %s", lValue.Type.Type)
+			initVal, err := initValue(lValue.Type)
+			if err != nil {
+				return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err)
 			}
 			init, err = ssa.Constant(gen, initVal)
 			if err != nil {
@@ -180,6 +172,29 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		block.AddInstr(ssa.NewMovInstr(init, lValue))
 	}
 	return block, nil, nil
+}
+
+func initValue(typeInfo types.Info) (interface{}, error) {
+	switch typeInfo.Type {
+	case types.Bool:
+		return false, nil
+	case types.Int, types.Uint:
+		return int32(0), nil
+	case types.String:
+		return "", nil
+	case types.Array:
+		elInit, err := initValue(*typeInfo.ArrayElement)
+		if err != nil {
+			return nil, err
+		}
+		init := make([]interface{}, typeInfo.ArraySize)
+		for i := 0; i < typeInfo.ArraySize; i++ {
+			init[i] = elInit
+		}
+		return init, nil
+	default:
+		return nil, fmt.Errorf("unsupported variable type: %s", typeInfo.Type)
+	}
 }
 
 // SSA implements the compiler.ast.AST.SSA for assignment expressions.

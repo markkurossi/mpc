@@ -386,6 +386,7 @@ func (p *Parser) parseTypeDecl() error {
 		if err != nil {
 			return err
 		}
+		typeInfo.TypeName = name.StrVal
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
 	}
