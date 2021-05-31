@@ -298,7 +298,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					index = int(v)
 				default:
 					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
-						"invalid index")
+						"invalid index: %T", v)
 				}
 
 				// Convert index to bit range.
@@ -999,13 +999,14 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
-	block, expr, err := ast.Expr.SSA(block, ctx, gen)
+	block, exprs, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(expr) != 1 {
+	if len(exprs) != 1 {
 		return nil, nil, ctx.logger.Errorf(ast.Loc, "invalid expression")
 	}
+	expr := exprs[0]
 
 	block, val, err := ast.Index.SSA(block, ctx, gen)
 	if err != nil {
@@ -1015,17 +1016,48 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
 			"invalid index")
 	}
-	var index int32
+	var index int
 	switch v := val[0].ConstValue.(type) {
 	case int32:
-		index = v
+		index = int(v)
 	default:
 		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
 			"invalid index: %T", v)
 	}
 
-	return nil, nil, ctx.logger.Errorf(ast.Loc,
-		"index expression not implemented yet: %s[%d]", ast.Expr, index)
+	switch expr.Type.Type {
+	case types.Array:
+		if index < 0 || index >= expr.Type.ArraySize {
+			return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+				"invalid array index %d (out of bounds for %d-element array)",
+				index, expr.Type.ArraySize)
+		}
+		from := int32(index * expr.Type.ArrayElement.Bits)
+		to := int32((index + 1) * expr.Type.ArrayElement.Bits)
+
+		indexType := types.Info{
+			Type:    types.Uint,
+			Bits:    32,
+			MinBits: 32,
+		}
+		fromConst, err := ssa.Constant(gen, from, indexType)
+		if err != nil {
+			return nil, nil, err
+		}
+		toConst, err := ssa.Constant(gen, to, indexType)
+		if err != nil {
+			return nil, nil, err
+		}
+		t := gen.AnonVar(*expr.Type.ArrayElement)
+		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+
+		return block, []ssa.Variable{t}, nil
+
+	default:
+		return nil, nil, ctx.logger.Errorf(ast.Loc,
+			"invalid operation: %s[%d] (type %s does not support indexing)",
+			ast.Expr, index, expr.Type)
+	}
 }
 
 // SSA implements the compiler.ast.AST.SSA for variable references.
