@@ -1026,6 +1026,34 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch expr.Type.Type {
+	case types.String:
+		length := expr.Type.Bits / types.ByteBits
+		if index < 0 || index >= length {
+			return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+				"invalid array index %d (out of bounds for %d-element string)",
+				index, length)
+		}
+		from := int32(index * types.ByteBits)
+		to := int32((index + 1) * types.ByteBits)
+
+		indexType := types.Info{
+			Type:    types.Uint,
+			Bits:    types.ByteBits,
+			MinBits: types.ByteBits,
+		}
+		fromConst, err := ssa.Constant(gen, from, indexType)
+		if err != nil {
+			return nil, nil, err
+		}
+		toConst, err := ssa.Constant(gen, to, indexType)
+		if err != nil {
+			return nil, nil, err
+		}
+		t := gen.AnonVar(indexType)
+		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+
+		return block, []ssa.Variable{t}, nil
+
 	case types.Array:
 		if index < 0 || index >= expr.Type.ArraySize {
 			return nil, nil, ctx.logger.Errorf(ast.Index.Location(),

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -45,6 +45,12 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 // Predeclared identifiers.
 var builtins = []Builtin{
 	{
+		Name: "len",
+		Type: BuiltinFunc,
+		SSA:  lenSSA,
+		Eval: lenEval,
+	},
+	{
 		Name: "make",
 		Type: BuiltinFunc,
 		Eval: makeEval,
@@ -60,6 +66,88 @@ var builtins = []Builtin{
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},
+}
+
+func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+
+	if len(args) != 1 {
+		return nil, nil, ctx.logger.Errorf(loc,
+			"invalid amount of arguments in call to len")
+	}
+
+	var val int
+	switch args[0].Type.Type {
+	case types.String:
+		val = args[0].Type.Bits / types.ByteBits
+
+	case types.Array:
+		val = args[0].Type.ArraySize
+
+	default:
+		return nil, nil, ctx.logger.Errorf(loc,
+			"invalid argument 1 (type %s) for len", args[0].Type)
+	}
+
+	v := ssa.Variable{
+		Name: ConstantName(val),
+		Type: types.Info{
+			Type: types.Int,
+			Bits: val,
+		},
+		Const:      true,
+		ConstValue: val,
+	}
+	gen.AddConstant(v)
+
+	return block, []ssa.Variable{v}, nil
+}
+
+func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (interface{}, bool, error) {
+
+	if len(args) != 1 {
+		return nil, false, ctx.logger.Errorf(loc,
+			"invalid amount of arguments in call to len")
+	}
+
+	switch arg := args[0].(type) {
+	case *VariableRef:
+		var b ssa.Binding
+		var ok bool
+
+		if len(arg.Name.Package) > 0 {
+			var pkg *Package
+			pkg, ok = ctx.Packages[arg.Name.Package]
+			if !ok {
+				return nil, false, ctx.logger.Errorf(loc,
+					"package '%s' not found", arg.Name.Package)
+			}
+			b, ok = pkg.Bindings.Get(arg.Name.Name)
+		} else {
+			b, ok = env.Get(arg.Name.Name)
+		}
+		if !ok {
+			return nil, false, ctx.logger.Errorf(loc,
+				"undefined variable '%s'", arg.Name.String())
+		}
+
+		switch b.Type.Type {
+		case types.String:
+			return int32(b.Type.Bits / types.ByteBits), true, nil
+
+		case types.Array:
+			return int32(b.Type.ArraySize), true, nil
+
+		default:
+			return nil, false, ctx.logger.Errorf(loc,
+				"invalid argument 1 (type %s) for len", b.Type)
+		}
+
+	default:
+		return nil, false, ctx.logger.Errorf(loc,
+			"len(%v/%T) is not constant", arg, arg)
+	}
 }
 
 func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,

@@ -141,6 +141,9 @@ func MinMax(a, b int) (int, int) {
 
 The MPCL runtime defines the following builtin functions:
 
+ - `len(VALUE)`: returns the length of the value as integer:
+   - array: returns the number of array elements
+   - string: returns the number of bytes in the string
  - `make(TYPE, SIZE)`: creates an instance of the type _type_ with _size_ bits.
  - `native(NAME, ARG...)`: calls a builtin function _name_ with
    arguments _arg..._. The _name_ can specify a circuit file (*.circ)

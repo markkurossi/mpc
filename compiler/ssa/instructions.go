@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -648,8 +649,8 @@ func isSet(v interface{}, bit int) bool {
 
 	case string:
 		bytes := []byte(val)
-		idx := bit / 8
-		mod := bit % 8
+		idx := bit / types.ByteBits
+		mod := bit % types.ByteBits
 		if idx >= len(bytes) {
 			return false
 		}
@@ -788,7 +789,7 @@ func Constant(gen *Generator, value interface{}, ti types.Info) (
 
 	case string:
 		v.Name = fmt.Sprintf("$%q", val)
-		bits := len([]byte(val)) * 8
+		bits := len([]byte(val)) * types.ByteBits
 
 		v.Type = types.Info{
 			Type:    types.String,
@@ -813,7 +814,7 @@ func Constant(gen *Generator, value interface{}, ti types.Info) (
 			name = "interface{}"
 		}
 
-		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, val)
+		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, arrayString(val))
 		if ti.Undefined() {
 			v.Type = types.Info{
 				Type:    types.Array,
@@ -838,4 +839,12 @@ func Constant(gen *Generator, value interface{}, ti types.Info) (
 	v.ID = gen.nextVariableID()
 
 	return v, nil
+}
+
+func arrayString(arr []interface{}) string {
+	var parts []string
+	for _, part := range arr {
+		parts = append(parts, fmt.Sprintf("%v", part))
+	}
+	return strings.Join(parts, ",")
 }

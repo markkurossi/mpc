@@ -33,6 +33,9 @@ func (t Type) ShortString() string {
 	return t.String()
 }
 
+// ByteBits defines the byte size in bits.
+const ByteBits = 8
+
 // MPCL types.
 const (
 	Undefined Type = iota
