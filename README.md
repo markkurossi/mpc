@@ -226,9 +226,9 @@ form assembly:
      - [X] Conditionals
      - [X] Struct input types
      - [X] Binary serialization format for circuits
-     - [X] RSA 126-bit signature
+     - [X] RSA 128-bit signature
    - Circuit & garbling
-     - [X] RSA 126-bit signature
+     - [X] RSA 128-bit signature
      - [ ] BMR multi-party protocol
  - [ ] Phase 2
    - [ ] Incremental compiler
@@ -241,6 +241,7 @@ form assembly:
      - [ ] peephole optimization
        - [X] sort blocks in topological order
        - [X] peephole optimization over block boundaries
+       - [ ] SSA aliasing is 1:1 but `amov` has 2:1 relation
        - [ ] variable liveness analysis for templates
      - [ ] Signed / unsigned arithmetics
      - [ ] unary expressions
