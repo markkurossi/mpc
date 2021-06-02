@@ -89,14 +89,9 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid argument 1 (type %s) for len", args[0].Type)
 	}
 
-	v := ssa.Variable{
-		Name: ConstantName(val),
-		Type: types.Info{
-			Type: types.Int,
-			Bits: val,
-		},
-		Const:      true,
-		ConstValue: val,
+	v, err := ssa.Constant(gen, int32(val), types.UndefinedInfo)
+	if err != nil {
+		return nil, nil, err
 	}
 	gen.AddConstant(v)
 
@@ -294,15 +289,9 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to size")
 	}
 
-	val := args[0].Type.Bits
-	v := ssa.Variable{
-		Name: ConstantName(val),
-		Type: types.Info{
-			Type: types.Int,
-			Bits: val,
-		},
-		Const:      true,
-		ConstValue: val,
+	v, err := ssa.Constant(gen, int32(args[0].Type.Bits), types.UndefinedInfo)
+	if err != nil {
+		return nil, nil, err
 	}
 	gen.AddConstant(v)
 
