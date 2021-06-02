@@ -123,8 +123,8 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
-			return nil, false, ctx.logger.Errorf(loc,
-				"undefined variable '%s'", arg.Name.String())
+			return nil, false, ctx.logger.Errorf(loc, "undefined variable '%s'",
+				arg.Name.String())
 		}
 
 		switch b.Type.Type {
@@ -140,8 +140,8 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		}
 
 	default:
-		return nil, false, ctx.logger.Errorf(loc,
-			"len(%v/%T) is not constant", arg, arg)
+		return nil, false, ctx.logger.Errorf(loc, "len(%v/%T) is not constant",
+			arg, arg)
 	}
 }
 
@@ -154,8 +154,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	}
 	ref, ok := args[0].(*VariableRef)
 	if !ok {
-		return nil, false, ctx.logger.Errorf(args[0].Location(),
-			"%s is not a type", args[0])
+		return nil, false, ctx.Errorf(args[0], "%s is not a type", args[0])
 	}
 	ti := TypeInfo{
 		Type: TypeName,
@@ -163,17 +162,16 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	}
 	typeInfo, err := ti.Resolve(env, ctx, gen)
 	if err != nil {
-		return nil, false, ctx.logger.Errorf(args[0].Location(),
-			"%s is not a type", args[0])
+		return nil, false, ctx.Errorf(args[0], "%s is not a type", args[0])
 	}
 	if typeInfo.Bits != 0 {
-		return nil, false, ctx.logger.Errorf(args[0].Location(),
-			"can't make specified type %s", typeInfo)
+		return nil, false, ctx.Errorf(args[0], "can't make specified type %s",
+			typeInfo)
 	}
 
 	constVal, _, err := args[1].Eval(env, ctx, gen)
 	if err != nil {
-		return nil, false, ctx.logger.Errorf(args[1].Location(), "%s", err)
+		return nil, false, ctx.Errorf(args[1], "%s", err)
 	}
 
 	var bits int

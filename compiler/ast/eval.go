@@ -136,7 +136,7 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		if bi.Eval == nil {
 			return nil, false, nil
 		}
-		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
+		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Point())
 	}
 
 	return nil, false, nil
@@ -173,21 +173,21 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case int32:
 			rval = rv
 		default:
-			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
-				"invalid r-value %T %s %T", lval, ast.Op, rv)
+			return nil, false, ctx.Errorf(ast.Right, "invalid r-value %T %s %T",
+				lval, ast.Op, rv)
 		}
 		switch ast.Op {
 		case BinaryMult:
 			return lval * rval, true, nil
 		case BinaryDiv:
 			if rval == 0 {
-				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+				return nil, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
 			return lval / rval, true, nil
 		case BinaryMod:
 			if rval == 0 {
-				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+				return nil, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
 			return lval % rval, true, nil
@@ -214,7 +214,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryGe:
 			return lval >= rval, true, nil
 		default:
-			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
@@ -224,7 +224,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case uint64:
 			rval = rv
 		default:
-			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.Errorf(ast.Right,
 				"%T: invalid r-value %v (%T)", lval, rv, rv)
 		}
 		switch ast.Op {
@@ -232,13 +232,13 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return lval * rval, true, nil
 		case BinaryDiv:
 			if rval == 0 {
-				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+				return nil, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
 			return lval / rval, true, nil
 		case BinaryMod:
 			if rval == 0 {
-				return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+				return nil, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
 			return lval % rval, true, nil
@@ -265,13 +265,13 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryGe:
 			return lval >= rval, true, nil
 		default:
-			return nil, false, ctx.logger.Errorf(ast.Right.Location(),
+			return nil, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	default:
-		return nil, false, ctx.logger.Errorf(ast.Left.Location(),
-			"invalid l-value %v (%T)", lval, lval)
+		return nil, false, ctx.Errorf(ast.Left, "invalid l-value %v (%T)",
+			lval, lval)
 	}
 }
 
@@ -305,8 +305,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		from, err = intVal(val)
 		if err != nil {
-			return nil, false,
-				ctx.logger.Errorf(ast.From.Location(), err.Error())
+			return nil, false, ctx.Errorf(ast.From, err.Error())
 		}
 	}
 	if ast.To != nil {
@@ -316,20 +315,18 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		to, err = intVal(val)
 		if err != nil {
-			return nil, false,
-				ctx.logger.Errorf(ast.To.Location(), err.Error())
+			return nil, false, ctx.Errorf(ast.To, err.Error())
 		}
 	}
 	if to <= from {
-		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
-			"invalid slice range %d:%d", from, to)
+		return nil, false, ctx.Errorf(ast.Expr, "invalid slice range %d:%d",
+			from, to)
 	}
 	switch val := expr.(type) {
 	case int32:
 		if from >= 32 {
-			return nil, false,
-				ctx.logger.Errorf(ast.From.Location(),
-					"slice bounds out of range [%d:32]", from)
+			return nil, false, ctx.Errorf(ast.From,
+				"slice bounds out of range [%d:32]", from)
 		}
 		tmp := uint32(val)
 		tmp >>= from
@@ -337,7 +334,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return int32(tmp), ok, nil
 
 	default:
-		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
+		return nil, false, ctx.Errorf(ast.Expr,
 			"Slice.Eval: expr %T not implemented yet", val)
 	}
 }
@@ -366,12 +363,12 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	_, err = intVal(val)
 	if err != nil {
-		return nil, false, ctx.logger.Errorf(ast.Index.Location(), err.Error())
+		return nil, false, ctx.Errorf(ast.Index, err.Error())
 	}
 
 	switch val := expr.(type) {
 	default:
-		return nil, false, ctx.logger.Errorf(ast.Expr.Location(),
+		return nil, false, ctx.Errorf(ast.Expr,
 			"Index.Eval: expr %T not implemented yet", val)
 	}
 }

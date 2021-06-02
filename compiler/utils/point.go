@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,6 +15,12 @@ type Point struct {
 	Source string
 	Line   int // 1-based
 	Col    int // 0-based
+}
+
+// Pointer is an interface that implements Point method for returning
+// item's input data position.
+type Pointer interface {
+	Point() Point
 }
 
 func (p Point) String() string {

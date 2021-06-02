@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -31,6 +31,12 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 		Packages: packages,
 		Verbose:  verbose,
 	}
+}
+
+// Errorf logs an error message.
+func (ctx *Codegen) Errorf(pointer utils.Pointer, format string,
+	a ...interface{}) error {
+	return ctx.logger.Errorf(pointer.Point(), format, a...)
 }
 
 // Func returns the current function in the current compilation.

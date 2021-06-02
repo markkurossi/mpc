@@ -1017,7 +1017,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				}
 				if n.Type == TRBracket {
 					return &ast.Index{
-						Loc:   primary.Location(),
+						Loc:   primary.Point(),
 						Expr:  primary,
 						Index: expr1,
 					}, nil
@@ -1043,7 +1043,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 				}
 			}
 			return &ast.Slice{
-				Loc:  primary.Location(),
+				Loc:  primary.Point(),
 				Expr: primary,
 				From: expr1,
 				To:   expr2,
@@ -1071,11 +1071,11 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			}
 			vr, ok := primary.(*ast.VariableRef)
 			if !ok {
-				return nil, p.errf(primary.Location(),
+				return nil, p.errf(primary.Point(),
 					"non-function %s used as function", primary)
 			}
 			return &ast.Call{
-				Loc:   primary.Location(),
+				Loc:   primary.Point(),
 				Ref:   vr,
 				Exprs: arguments,
 			}, nil

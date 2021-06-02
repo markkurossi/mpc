@@ -21,7 +21,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for _, b := range ast {
 		if block.Dead {
-			ctx.logger.Warningf(b.Location(), "unreachable code")
+			ctx.logger.Warningf(b.Point(), "unreachable code")
 			break
 		}
 		block, _, err = b.SSA(block, ctx, gen)
@@ -99,8 +99,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 		return nil, nil, err
 	}
 	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
-			"init value is not constant")
+		return nil, nil, ctx.Errorf(ast.Init, "init value is not constant")
 	}
 	constVar, err := ssa.Constant(gen, constVal, typeInfo)
 	if err != nil {
@@ -113,7 +112,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 		typeInfo.Bits = constVar.Type.Bits
 	}
 	if !typeInfo.CanAssignConst(constVar.Type) {
-		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+		return nil, nil, ctx.Errorf(ast.Init,
 			"invalid init value %s for type %s", constVar.Type, typeInfo)
 	}
 
@@ -135,8 +134,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 
 	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
 	if err != nil {
-		return nil, nil, ctx.logger.Errorf(ast.Location(),
-			"invalid variable type: %s", err)
+		return nil, nil, ctx.Errorf(ast, "invalid variable type: %s", err)
 	}
 
 	for _, n := range ast.Names {
@@ -224,8 +222,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, err
 			}
 			if len(v) == 0 {
-				return nil, nil, ctx.logger.Errorf(expr.Location(),
-					"%s used as value", expr)
+				return nil, nil, ctx.Errorf(expr, "%s used as value", expr)
 			}
 			values = append(values, v...)
 		}
@@ -289,21 +286,20 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					return nil, nil, err
 				}
 				if len(val) != 1 || !val[0].Const {
-					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
-						"invalid index")
+					return nil, nil, ctx.Errorf(lv.Index, "invalid index")
 				}
 				var index int
 				switch v := val[0].ConstValue.(type) {
 				case int32:
 					index = int(v)
 				default:
-					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
-						"invalid index: %T", v)
+					return nil, nil, ctx.Errorf(lv.Index, "invalid index: %T",
+						v)
 				}
 
 				// Convert index to bit range.
 				if index >= b.Type.ArraySize {
-					return nil, nil, ctx.logger.Errorf(lv.Index.Location(),
+					return nil, nil, ctx.Errorf(lv.Index,
 						"invalid array index %d (out of bounds for %d-element array)",
 						index, b.Type.ArraySize)
 				}
@@ -357,7 +353,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.Bindings = env.Bindings
 		val, ok := constVal.(bool)
 		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+			return nil, nil, ctx.Errorf(ast.Expr,
 				"condition is not boolean expression")
 		}
 		if val {
@@ -373,14 +369,13 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if len(e) == 0 {
-		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
-			"%s used as value", ast.Expr)
+		return nil, nil, ctx.Errorf(ast.Expr, "%s used as value", ast.Expr)
 	} else if len(e) > 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+		return nil, nil, ctx.Errorf(ast.Expr,
 			"multiple-value %s used in single-value context", ast.Expr)
 	}
 	if e[0].Type.Type != types.Bool {
-		return nil, nil, ctx.logger.Errorf(ast.Expr.Location(),
+		return nil, nil, ctx.Errorf(ast.Expr,
 			"non-bool %s (type %s) used as if condition", ast.Expr, e[0].Type)
 	}
 
@@ -501,15 +496,15 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				ast.Ref)
 		}
 		if len(callValues) != 1 {
-			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
 				ast.Ref)
 		}
 		if len(callValues[0]) == 0 {
-			return nil, nil, ctx.logger.Errorf(ast.Exprs[0].Location(),
+			return nil, nil, ctx.Errorf(ast.Exprs[0],
 				"%s used as value", ast.Exprs[0])
 		}
 		if len(callValues[0]) > 1 {
-			return nil, nil, ctx.logger.Errorf(ast.Exprs[0].Location(),
+			return nil, nil, ctx.Errorf(ast.Exprs[0],
 				"multiple-value %s in single-value context", ast.Exprs[0])
 		}
 
@@ -557,13 +552,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			for idx, ca := range callValues {
 				expr := ast.Exprs[idx]
 				if len(ca) == 0 {
-					return nil, nil,
-						ctx.logger.Errorf(expr.Location(),
-							"%s used as value", expr)
+					return nil, nil, ctx.Errorf(expr, "%s used as value", expr)
 				} else if len(ca) > 1 {
-					return nil, nil,
-						ctx.logger.Errorf(expr.Location(),
-							"multiple-value %s in single-value context", expr)
+					return nil, nil, ctx.Errorf(expr,
+						"multiple-value %s in single-value context", expr)
 				}
 				args = append(args, ca[0])
 			}
@@ -591,7 +583,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		if !a.TypeCompatible(args[idx]) {
-			return nil, nil, ctx.logger.Errorf(ast.Location(),
+			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for argument %d of %s",
 				args[idx].Type, idx, called)
 		}
@@ -671,13 +663,10 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			for idx, rv := range rValues {
 				expr := ast.Exprs[idx]
 				if len(rv) == 0 {
-					return nil, nil,
-						ctx.logger.Errorf(expr.Location(),
-							"%s used as value", expr)
+					return nil, nil, ctx.Errorf(expr, "%s used as value", expr)
 				} else if len(rv) > 1 {
-					return nil, nil,
-						ctx.logger.Errorf(expr.Location(),
-							"multiple-value %s in single-value context", expr)
+					return nil, nil, ctx.Errorf(expr,
+						"multiple-value %s in single-value context", expr)
 				}
 				result = append(result, rv[0])
 			}
@@ -703,7 +692,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		if !v.TypeCompatible(result[idx]) {
-			return nil, nil, ctx.logger.Errorf(ast.Location(),
+			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for result value %v",
 				result[idx].Type, v.Type)
 		}
@@ -731,14 +720,14 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+		return nil, nil, ctx.Errorf(ast.Init,
 			"init statement is not compile-time constant: %s", err)
 	}
 
 	// Expand body as long as condition is true.
 	for i := 0; ; i++ {
 		if i >= gen.Params.MaxLoopUnroll {
-			return nil, nil, ctx.logger.Errorf(ast.Location(),
+			return nil, nil, ctx.Errorf(ast,
 				"for-loop unroll limit exceeded: %d", i)
 		}
 		constVal, ok, err := ast.Cond.Eval(env, ctx, gen)
@@ -746,12 +735,12 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
+			return nil, nil, ctx.Errorf(ast.Cond,
 				"condition is not compile-time constant: %s", ast.Cond)
 		}
 		val, ok := constVal.(bool)
 		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Cond.Location(),
+			return nil, nil, ctx.Errorf(ast.Cond,
 				"condition is not boolean expression")
 		}
 		if !val {
@@ -773,7 +762,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Init.Location(),
+			return nil, nil, ctx.Errorf(ast.Init,
 				"increment statement is not compile-time constant: %s", ast.Inc)
 		}
 	}
@@ -815,19 +804,17 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	// Check that l and r are of same type.
 	if len(lArr) == 0 {
-		return nil, nil, ctx.logger.Errorf(ast.Left.Location(),
-			"%s used as value", ast.Left)
+		return nil, nil, ctx.Errorf(ast.Left, "%s used as value", ast.Left)
 	}
 	if len(lArr) > 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Left.Location(),
+		return nil, nil, ctx.Errorf(ast.Left,
 			"multiple-value %s in single-value context", ast.Left)
 	}
 	if len(rArr) == 0 {
-		return nil, nil, ctx.logger.Errorf(ast.Right.Location(),
-			"%s used as value", ast.Right)
+		return nil, nil, ctx.Errorf(ast.Right, "%s used as value", ast.Right)
 	}
 	if len(rArr) > 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Right.Location(),
+		return nil, nil, ctx.Errorf(ast.Right,
 			"multiple-value %s in single-value context", ast.Right)
 	}
 	l := lArr[0]
@@ -934,15 +921,13 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		if len(val) != 1 || !val[0].Const {
-			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
-				"invalid from index")
+			return nil, nil, ctx.Errorf(ast.From, "invalid from index")
 		}
 		switch v := val[0].ConstValue.(type) {
 		case int32:
 			from = v
 		default:
-			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
-				"invalid from index: %T", v)
+			return nil, nil, ctx.Errorf(ast.From, "invalid from index: %T", v)
 		}
 	}
 	var to int32
@@ -954,15 +939,13 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 		if len(val) != 1 || !val[0].Const {
-			return nil, nil, ctx.logger.Errorf(ast.To.Location(),
-				"invalid to index")
+			return nil, nil, ctx.Errorf(ast.To, "invalid to index")
 		}
 		switch v := val[0].ConstValue.(type) {
 		case int32:
 			to = v
 		default:
-			return nil, nil, ctx.logger.Errorf(ast.From.Location(),
-				"invalid to index: %T", v)
+			return nil, nil, ctx.Errorf(ast.From, "invalid to index: %T", v)
 		}
 	}
 	if from >= int32(expr[0].Type.Bits) || from >= to {
@@ -1013,23 +996,21 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if len(val) != 1 || !val[0].Const {
-		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
-			"invalid index")
+		return nil, nil, ctx.Errorf(ast.Index, "invalid index")
 	}
 	var index int
 	switch v := val[0].ConstValue.(type) {
 	case int32:
 		index = int(v)
 	default:
-		return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
-			"invalid index: %T", v)
+		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", v)
 	}
 
 	switch expr.Type.Type {
 	case types.String:
 		length := expr.Type.Bits / types.ByteBits
 		if index < 0 || index >= length {
-			return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element string)",
 				index, length)
 		}
@@ -1056,7 +1037,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	case types.Array:
 		if index < 0 || index >= expr.Type.ArraySize {
-			return nil, nil, ctx.logger.Errorf(ast.Index.Location(),
+			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
 				index, expr.Type.ArraySize)
 		}

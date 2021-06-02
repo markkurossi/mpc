@@ -140,7 +140,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return result, err
 		}
 		if !ok {
-			return result, ctx.logger.Errorf(ti.ArrayLength.Location(),
+			return result, ctx.Errorf(ti.ArrayLength,
 				"array length is not constant: %s", ti.ArrayLength)
 		}
 		var length int
@@ -152,7 +152,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case uint64:
 			length = int(l)
 		default:
-			return result, ctx.logger.Errorf(ti.ArrayLength.Location(),
+			return result, ctx.Errorf(ti.ArrayLength,
 				"invalid array length: %s", ti.ArrayLength)
 		}
 
@@ -219,9 +219,9 @@ func (i Identifier) String() string {
 
 // AST implements abstract syntax tree nodes.
 type AST interface {
+	utils.Pointer
+
 	String() string
-	// Location returns the location information of the node.
-	Location() utils.Point
 	// SSA generates SSA code from the AST node. The code is appended
 	// into the basic block `block'. The function returns the next
 	// sequential basic. The `ssa.Dead' is set to `true' if the code
@@ -263,11 +263,10 @@ func (ast List) String() string {
 	return fmt.Sprintf("%v", []AST(ast))
 }
 
-// Location implements the compiler.ast.AST.Location for list
-// statements.
-func (ast List) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast List) Point() utils.Point {
 	if len(ast) > 0 {
-		return ast[0].Location()
+		return ast[0].Point()
 	}
 	return utils.Point{}
 }
@@ -310,9 +309,8 @@ func (ast *Func) String() string {
 	return fmt.Sprintf("func %s()", ast.Name)
 }
 
-// Location implements the compiler.ast.AST.Location for function
-// definitions.
-func (ast *Func) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Func) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -335,9 +333,8 @@ func (ast *ConstantDef) String() string {
 	return result
 }
 
-// Location implements the compiler.ast.AST.Location for constant
-// definitions.
-func (ast *ConstantDef) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *ConstantDef) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -357,9 +354,8 @@ func (ast *VariableDef) String() string {
 	return result
 }
 
-// Location implements the compiler.ast.AST.Location for variable
-// definitions.
-func (ast *VariableDef) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *VariableDef) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -381,9 +377,8 @@ func (ast *Assign) String() string {
 	return fmt.Sprintf("%v %s %v", ast.LValues, op, ast.Exprs)
 }
 
-// Location implements the compiler.ast.AST.Location for assignment
-// expressions.
-func (ast *Assign) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Assign) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -399,9 +394,8 @@ func (ast *If) String() string {
 	return fmt.Sprintf("if %s", ast.Expr)
 }
 
-// Location implements the compiler.ast.AST.Location for if
-// statements.
-func (ast *If) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *If) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -416,9 +410,8 @@ func (ast *Call) String() string {
 	return fmt.Sprintf("%s()", ast.Ref)
 }
 
-// Location implements the compiler.ast.AST.Location for call
-// expressions.
-func (ast *Call) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Call) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -432,9 +425,8 @@ func (ast *Return) String() string {
 	return fmt.Sprintf("return %v", ast.Exprs)
 }
 
-// Location implements the compiler.ast.AST.Location for return
-// statements.
-func (ast *Return) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Return) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -452,9 +444,8 @@ func (ast *For) String() string {
 		ast.Init, ast.Cond, ast.Inc, ast.Body)
 }
 
-// Location implements the compiler.ast.AST.Location for for
-// statements.
-func (ast *For) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *For) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -526,9 +517,8 @@ func (ast *Binary) String() string {
 	return fmt.Sprintf("%s %s %s", ast.Left, ast.Op, ast.Right)
 }
 
-// Location implements the compiler.ast.AST.Location for binary
-// expressions.
-func (ast *Binary) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Binary) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -551,9 +541,8 @@ func (ast *Slice) String() string {
 	return fmt.Sprintf("%s[%s:%s]", ast.Expr, fromStr, toStr)
 }
 
-// Location implements the compiler.ast.AST.Location for slice
-// expressions.
-func (ast *Slice) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Slice) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -568,9 +557,8 @@ func (ast *Index) String() string {
 	return fmt.Sprintf("%s[%s]", ast.Expr, ast.Index)
 }
 
-// Location implements the compiler.ast.AST.Location for index
-// expressions.
-func (ast *Index) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Index) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -584,9 +572,8 @@ func (ast *VariableRef) String() string {
 	return ast.Name.String()
 }
 
-// Location implements the compiler.ast.AST.Location for variable
-// references.
-func (ast *VariableRef) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *VariableRef) Point() utils.Point {
 	return ast.Loc
 }
 
@@ -616,8 +603,7 @@ func ConstantName(value interface{}) string {
 	}
 }
 
-// Location implements the compiler.ast.AST.Location for constant
-// values.
-func (ast *Constant) Location() utils.Point {
+// Point implements the compiler.utils.Point interface.
+func (ast *Constant) Point() utils.Point {
 	return ast.Loc
 }
