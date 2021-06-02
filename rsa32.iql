@@ -8,11 +8,11 @@ SET REALFMT = '%.2f';
 
 SELECT Version				    AS V,
        Time,
-       HBAR(Time, MAX(Time), 6)		    AS "[Time]",
+       HBAR(Time, 0, MAX(Time), 6)	    AS "[Time]",
        "Total Gates"          		    AS Gates,
        "Non-XOR Gates"        		    AS NonXOR,
        "Total Gates" / Time   		    AS "Gates/s",
        "Non-XOR Gates" / Time 		    AS "NonXOR/s",
-       HBAR("Non-XOR Gates" / Time,
+       HBAR("Non-XOR Gates" / Time, 0,
             MAX("Non-XOR Gates" / Time), 8) AS "[!XOR/s]"
 FROM 'rsa32.csv';
