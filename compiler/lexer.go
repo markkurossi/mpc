@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -240,6 +240,11 @@ func NewLexer(source string, in io.Reader) *Lexer {
 		},
 		history: make(map[int][]rune),
 	}
+}
+
+// Source returns the lexer source name.
+func (l *Lexer) Source() string {
+	return l.point.Source
 }
 
 // ReadRune reads the next input rune.

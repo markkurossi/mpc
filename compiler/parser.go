@@ -41,7 +41,7 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 		return nil, err
 	}
 	if pkg == nil {
-		p.pkg = ast.NewPackage(name)
+		p.pkg = ast.NewPackage(name, p.lexer.Source())
 	} else {
 		// This source file must be in the same package.
 		if name != pkg.Name {

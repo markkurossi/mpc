@@ -18,6 +18,7 @@ import (
 // Package implements a MPCL package.
 type Package struct {
 	Name        string
+	Source      string
 	Initialized bool
 	Imports     map[string]string
 	Bindings    ssa.Bindings
@@ -28,9 +29,10 @@ type Package struct {
 }
 
 // NewPackage creates a new package.
-func NewPackage(name string) *Package {
+func NewPackage(name, source string) *Package {
 	return &Package{
 		Name:      name,
+		Source:    source,
 		Imports:   make(map[string]string),
 		Functions: make(map[string]*Func),
 	}
@@ -42,8 +44,9 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 	main, ok := pkg.Functions["main"]
 	if !ok {
-		return nil, nil, logger.Errorf(utils.Point{},
-			"no main function defined")
+		return nil, nil, logger.Errorf(utils.Point{
+			Source: pkg.Source,
+		}, "no main function defined")
 	}
 
 	gen := ssa.NewGenerator(params)

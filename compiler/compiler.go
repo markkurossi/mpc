@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -56,7 +56,7 @@ func (c *Compiler) compile(source string, in io.Reader) (
 	*circuit.Circuit, ast.Annotations, error) {
 
 	logger := utils.NewLogger(os.Stdout)
-	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -92,7 +92,7 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	inputFlag []string) (circuit.IO, []*big.Int, error) {
 
 	logger := utils.NewLogger(os.Stdout)
-	pkg, err := c.parse(source, in, logger, ast.NewPackage("main"))
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -131,7 +131,7 @@ func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
 	c.packages[pkg.Name] = pkg
 
 	for alias, name := range pkg.Imports {
-		_, err := c.parsePkg(alias, name)
+		_, err := c.parsePkg(alias, name, source)
 		if err != nil {
 			return nil, err
 		}
@@ -158,12 +158,12 @@ var packagePaths = []packagePath{
 	},
 }
 
-func (c *Compiler) parsePkg(alias, name string) (*ast.Package, error) {
+func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 	pkg, ok := c.packages[alias]
 	if ok {
 		return pkg, nil
 	}
-	pkg = ast.NewPackage(alias)
+	pkg = ast.NewPackage(alias, source)
 
 	if c.params.Verbose {
 		fmt.Printf("looking for package %s (%s)\n", alias, name)
