@@ -276,7 +276,7 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 			return nil
 		}
 	}
-	value, err := p.parseExprPrimary()
+	value, err := p.parseExprPrimary(false)
 	if err != nil {
 		return err
 	}
@@ -537,7 +537,7 @@ func (p *Parser) parseBlock() (ast.List, error) {
 		}
 		p.lexer.Unget(t)
 
-		ast, err := p.parseStatement()
+		ast, err := p.parseStatement(false)
 		if err != nil {
 			return nil, err
 		}
@@ -546,7 +546,7 @@ func (p *Parser) parseBlock() (ast.List, error) {
 	return result, nil
 }
 
-func (p *Parser) parseStatement() (ast.AST, error) {
+func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 	tStmt, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
@@ -581,7 +581,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		var expr ast.AST
 		if t.Type == TAssign {
 			// Initializer.
-			expr, err = p.parseExpr()
+			expr, err = p.parseExpr(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -597,7 +597,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}, nil
 
 	case TSymIf:
-		expr, err := p.parseExpr()
+		expr, err := p.parseExpr(true)
 		if err != nil {
 			return nil, err
 		}
@@ -637,7 +637,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 	case TSymReturn:
 		var exprs []ast.AST
 		if p.sameLine(tStmt.To) {
-			expr, err := p.parseExpr()
+			expr, err := p.parseExpr(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -651,7 +651,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 					p.lexer.Unget(t)
 					break
 				}
-				expr, err = p.parseExpr()
+				expr, err = p.parseExpr(needLBrace)
 				if err != nil {
 					return nil, err
 				}
@@ -664,7 +664,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}, nil
 
 	case TSymFor:
-		init, err := p.parseStatement()
+		init, err := p.parseStatement(false)
 		if err != nil {
 			return nil, err
 		}
@@ -672,7 +672,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		cond, err := p.parseExpr()
+		cond, err := p.parseExpr(false)
 		if err != nil {
 			return nil, err
 		}
@@ -680,7 +680,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		inc, err := p.parseStatement()
+		inc, err := p.parseStatement(true)
 		if err != nil {
 			return nil, err
 		}
@@ -702,7 +702,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 
 	default:
 		p.lexer.Unget(tStmt)
-		lvalues, err := p.parseExprList()
+		lvalues, err := p.parseExprList(needLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -712,7 +712,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 		}
 		switch t.Type {
 		case TAssign, TDefAssign:
-			values, err := p.parseExprList()
+			values, err := p.parseExprList(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -734,7 +734,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 			} else {
 				op = ast.BinaryMinus
 			}
-			value, err := p.parseExpr()
+			value, err := p.parseExpr(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -785,11 +785,11 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseExprList() ([]ast.AST, error) {
+func (p *Parser) parseExprList(needLBrace bool) ([]ast.AST, error) {
 	var list []ast.AST
 
 	for {
-		expr, err := p.parseExpr()
+		expr, err := p.parseExpr(needLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -807,7 +807,7 @@ func (p *Parser) parseExprList() ([]ast.AST, error) {
 	return list, nil
 }
 
-func (p *Parser) parseExpr() (ast.AST, error) {
+func (p *Parser) parseExpr(needLBrace bool) (ast.AST, error) {
 	// Precedence Operator
 	// -----------------------------
 	//   5          * / % << >> & &^
@@ -815,11 +815,11 @@ func (p *Parser) parseExpr() (ast.AST, error) {
 	//   3          == != < <= > >=
 	//   2          &&
 	//   1          ||
-	return p.parseExprLogicalOr()
+	return p.parseExprLogicalOr(needLBrace)
 }
 
-func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
-	left, err := p.parseExprLogicalAnd()
+func (p *Parser) parseExprLogicalOr(needLBrace bool) (ast.AST, error) {
+	left, err := p.parseExprLogicalAnd(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -832,7 +832,7 @@ func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
 			p.lexer.Unget(t)
 			return left, nil
 		}
-		right, err := p.parseExprLogicalAnd()
+		right, err := p.parseExprLogicalAnd(needLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -845,8 +845,8 @@ func (p *Parser) parseExprLogicalOr() (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
-	left, err := p.parseExprComparative()
+func (p *Parser) parseExprLogicalAnd(needLBrace bool) (ast.AST, error) {
+	left, err := p.parseExprComparative(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -859,7 +859,7 @@ func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
 			p.lexer.Unget(t)
 			return left, nil
 		}
-		right, err := p.parseExprComparative()
+		right, err := p.parseExprComparative(needLBrace)
 		if err != nil {
 			return nil, err
 		}
@@ -872,8 +872,8 @@ func (p *Parser) parseExprLogicalAnd() (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseExprComparative() (ast.AST, error) {
-	left, err := p.parseExprAdditive()
+func (p *Parser) parseExprComparative(needLBrace bool) (ast.AST, error) {
+	left, err := p.parseExprAdditive(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -884,7 +884,7 @@ func (p *Parser) parseExprComparative() (ast.AST, error) {
 		}
 		switch t.Type {
 		case TEq, TNeq, TLt, TLe, TGt, TGe:
-			right, err := p.parseExprAdditive()
+			right, err := p.parseExprAdditive(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -902,8 +902,8 @@ func (p *Parser) parseExprComparative() (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseExprAdditive() (ast.AST, error) {
-	left, err := p.parseExprMultiplicative()
+func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
+	left, err := p.parseExprMultiplicative(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -914,7 +914,7 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 		}
 		switch t.Type {
 		case TPlus, TMinus, TBitOr, TBitXor:
-			right, err := p.parseExprMultiplicative()
+			right, err := p.parseExprMultiplicative(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -932,8 +932,8 @@ func (p *Parser) parseExprAdditive() (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
-	left, err := p.parseExprPrimary()
+func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
+	left, err := p.parseExprPrimary(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -944,7 +944,7 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 		}
 		switch t.Type {
 		case TMult, TDiv, TMod, TLshift, TRshift, TBitAnd, TBitClear:
-			right, err := p.parseExprPrimary()
+			right, err := p.parseExprPrimary(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -979,8 +979,8 @@ func (p *Parser) parseExprMultiplicative() (ast.AST, error) {
 // TypeAssertion  = "." "(" Type ")" .
 // Arguments      = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
 
-func (p *Parser) parseExprPrimary() (ast.AST, error) {
-	primary, err := p.parseOperand()
+func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
+	primary, err := p.parseOperand(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -1007,7 +1007,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			}
 			if n.Type != TColon {
 				p.lexer.Unget(n)
-				expr1, err = p.parseExpr()
+				expr1, err = p.parseExpr(needLBrace)
 				if err != nil {
 					return nil, err
 				}
@@ -1033,7 +1033,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			}
 			if n.Type != TRBracket {
 				p.lexer.Unget(n)
-				expr2, err = p.parseExpr()
+				expr2, err = p.parseExpr(needLBrace)
 				if err != nil {
 					return nil, err
 				}
@@ -1053,7 +1053,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 			// Arguments.
 			var arguments []ast.AST
 			for {
-				expr, err := p.parseExpr()
+				expr, err := p.parseExpr(needLBrace)
 				if err != nil {
 					return nil, err
 				}
@@ -1104,7 +1104,7 @@ func (p *Parser) parseExprPrimary() (ast.AST, error) {
 // FieldName     = identifier .
 // Element       = Expression | LiteralValue .
 
-func (p *Parser) parseOperand() (ast.AST, error) {
+func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 	t, err := p.lexer.Get()
 	if err != nil {
 		return nil, err
@@ -1146,10 +1146,22 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 				},
 			}
 		}
+		if needLBrace {
+			return operandName, nil
+		}
+
+		n, err = p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == TLBrace {
+			return nil, p.errf(n.From, "CompositeLit not implemented yet")
+		}
+		p.lexer.Unget(n)
 		return operandName, nil
 
 	case TLParen: // '(' Expression ')'
-		expr, err := p.parseExpr()
+		expr, err := p.parseExpr(false)
 		if err != nil {
 			return nil, err
 		}
@@ -1221,7 +1233,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		var length ast.AST
 		if n.Type != TRBracket {
 			p.lexer.Unget(n)
-			length, err = p.parseExpr()
+			length, err = p.parseExpr(false)
 			if err != nil {
 				return nil, err
 			}
