@@ -34,9 +34,9 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 }
 
 // Errorf logs an error message.
-func (ctx *Codegen) Errorf(pointer utils.Pointer, format string,
+func (ctx *Codegen) Errorf(locator utils.Locator, format string,
 	a ...interface{}) error {
-	return ctx.logger.Errorf(pointer.Point(), format, a...)
+	return ctx.logger.Errorf(locator.Location(), format, a...)
 }
 
 // Func returns the current function in the current compilation.

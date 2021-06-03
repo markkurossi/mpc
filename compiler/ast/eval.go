@@ -55,7 +55,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	if len(ast.LValues) != len(values) {
-		return nil, false, ctx.logger.Errorf(ast.Loc,
+		return nil, false, ctx.Errorf(ast,
 			"assignment mismatch: %d variables but %d values",
 			len(ast.LValues), len(values))
 	}
@@ -69,8 +69,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 		ref, ok := lv.(*VariableRef)
 		if !ok {
-			return nil, false, ctx.logger.Errorf(ast.Loc,
-				"cannot assign to %s", lv)
+			return nil, false, ctx.Errorf(ast, "cannot assign to %s", lv)
 		}
 		// XXX package.name below
 
@@ -83,8 +82,8 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		} else {
 			b, ok := env.Get(ref.Name.Name)
 			if !ok {
-				return nil, false, ctx.logger.Errorf(ast.Loc,
-					"undefined variable '%s'", ref.Name)
+				return nil, false, ctx.Errorf(ast, "undefined variable '%s'",
+					ref.Name)
 			}
 			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 			if err != nil {
@@ -117,7 +116,7 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	pkg, ok := ctx.Packages[pkgName]
 	if !ok {
 		return nil, false,
-			ctx.logger.Errorf(ast.Loc, "package '%s' not found", pkgName)
+			ctx.Errorf(ast, "package '%s' not found", pkgName)
 	}
 	_, ok = pkg.Functions[ast.Ref.Name.Name]
 	if ok {
@@ -135,7 +134,7 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		if bi.Eval == nil {
 			return nil, false, nil
 		}
-		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Point())
+		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
 	}
 
 	return nil, false, nil
@@ -387,24 +386,23 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 		if !ok || !val.Const {
 			return nil, false, nil
 		}
-		return nil, false, ctx.logger.Errorf(ast.Loc,
-			"select not implemented yet")
+		return nil, false, ctx.Errorf(ast, "select not implemented yet")
 	}
 
 	if len(ast.Name.Package) > 0 {
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
-			return nil, false, ctx.logger.Errorf(ast.Loc,
-				"package '%s' not found", ast.Name.Package)
+			return nil, false, ctx.Errorf(ast, "package '%s' not found",
+				ast.Name.Package)
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
 		b, ok = env.Get(ast.Name.Name)
 	}
 	if !ok {
-		return nil, false, ctx.logger.Errorf(ast.Loc,
-			"undefined variable '%s'", ast.Name.String())
+		return nil, false, ctx.Errorf(ast, "undefined variable '%s'",
+			ast.Name.String())
 	}
 
 	val, ok := b.Bound.(*ssa.Variable)
@@ -419,4 +417,10 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
+}
+
+// Eval implements the compiler.ast.AST.Eval for constant values.
+func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	interface{}, bool, error) {
+	return nil, false, fmt.Errorf("CompositeLit.Eval() not implemented yet")
 }

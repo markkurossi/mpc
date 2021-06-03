@@ -36,6 +36,7 @@ var (
 	_ AST = &Index{}
 	_ AST = &VariableRef{}
 	_ AST = &BasicLit{}
+	_ AST = &CompositeLit{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -219,7 +220,7 @@ func (i Identifier) String() string {
 
 // AST implements abstract syntax tree nodes.
 type AST interface {
-	utils.Pointer
+	utils.Locator
 
 	String() string
 	// SSA generates SSA code from the AST node. The code is appended
@@ -263,24 +264,24 @@ func (ast List) String() string {
 	return fmt.Sprintf("%v", []AST(ast))
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast List) Point() utils.Point {
+// Location implements the compiler.utils.Locator interface.
+func (ast List) Location() utils.Point {
 	if len(ast) > 0 {
-		return ast[0].Point()
+		return ast[0].Location()
 	}
 	return utils.Point{}
 }
 
 // Variable implements an AST variable.
 type Variable struct {
-	Loc  utils.Point
+	utils.Point
 	Name string
 	Type *TypeInfo
 }
 
 // Func implements an AST function.
 type Func struct {
-	Loc          utils.Point
+	utils.Point
 	Name         string
 	Args         []*Variable
 	Return       []*Variable
@@ -296,7 +297,7 @@ type Annotations []string
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 	body List, annotations Annotations) *Func {
 	return &Func{
-		Loc:         loc,
+		Point:       loc,
 		Name:        name,
 		Args:        args,
 		Return:      ret,
@@ -309,14 +310,9 @@ func (ast *Func) String() string {
 	return fmt.Sprintf("func %s()", ast.Name)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Func) Point() utils.Point {
-	return ast.Loc
-}
-
 // ConstantDef implements an AST constant definition.
 type ConstantDef struct {
-	Loc  utils.Point
+	utils.Point
 	Name string
 	Type *TypeInfo
 	Init AST
@@ -333,14 +329,9 @@ func (ast *ConstantDef) String() string {
 	return result
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *ConstantDef) Point() utils.Point {
-	return ast.Loc
-}
-
 // VariableDef implements an AST variable definition.
 type VariableDef struct {
-	Loc   utils.Point
+	utils.Point
 	Names []string
 	Type  *TypeInfo
 	Init  AST
@@ -354,14 +345,9 @@ func (ast *VariableDef) String() string {
 	return result
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *VariableDef) Point() utils.Point {
-	return ast.Loc
-}
-
 // Assign implements an AST assignment expression.
 type Assign struct {
-	Loc     utils.Point
+	utils.Point
 	LValues []AST
 	Exprs   []AST
 	Define  bool
@@ -377,14 +363,9 @@ func (ast *Assign) String() string {
 	return fmt.Sprintf("%v %s %v", ast.LValues, op, ast.Exprs)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Assign) Point() utils.Point {
-	return ast.Loc
-}
-
 // If implements an AST if statement.
 type If struct {
-	Loc   utils.Point
+	utils.Point
 	Expr  AST
 	True  List
 	False List
@@ -394,14 +375,9 @@ func (ast *If) String() string {
 	return fmt.Sprintf("if %s", ast.Expr)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *If) Point() utils.Point {
-	return ast.Loc
-}
-
 // Call implements an AST call expression.
 type Call struct {
-	Loc   utils.Point
+	utils.Point
 	Ref   *VariableRef
 	Exprs []AST
 }
@@ -410,14 +386,9 @@ func (ast *Call) String() string {
 	return fmt.Sprintf("%s()", ast.Ref)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Call) Point() utils.Point {
-	return ast.Loc
-}
-
 // Return implements an AST return statement.
 type Return struct {
-	Loc   utils.Point
+	utils.Point
 	Exprs []AST
 }
 
@@ -425,14 +396,9 @@ func (ast *Return) String() string {
 	return fmt.Sprintf("return %v", ast.Exprs)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Return) Point() utils.Point {
-	return ast.Loc
-}
-
 // For implements an AST for statement.
 type For struct {
-	Loc  utils.Point
+	utils.Point
 	Init AST
 	Cond AST
 	Inc  AST
@@ -442,11 +408,6 @@ type For struct {
 func (ast *For) String() string {
 	return fmt.Sprintf("for %s; %s; %s %s",
 		ast.Init, ast.Cond, ast.Inc, ast.Body)
-}
-
-// Point implements the compiler.utils.Point interface.
-func (ast *For) Point() utils.Point {
-	return ast.Loc
 }
 
 // BinaryType defines binary expression types.
@@ -507,7 +468,7 @@ func (t BinaryType) String() string {
 
 // Binary implements an AST binary expression.
 type Binary struct {
-	Loc   utils.Point
+	utils.Point
 	Left  AST
 	Op    BinaryType
 	Right AST
@@ -517,14 +478,9 @@ func (ast *Binary) String() string {
 	return fmt.Sprintf("%s %s %s", ast.Left, ast.Op, ast.Right)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Binary) Point() utils.Point {
-	return ast.Loc
-}
-
 // Slice implements an AST slice expression.
 type Slice struct {
-	Loc  utils.Point
+	utils.Point
 	Expr AST
 	From AST
 	To   AST
@@ -541,14 +497,9 @@ func (ast *Slice) String() string {
 	return fmt.Sprintf("%s[%s:%s]", ast.Expr, fromStr, toStr)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Slice) Point() utils.Point {
-	return ast.Loc
-}
-
 // Index implements an AST array index expression.
 type Index struct {
-	Loc   utils.Point
+	utils.Point
 	Expr  AST
 	Index AST
 }
@@ -557,14 +508,9 @@ func (ast *Index) String() string {
 	return fmt.Sprintf("%s[%s]", ast.Expr, ast.Index)
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *Index) Point() utils.Point {
-	return ast.Loc
-}
-
 // VariableRef implements an AST variable reference.
 type VariableRef struct {
-	Loc  utils.Point
+	utils.Point
 	Name Identifier
 }
 
@@ -572,14 +518,9 @@ func (ast *VariableRef) String() string {
 	return ast.Name.String()
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *VariableRef) Point() utils.Point {
-	return ast.Loc
-}
-
 // BasicLit implements an AST basic literal value.
 type BasicLit struct {
-	Loc   utils.Point
+	utils.Point
 	Value interface{}
 }
 
@@ -603,7 +544,7 @@ func ConstantName(value interface{}) string {
 	}
 }
 
-// Point implements the compiler.utils.Point interface.
-func (ast *BasicLit) Point() utils.Point {
-	return ast.Loc
+// CompositeLit implements an AST composite literal value.
+type CompositeLit struct {
+	utils.Point
 }

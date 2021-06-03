@@ -215,7 +215,7 @@ func (p *Parser) parseToplevel() error {
 		}
 		_, ok := p.pkg.Functions[f.Name]
 		if ok {
-			return p.errf(f.Loc, "function %s already defined", f.Name)
+			return p.errf(f.Location(), "function %s already defined", f.Name)
 		}
 		p.pkg.Functions[f.Name] = f
 
@@ -283,14 +283,14 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 
 	if isConst {
 		p.pkg.Constants = append(p.pkg.Constants, &ast.ConstantDef{
-			Loc:  token.From,
-			Name: token.StrVal,
-			Type: varType,
-			Init: value,
+			Point: token.From,
+			Name:  token.StrVal,
+			Type:  varType,
+			Init:  value,
 		})
 	} else {
 		p.pkg.Variables = append(p.pkg.Variables, &ast.VariableDef{
-			Loc:   token.From,
+			Point: token.From,
 			Names: []string{token.StrVal},
 			Type:  varType,
 			Init:  value,
@@ -419,8 +419,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 				return nil, err
 			}
 			arg := &ast.Variable{
-				Loc:  t.From,
-				Name: t.StrVal,
+				Point: t.From,
+				Name:  t.StrVal,
 			}
 
 			t, err = p.lexer.Get()
@@ -479,8 +479,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 				return nil, err
 			}
 			returnValues = append(returnValues, &ast.Variable{
-				Loc:  n.From,
-				Type: typeInfo,
+				Point: n.From,
+				Type:  typeInfo,
 			})
 			n, err = p.lexer.Get()
 			if err != nil {
@@ -507,8 +507,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			return nil, err
 		}
 		returnValues = append(returnValues, &ast.Variable{
-			Loc:  n.From,
-			Type: typeInfo,
+			Point: n.From,
+			Type:  typeInfo,
 		})
 		_, err = p.needToken(TLBrace)
 		if err != nil {
@@ -590,7 +590,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}
 
 		return &ast.VariableDef{
-			Loc:   tStmt.From,
+			Point: tStmt.From,
 			Names: names,
 			Type:  typeInfo,
 			Init:  expr,
@@ -659,7 +659,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			}
 		}
 		return &ast.Return{
-			Loc:   tStmt.From,
+			Point: tStmt.From,
 			Exprs: exprs,
 		}, nil
 
@@ -693,11 +693,11 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		return &ast.For{
-			Loc:  tStmt.From,
-			Init: init,
-			Cond: cond,
-			Inc:  inc,
-			Body: body,
+			Point: tStmt.From,
+			Init:  init,
+			Cond:  cond,
+			Inc:   inc,
+			Body:  body,
 		}, nil
 
 	default:
@@ -717,7 +717,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			return &ast.Assign{
-				Loc:     t.From,
+				Point:   t.From,
 				LValues: lvalues,
 				Exprs:   values,
 				Define:  t.Type == TDefAssign,
@@ -739,11 +739,11 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			return &ast.Assign{
-				Loc:     t.From,
+				Point:   t.From,
 				LValues: lvalues,
 				Exprs: []ast.AST{
 					&ast.Binary{
-						Loc:   t.From,
+						Point: t.From,
 						Left:  lvalues[0],
 						Op:    op,
 						Right: value,
@@ -763,15 +763,15 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				op = ast.BinaryMinus
 			}
 			return &ast.Assign{
-				Loc:     t.From,
+				Point:   t.From,
 				LValues: lvalues,
 				Exprs: []ast.AST{
 					&ast.Binary{
-						Loc:  t.From,
-						Left: lvalues[0],
-						Op:   op,
+						Point: t.From,
+						Left:  lvalues[0],
+						Op:    op,
 						Right: &ast.BasicLit{
-							Loc:   t.From,
+							Point: t.From,
 							Value: int32(1),
 						},
 					},
@@ -837,7 +837,7 @@ func (p *Parser) parseExprLogicalOr(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		left = &ast.Binary{
-			Loc:   t.From,
+			Point: t.From,
 			Left:  left,
 			Op:    t.Type.BinaryType(),
 			Right: right,
@@ -864,7 +864,7 @@ func (p *Parser) parseExprLogicalAnd(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		left = &ast.Binary{
-			Loc:   t.From,
+			Point: t.From,
 			Left:  left,
 			Op:    t.Type.BinaryType(),
 			Right: right,
@@ -889,7 +889,7 @@ func (p *Parser) parseExprComparative(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
-				Loc:   t.From,
+				Point: t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -919,7 +919,7 @@ func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
-				Loc:   t.From,
+				Point: t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -949,7 +949,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			left = &ast.Binary{
-				Loc:   t.From,
+				Point: t.From,
 				Left:  left,
 				Op:    t.Type.BinaryType(),
 				Right: right,
@@ -1017,7 +1017,7 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				}
 				if n.Type == TRBracket {
 					return &ast.Index{
-						Loc:   primary.Point(),
+						Point: primary.Location(),
 						Expr:  primary,
 						Index: expr1,
 					}, nil
@@ -1043,10 +1043,10 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				}
 			}
 			return &ast.Slice{
-				Loc:  primary.Point(),
-				Expr: primary,
-				From: expr1,
-				To:   expr2,
+				Point: primary.Location(),
+				Expr:  primary,
+				From:  expr1,
+				To:    expr2,
 			}, nil
 
 		case TLParen:
@@ -1071,11 +1071,11 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 			}
 			vr, ok := primary.(*ast.VariableRef)
 			if !ok {
-				return nil, p.errf(primary.Point(),
+				return nil, p.errf(primary.Location(),
 					"non-function %s used as function", primary)
 			}
 			return &ast.Call{
-				Loc:   primary.Point(),
+				Point: primary.Location(),
 				Ref:   vr,
 				Exprs: arguments,
 			}, nil
@@ -1112,7 +1112,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 	switch t.Type {
 	case TConstant: // Literal
 		return &ast.BasicLit{
-			Loc:   t.From,
+			Point: t.From,
 			Value: t.ConstVal,
 		}, nil
 
@@ -1129,7 +1129,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			}
 			// QualifiedIdent.
 			operandName = &ast.VariableRef{
-				Loc: t.From,
+				Point: t.From,
 				Name: ast.Identifier{
 					Package: t.StrVal,
 					Name:    id.StrVal,
@@ -1139,7 +1139,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			// Identifier in current package.
 			p.lexer.Unget(n)
 			operandName = &ast.VariableRef{
-				Loc: t.From,
+				Point: t.From,
 				Name: ast.Identifier{
 					Defined: p.pkg.Name,
 					Name:    t.StrVal,

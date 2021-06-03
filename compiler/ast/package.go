@@ -69,8 +69,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	for _, arg := range main.Args {
 		typeInfo, err := arg.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(arg.Loc,
-				"invalid argument type: %s", err)
+			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		if typeInfo.Bits == 0 {
 			return nil, nil,
@@ -110,8 +109,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		}
 		typeInfo, err := rt.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(rt.Loc,
-				"invalid return type: %s", err)
+			return nil, nil, ctx.Errorf(rt, "invalid return type: %s", err)
 		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = returnVars[idx].Type.Bits

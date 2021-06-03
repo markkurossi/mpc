@@ -21,7 +21,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	for _, b := range ast {
 		if block.Dead {
-			ctx.logger.Warningf(b.Point(), "unreachable code")
+			ctx.logger.Warningf(b.Location(), "unreachable code")
 			break
 		}
 		block, _, err = b.SSA(block, ctx, gen)
@@ -48,8 +48,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		typeInfo, err := ret.Type.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(ret.Loc,
-				"invalid return type: %s", err)
+			return nil, nil, ctx.Errorf(ret, "invalid return type: %s", err)
 		}
 		r, err := gen.NewVar(ret.Name, typeInfo, ctx.Scope())
 		if err != nil {
@@ -69,8 +68,8 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		v, ok := ctx.Start().ReturnBinding(ssa.NewReturnBindingCTX(), ret.Name,
 			ctx.Return(), gen)
 		if !ok {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"undefined variable '%s'", ret.Name)
+			return nil, nil, ctx.Errorf(ast, "undefined variable '%s'",
+				ret.Name)
 		}
 		vars = append(vars, v)
 	}
@@ -118,8 +117,8 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 
 	_, ok = block.Bindings.Get(ast.Name)
 	if ok {
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
-			"constant %s already defined", ast.Name)
+		return nil, nil, ctx.Errorf(ast, "constant %s already defined",
+			ast.Name)
 	}
 	lValue := constVar
 	lValue.Name = ast.Name
@@ -148,7 +147,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		if ast.Init == nil {
 			initVal, err := initValue(lValue.Type)
 			if err != nil {
-				return nil, nil, ctx.logger.Errorf(ast.Loc, "%s", err)
+				return nil, nil, ctx.Errorf(ast, "%s", err)
 			}
 			init, err = ssa.Constant(gen, initVal, typeInfo)
 			if err != nil {
@@ -162,7 +161,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, err
 			}
 			if len(v) != 1 {
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
+				return nil, nil, ctx.Errorf(ast,
 					"multiple-value %s used in single-value context", ast.Init)
 			}
 			init = v[0]
@@ -228,7 +227,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		}
 	}
 	if len(ast.LValues) != len(values) {
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
+		return nil, nil, ctx.Errorf(ast,
 			"assignment mismatch: %d variables but %d value",
 			len(values), len(ast.LValues))
 	}
@@ -241,7 +240,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			b, ok := block.Bindings.Get(lv.Name.Name)
 			if ast.Define {
 				if ok {
-					return nil, nil, ctx.logger.Errorf(ast.Loc,
+					return nil, nil, ctx.Errorf(ast,
 						"no new variables on left side of :=")
 				}
 				lValue, err = gen.NewVar(lv.Name.Name, values[idx].Type,
@@ -251,8 +250,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 			} else {
 				if !ok {
-					return nil, nil, ctx.logger.Errorf(ast.Loc,
-						"undefined: %s", lv.Name)
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
 				}
 				lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 				if err != nil {
@@ -265,7 +263,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 
 		case *Index:
 			if ast.Define {
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
+				return nil, nil, ctx.Errorf(ast,
 					"a non-name %s on left side of :=", lv)
 			}
 			switch arr := lv.Expr.(type) {
@@ -273,8 +271,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				// XXX package.name below
 				b, ok := block.Bindings.Get(arr.Name.Name)
 				if !ok {
-					return nil, nil, ctx.logger.Errorf(ast.Loc,
-						"undefined: %s", arr.Name)
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", arr.Name)
 				}
 				lValue, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
 				if err != nil {
@@ -327,13 +324,12 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				return block, []ssa.Variable{lValue}, nil
 
 			default:
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
+				return nil, nil, ctx.Errorf(ast,
 					"array expression not supported: %T", arr)
 			}
 
 		default:
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"cannot assign to %s (%T)", lv, lv)
+			return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)", lv, lv)
 		}
 	}
 
@@ -463,8 +459,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	pkg, ok := ctx.Packages[pkgName]
 	if !ok {
-		return nil, nil,
-			ctx.logger.Errorf(ast.Loc, "package '%s' not found", pkgName)
+		return nil, nil, ctx.Errorf(ast, "package '%s' not found", pkgName)
 	}
 	called, ok := pkg.Functions[ast.Ref.Name.Name]
 	if !ok {
@@ -474,15 +469,15 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				continue
 			}
 			if bi.Type != BuiltinFunc || bi.SSA == nil {
-				return nil, nil, ctx.logger.Errorf(ast.Loc,
-					"builtin %s used as function", bi.Name)
+				return nil, nil, ctx.Errorf(ast, "builtin %s used as function",
+					bi.Name)
 			}
 			// Flatten arguments.
 			var args []ssa.Variable
 			for _, arg := range callValues {
 				args = append(args, arg...)
 			}
-			return bi.SSA(block, ctx, gen, args, ast.Loc)
+			return bi.SSA(block, ctx, gen, args, ast.Location())
 		}
 
 		// Resolve name as type.
@@ -492,12 +487,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		typeInfo, err := typeName.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined: %s",
-				ast.Ref)
+			return nil, nil, ctx.Errorf(ast, "undefined: %s", ast.Ref)
 		}
 		if len(callValues) != 1 {
-			return nil, nil, ctx.Errorf(ast, "undefined: %s",
-				ast.Ref)
+			return nil, nil, ctx.Errorf(ast, "undefined: %s", ast.Ref)
 		}
 		if len(callValues[0]) == 0 {
 			return nil, nil, ctx.Errorf(ast.Exprs[0],
@@ -519,19 +512,19 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		}
 	} else if len(callValues) == 1 {
 		if len(callValues[0]) < len(called.Args) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		} else if len(callValues[0]) > len(called.Args) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"too many arguments in call to %s", ast.Ref)
 			// TODO \thave (int, int)
 			// TODO \twant ()
@@ -539,12 +532,12 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		args = callValues[0]
 	} else {
 		if len(callValues) < len(called.Args) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"not enough arguments in call to %s", ast.Ref)
 			// TODO \thave ()
 			// TODO \twant (int, int)
 		} else if len(callValues) > len(called.Args) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"too many arguments in call to %s", ast.Ref)
 			// TODO \thave (int, int)
 			// TODO \twant ()
@@ -572,8 +565,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	for idx, arg := range called.Args {
 		typeInfo, err := arg.Type.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(arg.Loc,
-				"invalid argument type: %s", err)
+			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = args[idx].Type.Bits
@@ -613,7 +605,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
 
 	if ctx.Func() == nil {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "return outside function")
+		return nil, nil, ctx.Errorf(ast, "return outside function")
 	}
 
 	var rValues [][]ssa.Variable
@@ -630,33 +622,28 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if len(rValues) == 0 {
 		if len(ctx.Func().Return) != 0 {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments to return")
+			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
 		}
 	} else if len(rValues) == 1 {
 		if len(rValues[0]) < len(ctx.Func().Return) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments to return")
+			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
 		} else if len(rValues[0]) > len(ctx.Func().Return) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"too many aruments to return")
+			return nil, nil, ctx.Errorf(ast, "too many aruments to return")
 			// TODO \thave (nil, error)
 			// TODO \twant (error)
 		}
 		result = rValues[0]
 	} else {
 		if len(rValues) < len(ctx.Func().Return) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"not enough arguments to return")
+			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
 			// TODO \thave ()
 			// TODO \twant (error)
 		} else if len(rValues) > len(ctx.Func().Return) {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"too many aruments to return")
+			return nil, nil, ctx.Errorf(ast, "too many aruments to return")
 			// TODO \thave (nil, error)
 			// TODO \twant (error)
 		} else {
@@ -676,8 +663,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	for idx, r := range ctx.Func().Return {
 		typeInfo, err := r.Type.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.logger.Errorf(r.Loc,
-				"invalid return type: %s", err)
+			return nil, nil, ctx.Errorf(r, "invalid return type: %s", err)
 		}
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = result[idx].Type.Bits
@@ -822,8 +808,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	if !l.TypeCompatible(r) {
 		return nil, nil,
-			ctx.logger.Errorf(ast.Loc, "invalid types: %s %s %s",
-				l.Type, ast.Op, r.Type)
+			ctx.Errorf(ast, "invalid types: %s %s %s", l.Type, ast.Op, r.Type)
 	}
 
 	// Resolve target type.
@@ -840,8 +825,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
-			"Binary.SSA '%s' not implemented yet", ast.Op)
+		return nil, nil, ctx.Errorf(ast, "Binary.SSA '%s' not implemented yet",
+			ast.Op)
 	}
 	t := gen.AnonVar(resultType)
 
@@ -887,8 +872,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewOrInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
-			"Binary.SSA '%s' not implemented yet", ast.Op)
+		return nil, nil, ctx.Errorf(ast, "Binary.SSA '%s' not implemented yet",
+			ast.Op)
 	}
 	if err != nil {
 		return nil, nil, err
@@ -908,7 +893,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if len(expr) != 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "invalid expression")
+		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 
 	var val []ssa.Variable
@@ -949,8 +934,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	}
 	if from >= int32(expr[0].Type.Bits) || from >= to {
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
-			"slice bounds out of range [%d:%d]", from, to)
+		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
+			from, to)
 	}
 
 	indexType := types.Info{
@@ -987,7 +972,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if len(exprs) != 1 {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "invalid expression")
+		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 	expr := exprs[0]
 
@@ -1063,7 +1048,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return block, []ssa.Variable{t}, nil
 
 	default:
-		return nil, nil, ctx.logger.Errorf(ast.Loc,
+		return nil, nil, ctx.Errorf(ast,
 			"invalid operation: %s[%d] (type %s does not support indexing)",
 			ast.Expr, index, expr.Type)
 	}
@@ -1082,8 +1067,8 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		// Selector.
 		value := b.Value(block, gen)
 		if value.Type.Type != types.Struct {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
-				"%s.%s undefined", ast.Name.Package, ast.Name.Name)
+			return nil, nil, ctx.Errorf(ast, "%s.%s undefined",
+				ast.Name.Package, ast.Name.Name)
 		}
 
 		var field *types.StructField
@@ -1094,7 +1079,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 			}
 		}
 		if field == nil {
-			return nil, nil, ctx.logger.Errorf(ast.Loc,
+			return nil, nil, ctx.Errorf(ast,
 				"%s.%s undefined (type %s has no field or method %s)",
 				ast.Name.Package, ast.Name.Name, value.Type, ast.Name.Name)
 		}
@@ -1123,16 +1108,15 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
-			return nil, nil,
-				ctx.logger.Errorf(ast.Loc, "package '%s' not found",
-					ast.Name.Package)
+			return nil, nil, ctx.Errorf(ast, "package '%s' not found",
+				ast.Name.Package)
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
 		b, ok = block.Bindings.Get(ast.Name.Name)
 	}
 	if !ok {
-		return nil, nil, ctx.logger.Errorf(ast.Loc, "undefined variable '%s'",
+		return nil, nil, ctx.Errorf(ast, "undefined variable '%s'",
 			ast.Name.String())
 	}
 
@@ -1161,4 +1145,11 @@ func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen.AddConstant(v)
 
 	return block, []ssa.Variable{v}, nil
+}
+
+// SSA implements the compiler.ast.AST.SSA for constant values.
+func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+
+	return nil, nil, fmt.Errorf("CompositeLit.SSA() not implemented yet")
 }

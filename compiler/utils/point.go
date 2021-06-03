@@ -10,6 +10,12 @@ import (
 	"fmt"
 )
 
+// Locator is an interface that implements Location method for
+// returning item's input data position.
+type Locator interface {
+	Location() Point
+}
+
 // Point specifies a position in the compiler input data.
 type Point struct {
 	Source string
@@ -17,10 +23,9 @@ type Point struct {
 	Col    int // 0-based
 }
 
-// Pointer is an interface that implements Point method for returning
-// item's input data position.
-type Pointer interface {
-	Point() Point
+// Location implements the Locator interface.
+func (p Point) Location() Point {
+	return p
 }
 
 func (p Point) String() string {
