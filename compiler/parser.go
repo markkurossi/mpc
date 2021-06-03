@@ -770,7 +770,7 @@ func (p *Parser) parseStatement() (ast.AST, error) {
 						Loc:  t.From,
 						Left: lvalues[0],
 						Op:   op,
-						Right: &ast.Constant{
+						Right: &ast.BasicLit{
 							Loc:   t.From,
 							Value: int32(1),
 						},
@@ -1111,7 +1111,7 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 	}
 	switch t.Type {
 	case TConstant: // Literal
-		return &ast.Constant{
+		return &ast.BasicLit{
 			Loc:   t.From,
 			Value: t.ConstVal,
 		}, nil
@@ -1121,29 +1121,32 @@ func (p *Parser) parseOperand() (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
+		var operandName ast.AST
 		if n.Type == TDot {
 			id, err := p.needToken(TIdentifier)
 			if err != nil {
 				return nil, err
 			}
 			// QualifiedIdent.
-			return &ast.VariableRef{
+			operandName = &ast.VariableRef{
 				Loc: t.From,
 				Name: ast.Identifier{
 					Package: t.StrVal,
 					Name:    id.StrVal,
 				},
-			}, nil
+			}
+		} else {
+			// Identifier in current package.
+			p.lexer.Unget(n)
+			operandName = &ast.VariableRef{
+				Loc: t.From,
+				Name: ast.Identifier{
+					Defined: p.pkg.Name,
+					Name:    t.StrVal,
+				},
+			}
 		}
-		// Identifier in current package.
-		p.lexer.Unget(n)
-		return &ast.VariableRef{
-			Loc: t.From,
-			Name: ast.Identifier{
-				Defined: p.pkg.Name,
-				Name:    t.StrVal,
-			},
-		}, nil
+		return operandName, nil
 
 	case TLParen: // '(' Expression ')'
 		expr, err := p.parseExpr()

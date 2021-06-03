@@ -61,7 +61,6 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	for idx, lv := range ast.LValues {
-
 		constVal, err := ssa.Constant(gen, values[idx], types.UndefinedInfo)
 		if err != nil {
 			return nil, false, err
@@ -417,7 +416,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
-func (ast *Constant) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
 	return ast.Value, true, nil
 }

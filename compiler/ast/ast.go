@@ -35,7 +35,7 @@ var (
 	_ AST = &Slice{}
 	_ AST = &Index{}
 	_ AST = &VariableRef{}
-	_ AST = &Constant{}
+	_ AST = &BasicLit{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -577,13 +577,13 @@ func (ast *VariableRef) Point() utils.Point {
 	return ast.Loc
 }
 
-// Constant implements an AST constant value.
-type Constant struct {
+// BasicLit implements an AST basic literal value.
+type BasicLit struct {
 	Loc   utils.Point
 	Value interface{}
 }
 
-func (ast *Constant) String() string {
+func (ast *BasicLit) String() string {
 	return ConstantName(ast.Value)
 }
 
@@ -604,6 +604,6 @@ func ConstantName(value interface{}) string {
 }
 
 // Point implements the compiler.utils.Point interface.
-func (ast *Constant) Point() utils.Point {
+func (ast *BasicLit) Point() utils.Point {
 	return ast.Loc
 }

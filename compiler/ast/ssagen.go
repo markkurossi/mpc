@@ -1151,7 +1151,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 }
 
 // SSA implements the compiler.ast.AST.SSA for constant values.
-func (ast *Constant) SSA(block *ssa.Block, ctx *Codegen,
+func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
 	v, err := ssa.Constant(gen, ast.Value, types.UndefinedInfo)
