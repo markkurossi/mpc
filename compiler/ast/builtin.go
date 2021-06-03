@@ -72,7 +72,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
 
 	if len(args) != 1 {
-		return nil, nil, ctx.logger.Errorf(loc,
+		return nil, nil, ctx.Errorf(loc,
 			"invalid amount of arguments in call to len")
 	}
 
@@ -85,8 +85,8 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		val = args[0].Type.ArraySize
 
 	default:
-		return nil, nil, ctx.logger.Errorf(loc,
-			"invalid argument 1 (type %s) for len", args[0].Type)
+		return nil, nil, ctx.Errorf(loc, "invalid argument 1 (type %s) for len",
+			args[0].Type)
 	}
 
 	v, err := ssa.Constant(gen, int32(val), types.UndefinedInfo)
@@ -102,7 +102,7 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error) {
 
 	if len(args) != 1 {
-		return nil, false, ctx.logger.Errorf(loc,
+		return nil, false, ctx.Errorf(loc,
 			"invalid amount of arguments in call to len")
 	}
 
@@ -115,15 +115,15 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			var pkg *Package
 			pkg, ok = ctx.Packages[arg.Name.Package]
 			if !ok {
-				return nil, false, ctx.logger.Errorf(loc,
-					"package '%s' not found", arg.Name.Package)
+				return nil, false, ctx.Errorf(loc, "package '%s' not found",
+					arg.Name.Package)
 			}
 			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
 			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
-			return nil, false, ctx.logger.Errorf(loc, "undefined variable '%s'",
+			return nil, false, ctx.Errorf(loc, "undefined variable '%s'",
 				arg.Name.String())
 		}
 
@@ -135,12 +135,12 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			return int32(b.Type.ArraySize), true, nil
 
 		default:
-			return nil, false, ctx.logger.Errorf(loc,
+			return nil, false, ctx.Errorf(loc,
 				"invalid argument 1 (type %s) for len", b.Type)
 		}
 
 	default:
-		return nil, false, ctx.logger.Errorf(loc, "len(%v/%T) is not constant",
+		return nil, false, ctx.Errorf(loc, "len(%v/%T) is not constant",
 			arg, arg)
 	}
 }
@@ -149,7 +149,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error) {
 
 	if len(args) != 2 {
-		return nil, false, ctx.logger.Errorf(loc,
+		return nil, false, ctx.Errorf(loc,
 			"invalid amount of argument in call to make")
 	}
 	ref, ok := args[0].(*VariableRef)
@@ -180,7 +180,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		bits = int(val)
 
 	default:
-		return nil, false, ctx.logger.Errorf(loc,
+		return nil, false, ctx.Errorf(loc,
 			"non-integer (%T) len argument in make(%s)", val, typeInfo)
 	}
 	typeInfo.Bits = bits
@@ -192,12 +192,12 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
 
 	if len(args) < 1 {
-		return nil, nil, ctx.logger.Errorf(loc,
+		return nil, nil, ctx.Errorf(loc,
 			"not enought argument in call to native")
 	}
 	name, ok := args[0].ConstValue.(string)
 	if !args[0].Const || !ok {
-		return nil, nil, ctx.logger.Errorf(loc,
+		return nil, nil, ctx.Errorf(loc,
 			"not enought argument in call to native")
 	}
 	// Our native name constant is not needed in the implementation.
@@ -207,7 +207,7 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	switch name {
 	case "hamming":
 		if len(args) != 2 {
-			return nil, nil, ctx.logger.Errorf(loc,
+			return nil, nil, ctx.Errorf(loc,
 				"invalid amount of arguments in call to '%s'", name)
 		}
 
@@ -228,7 +228,7 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		if strings.HasSuffix(name, ".circ") {
 			return nativeCircuit(name, block, ctx, gen, args, loc)
 		}
-		return nil, nil, ctx.logger.Errorf(loc, "unknown native '%s'", name)
+		return nil, nil, ctx.Errorf(loc, "unknown native '%s'", name)
 	}
 }
 
@@ -240,22 +240,20 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	fp := path.Join(dir, name)
 	circ, err := circuit.Parse(fp)
 	if err != nil {
-		return nil, nil, ctx.logger.Errorf(loc,
-			"failed to parse circuit: %s", err)
+		return nil, nil, ctx.Errorf(loc, "failed to parse circuit: %s", err)
 	}
 
 	if len(circ.Inputs) < len(args) {
-		return nil, nil, ctx.logger.Errorf(loc,
+		return nil, nil, ctx.Errorf(loc,
 			"not enought argument in call to native")
 	} else if len(circ.Inputs) < len(args) {
-		return nil, nil, ctx.logger.Errorf(loc,
-			"too many argument in call to native")
+		return nil, nil, ctx.Errorf(loc, "too many argument in call to native")
 	}
 	// Check that the argument types match.
 	for idx, io := range circ.Inputs {
 		arg := args[idx]
 		if io.Size < arg.Type.Bits || io.Size > arg.Type.Bits && !arg.Const {
-			return nil, nil, ctx.logger.Errorf(loc,
+			return nil, nil, ctx.Errorf(loc,
 				"invalid argument %d for native circuit: got %s, need %d",
 				idx, arg.Type, io.Size)
 		}
@@ -283,7 +281,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
 
 	if len(args) != 1 {
-		return nil, nil, ctx.logger.Errorf(loc,
+		return nil, nil, ctx.Errorf(loc,
 			"invalid amount of arguments in call to size")
 	}
 
@@ -300,7 +298,7 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (interface{}, bool, error) {
 
 	if len(args) != 1 {
-		return nil, false, ctx.logger.Errorf(loc,
+		return nil, false, ctx.Errorf(loc,
 			"invalid amount of arguments in call to size")
 	}
 
@@ -313,21 +311,21 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			var pkg *Package
 			pkg, ok = ctx.Packages[arg.Name.Package]
 			if !ok {
-				return nil, false, ctx.logger.Errorf(loc,
-					"package '%s' not found", arg.Name.Package)
+				return nil, false, ctx.Errorf(loc, "package '%s' not found",
+					arg.Name.Package)
 			}
 			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
 			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
-			return nil, false, ctx.logger.Errorf(loc,
-				"undefined variable '%s'", arg.Name.String())
+			return nil, false, ctx.Errorf(loc, "undefined variable '%s'",
+				arg.Name.String())
 		}
 		return int32(b.Type.Bits), true, nil
 
 	default:
-		return nil, false, ctx.logger.Errorf(loc,
-			"size(%v/%T) is not constant", arg, arg)
+		return nil, false, ctx.Errorf(loc, "size(%v/%T) is not constant",
+			arg, arg)
 	}
 }

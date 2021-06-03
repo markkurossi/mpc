@@ -279,8 +279,7 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 		return big.NewInt(int64(val)), nil
 
 	default:
-		return nil, ctx.logger.Errorf(loc,
-			"invalid value %v (%T)", val, val)
+		return nil, ctx.Errorf(loc, "invalid value %v (%T)", val, val)
 	}
 }
 

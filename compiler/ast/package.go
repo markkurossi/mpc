@@ -244,8 +244,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 
 	_, ok := pkg.Bindings.Get(def.TypeName)
 	if ok {
-		return ctx.logger.Errorf(def.Loc, "type %s already defined",
-			def.TypeName)
+		return ctx.Errorf(def, "type %s already defined", def.TypeName)
 	}
 	env := &Env{
 		Bindings: pkg.Bindings,
@@ -296,7 +295,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		}
 
 	default:
-		return ctx.logger.Errorf(def.Loc, "invalid type definition: %s", def)
+		return ctx.Errorf(def, "invalid type definition: %s", def)
 	}
 
 	v, err := ssa.Constant(gen, info, types.UndefinedInfo)

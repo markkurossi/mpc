@@ -59,7 +59,7 @@ const (
 
 // TypeInfo contains AST type information.
 type TypeInfo struct {
-	Loc          utils.Point
+	utils.Point
 	Type         Type
 	Name         Identifier
 	ElementType  *TypeInfo

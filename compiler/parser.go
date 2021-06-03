@@ -357,7 +357,7 @@ func (p *Parser) parseTypeDecl() error {
 			}
 		}
 		typeInfo := &ast.TypeInfo{
-			Loc:          loc,
+			Point:        loc,
 			Type:         ast.TypeStruct,
 			TypeName:     name.StrVal,
 			StructFields: fields,
@@ -371,7 +371,7 @@ func (p *Parser) parseTypeDecl() error {
 			return err
 		}
 		typeInfo := &ast.TypeInfo{
-			Loc:       ti.Loc,
+			Point:     ti.Point,
 			Type:      ast.TypeAlias,
 			TypeName:  name.StrVal,
 			AliasType: ti,
@@ -1216,8 +1216,8 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			name = t.StrVal
 		}
 		return &ast.TypeInfo{
-			Loc:  loc,
-			Type: ast.TypeName,
+			Point: loc,
+			Type:  ast.TypeName,
 			Name: ast.Identifier{
 				Package: pkg,
 				Name:    name,
@@ -1248,14 +1248,14 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		}
 		if length != nil {
 			return &ast.TypeInfo{
-				Loc:         loc,
+				Point:       loc,
 				Type:        ast.TypeArray,
 				ElementType: elType,
 				ArrayLength: length,
 			}, nil
 		}
 		return &ast.TypeInfo{
-			Loc:         loc,
+			Point:       loc,
 			Type:        ast.TypeSlice,
 			ElementType: elType,
 		}, nil
