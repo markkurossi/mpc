@@ -75,7 +75,7 @@ Result[0]: false
 ```
 
 In our example, the evaluator's argument In2 is bound to the MPCL
-program's `b int64` argument, and garblers' In1 to `a
+program's `b int64` argument, and garbler's In1 to `a
 int64`. Therefore, the result of the computation is `false` because
 In1=750000 <= In2=800000. If we increase the garbler's input to 900000,
 we see that the result is now `true` since the garbler's input is now
