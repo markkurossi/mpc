@@ -225,8 +225,8 @@ type AST interface {
 	String() string
 	// SSA generates SSA code from the AST node. The code is appended
 	// into the basic block `block'. The function returns the next
-	// sequential basic. The `ssa.Dead' is set to `true' if the code
-	// terminates i.e. all following AST nodes are dead code.
+	// sequential basic block. The `ssa.Dead' is set to `true' if the
+	// code terminates i.e. all following AST nodes are dead code.
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		*ssa.Block, []ssa.Variable, error)
 	// Eval evaluates the AST node during constant propagation.
