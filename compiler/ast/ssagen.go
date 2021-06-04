@@ -213,6 +213,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			if err != nil {
 				return nil, nil, err
 			}
+			gen.AddConstant(constVar)
 			values = append(values, constVar)
 		} else {
 			var v []ssa.Variable

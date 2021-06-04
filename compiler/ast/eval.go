@@ -115,8 +115,7 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	pkg, ok := ctx.Packages[pkgName]
 	if !ok {
-		return nil, false,
-			ctx.Errorf(ast, "package '%s' not found", pkgName)
+		return nil, false, ctx.Errorf(ast, "package '%s' not found", pkgName)
 	}
 	_, ok = pkg.Functions[ast.Ref.Name.Name]
 	if ok {
@@ -328,7 +327,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
-		return int32(tmp), ok, nil
+		return int32(tmp), true, nil
 
 	default:
 		return nil, false, ctx.Errorf(ast.Expr,
@@ -421,5 +420,29 @@ func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	interface{}, bool, error) {
-	return nil, false, fmt.Errorf("CompositeLit.Eval() not implemented yet")
+	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
+	if err != nil {
+		return nil, false, err
+	}
+	switch typeInfo.Type {
+	case types.Array:
+		// Check if all elements are constants.
+		var values []interface{}
+		for _, el := range ast.Value {
+			// XXX check if el.Key is specified
+
+			v, ok, err := el.Element.Eval(env, ctx, gen)
+			if err != nil || !ok {
+				return nil, ok, err
+			}
+			// XXX check that v is assignment compatible with array.
+			values = append(values, v)
+		}
+		return values, true, nil
+
+	default:
+		fmt.Printf("CompositeLit.Eval: not implemented yet: %v, Value: %v\n",
+			typeInfo, ast.Value)
+		return nil, false, nil
+	}
 }

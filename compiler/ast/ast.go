@@ -231,7 +231,7 @@ type AST interface {
 		*ssa.Block, []ssa.Variable, error)
 	// Eval evaluates the AST node during constant propagation.
 	Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-		interface{}, bool, error)
+		value interface{}, isConstant bool, err error)
 }
 
 // NewEnv creates a new environment based on the current environment
@@ -547,4 +547,12 @@ func ConstantName(value interface{}) string {
 // CompositeLit implements an AST composite literal value.
 type CompositeLit struct {
 	utils.Point
+	Type  *TypeInfo
+	Value []KeyedElement
+}
+
+// KeyedElement implements a keyed element of composite literal.
+type KeyedElement struct {
+	Key     AST
+	Element AST
 }

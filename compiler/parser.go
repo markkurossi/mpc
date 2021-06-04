@@ -1121,7 +1121,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		var operandName ast.AST
+		var operandName *ast.VariableRef
 		if n.Type == TDot {
 			id, err := p.needToken(TIdentifier)
 			if err != nil {
@@ -1154,11 +1154,59 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n.Type == TLBrace {
-			return nil, p.errf(n.From, "CompositeLit not implemented yet")
+		if n.Type != TLBrace {
+			p.lexer.Unget(n)
+			return operandName, nil
 		}
-		p.lexer.Unget(n)
-		return operandName, nil
+		composite := &ast.CompositeLit{
+			Type: &ast.TypeInfo{
+				Point: operandName.Point,
+				Type:  ast.TypeName,
+				Name:  operandName.Name,
+			},
+		}
+		for {
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type == TRBrace {
+				break
+			}
+			p.lexer.Unget(n)
+			key, err := p.parseExpr(false)
+			if err != nil {
+				return nil, err
+			}
+			n, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			var element ast.AST
+			if n.Type == TColon {
+				element, err = p.parseExpr(false)
+				if err != nil {
+					return nil, err
+				}
+				n, err = p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				element = key
+				key = nil
+			}
+			composite.Value = append(composite.Value, ast.KeyedElement{
+				Key:     key,
+				Element: element,
+			})
+			if n.Type == TRBrace {
+				p.lexer.Unget(n)
+			} else if n.Type != TComma {
+				return nil, p.errf(n.From, "unexpected token %s", n)
+			}
+		}
+		return composite, nil
 
 	case TLParen: // '(' Expression ')'
 		expr, err := p.parseExpr(false)

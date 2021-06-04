@@ -817,9 +817,11 @@ func Constant(gen *Generator, value interface{}, ti types.Info) (
 		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, arrayString(val))
 		if ti.Undefined() {
 			v.Type = types.Info{
-				Type:    types.Array,
-				Bits:    bits,
-				MinBits: bits,
+				Type:         types.Array,
+				Bits:         bits,
+				MinBits:      bits,
+				ArrayElement: &types.Info{Type: types.Int, Bits: 32},
+				ArraySize:    len(val),
 			}
 		} else {
 			v.Type = ti
