@@ -38,37 +38,37 @@ const ByteBits = 8
 
 // MPCL types.
 const (
-	Undefined Type = iota
-	Bool
-	Int
-	Uint
-	Float
-	String
-	Struct
-	Array
+	TUndefined Type = iota
+	TBool
+	TInt
+	TUint
+	TFloat
+	TString
+	TStruct
+	TArray
 )
 
 // Types define MPCL types and their names.
 var Types = map[string]Type{
-	"<Undefined>": Undefined,
-	"bool":        Bool,
-	"int":         Int,
-	"uint":        Uint,
-	"float":       Float,
-	"string":      String,
-	"struct":      Struct,
-	"array":       Array,
+	"<Undefined>": TUndefined,
+	"bool":        TBool,
+	"int":         TInt,
+	"uint":        TUint,
+	"float":       TFloat,
+	"string":      TString,
+	"struct":      TStruct,
+	"array":       TArray,
 }
 
 var shortTypes = map[Type]string{
-	Undefined: "?",
-	Bool:      "b",
-	Int:       "i",
-	Uint:      "u",
-	Float:     "f",
-	String:    "str",
-	Struct:    "struct",
-	Array:     "arr",
+	TUndefined: "?",
+	TBool:      "b",
+	TInt:       "i",
+	TUint:      "u",
+	TFloat:     "f",
+	TString:    "str",
+	TStruct:    "struct",
+	TArray:     "arr",
 }
 
 // Info specifies information about a type.
@@ -82,21 +82,35 @@ type Info struct {
 	Offset       int
 }
 
-// UndefinedInfo defines type info for undefined types.
-var UndefinedInfo = Info{
-	Type: Undefined,
+// Undefined defines type info for undefined types.
+var Undefined = Info{
+	Type: TUndefined,
+}
+
+// Bool defines type info for boolean values.
+var Bool = Info{
+	Type:    TBool,
+	Bits:    1,
+	MinBits: 1,
 }
 
 // Int32 defines type info for signed 32bit integers.
 var Int32 = Info{
-	Type:    Int,
+	Type:    TInt,
+	Bits:    32,
+	MinBits: 32,
+}
+
+// Uint32 defines type info for unsigned 32bit integers.
+var Uint32 = Info{
+	Type:    TUint,
 	Bits:    32,
 	MinBits: 32,
 }
 
 // Uint64 defines type info for unsigned 64bit integers.
 var Uint64 = Info{
-	Type:    Uint,
+	Type:    TUint,
 	Bits:    64,
 	MinBits: 64,
 }
@@ -116,7 +130,7 @@ func (i Info) String() string {
 	if i.Bits == 0 {
 		return i.Type.String()
 	}
-	if i.Type == Array {
+	if i.Type == TArray {
 		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ArrayElement)
 	}
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
@@ -132,7 +146,7 @@ func (i Info) ShortString() string {
 
 // Undefined tests if type is undefined.
 func (i Info) Undefined() bool {
-	return i.Type == Undefined
+	return i.Type == TUndefined
 }
 
 // Equal tests if the argument type is equal to this type info.
@@ -144,8 +158,8 @@ func (i Info) Equal(o Info) bool {
 // this type.
 func (i Info) CanAssignConst(o Info) bool {
 	switch i.Type {
-	case Int:
-		return (o.Type == Int || o.Type == Uint) && i.Bits >= o.MinBits
+	case TInt:
+		return (o.Type == TInt || o.Type == TUint) && i.Bits >= o.MinBits
 
 	default:
 		return i.Type == o.Type && i.Bits >= o.MinBits
@@ -155,7 +169,7 @@ func (i Info) CanAssignConst(o Info) bool {
 // BoolType returns type information for the boolean type.
 func BoolType() Info {
 	return Info{
-		Type: Bool,
+		Type: TBool,
 		Bits: 1,
 	}
 }

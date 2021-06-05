@@ -78,10 +78,10 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	var val int
 	switch args[0].Type.Type {
-	case types.String:
+	case types.TString:
 		val = args[0].Type.Bits / types.ByteBits
 
-	case types.Array:
+	case types.TArray:
 		val = args[0].Type.ArraySize
 
 	default:
@@ -89,7 +89,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			args[0].Type)
 	}
 
-	v, _, err := gen.Constant(int32(val), types.UndefinedInfo)
+	v, _, err := gen.Constant(int32(val), types.Undefined)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -128,12 +128,12 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		}
 
 		switch b.Type.Type {
-		case types.String:
+		case types.TString:
 			return gen.Constant(int32(b.Type.Bits/types.ByteBits),
-				types.UndefinedInfo)
+				types.Undefined)
 
-		case types.Array:
-			return gen.Constant(int32(b.Type.ArraySize), types.UndefinedInfo)
+		case types.TArray:
+			return gen.Constant(int32(b.Type.ArraySize), types.Undefined)
 
 		default:
 			return ssa.Undefined, false, ctx.Errorf(loc,
@@ -188,7 +188,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	}
 	typeInfo.Bits = bits
 
-	return gen.Constant(typeInfo, types.UndefinedInfo)
+	return gen.Constant(typeInfo, types.Undefined)
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -270,7 +270,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	for _, io := range circ.Outputs {
 		result = append(result, gen.AnonVar(types.Info{
-			Type: types.Undefined,
+			Type: types.TUndefined,
 			Bits: io.Size,
 		}))
 	}
@@ -288,7 +288,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to size")
 	}
 
-	v, _, err := gen.Constant(int32(args[0].Type.Bits), types.UndefinedInfo)
+	v, _, err := gen.Constant(int32(args[0].Type.Bits), types.Undefined)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -325,7 +325,7 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			return ssa.Undefined, false, ctx.Errorf(loc,
 				"undefined variable '%s'", arg.Name.String())
 		}
-		return gen.Constant(int32(b.Type.Bits), types.UndefinedInfo)
+		return gen.Constant(int32(b.Type.Bits), types.Undefined)
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(loc,

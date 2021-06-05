@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -173,7 +173,7 @@ func (phi *Select) Equal(other BindingValue) bool {
 
 // Value returns the binding value.
 func (phi *Select) Value(block *Block, gen *Generator) Variable {
-	if phi.Resolved.Type.Type != types.Undefined {
+	if phi.Resolved.Type.Type != types.TUndefined {
 		return phi.Resolved
 	}
 

@@ -119,10 +119,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			}
 		}
 		if ti.Name.Name == "bool" {
-			return types.Info{
-				Type: types.Bool,
-				Bits: 1,
-			}, nil
+			return types.Bool, nil
 		}
 		// Check dynamic types from the env.
 		b, ok := env.Get(ti.Name.Name)
@@ -163,7 +160,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return result, err
 		}
 		return types.Info{
-			Type:         types.Array,
+			Type:         types.TArray,
 			Bits:         length * elInfo.Bits,
 			MinBits:      length * elInfo.MinBits,
 			ArrayElement: &elInfo,

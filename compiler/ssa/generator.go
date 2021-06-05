@@ -65,10 +65,7 @@ func (gen *Generator) UndefVar() Variable {
 	} else {
 		v.Version = v.Version + 1
 	}
-	v.Type = types.Info{
-		Type: types.Undefined,
-		Bits: 0,
-	}
+	v.Type = types.Undefined
 	v.ID = gen.nextVariableID()
 	gen.versions[anon] = v
 	return v
@@ -193,7 +190,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.Uint,
+			Type:    types.TUint,
 			Bits:    32,
 			MinBits: minBits,
 		}
@@ -216,7 +213,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.Uint,
+			Type:    types.TUint,
 			Bits:    bits,
 			MinBits: minBits,
 		}
@@ -239,7 +236,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.Uint,
+			Type:    types.TUint,
 			Bits:    bits,
 			MinBits: minBits,
 		}
@@ -248,11 +245,11 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		v.Name = fmt.Sprintf("$%s", val.String())
 		if val.Sign() == -1 {
 			v.Type = types.Info{
-				Type: types.Int,
+				Type: types.TInt,
 			}
 		} else {
 			v.Type = types.Info{
-				Type: types.Uint,
+				Type: types.TUint,
 			}
 		}
 		minBits := val.BitLen()
@@ -270,18 +267,14 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 	case bool:
 		v.Name = fmt.Sprintf("$%v", val)
-		v.Type = types.Info{
-			Type:    types.Bool,
-			Bits:    1,
-			MinBits: 1,
-		}
+		v.Type = types.Bool
 
 	case string:
 		v.Name = fmt.Sprintf("$%q", val)
 		bits := len([]byte(val)) * types.ByteBits
 
 		v.Type = types.Info{
-			Type:    types.String,
+			Type:    types.TString,
 			Bits:    bits,
 			MinBits: bits,
 		}
@@ -292,7 +285,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		var name string
 
 		if len(val) > 0 {
-			ev, ok, err := gen.Constant(val[0], types.UndefinedInfo)
+			ev, ok, err := gen.Constant(val[0], types.Undefined)
 			if err != nil {
 				return v, false, err
 			}
@@ -309,11 +302,11 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, arrayString(val))
 		if ti.Undefined() {
 			v.Type = types.Info{
-				Type:    types.Array,
+				Type:    types.TArray,
 				Bits:    bits,
 				MinBits: bits,
 				// XXX this is wrong
-				ArrayElement: &types.Info{Type: types.Int, Bits: 32},
+				ArrayElement: &types.Info{Type: types.TInt, Bits: 32},
 				ArraySize:    len(val),
 			}
 		} else {

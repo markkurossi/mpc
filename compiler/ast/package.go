@@ -88,7 +88,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 			Type: a.Type.String(),
 			Size: a.Type.Bits,
 		}
-		if typeInfo.Type == types.Struct {
+		if typeInfo.Type == types.TStruct {
 			arg.Compound = flattenStruct(typeInfo)
 		}
 
@@ -114,7 +114,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = returnVars[idx].Type.Bits
 		}
-		if returnVars[idx].Type.Type == types.Undefined {
+		if returnVars[idx].Type.Type == types.TUndefined {
 			returnVars[idx].Type.Type = typeInfo.Type
 		}
 		if !ssa.LValueFor(typeInfo, returnVars[idx]) {
@@ -156,12 +156,12 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 func flattenStruct(t types.Info) circuit.IO {
 	var result circuit.IO
-	if t.Type != types.Struct {
+	if t.Type != types.TStruct {
 		return result
 	}
 
 	for _, f := range t.Struct {
-		if f.Type.Type == types.Struct {
+		if f.Type.Type == types.TStruct {
 			ios := flattenStruct(f.Type)
 			result = append(result, ios...)
 		} else {
@@ -276,7 +276,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			offset += info.Bits
 		}
 		info = types.Info{
-			Type:    types.Struct,
+			Type:    types.TStruct,
 			Bits:    bits,
 			MinBits: minBits,
 			Struct:  fields,
@@ -298,7 +298,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		return ctx.Errorf(def, "invalid type definition: %s", def)
 	}
 
-	v, _, err := gen.Constant(info, types.UndefinedInfo)
+	v, _, err := gen.Constant(info, types.Undefined)
 	if err != nil {
 		return err
 	}

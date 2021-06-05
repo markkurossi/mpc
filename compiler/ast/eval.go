@@ -61,11 +61,11 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	arrType := types.Info{
-		Type: types.Array,
+		Type: types.TArray,
 	}
 
 	for idx, lv := range ast.LValues {
-		constVal, _, err := gen.Constant(values[idx], types.UndefinedInfo)
+		constVal, _, err := gen.Constant(values[idx], types.Undefined)
 		if err != nil {
 			return ssa.Undefined, false, err
 		}
@@ -207,17 +207,17 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval-rval, types.Int32)
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.Int32)
+			return gen.Constant(lval == rval, types.Bool)
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.Int32)
+			return gen.Constant(lval != rval, types.Bool)
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.Int32)
+			return gen.Constant(lval < rval, types.Bool)
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.Int32)
+			return gen.Constant(lval <= rval, types.Bool)
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.Int32)
+			return gen.Constant(lval > rval, types.Bool)
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.Int32)
+			return gen.Constant(lval >= rval, types.Bool)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -258,17 +258,17 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval-rval, types.Uint64)
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.Uint64)
+			return gen.Constant(lval == rval, types.Bool)
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.Uint64)
+			return gen.Constant(lval != rval, types.Bool)
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.Uint64)
+			return gen.Constant(lval < rval, types.Bool)
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.Uint64)
+			return gen.Constant(lval <= rval, types.Bool)
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.Uint64)
+			return gen.Constant(lval > rval, types.Bool)
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.Uint64)
+			return gen.Constant(lval >= rval, types.Bool)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -423,7 +423,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Variable, bool, error) {
-	return gen.Constant(ast.Value, types.UndefinedInfo)
+	return gen.Constant(ast.Value, types.Undefined)
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
@@ -434,7 +434,7 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, err
 	}
 	switch typeInfo.Type {
-	case types.Array:
+	case types.TArray:
 		// Check if all elements are constants.
 		var values []interface{}
 		for _, el := range ast.Value {

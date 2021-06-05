@@ -154,11 +154,11 @@ type Instr struct {
 func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Iadd
-	case types.Uint:
+	case types.TUint:
 		op = Uadd
-	case types.Float:
+	case types.TFloat:
 		op = Fadd
 	default:
 		fmt.Printf("%v + %v (%v)\n", l, r, t)
@@ -176,11 +176,11 @@ func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Isub
-	case types.Uint:
+	case types.TUint:
 		op = Usub
-	case types.Float:
+	case types.TFloat:
 		op = Fsub
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for subtraction", t)
@@ -197,11 +197,11 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Imult
-	case types.Uint:
+	case types.TUint:
 		op = Umult
-	case types.Float:
+	case types.TFloat:
 		op = Fmult
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for multiplication", t)
@@ -217,11 +217,11 @@ func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Idiv
-	case types.Uint:
+	case types.TUint:
 		op = Udiv
-	case types.Float:
+	case types.TFloat:
 		op = Fdiv
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for division", t)
@@ -237,11 +237,11 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Imod
-	case types.Uint:
+	case types.TUint:
 		op = Umod
-	case types.Float:
+	case types.TFloat:
 		op = Fmod
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for modulo", t)
@@ -284,11 +284,11 @@ func NewSliceInstr(v, from, to, o Variable) Instr {
 func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Ilt
-	case types.Uint:
+	case types.TUint:
 		op = Ult
-	case types.Float:
+	case types.TFloat:
 		op = Flt
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for < comparison", t)
@@ -305,11 +305,11 @@ func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Ile
-	case types.Uint:
+	case types.TUint:
 		op = Ule
-	case types.Float:
+	case types.TFloat:
 		op = Fle
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for <= comparison", t)
@@ -326,11 +326,11 @@ func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Igt
-	case types.Uint:
+	case types.TUint:
 		op = Ugt
-	case types.Float:
+	case types.TFloat:
 		op = Fgt
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for > comparison", t)
@@ -347,11 +347,11 @@ func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	var op Operand
 	switch t.Type {
-	case types.Int:
+	case types.TInt:
 		op = Ige
-	case types.Uint:
+	case types.TUint:
 		op = Uge
-	case types.Float:
+	case types.TFloat:
 		op = Fge
 	default:
 		return Instr{}, fmt.Errorf("invalid type %s for >= comparison", t)

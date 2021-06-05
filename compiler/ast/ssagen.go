@@ -104,7 +104,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	if err != nil {
 		return nil, nil, err
 	}
-	if typeInfo.Type == types.Undefined {
+	if typeInfo.Type == types.TUndefined {
 		typeInfo.Type = constVar.Type.Type
 	}
 	if typeInfo.Bits == 0 {
@@ -173,13 +173,13 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 
 func initValue(typeInfo types.Info) (interface{}, error) {
 	switch typeInfo.Type {
-	case types.Bool:
+	case types.TBool:
 		return false, nil
-	case types.Int, types.Uint:
+	case types.TInt, types.TUint:
 		return int32(0), nil
-	case types.String:
+	case types.TString:
 		return "", nil
-	case types.Array:
+	case types.TArray:
 		elInit, err := initValue(*typeInfo.ArrayElement)
 		if err != nil {
 			return nil, err
@@ -209,7 +209,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			return nil, nil, err
 		}
 		if ok {
-			constVar, _, err := gen.Constant(constVal, types.UndefinedInfo)
+			constVar, _, err := gen.Constant(constVal, types.Undefined)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -304,11 +304,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				from := int32(index * b.Type.ArrayElement.Bits)
 				to := int32((index + 1) * b.Type.ArrayElement.Bits)
 
-				indexType := types.Info{
-					Type:    types.Uint,
-					Bits:    32,
-					MinBits: 32,
-				}
+				indexType := types.Uint32
 				fromConst, _, err := gen.Constant(from, indexType)
 				if err != nil {
 					return nil, nil, err
@@ -371,7 +367,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast.Expr,
 			"multiple-value %s used in single-value context", ast.Expr)
 	}
-	if e[0].Type.Type != types.Bool {
+	if e[0].Type.Type != types.TBool {
 		return nil, nil, ctx.Errorf(ast.Expr,
 			"non-bool %s (type %s) used as if condition", ast.Expr, e[0].Type)
 	}
@@ -674,7 +670,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, err
 		}
 
-		if result[idx].Type.Type == types.Undefined {
+		if result[idx].Type.Type == types.TUndefined {
 			result[idx].Type.Type = typeInfo.Type
 		}
 
@@ -771,7 +767,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			fmt.Printf("ConstFold: %v %s %v => %v\n",
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
-		v, _, err := gen.Constant(constVal, types.UndefinedInfo)
+		v, _, err := gen.Constant(constVal, types.Undefined)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -939,11 +935,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			from, to)
 	}
 
-	indexType := types.Info{
-		Type:    types.Uint,
-		Bits:    32,
-		MinBits: 32,
-	}
+	indexType := types.Uint32
 	fromConst, _, err := gen.Constant(from, indexType)
 	if err != nil {
 		return nil, nil, err
@@ -993,7 +985,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch expr.Type.Type {
-	case types.String:
+	case types.TString:
 		length := expr.Type.Bits / types.ByteBits
 		if index < 0 || index >= length {
 			return nil, nil, ctx.Errorf(ast.Index,
@@ -1004,7 +996,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		to := int32((index + 1) * types.ByteBits)
 
 		indexType := types.Info{
-			Type:    types.Uint,
+			Type:    types.TUint,
 			Bits:    types.ByteBits,
 			MinBits: types.ByteBits,
 		}
@@ -1021,7 +1013,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		return block, []ssa.Variable{t}, nil
 
-	case types.Array:
+	case types.TArray:
 		if index < 0 || index >= expr.Type.ArraySize {
 			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
@@ -1030,11 +1022,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		from := int32(index * expr.Type.ArrayElement.Bits)
 		to := int32((index + 1) * expr.Type.ArrayElement.Bits)
 
-		indexType := types.Info{
-			Type:    types.Uint,
-			Bits:    32,
-			MinBits: 32,
-		}
+		indexType := types.Uint32
 		fromConst, _, err := gen.Constant(from, indexType)
 		if err != nil {
 			return nil, nil, err
@@ -1067,7 +1055,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	if ok {
 		// Selector.
 		value := b.Value(block, gen)
-		if value.Type.Type != types.Struct {
+		if value.Type.Type != types.TStruct {
 			return nil, nil, ctx.Errorf(ast, "%s.%s undefined",
 				ast.Name.Package, ast.Name.Name)
 		}
@@ -1139,7 +1127,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	v, _, err := gen.Constant(ast.Value, types.UndefinedInfo)
+	v, _, err := gen.Constant(ast.Value, types.Undefined)
 	if err != nil {
 		return nil, nil, err
 	}
