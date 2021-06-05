@@ -89,7 +89,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			args[0].Type)
 	}
 
-	v, _, err := gen.Constant(int32(val), types.Undefined)
+	v, _, err := gen.Constant(int32(val), types.Int32)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -129,11 +129,10 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 		switch b.Type.Type {
 		case types.TString:
-			return gen.Constant(int32(b.Type.Bits/types.ByteBits),
-				types.Undefined)
+			return gen.Constant(int32(b.Type.Bits/types.ByteBits), types.Int32)
 
 		case types.TArray:
-			return gen.Constant(int32(b.Type.ArraySize), types.Undefined)
+			return gen.Constant(int32(b.Type.ArraySize), types.Int32)
 
 		default:
 			return ssa.Undefined, false, ctx.Errorf(loc,
@@ -288,7 +287,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to size")
 	}
 
-	v, _, err := gen.Constant(int32(args[0].Type.Bits), types.Undefined)
+	v, _, err := gen.Constant(int32(args[0].Type.Bits), types.Int32)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -325,7 +324,7 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			return ssa.Undefined, false, ctx.Errorf(loc,
 				"undefined variable '%s'", arg.Name.String())
 		}
-		return gen.Constant(int32(b.Type.Bits), types.Undefined)
+		return gen.Constant(int32(b.Type.Bits), types.Int32)
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(loc,

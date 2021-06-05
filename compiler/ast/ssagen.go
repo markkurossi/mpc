@@ -209,12 +209,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			return nil, nil, err
 		}
 		if ok {
-			constVar, _, err := gen.Constant(constVal, types.Undefined)
-			if err != nil {
-				return nil, nil, err
-			}
-			gen.AddConstant(constVar)
-			values = append(values, constVar)
+			gen.AddConstant(constVal)
+			values = append(values, constVal)
 		} else {
 			var v []ssa.Variable
 			block, v, err = expr.SSA(block, ctx, gen)
@@ -767,12 +763,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			fmt.Printf("ConstFold: %v %s %v => %v\n",
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
-		v, _, err := gen.Constant(constVal, types.Undefined)
-		if err != nil {
-			return nil, nil, err
-		}
-		gen.AddConstant(v)
-		return block, []ssa.Variable{v}, nil
+		gen.AddConstant(constVal)
+		return block, []ssa.Variable{constVal}, nil
 	}
 
 	block, lArr, err := ast.Left.SSA(block, ctx, gen)
@@ -935,12 +927,11 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			from, to)
 	}
 
-	indexType := types.Uint32
-	fromConst, _, err := gen.Constant(from, indexType)
+	fromConst, _, err := gen.Constant(from, types.Uint32)
 	if err != nil {
 		return nil, nil, err
 	}
-	toConst, _, err := gen.Constant(to, indexType)
+	toConst, _, err := gen.Constant(to, types.Uint32)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1022,12 +1013,11 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		from := int32(index * expr.Type.ArrayElement.Bits)
 		to := int32((index + 1) * expr.Type.ArrayElement.Bits)
 
-		indexType := types.Uint32
-		fromConst, _, err := gen.Constant(from, indexType)
+		fromConst, _, err := gen.Constant(from, types.Uint32)
 		if err != nil {
 			return nil, nil, err
 		}
-		toConst, _, err := gen.Constant(to, indexType)
+		toConst, _, err := gen.Constant(to, types.Uint32)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1079,12 +1069,12 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 			MinBits: field.Type.Bits,
 		})
 
-		fromConst, _, err := gen.Constant(int32(field.Type.Offset), t.Type)
+		fromConst, _, err := gen.Constant(int32(field.Type.Offset), types.Int32)
 		if err != nil {
 			return nil, nil, err
 		}
 		toConst, _, err := gen.Constant(
-			int32(field.Type.Offset+field.Type.Bits), t.Type)
+			int32(field.Type.Offset+field.Type.Bits), types.Int32)
 		if err != nil {
 			return nil, nil, err
 		}
