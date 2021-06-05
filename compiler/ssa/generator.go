@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020, 2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,6 +8,8 @@ package ssa
 
 import (
 	"fmt"
+	"math/big"
+	"strings"
 
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -167,4 +169,185 @@ func (gen *Generator) BranchBlock(b *Block) *Block {
 	n.Bindings = b.Bindings.Clone()
 	b.SetBranch(n)
 	return n
+}
+
+// Constant creates a constant variable for the argument value. Type
+// info is optional. If it is undefined, the type info will be
+// resolved from the constant value.
+func (gen *Generator) Constant(value interface{}, ti types.Info) (
+	Variable, bool, error) {
+
+	v := Variable{
+		Const:      true,
+		ConstValue: value,
+	}
+	switch val := value.(type) {
+	case int32:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 32; minBits++ {
+			if (0xffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.Uint,
+			Bits:    32,
+			MinBits: minBits,
+		}
+
+	case int64:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 64; minBits++ {
+			if (0xffffffffffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		var bits int
+		if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.Uint,
+			Bits:    bits,
+			MinBits: minBits,
+		}
+
+	case uint64:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 64; minBits++ {
+			if (0xffffffffffffffff<<minBits)&val == 0 {
+				break
+			}
+		}
+
+		var bits int
+		if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.Uint,
+			Bits:    bits,
+			MinBits: minBits,
+		}
+
+	case *big.Int:
+		v.Name = fmt.Sprintf("$%s", val.String())
+		if val.Sign() == -1 {
+			v.Type = types.Info{
+				Type: types.Int,
+			}
+		} else {
+			v.Type = types.Info{
+				Type: types.Uint,
+			}
+		}
+		minBits := val.BitLen()
+		var bits int
+		if minBits > 64 {
+			bits = minBits
+		} else if minBits > 32 {
+			bits = 64
+		} else {
+			bits = 32
+		}
+
+		v.Type.Bits = bits
+		v.Type.MinBits = minBits
+
+	case bool:
+		v.Name = fmt.Sprintf("$%v", val)
+		v.Type = types.Info{
+			Type:    types.Bool,
+			Bits:    1,
+			MinBits: 1,
+		}
+
+	case string:
+		v.Name = fmt.Sprintf("$%q", val)
+		bits := len([]byte(val)) * types.ByteBits
+
+		v.Type = types.Info{
+			Type:    types.String,
+			Bits:    bits,
+			MinBits: bits,
+		}
+
+	case []interface{}:
+		var bits int
+		var length string
+		var name string
+
+		if len(val) > 0 {
+			ev, ok, err := gen.Constant(val[0], types.UndefinedInfo)
+			if err != nil {
+				return v, false, err
+			}
+			if !ok {
+				return v, false, fmt.Errorf("array element is not constant")
+			}
+			bits = ev.Type.Bits * len(val)
+			name = ev.Type.String()
+			length = fmt.Sprintf("%d", len(val))
+		} else {
+			name = "interface{}"
+		}
+
+		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, arrayString(val))
+		if ti.Undefined() {
+			v.Type = types.Info{
+				Type:    types.Array,
+				Bits:    bits,
+				MinBits: bits,
+				// XXX this is wrong
+				ArrayElement: &types.Info{Type: types.Int, Bits: 32},
+				ArraySize:    len(val),
+			}
+		} else {
+			v.Type = ti
+			v.Type.Bits = len(val) * ti.ArrayElement.Bits
+			v.Type.MinBits = ti.Bits
+		}
+
+	case types.Info:
+		v.Name = fmt.Sprintf("$%s", val)
+		v.Type = val
+		v.TypeRef = true
+
+	case Variable:
+		if !val.Const {
+			return v, false, fmt.Errorf("value %v (%T) is not constant",
+				val, val)
+		}
+		v = val
+
+	default:
+		return v, false,
+			fmt.Errorf("Generator.Constant: %v (%T) not implemented yet",
+				val, val)
+	}
+	v.ID = gen.nextVariableID()
+
+	return v, true, nil
+}
+
+func arrayString(arr []interface{}) string {
+	var parts []string
+	for _, part := range arr {
+		parts = append(parts, fmt.Sprintf("%v", part))
+	}
+	return strings.Join(parts, ",")
 }

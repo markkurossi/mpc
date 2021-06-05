@@ -100,7 +100,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	if !ok {
 		return nil, nil, ctx.Errorf(ast.Init, "init value is not constant")
 	}
-	constVar, err := ssa.Constant(gen, constVal, typeInfo)
+	constVar, _, err := gen.Constant(constVal, typeInfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -149,7 +149,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			if err != nil {
 				return nil, nil, ctx.Errorf(ast, "%s", err)
 			}
-			init, err = ssa.Constant(gen, initVal, typeInfo)
+			init, _, err = gen.Constant(initVal, typeInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -209,7 +209,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			return nil, nil, err
 		}
 		if ok {
-			constVar, err := ssa.Constant(gen, constVal, types.UndefinedInfo)
+			constVar, _, err := gen.Constant(constVal, types.UndefinedInfo)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -309,11 +309,11 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					Bits:    32,
 					MinBits: 32,
 				}
-				fromConst, err := ssa.Constant(gen, from, indexType)
+				fromConst, _, err := gen.Constant(from, indexType)
 				if err != nil {
 					return nil, nil, err
 				}
-				toConst, err := ssa.Constant(gen, to, indexType)
+				toConst, _, err := gen.Constant(to, indexType)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -348,7 +348,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if ok {
 		block.Bindings = env.Bindings
-		val, ok := constVal.(bool)
+		val, ok := constVal.ConstValue.(bool)
 		if !ok {
 			return nil, nil, ctx.Errorf(ast.Expr,
 				"condition is not boolean expression")
@@ -725,7 +725,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.Cond,
 				"condition is not compile-time constant: %s", ast.Cond)
 		}
-		val, ok := constVal.(bool)
+		val, ok := constVal.ConstValue.(bool)
 		if !ok {
 			return nil, nil, ctx.Errorf(ast.Cond,
 				"condition is not boolean expression")
@@ -771,7 +771,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			fmt.Printf("ConstFold: %v %s %v => %v\n",
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
-		v, err := ssa.Constant(gen, constVal, types.UndefinedInfo)
+		v, _, err := gen.Constant(constVal, types.UndefinedInfo)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -944,11 +944,11 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		Bits:    32,
 		MinBits: 32,
 	}
-	fromConst, err := ssa.Constant(gen, from, indexType)
+	fromConst, _, err := gen.Constant(from, indexType)
 	if err != nil {
 		return nil, nil, err
 	}
-	toConst, err := ssa.Constant(gen, to, indexType)
+	toConst, _, err := gen.Constant(to, indexType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1008,11 +1008,11 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			Bits:    types.ByteBits,
 			MinBits: types.ByteBits,
 		}
-		fromConst, err := ssa.Constant(gen, from, indexType)
+		fromConst, _, err := gen.Constant(from, indexType)
 		if err != nil {
 			return nil, nil, err
 		}
-		toConst, err := ssa.Constant(gen, to, indexType)
+		toConst, _, err := gen.Constant(to, indexType)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1035,11 +1035,11 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			Bits:    32,
 			MinBits: 32,
 		}
-		fromConst, err := ssa.Constant(gen, from, indexType)
+		fromConst, _, err := gen.Constant(from, indexType)
 		if err != nil {
 			return nil, nil, err
 		}
-		toConst, err := ssa.Constant(gen, to, indexType)
+		toConst, _, err := gen.Constant(to, indexType)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1091,11 +1091,11 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 			MinBits: field.Type.Bits,
 		})
 
-		fromConst, err := ssa.Constant(gen, int32(field.Type.Offset), t.Type)
+		fromConst, _, err := gen.Constant(int32(field.Type.Offset), t.Type)
 		if err != nil {
 			return nil, nil, err
 		}
-		toConst, err := ssa.Constant(gen,
+		toConst, _, err := gen.Constant(
 			int32(field.Type.Offset+field.Type.Bits), t.Type)
 		if err != nil {
 			return nil, nil, err
@@ -1139,7 +1139,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
 
-	v, err := ssa.Constant(gen, ast.Value, types.UndefinedInfo)
+	v, _, err := gen.Constant(ast.Value, types.UndefinedInfo)
 	if err != nil {
 		return nil, nil, err
 	}

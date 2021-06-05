@@ -40,7 +40,7 @@ type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 // Eval implements the builtin evaluation in constant folding.
 type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, bool, error)
+	loc utils.Point) (ssa.Variable, bool, error)
 
 // Predeclared identifiers.
 var builtins = []Builtin{
@@ -89,7 +89,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			args[0].Type)
 	}
 
-	v, err := ssa.Constant(gen, int32(val), types.UndefinedInfo)
+	v, _, err := gen.Constant(int32(val), types.UndefinedInfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -99,10 +99,10 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 }
 
 func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, bool, error) {
+	loc utils.Point) (ssa.Variable, bool, error) {
 
 	if len(args) != 1 {
-		return nil, false, ctx.Errorf(loc,
+		return ssa.Undefined, false, ctx.Errorf(loc,
 			"invalid amount of arguments in call to len")
 	}
 
@@ -115,46 +115,48 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			var pkg *Package
 			pkg, ok = ctx.Packages[arg.Name.Package]
 			if !ok {
-				return nil, false, ctx.Errorf(loc, "package '%s' not found",
-					arg.Name.Package)
+				return ssa.Undefined, false, ctx.Errorf(loc,
+					"package '%s' not found", arg.Name.Package)
 			}
 			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
 			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
-			return nil, false, ctx.Errorf(loc, "undefined variable '%s'",
-				arg.Name.String())
+			return ssa.Undefined, false, ctx.Errorf(loc,
+				"undefined variable '%s'", arg.Name.String())
 		}
 
 		switch b.Type.Type {
 		case types.String:
-			return int32(b.Type.Bits / types.ByteBits), true, nil
+			return gen.Constant(int32(b.Type.Bits/types.ByteBits),
+				types.UndefinedInfo)
 
 		case types.Array:
-			return int32(b.Type.ArraySize), true, nil
+			return gen.Constant(int32(b.Type.ArraySize), types.UndefinedInfo)
 
 		default:
-			return nil, false, ctx.Errorf(loc,
+			return ssa.Undefined, false, ctx.Errorf(loc,
 				"invalid argument 1 (type %s) for len", b.Type)
 		}
 
 	default:
-		return nil, false, ctx.Errorf(loc, "len(%v/%T) is not constant",
-			arg, arg)
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"len(%v/%T) is not constant", arg, arg)
 	}
 }
 
 func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, bool, error) {
+	loc utils.Point) (ssa.Variable, bool, error) {
 
 	if len(args) != 2 {
-		return nil, false, ctx.Errorf(loc,
+		return ssa.Undefined, false, ctx.Errorf(loc,
 			"invalid amount of argument in call to make")
 	}
 	ref, ok := args[0].(*VariableRef)
 	if !ok {
-		return nil, false, ctx.Errorf(args[0], "%s is not a type", args[0])
+		return ssa.Undefined, false, ctx.Errorf(args[0], "%s is not a type",
+			args[0])
 	}
 	ti := TypeInfo{
 		Type: TypeName,
@@ -162,30 +164,31 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	}
 	typeInfo, err := ti.Resolve(env, ctx, gen)
 	if err != nil {
-		return nil, false, ctx.Errorf(args[0], "%s is not a type", args[0])
+		return ssa.Undefined, false, ctx.Errorf(args[0], "%s is not a type",
+			args[0])
 	}
 	if typeInfo.Bits != 0 {
-		return nil, false, ctx.Errorf(args[0], "can't make specified type %s",
-			typeInfo)
+		return ssa.Undefined, false, ctx.Errorf(args[0],
+			"can't make specified type %s", typeInfo)
 	}
 
 	constVal, _, err := args[1].Eval(env, ctx, gen)
 	if err != nil {
-		return nil, false, ctx.Errorf(args[1], "%s", err)
+		return ssa.Undefined, false, ctx.Errorf(args[1], "%s", err)
 	}
 
 	var bits int
-	switch val := constVal.(type) {
+	switch val := constVal.ConstValue.(type) {
 	case int32:
 		bits = int(val)
 
 	default:
-		return nil, false, ctx.Errorf(loc,
+		return ssa.Undefined, false, ctx.Errorf(loc,
 			"non-integer (%T) len argument in make(%s)", val, typeInfo)
 	}
 	typeInfo.Bits = bits
 
-	return typeInfo, true, nil
+	return gen.Constant(typeInfo, types.UndefinedInfo)
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -285,7 +288,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to size")
 	}
 
-	v, err := ssa.Constant(gen, int32(args[0].Type.Bits), types.UndefinedInfo)
+	v, _, err := gen.Constant(int32(args[0].Type.Bits), types.UndefinedInfo)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -295,10 +298,10 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 }
 
 func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (interface{}, bool, error) {
+	loc utils.Point) (ssa.Variable, bool, error) {
 
 	if len(args) != 1 {
-		return nil, false, ctx.Errorf(loc,
+		return ssa.Undefined, false, ctx.Errorf(loc,
 			"invalid amount of arguments in call to size")
 	}
 
@@ -311,21 +314,21 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			var pkg *Package
 			pkg, ok = ctx.Packages[arg.Name.Package]
 			if !ok {
-				return nil, false, ctx.Errorf(loc, "package '%s' not found",
-					arg.Name.Package)
+				return ssa.Undefined, false, ctx.Errorf(loc,
+					"package '%s' not found", arg.Name.Package)
 			}
 			b, ok = pkg.Bindings.Get(arg.Name.Name)
 		} else {
 			b, ok = env.Get(arg.Name.Name)
 		}
 		if !ok {
-			return nil, false, ctx.Errorf(loc, "undefined variable '%s'",
-				arg.Name.String())
+			return ssa.Undefined, false, ctx.Errorf(loc,
+				"undefined variable '%s'", arg.Name.String())
 		}
-		return int32(b.Type.Bits), true, nil
+		return gen.Constant(int32(b.Type.Bits), types.UndefinedInfo)
 
 	default:
-		return nil, false, ctx.Errorf(loc, "size(%v/%T) is not constant",
-			arg, arg)
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"size(%v/%T) is not constant", arg, arg)
 	}
 }

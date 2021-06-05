@@ -145,7 +145,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"array length is not constant: %s", ti.ArrayLength)
 		}
 		var length int
-		switch l := constLength.(type) {
+		switch l := constLength.ConstValue.(type) {
 		case int:
 			length = l
 		case int32:
@@ -231,7 +231,7 @@ type AST interface {
 		*ssa.Block, []ssa.Variable, error)
 	// Eval evaluates the AST node during constant propagation.
 	Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-		value interface{}, isConstant bool, err error)
+		value ssa.Variable, isConstant bool, err error)
 }
 
 // NewEnv creates a new environment based on the current environment

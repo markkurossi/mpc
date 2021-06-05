@@ -18,58 +18,64 @@ import (
 
 // Eval implements the compiler.ast.AST.Eval for list statements.
 func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return nil, false, fmt.Errorf("List.Eval not implemented yet")
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, fmt.Errorf("List.Eval not implemented yet")
 }
 
 // Eval implements the compiler.ast.AST.Eval for function definitions.
 func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return nil, false, nil
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant definitions.
 func (ast *ConstantDef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, bool, error) {
-	return nil, false, nil
+	gen *ssa.Generator) (ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for variable definitions.
 func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, bool, error) {
-	return nil, false, nil
+	gen *ssa.Generator) (ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for assignment expressions.
 func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 
 	var values []interface{}
 	for _, expr := range ast.Exprs {
 		val, ok, err := expr.Eval(env, ctx, gen)
 		if err != nil || !ok {
-			return nil, ok, err
+			return ssa.Undefined, ok, err
 		}
 		// XXX multiple return values.
 		values = append(values, val)
 	}
 
 	if len(ast.LValues) != len(values) {
-		return nil, false, ctx.Errorf(ast,
+		return ssa.Undefined, false, ctx.Errorf(ast,
 			"assignment mismatch: %d variables but %d values",
 			len(ast.LValues), len(values))
 	}
 
+	arrType := types.Info{
+		Type: types.Array,
+	}
+
 	for idx, lv := range ast.LValues {
-		constVal, err := ssa.Constant(gen, values[idx], types.UndefinedInfo)
+		constVal, _, err := gen.Constant(values[idx], types.UndefinedInfo)
 		if err != nil {
-			return nil, false, err
+			return ssa.Undefined, false, err
 		}
 		gen.AddConstant(constVal)
+		arrType.ArrayElement = &constVal.Type
 
 		ref, ok := lv.(*VariableRef)
 		if !ok {
-			return nil, false, ctx.Errorf(ast, "cannot assign to %s", lv)
+			return ssa.Undefined, false,
+				ctx.Errorf(ast, "cannot assign to %s", lv)
 		}
 		// XXX package.name below
 
@@ -77,34 +83,35 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		if ast.Define {
 			lValue, err = gen.NewVar(ref.Name.Name, constVal.Type, ctx.Scope())
 			if err != nil {
-				return nil, false, err
+				return ssa.Undefined, false, err
 			}
 		} else {
 			b, ok := env.Get(ref.Name.Name)
 			if !ok {
-				return nil, false, ctx.Errorf(ast, "undefined variable '%s'",
-					ref.Name)
+				return ssa.Undefined, false,
+					ctx.Errorf(ast, "undefined variable '%s'", ref.Name)
 			}
 			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
 			if err != nil {
-				return nil, false, err
+				return ssa.Undefined, false, err
 			}
 		}
 		env.Set(lValue, &constVal)
 	}
+	arrType.ArraySize = len(values)
 
-	return values, true, nil
+	return gen.Constant(values, arrType)
 }
 
 // Eval implements the compiler.ast.AST.Eval for if statements.
 func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return nil, false, nil
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for call expressions.
 func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 
 	// Resolve called.
 	var pkgName string
@@ -115,11 +122,12 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	pkg, ok := ctx.Packages[pkgName]
 	if !ok {
-		return nil, false, ctx.Errorf(ast, "package '%s' not found", pkgName)
+		return ssa.Undefined, false,
+			ctx.Errorf(ast, "package '%s' not found", pkgName)
 	}
 	_, ok = pkg.Functions[ast.Ref.Name.Name]
 	if ok {
-		return nil, false, nil
+		return ssa.Undefined, false, nil
 	}
 	// Check builtin functions.
 	for _, bi := range builtins {
@@ -127,148 +135,148 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			continue
 		}
 		if bi.Type != BuiltinFunc {
-			return nil, false, fmt.Errorf("builtin %s used as function",
-				bi.Name)
+			return ssa.Undefined, false,
+				fmt.Errorf("builtin %s used as function", bi.Name)
 		}
 		if bi.Eval == nil {
-			return nil, false, nil
+			return ssa.Undefined, false, nil
 		}
 		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
 	}
 
-	return nil, false, nil
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for return statements.
 func (ast *Return) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return nil, false, nil
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for for statements.
 func (ast *For) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return nil, false, nil
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for binary expressions.
 func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 	l, ok, err := ast.Left.Eval(env, ctx, gen)
 	if err != nil || !ok {
-		return nil, ok, err
+		return ssa.Undefined, ok, err
 	}
 	r, ok, err := ast.Right.Eval(env, ctx, gen)
 	if err != nil || !ok {
-		return nil, ok, err
+		return ssa.Undefined, ok, err
 	}
 
-	switch lval := l.(type) {
+	switch lval := l.ConstValue.(type) {
 	case int32:
 		var rval int32
-		switch rv := r.(type) {
+		switch rv := r.ConstValue.(type) {
 		case int32:
 			rval = rv
 		default:
-			return nil, false, ctx.Errorf(ast.Right, "invalid r-value %T %s %T",
-				lval, ast.Op, rv)
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"invalid r-value %T %s %T", lval, ast.Op, rv)
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return lval * rval, true, nil
+			return gen.Constant(lval*rval, types.UndefinedInfo)
 		case BinaryDiv:
 			if rval == 0 {
-				return nil, false, ctx.Errorf(ast.Right,
+				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return lval / rval, true, nil
+			return gen.Constant(lval/rval, types.UndefinedInfo)
 		case BinaryMod:
 			if rval == 0 {
-				return nil, false, ctx.Errorf(ast.Right,
+				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return lval % rval, true, nil
+			return gen.Constant(lval%rval, types.UndefinedInfo)
 		case BinaryLshift:
-			return lval << rval, true, nil
+			return gen.Constant(lval<<rval, types.UndefinedInfo)
 		case BinaryRshift:
-			return lval >> rval, true, nil
+			return gen.Constant(lval>>rval, types.UndefinedInfo)
 
 		case BinaryPlus:
-			return lval + rval, true, nil
+			return gen.Constant(lval+rval, types.UndefinedInfo)
 		case BinaryMinus:
-			return lval - rval, true, nil
+			return gen.Constant(lval-rval, types.UndefinedInfo)
 
 		case BinaryEq:
-			return lval == rval, true, nil
+			return gen.Constant(lval == rval, types.UndefinedInfo)
 		case BinaryNeq:
-			return lval != rval, true, nil
+			return gen.Constant(lval != rval, types.UndefinedInfo)
 		case BinaryLt:
-			return lval < rval, true, nil
+			return gen.Constant(lval < rval, types.UndefinedInfo)
 		case BinaryLe:
-			return lval <= rval, true, nil
+			return gen.Constant(lval <= rval, types.UndefinedInfo)
 		case BinaryGt:
-			return lval > rval, true, nil
+			return gen.Constant(lval > rval, types.UndefinedInfo)
 		case BinaryGe:
-			return lval >= rval, true, nil
+			return gen.Constant(lval >= rval, types.UndefinedInfo)
 		default:
-			return nil, false, ctx.Errorf(ast.Right,
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	case uint64:
 		var rval uint64
-		switch rv := r.(type) {
+		switch rv := r.ConstValue.(type) {
 		case uint64:
 			rval = rv
 		default:
-			return nil, false, ctx.Errorf(ast.Right,
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"%T: invalid r-value %v (%T)", lval, rv, rv)
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return lval * rval, true, nil
+			return gen.Constant(lval*rval, types.UndefinedInfo)
 		case BinaryDiv:
 			if rval == 0 {
-				return nil, false, ctx.Errorf(ast.Right,
+				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return lval / rval, true, nil
+			return gen.Constant(lval/rval, types.UndefinedInfo)
 		case BinaryMod:
 			if rval == 0 {
-				return nil, false, ctx.Errorf(ast.Right,
+				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return lval % rval, true, nil
+			return gen.Constant(lval%rval, types.UndefinedInfo)
 		case BinaryLshift:
-			return lval << rval, true, nil
+			return gen.Constant(lval<<rval, types.UndefinedInfo)
 		case BinaryRshift:
-			return lval >> rval, true, nil
+			return gen.Constant(lval>>rval, types.UndefinedInfo)
 
 		case BinaryPlus:
-			return lval + rval, true, nil
+			return gen.Constant(lval+rval, types.UndefinedInfo)
 		case BinaryMinus:
-			return lval - rval, true, nil
+			return gen.Constant(lval-rval, types.UndefinedInfo)
 
 		case BinaryEq:
-			return lval == rval, true, nil
+			return gen.Constant(lval == rval, types.UndefinedInfo)
 		case BinaryNeq:
-			return lval != rval, true, nil
+			return gen.Constant(lval != rval, types.UndefinedInfo)
 		case BinaryLt:
-			return lval < rval, true, nil
+			return gen.Constant(lval < rval, types.UndefinedInfo)
 		case BinaryLe:
-			return lval <= rval, true, nil
+			return gen.Constant(lval <= rval, types.UndefinedInfo)
 		case BinaryGt:
-			return lval > rval, true, nil
+			return gen.Constant(lval > rval, types.UndefinedInfo)
 		case BinaryGe:
-			return lval >= rval, true, nil
+			return gen.Constant(lval >= rval, types.UndefinedInfo)
 		default:
-			return nil, false, ctx.Errorf(ast.Right,
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	default:
-		return nil, false, ctx.Errorf(ast.Left, "invalid l-value %v (%T)",
-			lval, lval)
+		return ssa.Undefined, false, ctx.Errorf(ast.Left,
+			"invalid l-value %v (%T)", lval, lval)
 	}
 }
 
@@ -284,11 +292,11 @@ func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
 
 // Eval implements the compiler.ast.AST.Eval for slice expressions.
 func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 
 	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
-		return nil, ok, err
+		return ssa.Undefined, ok, err
 	}
 
 	from := 0
@@ -297,40 +305,40 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	if ast.From != nil {
 		val, ok, err := ast.From.Eval(env, ctx, gen)
 		if err != nil || !ok {
-			return nil, ok, err
+			return ssa.Undefined, ok, err
 		}
 		from, err = intVal(val)
 		if err != nil {
-			return nil, false, ctx.Errorf(ast.From, err.Error())
+			return ssa.Undefined, false, ctx.Errorf(ast.From, err.Error())
 		}
 	}
 	if ast.To != nil {
 		val, ok, err := ast.To.Eval(env, ctx, gen)
 		if err != nil || !ok {
-			return nil, ok, err
+			return ssa.Undefined, ok, err
 		}
 		to, err = intVal(val)
 		if err != nil {
-			return nil, false, ctx.Errorf(ast.To, err.Error())
+			return ssa.Undefined, false, ctx.Errorf(ast.To, err.Error())
 		}
 	}
 	if to <= from {
-		return nil, false, ctx.Errorf(ast.Expr, "invalid slice range %d:%d",
-			from, to)
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+			"invalid slice range %d:%d", from, to)
 	}
-	switch val := expr.(type) {
+	switch val := expr.ConstValue.(type) {
 	case int32:
 		if from >= 32 {
-			return nil, false, ctx.Errorf(ast.From,
+			return ssa.Undefined, false, ctx.Errorf(ast.From,
 				"slice bounds out of range [%d:32]", from)
 		}
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
-		return int32(tmp), true, nil
+		return gen.Constant(int32(tmp), types.UndefinedInfo)
 
 	default:
-		return nil, false, ctx.Errorf(ast.Expr,
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"Slice.Eval: expr %T not implemented yet", val)
 	}
 }
@@ -346,32 +354,32 @@ func intVal(val interface{}) (int, error) {
 
 // Eval implements the compiler.ast.AST.Eval() for index expressions.
 func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 
 	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
-		return nil, ok, err
+		return ssa.Undefined, ok, err
 	}
 
 	val, ok, err := ast.Index.Eval(env, ctx, gen)
 	if err != nil || !ok {
-		return nil, ok, err
+		return ssa.Undefined, ok, err
 	}
 	_, err = intVal(val)
 	if err != nil {
-		return nil, false, ctx.Errorf(ast.Index, err.Error())
+		return ssa.Undefined, false, ctx.Errorf(ast.Index, err.Error())
 	}
 
-	switch val := expr.(type) {
+	switch val := expr.ConstValue.(type) {
 	default:
-		return nil, false, ctx.Errorf(ast.Expr,
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"Index.Eval: expr %T not implemented yet", val)
 	}
 }
 
 // Eval implements the compiler.ast.AST.Eval for variable references.
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (interface{}, bool, error) {
+	gen *ssa.Generator) (ssa.Variable, bool, error) {
 
 	var b ssa.Binding
 	var ok bool
@@ -382,47 +390,48 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 		// Bound. We are selecting value from its value.
 		val, ok := b.Bound.(*ssa.Variable)
 		if !ok || !val.Const {
-			return nil, false, nil
+			return ssa.Undefined, false, nil
 		}
-		return nil, false, ctx.Errorf(ast, "select not implemented yet")
+		return ssa.Undefined, false, ctx.Errorf(ast,
+			"select not implemented yet")
 	}
 
 	if len(ast.Name.Package) > 0 {
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
-			return nil, false, ctx.Errorf(ast, "package '%s' not found",
-				ast.Name.Package)
+			return ssa.Undefined, false, ctx.Errorf(ast,
+				"package '%s' not found", ast.Name.Package)
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
 		b, ok = env.Get(ast.Name.Name)
 	}
 	if !ok {
-		return nil, false, ctx.Errorf(ast, "undefined variable '%s'",
+		return ssa.Undefined, false, ctx.Errorf(ast, "undefined variable '%s'",
 			ast.Name.String())
 	}
 
 	val, ok := b.Bound.(*ssa.Variable)
 	if !ok || !val.Const {
-		return nil, false, nil
+		return ssa.Undefined, false, nil
 	}
 
-	return val.ConstValue, true, nil
+	return *val, true, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
-	return ast.Value, true, nil
+	ssa.Variable, bool, error) {
+	return gen.Constant(ast.Value, types.UndefinedInfo)
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	interface{}, bool, error) {
+	ssa.Variable, bool, error) {
 	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
 	if err != nil {
-		return nil, false, err
+		return ssa.Undefined, false, err
 	}
 	switch typeInfo.Type {
 	case types.Array:
@@ -433,16 +442,16 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 			v, ok, err := el.Element.Eval(env, ctx, gen)
 			if err != nil || !ok {
-				return nil, ok, err
+				return ssa.Undefined, ok, err
 			}
 			// XXX check that v is assignment compatible with array.
 			values = append(values, v)
 		}
-		return values, true, nil
+		return gen.Constant(values, typeInfo)
 
 	default:
 		fmt.Printf("CompositeLit.Eval: not implemented yet: %v, Value: %v\n",
 			typeInfo, ast.Value)
-		return nil, false, nil
+		return ssa.Undefined, false, nil
 	}
 }
