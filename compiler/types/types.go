@@ -87,6 +87,20 @@ var UndefinedInfo = Info{
 	Type: Undefined,
 }
 
+// Int32 defines type info for signed 32bit integers.
+var Int32 = Info{
+	Type:    Int,
+	Bits:    32,
+	MinBits: 32,
+}
+
+// Uint64 defines type info for unsigned 64bit integers.
+var Uint64 = Info{
+	Type:    Uint,
+	Bits:    64,
+	MinBits: 64,
+}
+
 // StructField defines a structure field name and type.
 type StructField struct {
 	Name string

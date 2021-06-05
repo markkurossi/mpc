@@ -183,41 +183,41 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return gen.Constant(lval*rval, types.UndefinedInfo)
+			return gen.Constant(lval*rval, types.Int32)
 		case BinaryDiv:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval/rval, types.UndefinedInfo)
+			return gen.Constant(lval/rval, types.Int32)
 		case BinaryMod:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval%rval, types.UndefinedInfo)
+			return gen.Constant(lval%rval, types.Int32)
 		case BinaryLshift:
-			return gen.Constant(lval<<rval, types.UndefinedInfo)
+			return gen.Constant(lval<<rval, types.Int32)
 		case BinaryRshift:
-			return gen.Constant(lval>>rval, types.UndefinedInfo)
+			return gen.Constant(lval>>rval, types.Int32)
 
 		case BinaryPlus:
-			return gen.Constant(lval+rval, types.UndefinedInfo)
+			return gen.Constant(lval+rval, types.Int32)
 		case BinaryMinus:
-			return gen.Constant(lval-rval, types.UndefinedInfo)
+			return gen.Constant(lval-rval, types.Int32)
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.UndefinedInfo)
+			return gen.Constant(lval == rval, types.Int32)
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.UndefinedInfo)
+			return gen.Constant(lval != rval, types.Int32)
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.UndefinedInfo)
+			return gen.Constant(lval < rval, types.Int32)
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.UndefinedInfo)
+			return gen.Constant(lval <= rval, types.Int32)
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.UndefinedInfo)
+			return gen.Constant(lval > rval, types.Int32)
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.UndefinedInfo)
+			return gen.Constant(lval >= rval, types.Int32)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -234,41 +234,41 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return gen.Constant(lval*rval, types.UndefinedInfo)
+			return gen.Constant(lval*rval, types.Uint64)
 		case BinaryDiv:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval/rval, types.UndefinedInfo)
+			return gen.Constant(lval/rval, types.Uint64)
 		case BinaryMod:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval%rval, types.UndefinedInfo)
+			return gen.Constant(lval%rval, types.Uint64)
 		case BinaryLshift:
-			return gen.Constant(lval<<rval, types.UndefinedInfo)
+			return gen.Constant(lval<<rval, types.Uint64)
 		case BinaryRshift:
-			return gen.Constant(lval>>rval, types.UndefinedInfo)
+			return gen.Constant(lval>>rval, types.Uint64)
 
 		case BinaryPlus:
-			return gen.Constant(lval+rval, types.UndefinedInfo)
+			return gen.Constant(lval+rval, types.Uint64)
 		case BinaryMinus:
-			return gen.Constant(lval-rval, types.UndefinedInfo)
+			return gen.Constant(lval-rval, types.Uint64)
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.UndefinedInfo)
+			return gen.Constant(lval == rval, types.Uint64)
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.UndefinedInfo)
+			return gen.Constant(lval != rval, types.Uint64)
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.UndefinedInfo)
+			return gen.Constant(lval < rval, types.Uint64)
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.UndefinedInfo)
+			return gen.Constant(lval <= rval, types.Uint64)
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.UndefinedInfo)
+			return gen.Constant(lval > rval, types.Uint64)
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.UndefinedInfo)
+			return gen.Constant(lval >= rval, types.Uint64)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -335,7 +335,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
-		return gen.Constant(int32(tmp), types.UndefinedInfo)
+		return gen.Constant(int32(tmp), types.Int32)
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
