@@ -59,7 +59,7 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 	}
 	if token.Type == TSymImport {
 		imports := make(map[string]string)
-		_, err = p.needToken(TLParen)
+		_, err = p.needToken('(')
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +68,7 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == TRParen {
+			if t.Type == ')' {
 				break
 			}
 
@@ -235,13 +235,13 @@ func (p *Parser) parseGlobalVar(isConst bool) error {
 	case TIdentifier:
 		return p.parseGlobalVarDef(token, isConst)
 
-	case TLParen:
+	case '(':
 		for {
 			t, err := p.lexer.Get()
 			if err != nil {
 				return err
 			}
-			if t.Type == TRParen {
+			if t.Type == ')' {
 				return nil
 			}
 			err = p.parseGlobalVarDef(t, isConst)
@@ -265,13 +265,13 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 		return err
 	}
 	var varType *ast.TypeInfo
-	if t.Type != TAssign {
+	if t.Type != '=' {
 		p.lexer.Unget(t)
 		varType, err = p.parseType()
 		if err != nil {
 			return err
 		}
-		_, err = p.needToken(TAssign)
+		_, err = p.needToken('=')
 		if err != nil {
 			return nil
 		}
@@ -312,7 +312,7 @@ func (p *Parser) parseTypeDecl() error {
 	switch t.Type {
 	case TSymStruct:
 		loc := t.From
-		_, err := p.needToken(TLBrace)
+		_, err := p.needToken('{')
 		if err != nil {
 		}
 		var fields []ast.StructField
@@ -365,7 +365,7 @@ func (p *Parser) parseTypeDecl() error {
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
 
-	case TAssign:
+	case '=':
 		ti, err := p.parseType()
 		if err != nil {
 			return err
@@ -398,7 +398,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		return nil, err
 	}
 
-	_, err = p.needToken(TLParen)
+	_, err = p.needToken('(')
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +411,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 	if err != nil {
 		return nil, err
 	}
-	if t.Type != TRParen {
+	if t.Type != ')' {
 		p.lexer.Unget(t)
 		for {
 			t, err = p.needToken(TIdentifier)
@@ -455,7 +455,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == TRParen {
+			if t.Type == ')' {
 				break
 			}
 			if t.Type != TComma {
@@ -472,7 +472,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		return nil, err
 	}
 	switch n.Type {
-	case TLParen:
+	case '(':
 		for {
 			typeInfo, err := p.parseType()
 			if err != nil {
@@ -486,19 +486,19 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if n.Type == TRParen {
+			if n.Type == ')' {
 				break
 			}
 			if n.Type != TComma {
 				return nil, p.errUnexpected(n, TComma)
 			}
 		}
-		_, err = p.needToken(TLBrace)
+		_, err = p.needToken('{')
 		if err != nil {
 			return nil, err
 		}
 
-	case TLBrace:
+	case '{':
 
 	default:
 		p.lexer.Unget(n)
@@ -510,7 +510,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			Point: n.From,
 			Type:  typeInfo,
 		})
-		_, err = p.needToken(TLBrace)
+		_, err = p.needToken('{')
 		if err != nil {
 			return nil, err
 		}
@@ -579,7 +579,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		var expr ast.AST
-		if t.Type == TAssign {
+		if t.Type == '=' {
 			// Initializer.
 			expr, err = p.parseExpr(needLBrace)
 			if err != nil {
@@ -601,7 +601,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(TLBrace)
+		_, err = p.needToken('{')
 		if err != nil {
 			return nil, err
 		}
@@ -617,7 +617,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}
 		if t.Type == TSymElse {
 			// XXX parse IfStmt
-			_, err = p.needToken(TLBrace)
+			_, err = p.needToken('{')
 			if err != nil {
 				return nil, err
 			}
@@ -684,7 +684,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(TLBrace)
+		_, err = p.needToken('{')
 		if err != nil {
 			return nil, err
 		}
@@ -711,7 +711,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case TAssign, TDefAssign:
+		case '=', TDefAssign:
 			values, err := p.parseExprList(needLBrace)
 			if err != nil {
 				return nil, err
@@ -913,7 +913,7 @@ func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case TPlus, TMinus, TBitOr, TBitXor:
+		case '+', '-', TBitOr, TBitXor:
 			right, err := p.parseExprMultiplicative(needLBrace)
 			if err != nil {
 				return nil, err
@@ -943,7 +943,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case TMult, TDiv, TMod, TLshift, TRshift, TBitAnd, TBitClear:
+		case '*', '/', '%', TLshift, TRshift, TBitAnd, TBitClear:
 			right, err := p.parseExprUnary(needLBrace)
 			if err != nil {
 				return nil, err
@@ -969,7 +969,7 @@ func (p *Parser) parseExprUnary(needLBrace bool) (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case TPlus, TMinus, TNot, TBitXor, TMult, TBitAnd, TSend:
+	case '+', '-', TNot, TBitXor, '*', TBitAnd, TSend:
 		expr, err := p.parseExprUnary(needLBrace)
 		if err != nil {
 			return nil, err
@@ -1072,7 +1072,7 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				To:    expr2,
 			}, nil
 
-		case TLParen:
+		case '(':
 			// Arguments.
 			var arguments []ast.AST
 			for {
@@ -1086,7 +1086,7 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				if n.Type == TRParen {
+				if n.Type == ')' {
 					break
 				} else if n.Type != TComma {
 					return nil, p.errf(n.From, "unexpected token %s", n)
@@ -1177,7 +1177,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n.Type != TLBrace {
+		if n.Type != '{' {
 			p.lexer.Unget(n)
 			return operandName, nil
 		}
@@ -1231,12 +1231,12 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		}
 		return composite, nil
 
-	case TLParen: // '(' Expression ')'
+	case '(': // '(' Expression ')'
 		expr, err := p.parseExpr(false)
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(TRParen)
+		_, err = p.needToken(')')
 		if err != nil {
 			return nil, err
 		}

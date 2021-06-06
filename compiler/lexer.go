@@ -26,7 +26,7 @@ type TokenType int
 
 // Input tokens.
 const (
-	TIdentifier TokenType = iota
+	TIdentifier TokenType = 256 + iota
 	TConstant
 	TSymPackage
 	TSymImport
@@ -39,24 +39,15 @@ const (
 	TSymConst
 	TSymType
 	TSymFor
-	TAssign
 	TDefAssign
-	TMult
 	TMultEq
-	TDiv
 	TDivEq
-	TMod
 	TLshift
 	TRshift
-	TPlus
 	TPlusPlus
 	TPlusEq
-	TMinus
 	TMinusMinus
 	TMinusEq
-	TLParen
-	TRParen
-	TLBrace
 	TRBrace
 	TLBracket
 	TRBracket
@@ -94,24 +85,24 @@ var tokenTypes = map[TokenType]string{
 	TSymConst:   "const",
 	TSymType:    "type",
 	TSymFor:     "for",
-	TAssign:     "=",
+	'=':         "=",
 	TDefAssign:  ":=",
-	TMult:       "*",
+	'*':         "*",
 	TMultEq:     "*=",
-	TDiv:        "/",
+	'/':         "/",
 	TDivEq:      "/=",
-	TMod:        "%",
+	'%':         "%",
 	TLshift:     "<<",
 	TRshift:     ">>",
-	TPlus:       "+",
+	'+':         "+",
 	TPlusPlus:   "++",
 	TPlusEq:     "+=",
-	TMinus:      "-",
+	'-':         "-",
 	TMinusMinus: "--",
 	TMinusEq:    "-=",
-	TLParen:     "(",
-	TRParen:     ")",
-	TLBrace:     "{",
+	'(':         "(",
+	')':         ")",
+	'{':         "{",
 	TRBrace:     "}",
 	TLBracket:   "[",
 	TRBracket:   "]",
@@ -144,11 +135,11 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	TMult:     ast.BinaryMult,
-	TPlus:     ast.BinaryPlus,
-	TMinus:    ast.BinaryMinus,
-	TDiv:      ast.BinaryDiv,
-	TMod:      ast.BinaryMod,
+	'*':       ast.BinaryMult,
+	'+':       ast.BinaryPlus,
+	'-':       ast.BinaryMinus,
+	'/':       ast.BinaryDiv,
+	'%':       ast.BinaryMod,
 	TLt:       ast.BinaryLt,
 	TLe:       ast.BinaryLe,
 	TGt:       ast.BinaryGt,
@@ -175,11 +166,11 @@ func (t TokenType) BinaryType() ast.BinaryType {
 }
 
 var unaryTypes = map[TokenType]ast.UnaryType{
-	TPlus:   ast.UnaryPlus,
-	TMinus:  ast.UnaryMinus,
+	'+':     ast.UnaryPlus,
+	'-':     ast.UnaryMinus,
 	TNot:    ast.UnaryNot,
 	TBitXor: ast.UnaryXor,
-	TMult:   ast.UnaryPtr,
+	'*':     ast.UnaryPtr,
 	TBitAnd: ast.UnaryAddr,
 	TSend:   ast.UnarySend,
 }
@@ -340,7 +331,7 @@ func (l *Lexer) Get() (*Token, error) {
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(TPlus), nil
+					return l.Token('+'), nil
 				}
 				return nil, err
 			}
@@ -351,14 +342,14 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(TPlusEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(TPlus), nil
+				return l.Token('+'), nil
 			}
 
 		case '-':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(TMinus), nil
+					return l.Token('-'), nil
 				}
 				return nil, err
 			}
@@ -369,14 +360,14 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(TMinusEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(TMinus), nil
+				return l.Token('-'), nil
 			}
 
 		case '*':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(TMult), nil
+					return l.Token('*'), nil
 				}
 				return nil, err
 			}
@@ -386,14 +377,14 @@ func (l *Lexer) Get() (*Token, error) {
 
 			default:
 				l.UnreadRune()
-				return l.Token(TMult), nil
+				return l.Token('*'), nil
 			}
 
 		case '/':
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(TDiv), nil
+					return l.Token('/'), nil
 				}
 				return nil, err
 			}
@@ -419,16 +410,16 @@ func (l *Lexer) Get() (*Token, error) {
 
 			default:
 				l.UnreadRune()
-				return l.Token(TDiv), nil
+				return l.Token('/'), nil
 			}
 		case '%':
-			return l.Token(TMod), nil
+			return l.Token('%'), nil
 		case '(':
-			return l.Token(TLParen), nil
+			return l.Token('('), nil
 		case ')':
-			return l.Token(TRParen), nil
+			return l.Token(')'), nil
 		case '{':
-			return l.Token(TLBrace), nil
+			return l.Token('{'), nil
 		case '}':
 			return l.Token(TRBrace), nil
 		case '[':
@@ -482,7 +473,7 @@ func (l *Lexer) Get() (*Token, error) {
 			r, _, err := l.ReadRune()
 			if err != nil {
 				if err == io.EOF {
-					return l.Token(TAssign), nil
+					return l.Token('='), nil
 				}
 				return nil, err
 			}
@@ -491,7 +482,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(TEq), nil
 			default:
 				l.UnreadRune()
-				return l.Token(TAssign), nil
+				return l.Token('='), nil
 			}
 
 		case ':':
