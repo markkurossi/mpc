@@ -1220,7 +1220,6 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		return expr, nil
 
 	default:
-		p.lexer.Unget(t)
 		return nil, p.errf(t.From,
 			"unexpected token '%s' while parsing expression", t)
 	}
