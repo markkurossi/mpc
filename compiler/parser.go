@@ -276,7 +276,7 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 			return nil
 		}
 	}
-	value, err := p.parseExprPrimary(false)
+	value, err := p.parseExprUnary(false)
 	if err != nil {
 		return err
 	}
@@ -933,7 +933,7 @@ func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
 }
 
 func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
-	left, err := p.parseExprPrimary(needLBrace)
+	left, err := p.parseExprUnary(needLBrace)
 	if err != nil {
 		return nil, err
 	}
@@ -944,7 +944,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 		}
 		switch t.Type {
 		case TMult, TDiv, TMod, TLshift, TRshift, TBitAnd, TBitClear:
-			right, err := p.parseExprPrimary(needLBrace)
+			right, err := p.parseExprUnary(needLBrace)
 			if err != nil {
 				return nil, err
 			}
@@ -959,6 +959,29 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 			p.lexer.Unget(t)
 			return left, nil
 		}
+	}
+}
+
+// UnaryExpr  = PrimaryExpr | unary_op UnaryExpr .
+func (p *Parser) parseExprUnary(needLBrace bool) (ast.AST, error) {
+	t, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
+	switch t.Type {
+	case TPlus, TMinus, TNot, TBitXor, TMult, TBitAnd, TSend:
+		expr, err := p.parseExprUnary(needLBrace)
+		if err != nil {
+			return nil, err
+		}
+		return &ast.Unary{
+			Type: t.Type.UnaryType(),
+			Expr: expr,
+		}, nil
+
+	default:
+		p.lexer.Unget(t)
+		return p.parseExprPrimary(needLBrace)
 	}
 }
 

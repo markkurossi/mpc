@@ -77,6 +77,7 @@ const (
 	TBitOr
 	TBitXor
 	TBitClear
+	TSend
 )
 
 var tokenTypes = map[TokenType]string{
@@ -131,6 +132,7 @@ var tokenTypes = map[TokenType]string{
 	TBitOr:      "|",
 	TBitXor:     "^",
 	TBitClear:   "&^",
+	TSend:       "<-",
 }
 
 func (t TokenType) String() string {
@@ -169,7 +171,26 @@ func (t TokenType) BinaryType() ast.BinaryType {
 	if ok {
 		return bt
 	}
-	panic(fmt.Sprintf("Invalid binary operator %s", t))
+	panic(fmt.Sprintf("invalid binary operator %s", t))
+}
+
+var unaryTypes = map[TokenType]ast.UnaryType{
+	TPlus:   ast.UnaryPlus,
+	TMinus:  ast.UnaryMinus,
+	TNot:    ast.UnaryNot,
+	TBitXor: ast.UnaryXor,
+	TMult:   ast.UnaryPtr,
+	TBitAnd: ast.UnaryAddr,
+	TSend:   ast.UnarySend,
+}
+
+// UnaryType returns token's unary type.
+func (t TokenType) UnaryType() ast.UnaryType {
+	ut, ok := unaryTypes[t]
+	if ok {
+		return ut
+	}
+	panic(fmt.Sprintf("invalid unary operator %s", t))
 }
 
 var symbols = map[string]TokenType{

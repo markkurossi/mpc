@@ -32,6 +32,7 @@ var (
 	_ AST = &Return{}
 	_ AST = &For{}
 	_ AST = &Binary{}
+	_ AST = &Unary{}
 	_ AST = &Slice{}
 	_ AST = &Index{}
 	_ AST = &VariableRef{}
@@ -473,6 +474,49 @@ type Binary struct {
 
 func (ast *Binary) String() string {
 	return fmt.Sprintf("%s %s %s", ast.Left, ast.Op, ast.Right)
+}
+
+// UnaryType defines unary expression types.
+type UnaryType int
+
+// Unary expression types.
+const (
+	UnaryPlus UnaryType = iota
+	UnaryMinus
+	UnaryNot
+	UnaryXor
+	UnaryPtr
+	UnaryAddr
+	UnarySend
+)
+
+var unaryTypes = map[UnaryType]string{
+	UnaryPlus:  "+",
+	UnaryMinus: "-",
+	UnaryNot:   "!",
+	UnaryXor:   "^",
+	UnaryPtr:   "*",
+	UnaryAddr:  "&",
+	UnarySend:  "<-",
+}
+
+func (t UnaryType) String() string {
+	name, ok := unaryTypes[t]
+	if ok {
+		return name
+	}
+	return fmt.Sprintf("{UnaryType %d}", t)
+}
+
+// Unary implements an AST unary expression.
+type Unary struct {
+	utils.Point
+	Type UnaryType
+	Expr AST
+}
+
+func (ast *Unary) String() string {
+	return fmt.Sprintf("%s%s", ast.Type, ast.Expr)
 }
 
 // Slice implements an AST slice expression.

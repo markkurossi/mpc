@@ -9,11 +9,9 @@ package ast
 import (
 	"fmt"
 	"math"
-	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
-	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 // Eval implements the compiler.ast.AST.Eval for list statements.
@@ -220,7 +218,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval >= rval, types.Bool)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
+				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	case uint64:
@@ -271,7 +269,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval >= rval, types.Bool)
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval '%T %s %T' not implemented yet", l, ast.Op, r)
+				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
 		}
 
 	default:
@@ -280,14 +278,10 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 }
 
-func bigInt(i interface{}, ctx *Codegen, loc utils.Point) (*big.Int, error) {
-	switch val := i.(type) {
-	case int:
-		return big.NewInt(int64(val)), nil
-
-	default:
-		return nil, ctx.Errorf(loc, "invalid value %v (%T)", val, val)
-	}
+// Eval implements the compiler.ast.AST.Eval for unary expressions.
+func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Variable, bool, error) {
+	return ssa.Undefined, false, fmt.Errorf("Unary.Eval not implemented yet")
 }
 
 // Eval implements the compiler.ast.AST.Eval for slice expressions.
@@ -393,7 +387,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 			return ssa.Undefined, false, nil
 		}
 		return ssa.Undefined, false, ctx.Errorf(ast,
-			"select not implemented yet")
+			"VariableRef.Eval: select not implemented yet")
 	}
 
 	if len(ast.Name.Package) > 0 {

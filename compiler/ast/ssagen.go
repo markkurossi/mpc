@@ -814,7 +814,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, nil, ctx.Errorf(ast, "Binary.SSA '%s' not implemented yet",
+		return nil, nil, ctx.Errorf(ast, "Binary.SSA: '%s' not implemented yet",
 			ast.Op)
 	}
 	t := gen.AnonVar(resultType)
@@ -861,7 +861,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewOrInstr(l, r, t)
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, nil, ctx.Errorf(ast, "Binary.SSA '%s' not implemented yet",
+		return nil, nil, ctx.Errorf(ast, "Binary.SSA: '%s' not implemented yet",
 			ast.Op)
 	}
 	if err != nil {
@@ -871,6 +871,12 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	block.AddInstr(instr)
 
 	return block, []ssa.Variable{t}, nil
+}
+
+// SSA implements the compiler.ast.AST.SSA for unary expressions.
+func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Variable, error) {
+	return nil, nil, fmt.Errorf("Unary.SSA not implemented yet")
 }
 
 // SSA implements the compiler.ast.AST.SSA for slice expressions.
@@ -1129,6 +1135,5 @@ func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 // SSA implements the compiler.ast.AST.SSA for constant values.
 func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
-
-	return nil, nil, fmt.Errorf("CompositeLit.SSA() not implemented yet")
+	return nil, nil, fmt.Errorf("CompositeLit.SSA not implemented yet")
 }
