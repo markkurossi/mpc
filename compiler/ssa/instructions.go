@@ -658,6 +658,9 @@ func isSet(v interface{}, bit int) bool {
 		}
 		return bytes[idx]&(1<<mod) != 0
 
+	case Variable:
+		return isSet(val.ConstValue, bit)
+
 	default:
 		panic(fmt.Sprintf("isSet called for non const %v (%T)", v, val))
 	}

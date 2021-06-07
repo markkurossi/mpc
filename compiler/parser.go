@@ -321,7 +321,7 @@ func (p *Parser) parseTypeDecl() error {
 			if err != nil {
 				return err
 			}
-			if t.Type == TRBrace {
+			if t.Type == '}' {
 				break
 			}
 			var names []string
@@ -334,7 +334,7 @@ func (p *Parser) parseTypeDecl() error {
 				if err != nil {
 					return err
 				}
-				if t.Type != TComma {
+				if t.Type != ',' {
 					p.lexer.Unget(t)
 					break
 				}
@@ -427,7 +427,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type == TComma {
+			if t.Type == ',' {
 				arguments = append(arguments, arg)
 				continue
 			}
@@ -458,8 +458,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if t.Type == ')' {
 				break
 			}
-			if t.Type != TComma {
-				return nil, p.errUnexpected(t, TComma)
+			if t.Type != ',' {
+				return nil, p.errUnexpected(t, ',')
 			}
 		}
 	}
@@ -489,8 +489,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 			if n.Type == ')' {
 				break
 			}
-			if n.Type != TComma {
-				return nil, p.errUnexpected(n, TComma)
+			if n.Type != ',' {
+				return nil, p.errUnexpected(n, ',')
 			}
 		}
 		_, err = p.needToken('{')
@@ -532,7 +532,7 @@ func (p *Parser) parseBlock() (ast.List, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type == TRBrace {
+		if t.Type == '}' {
 			break
 		}
 		p.lexer.Unget(t)
@@ -564,7 +564,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			if t.Type != TComma {
+			if t.Type != ',' {
 				p.lexer.Unget(t)
 				break
 			}
@@ -647,7 +647,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				if t.Type != TComma {
+				if t.Type != ',' {
 					p.lexer.Unget(t)
 					break
 				}
@@ -668,7 +668,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(TSemicolon)
+		_, err = p.needToken(';')
 		if err != nil {
 			return nil, err
 		}
@@ -676,7 +676,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken(TSemicolon)
+		_, err = p.needToken(';')
 		if err != nil {
 			return nil, err
 		}
@@ -798,7 +798,7 @@ func (p *Parser) parseExprList(needLBrace bool) ([]ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		if t.Type != TComma {
+		if t.Type != ',' {
 			p.lexer.Unget(t)
 			break
 		}
@@ -913,7 +913,7 @@ func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case '+', '-', TBitOr, TBitXor:
+		case '+', '-', '|', '^':
 			right, err := p.parseExprMultiplicative(needLBrace)
 			if err != nil {
 				return nil, err
@@ -943,7 +943,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case '*', '/', '%', TLshift, TRshift, TBitAnd, TBitClear:
+		case '*', '/', '%', TLshift, TRshift, '&', TBitClear:
 			right, err := p.parseExprUnary(needLBrace)
 			if err != nil {
 				return nil, err
@@ -969,7 +969,7 @@ func (p *Parser) parseExprUnary(needLBrace bool) (ast.AST, error) {
 		return nil, err
 	}
 	switch t.Type {
-	case '+', '-', TNot, TBitXor, '*', TBitAnd, TSend:
+	case '+', '-', '!', '^', '*', '&', TSend:
 		expr, err := p.parseExprUnary(needLBrace)
 		if err != nil {
 			return nil, err
@@ -1017,18 +1017,18 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		switch t.Type {
-		case TDot:
+		case '.':
 			// Selector.
 			return nil, fmt.Errorf("selector not implemented yet")
 
-		case TLBracket:
+		case '[':
 			var expr1, expr2 ast.AST
 
 			n, err := p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
-			if n.Type != TColon {
+			if n.Type != ':' {
 				p.lexer.Unget(n)
 				expr1, err = p.parseExpr(needLBrace)
 				if err != nil {
@@ -1038,29 +1038,29 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				if err != nil {
 					return nil, err
 				}
-				if n.Type == TRBracket {
+				if n.Type == ']' {
 					return &ast.Index{
 						Point: primary.Location(),
 						Expr:  primary,
 						Index: expr1,
 					}, nil
 				}
-				if n.Type != TColon {
+				if n.Type != ':' {
 					p.lexer.Unget(n)
-					return nil, p.errUnexpected(n, TColon)
+					return nil, p.errUnexpected(n, ':')
 				}
 			}
 			n, err = p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
-			if n.Type != TRBracket {
+			if n.Type != ']' {
 				p.lexer.Unget(n)
 				expr2, err = p.parseExpr(needLBrace)
 				if err != nil {
 					return nil, err
 				}
-				_, err = p.needToken(TRBracket)
+				_, err = p.needToken(']')
 				if err != nil {
 					return nil, err
 				}
@@ -1088,7 +1088,7 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				}
 				if n.Type == ')' {
 					break
-				} else if n.Type != TComma {
+				} else if n.Type != ',' {
 					return nil, p.errf(n.From, "unexpected token %s", n)
 				}
 			}
@@ -1145,7 +1145,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		var operandName *ast.VariableRef
-		if n.Type == TDot {
+		if n.Type == '.' {
 			id, err := p.needToken(TIdentifier)
 			if err != nil {
 				return nil, err
@@ -1193,7 +1193,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			if n.Type == TRBrace {
+			if n.Type == '}' {
 				break
 			}
 			p.lexer.Unget(n)
@@ -1206,7 +1206,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 				return nil, err
 			}
 			var element ast.AST
-			if n.Type == TColon {
+			if n.Type == ':' {
 				element, err = p.parseExpr(false)
 				if err != nil {
 					return nil, err
@@ -1223,9 +1223,9 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 				Key:     key,
 				Element: element,
 			})
-			if n.Type == TRBrace {
+			if n.Type == '}' {
 				p.lexer.Unget(n)
-			} else if n.Type != TComma {
+			} else if n.Type != ',' {
 				return nil, p.errf(n.From, "unexpected token %s", n)
 			}
 		}
@@ -1265,7 +1265,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		if n.Type == TDot {
+		if n.Type == '.' {
 			n, err = p.lexer.Get()
 			if err != nil {
 				return nil, err
@@ -1294,20 +1294,20 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			},
 		}, nil
 
-	case TLBracket:
+	case '[':
 		loc := t.From
 		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
 		var length ast.AST
-		if n.Type != TRBracket {
+		if n.Type != ']' {
 			p.lexer.Unget(n)
 			length, err = p.parseExpr(false)
 			if err != nil {
 				return nil, err
 			}
-			_, err := p.needToken(TRBracket)
+			_, err := p.needToken(']')
 			if err != nil {
 				return nil, err
 			}
