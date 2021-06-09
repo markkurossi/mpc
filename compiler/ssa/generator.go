@@ -310,7 +310,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 			}
 		} else {
 			v.Type = ti
-			v.Type.Bits = len(val) * ti.ArrayElement.Bits
+			v.Type.Bits = ti.ArraySize * ti.ArrayElement.Bits
 			v.Type.MinBits = ti.Bits
 		}
 

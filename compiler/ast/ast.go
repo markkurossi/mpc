@@ -592,6 +592,23 @@ type CompositeLit struct {
 	Value []KeyedElement
 }
 
+func (ast *CompositeLit) String() string {
+	str := ast.Type.String()
+	str += "{"
+
+	for idx, e := range ast.Value {
+		if idx > 0 {
+			str += ","
+		}
+		if e.Key != nil {
+			str += fmt.Sprintf("%s: %s", e.Key, e.Element)
+		} else {
+			str += e.Element.String()
+		}
+	}
+	return str + "}"
+}
+
 // KeyedElement implements a keyed element of composite literal.
 type KeyedElement struct {
 	Key     AST
