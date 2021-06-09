@@ -1008,6 +1008,7 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 		return nil, err
 	}
 
+primary:
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
@@ -1039,11 +1040,12 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 					return nil, err
 				}
 				if n.Type == ']' {
-					return &ast.Index{
+					primary = &ast.Index{
 						Point: primary.Location(),
 						Expr:  primary,
 						Index: expr1,
-					}, nil
+					}
+					continue primary
 				}
 				if n.Type != ':' {
 					p.lexer.Unget(n)
@@ -1065,12 +1067,12 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 					return nil, err
 				}
 			}
-			return &ast.Slice{
+			primary = &ast.Slice{
 				Point: primary.Location(),
 				Expr:  primary,
 				From:  expr1,
 				To:    expr2,
-			}, nil
+			}
 
 		case '(':
 			// Arguments.
@@ -1097,11 +1099,11 @@ func (p *Parser) parseExprPrimary(needLBrace bool) (ast.AST, error) {
 				return nil, p.errf(primary.Location(),
 					"non-function %s used as function", primary)
 			}
-			return &ast.Call{
+			primary = &ast.Call{
 				Point: primary.Location(),
 				Ref:   vr,
 				Exprs: arguments,
-			}, nil
+			}
 
 		default:
 			p.lexer.Unget(t)
@@ -1181,55 +1183,23 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			p.lexer.Unget(n)
 			return operandName, nil
 		}
-		composite := &ast.CompositeLit{
-			Type: &ast.TypeInfo{
-				Point: operandName.Point,
-				Type:  ast.TypeName,
-				Name:  operandName.Name,
-			},
+		return p.parseCompositeLit(&ast.TypeInfo{
+			Point: operandName.Point,
+			Type:  ast.TypeName,
+			Name:  operandName.Name,
+		})
+
+	case '[': // ArrayType LiteralValue
+		p.lexer.Unget(t)
+		typeInfo, err := p.parseType()
+		if err != nil {
+			return nil, err
 		}
-		for {
-			n, err = p.lexer.Get()
-			if err != nil {
-				return nil, err
-			}
-			if n.Type == '}' {
-				break
-			}
-			p.lexer.Unget(n)
-			key, err := p.parseExpr(false)
-			if err != nil {
-				return nil, err
-			}
-			n, err := p.lexer.Get()
-			if err != nil {
-				return nil, err
-			}
-			var element ast.AST
-			if n.Type == ':' {
-				element, err = p.parseExpr(false)
-				if err != nil {
-					return nil, err
-				}
-				n, err = p.lexer.Get()
-				if err != nil {
-					return nil, err
-				}
-			} else {
-				element = key
-				key = nil
-			}
-			composite.Value = append(composite.Value, ast.KeyedElement{
-				Key:     key,
-				Element: element,
-			})
-			if n.Type == '}' {
-				p.lexer.Unget(n)
-			} else if n.Type != ',' {
-				return nil, p.errf(n.From, "unexpected token %s", n)
-			}
+		_, err = p.needToken('{')
+		if err != nil {
+			return nil, err
 		}
-		return composite, nil
+		return p.parseCompositeLit(typeInfo)
 
 	case '(': // '(' Expression ')'
 		expr, err := p.parseExpr(false)
@@ -1246,6 +1216,57 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		return nil, p.errf(t.From,
 			"unexpected token '%s' while parsing expression", t)
 	}
+}
+
+func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
+	fmt.Printf("parseCompositeLit: type=%v\n", typeInfo)
+
+	composite := &ast.CompositeLit{
+		Type: typeInfo,
+	}
+	for {
+		n, err := p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		if n.Type == '}' {
+			break
+		}
+		p.lexer.Unget(n)
+		key, err := p.parseExpr(false)
+		if err != nil {
+			return nil, err
+		}
+		n, err = p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
+		var element ast.AST
+		if n.Type == ':' {
+			element, err = p.parseExpr(false)
+			if err != nil {
+				return nil, err
+			}
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			element = key
+			key = nil
+		}
+		composite.Value = append(composite.Value, ast.KeyedElement{
+			Key:     key,
+			Element: element,
+		})
+		if n.Type == '}' {
+			p.lexer.Unget(n)
+		} else if n.Type != ',' {
+			return nil, p.errf(n.From, "unexpected token %s", n)
+		}
+	}
+	return composite, nil
+
 }
 
 // Type      = TypeName | TypeLit | "(" Type ")" .
