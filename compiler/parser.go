@@ -1219,11 +1219,21 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 }
 
 func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
-	fmt.Printf("parseCompositeLit: type=%v\n", typeInfo)
-
-	composite := &ast.CompositeLit{
-		Type: typeInfo,
+	value, err := p.parseCompositeLitValue(typeInfo)
+	if err != nil {
+		return nil, err
 	}
+	return &ast.CompositeLit{
+		Type:  typeInfo,
+		Value: value,
+	}, nil
+}
+
+func (p *Parser) parseCompositeLitValue(typeInfo *ast.TypeInfo) (
+	[]ast.KeyedElement, error) {
+
+	var value []ast.KeyedElement
+
 	for {
 		n, err := p.lexer.Get()
 		if err != nil {
@@ -1231,19 +1241,24 @@ func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
 		}
 		if n.Type == '}' {
 			break
-		}
-		p.lexer.Unget(n)
-		key, err := p.parseExpr(false)
-		if err != nil {
-			return nil, err
-		}
-		n, err = p.lexer.Get()
-		if err != nil {
-			return nil, err
-		}
-		var element ast.AST
-		if n.Type == ':' {
-			element, err = p.parseExpr(false)
+		} else if n.Type == '{' {
+			if typeInfo.Type != ast.TypeArray {
+				return nil, p.errf(n.From,
+					"invalid initializer for type %s", typeInfo)
+			}
+			v, err := p.parseCompositeLitValue(typeInfo.ElementType)
+			if err != nil {
+				return nil, err
+			}
+			value = append(value, ast.KeyedElement{
+				Element: &ast.CompositeLit{
+					Type:  typeInfo.ElementType,
+					Value: v,
+				},
+			})
+		} else {
+			p.lexer.Unget(n)
+			key, err := p.parseExpr(false)
 			if err != nil {
 				return nil, err
 			}
@@ -1251,22 +1266,35 @@ func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-		} else {
-			element = key
-			key = nil
+			var element ast.AST
+			if n.Type == ':' {
+				element, err = p.parseExpr(false)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				p.lexer.Unget(n)
+				element = key
+				key = nil
+			}
+			value = append(value, ast.KeyedElement{
+				Key:     key,
+				Element: element,
+			})
 		}
-		composite.Value = append(composite.Value, ast.KeyedElement{
-			Key:     key,
-			Element: element,
-		})
+
+		n, err = p.lexer.Get()
+		if err != nil {
+			return nil, err
+		}
 		if n.Type == '}' {
 			p.lexer.Unget(n)
 		} else if n.Type != ',' {
 			return nil, p.errf(n.From, "unexpected token %s", n)
 		}
 	}
-	return composite, nil
 
+	return value, nil
 }
 
 // Type      = TypeName | TypeLit | "(" Type ")" .

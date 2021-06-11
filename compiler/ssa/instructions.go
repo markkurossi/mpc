@@ -659,10 +659,27 @@ func isSet(v interface{}, bit int) bool {
 		return bytes[idx]&(1<<mod) != 0
 
 	case Variable:
-		return isSet(val.ConstValue, bit)
+		switch val.Type.Type {
+		case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
+			return isSet(val.ConstValue, bit)
+
+		case types.TArray:
+			elType := val.Type.ArrayElement
+			idx := bit / elType.Bits
+			mod := bit % elType.Bits
+			if idx >= val.Type.ArraySize {
+				return false
+			}
+			arr := val.ConstValue.([]interface{})
+			return isSet(arr[idx], mod)
+
+		default:
+			panic(fmt.Sprintf("ssa.isSet called for invalid Variable %v (%v)",
+				val, val.Type))
+		}
 
 	default:
-		panic(fmt.Sprintf("isSet called for non const %v (%T)", v, val))
+		panic(fmt.Sprintf("ssa.isSet called for non const %v (%T)", v, val))
 	}
 }
 

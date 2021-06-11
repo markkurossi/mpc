@@ -423,6 +423,7 @@ func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Variable, bool, error) {
+
 	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
 	if err != nil {
 		return ssa.Undefined, false, err
