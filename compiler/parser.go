@@ -791,7 +791,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 
 		default:
 			p.lexer.Unget(t)
-			return nil, p.errf(t.From, "syntax error")
+			return ast.List(lvalues), nil
 		}
 	}
 }
@@ -1310,7 +1310,7 @@ func (p *Parser) parseCompositeLitValue(typeInfo *ast.TypeInfo) (
 
 // Type      = TypeName | TypeLit | "(" Type ")" .
 // TypeName  = identifier | QualifiedIdent .
-// TypeLit   = ArrayType | StructType | SliceType .
+// TypeLit   = ArrayType | StructType | PointerType | SliceType .
 func (p *Parser) parseType() (*ast.TypeInfo, error) {
 	t, err := p.lexer.Get()
 	if err != nil {
@@ -1387,6 +1387,17 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		return &ast.TypeInfo{
 			Point:       loc,
 			Type:        ast.TypeSlice,
+			ElementType: elType,
+		}, nil
+
+	case '*':
+		elType, err := p.parseType()
+		if err != nil {
+			return nil, err
+		}
+		return &ast.TypeInfo{
+			Point:       t.From,
+			Type:        ast.TypePointer,
 			ElementType: elType,
 		}, nil
 

@@ -876,7 +876,15 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 // SSA implements the compiler.ast.AST.SSA for unary expressions.
 func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Variable, error) {
-	return nil, nil, fmt.Errorf("Unary.SSA not implemented yet")
+	switch ast.Type {
+	case UnaryAddr:
+		// The address semantics are handled in function calls. We
+		// simply pass the value here.
+		return ast.Expr.SSA(block, ctx, gen)
+
+	default:
+		return nil, nil, fmt.Errorf("Unary.SSA not implemented yet: %v", ast)
+	}
 }
 
 // SSA implements the compiler.ast.AST.SSA for slice expressions.
@@ -1090,6 +1098,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	if len(ast.Name.Package) > 0 {
+		// Explicit package reference.
 		var pkg *Package
 		pkg, ok = ctx.Packages[ast.Name.Package]
 		if !ok {
@@ -1098,7 +1107,12 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
+		// First check block bindings.
 		b, ok = block.Bindings.Get(ast.Name.Name)
+		if !ok {
+			// Check names in the current package.
+			b, ok = ctx.Package.Bindings.Get(ast.Name.Name)
+		}
 	}
 	if !ok {
 		return nil, nil, ctx.Errorf(ast, "undefined variable '%s'",

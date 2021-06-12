@@ -55,6 +55,7 @@ const (
 	TypeArray
 	TypeSlice
 	TypeStruct
+	TypePointer
 	TypeAlias
 )
 
@@ -196,6 +197,9 @@ func (ti *TypeInfo) String() string {
 
 	case TypeAlias:
 		return fmt.Sprintf("%s=%s", ti.TypeName, ti.AliasType)
+
+	case TypePointer:
+		return fmt.Sprintf("*%s", ti.ElementType)
 
 	default:
 		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
