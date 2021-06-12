@@ -41,9 +41,11 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 		fmt.Printf("Compiling circuit...\n")
 	}
 	if params.OptPruneGates {
+		orig := float64(len(cc.Gates))
 		pruned := cc.Prune()
 		if params.Verbose {
-			fmt.Printf(" - Pruned %d gates\n", pruned)
+			fmt.Printf(" - Pruned %d gates (%.2f%%)\n", pruned,
+				float64(pruned)/orig*100)
 		}
 	}
 	circ := cc.Compile()
