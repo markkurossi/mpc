@@ -265,20 +265,31 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 		return err
 	}
 	var varType *ast.TypeInfo
-	if t.Type != '=' {
+	var init ast.AST
+
+	if t.Type == '=' {
+		init, err = p.parseExprUnary(false)
+		if err != nil {
+			return err
+		}
+	} else {
 		p.lexer.Unget(t)
 		varType, err = p.parseType()
 		if err != nil {
 			return err
 		}
-		_, err = p.needToken('=')
+		t, err = p.lexer.Get()
 		if err != nil {
 			return nil
 		}
-	}
-	value, err := p.parseExprUnary(false)
-	if err != nil {
-		return err
+		if t.Type == '=' {
+			init, err = p.parseExprUnary(false)
+			if err != nil {
+				return err
+			}
+		} else {
+			p.lexer.Unget(t)
+		}
 	}
 
 	if isConst {
@@ -286,14 +297,14 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 			Point: token.From,
 			Name:  token.StrVal,
 			Type:  varType,
-			Init:  value,
+			Init:  init,
 		})
 	} else {
 		p.pkg.Variables = append(p.pkg.Variables, &ast.VariableDef{
 			Point: token.From,
 			Names: []string{token.StrVal},
 			Type:  varType,
-			Init:  value,
+			Init:  init,
 		})
 	}
 
