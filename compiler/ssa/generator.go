@@ -299,7 +299,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 			name = "interface{}"
 		}
 
-		v.Name = fmt.Sprintf("$[%s]%s{%v}", length, name, arrayString(val))
+		v.Name = fmt.Sprintf("$[%s]%s%s", length, name, arrayString(val))
 		if ti.Undefined() {
 			v.Type = types.Info{
 				Type:         types.TArray,
@@ -338,8 +338,17 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 func arrayString(arr []interface{}) string {
 	var parts []string
+
 	for _, part := range arr {
+		variable, ok := part.(Variable)
+		if ok && variable.Const {
+			arr, ok := variable.ConstValue.([]interface{})
+			if ok {
+				parts = append(parts, arrayString(arr))
+				continue
+			}
+		}
 		parts = append(parts, fmt.Sprintf("%v", part))
 	}
-	return strings.Join(parts, ",")
+	return "{" + strings.Join(parts, ",") + "}"
 }
