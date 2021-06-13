@@ -57,6 +57,36 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.Bindings.Set(r, nil)
 	}
 
+	// Check that the body ends with a return. We add an implicit
+	// return for functions without return values.
+	if len(ast.Return) > 0 {
+		var ok bool
+		var loc AST
+		if len(ast.Body) == 0 {
+			ok = true
+			loc = ast
+		} else {
+			loc = ast.Body[len(ast.Body)-1]
+			_, ok = loc.(*Return)
+		}
+		if !ok {
+			ctx.Errorf(loc, "missing return at the end of function")
+		}
+	} else {
+		var need bool
+		if len(ast.Body) == 0 {
+			need = true
+		} else {
+			_, ok := ast.Body[len(ast.Body)-1].(*Return)
+			if !ok {
+				need = true
+			}
+		}
+		if need {
+			ast.Body = append(ast.Body, &Return{})
+		}
+	}
+
 	block, _, err := ast.Body.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
@@ -615,30 +645,25 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if len(rValues) == 0 {
 		if len(ctx.Func().Return) != 0 {
-			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
-			// TODO \thave ()
-			// TODO \twant (error)
+			return nil, nil, ast.error(ctx, "not enough arguments to return",
+				rValues, ctx.Func().Return)
 		}
 	} else if len(rValues) == 1 {
 		if len(rValues[0]) < len(ctx.Func().Return) {
-			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
-			// TODO \thave ()
-			// TODO \twant (error)
+			return nil, nil, ast.error(ctx, "not enough arguments to return",
+				rValues, ctx.Func().Return)
 		} else if len(rValues[0]) > len(ctx.Func().Return) {
-			return nil, nil, ctx.Errorf(ast, "too many aruments to return")
-			// TODO \thave (nil, error)
-			// TODO \twant (error)
+			return nil, nil, ast.error(ctx, "too many aruments to return",
+				rValues, ctx.Func().Return)
 		}
 		result = rValues[0]
 	} else {
 		if len(rValues) < len(ctx.Func().Return) {
-			return nil, nil, ctx.Errorf(ast, "not enough arguments to return")
-			// TODO \thave ()
-			// TODO \twant (error)
+			return nil, nil, ast.error(ctx, "not enough arguments to return",
+				rValues, ctx.Func().Return)
 		} else if len(rValues) > len(ctx.Func().Return) {
-			return nil, nil, ctx.Errorf(ast, "too many aruments to return")
-			// TODO \thave (nil, error)
-			// TODO \twant (error)
+			return nil, nil, ast.error(ctx, "too many aruments to return",
+				rValues, ctx.Func().Return)
 		} else {
 			for idx, rv := range rValues {
 				expr := ast.Exprs[idx]
@@ -684,6 +709,48 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	block.Dead = true
 
 	return block, nil, nil
+}
+
+func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Variable,
+	want []*Variable) error {
+	message += "\n\thave ("
+	switch len(have) {
+	case 0:
+
+	case 1:
+		for i, v := range have[0] {
+			if i > 0 {
+				message += ", "
+			}
+			message += v.Type.Type.String()
+		}
+	default:
+		for i, vi := range have {
+			if i > 0 {
+				message += ", "
+			}
+			if len(vi) > 0 {
+				message += "("
+			}
+			for j, vj := range vi {
+				if j > 0 {
+					message += ", "
+				}
+				message += vj.Type.Type.String()
+			}
+			if len(vi) > 0 {
+				message += ")"
+			}
+		}
+	}
+	message += ")\n\twant ("
+	for i, v := range want {
+		if i > 0 {
+			message += ", "
+		}
+		message += v.Type.String()
+	}
+	return ctx.Errorf(ast, "%s)", message)
 }
 
 // SSA implements the compiler.ast.AST.SSA for for statements.
@@ -950,11 +1017,17 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 
-	t := gen.AnonVar(types.Info{
+	ti := types.Info{
 		Type:    expr[0].Type.Type,
 		Bits:    int(to - from),
 		MinBits: int(to - from),
-	})
+	}
+	if expr[0].Type.Type == types.TArray {
+		ti.ArrayElement = expr[0].Type.ArrayElement
+		ti.ArraySize = ti.Bits / ti.ArrayElement.Bits
+	}
+
+	t := gen.AnonVar(ti)
 
 	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
 
