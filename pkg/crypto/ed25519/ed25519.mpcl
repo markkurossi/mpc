@@ -234,9 +234,15 @@ func FeIsNonZero(f *FieldElement) int32 {
 	var s [32]byte
 	FeToBytes(&s, f)
 	var x uint8
-	for _, b := range s {
-		x |= b
+
+	// The `range' expression is not supported yet.
+	// for _, b := range s {
+	// 	x |= b
+	// }
+	for i := 0; i < len(s); i++ {
+		x |= s[i]
 	}
+
 	x |= x >> 4
 	x |= x >> 2
 	x |= x >> 1
