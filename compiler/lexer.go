@@ -400,6 +400,29 @@ func (l *Lexer) Get() (*Token, error) {
 				l.commentLine(string(comment), start)
 				continue
 
+			case '*':
+				var comment []rune
+				start := l.point
+				for {
+					r, _, err := l.ReadRune()
+					if err != nil {
+						return nil, err
+					}
+					if r == '*' {
+						r, _, err = l.ReadRune()
+						if err != nil {
+							return nil, err
+						}
+						if r == '/' {
+							break
+						}
+						comment = append(comment, '*')
+					}
+					comment = append(comment, r)
+				}
+				l.commentLine(string(comment), start)
+				continue
+
 			case '=':
 				return l.Token(TDivEq), nil
 
