@@ -48,6 +48,8 @@ const (
 	TPlusEq
 	TMinusMinus
 	TMinusEq
+	TOrEq
+	TXorEq
 	TLt
 	TLe
 	TGt
@@ -83,6 +85,8 @@ var tokenTypes = map[TokenType]string{
 	TPlusEq:     "+=",
 	TMinusMinus: "--",
 	TMinusEq:    "-=",
+	TOrEq:       "|=",
+	TXorEq:      "^=",
 	TLt:         "<",
 	TLe:         "<=",
 	TGt:         ">",
@@ -299,8 +303,24 @@ func (l *Lexer) Get() (*Token, error) {
 			continue
 		}
 		switch r {
-		case '%', '(', ')', '{', '}', '[', ']', ',', ';', '.', '^':
+		case '%', '(', ')', '{', '}', '[', ']', ',', ';', '.':
 			return l.Token(TokenType(r)), nil
+
+		case '^':
+			r, _, err := l.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					return l.Token('^'), nil
+				}
+				return nil, err
+			}
+			switch r {
+			case '=':
+				return l.Token(TXorEq), nil
+			default:
+				l.UnreadRune()
+				return l.Token('^'), nil
+			}
 
 		case '+':
 			r, _, err := l.ReadRune()
@@ -466,6 +486,8 @@ func (l *Lexer) Get() (*Token, error) {
 			switch r {
 			case '|':
 				return l.Token(TOr), nil
+			case '=':
+				return l.Token(TOrEq), nil
 			default:
 				l.UnreadRune()
 				return l.Token('|'), nil

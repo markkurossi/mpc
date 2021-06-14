@@ -736,16 +736,22 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				Define:  t.Type == TDefAssign,
 			}, nil
 
-		case TPlusEq, TMinusEq:
+		case TPlusEq, TMinusEq, TOrEq, TXorEq:
 			if len(lvalues) != 1 {
 				return nil, p.errf(tStmt.From, "expected 1 expression")
 			}
-
 			var op ast.BinaryType
-			if t.Type == TPlusEq {
+			switch t.Type {
+			case TPlusEq:
 				op = ast.BinaryPlus
-			} else {
+			case TMinusEq:
 				op = ast.BinaryMinus
+			case TOrEq:
+				op = ast.BinaryBor
+			case TXorEq:
+				op = ast.BinaryBxor
+			default:
+				panic(t.Type)
 			}
 			value, err := p.parseExpr(needLBrace)
 			if err != nil {
