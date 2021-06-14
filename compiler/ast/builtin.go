@@ -45,6 +45,11 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 // Predeclared identifiers.
 var builtins = []Builtin{
 	{
+		Name: "copy",
+		Type: BuiltinFunc,
+		SSA:  copySSA,
+	},
+	{
 		Name: "len",
 		Type: BuiltinFunc,
 		SSA:  lenSSA,
@@ -66,6 +71,77 @@ var builtins = []Builtin{
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},
+}
+
+func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+
+	if len(args) != 2 {
+		return nil, nil, ctx.Errorf(loc,
+			"invalid amount of arguments in call to copy")
+	}
+	dst := args[0]
+	src := args[1]
+
+	if dst.Type.Type != types.TArray {
+		return nil, nil, ctx.Errorf(loc,
+			"arguments to copy must be slices; have %s, %s",
+			dst.Type.Type, src.Type.Type)
+	}
+	if src.Type.Type != types.TArray {
+		return nil, nil, ctx.Errorf(loc,
+			"second argument to copy should be slice or array")
+	}
+	if !dst.Type.ArrayElement.Equal(*src.Type.ArrayElement) {
+		return nil, nil, ctx.Errorf(loc,
+			"arguments to copy have different element types: %s and %s",
+			dst.Type.ArrayElement, src.Type.ArrayElement)
+	}
+
+	lValue, err := gen.NewVar(dst.Name, dst.Type, ctx.Scope())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// If len(dst) > len(src): 	  amov  src dst 0 len(src)
+	//    len(dst) < len(src): 	  slice src 0 len(dst) dst
+	//    len(dst) = len(src): 	  move  src dst
+	var copied int
+	if dst.Type.ArraySize > src.Type.ArraySize {
+		copied = src.Type.ArraySize
+		fromConst, _, err := gen.Constant(int32(0), types.Uint32)
+		if err != nil {
+			return nil, nil, err
+		}
+		toConst, _, err := gen.Constant(int32(src.Type.Bits), types.Uint32)
+		if err != nil {
+			return nil, nil, err
+		}
+		block.AddInstr(ssa.NewAmovInstr(src, dst, fromConst, toConst, lValue))
+	} else if dst.Type.ArraySize < src.Type.ArraySize {
+		copied = dst.Type.ArraySize
+		fromConst, _, err := gen.Constant(int32(0), types.Uint32)
+		if err != nil {
+			return nil, nil, err
+		}
+		toConst, _, err := gen.Constant(int32(dst.Type.Bits), types.Uint32)
+		if err != nil {
+			return nil, nil, err
+		}
+		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, lValue))
+	} else {
+		copied = dst.Type.ArraySize
+		block.AddInstr(ssa.NewMovInstr(src, lValue))
+	}
+	block.Bindings.Set(lValue, nil)
+
+	v, _, err := gen.Constant(int32(copied), types.Int32)
+	if err != nil {
+		return nil, nil, err
+	}
+	gen.AddConstant(v)
+
+	return block, []ssa.Variable{v}, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,

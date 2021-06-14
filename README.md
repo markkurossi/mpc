@@ -141,15 +141,18 @@ func MinMax(a, b int) (int, int) {
 
 The MPCL runtime defines the following builtin functions:
 
- - `len(VALUE)`: returns the length of the value as integer:
+ - `copy(dst, src)`: copies the content of the array _src_ to
+   _dst_. The function returns the number of elements copied, which is
+   the minimum of len(src) and len(dst).
+ - `len(value)`: returns the length of the value as integer:
    - array: returns the number of array elements
    - string: returns the number of bytes in the string
- - `make(TYPE, SIZE)`: creates an instance of the type _type_ with _size_ bits.
- - `native(NAME, ARG...)`: calls a builtin function _name_ with
+ - `make(type, size)`: creates an instance of the type _type_ with _size_ bits.
+ - `native(name, arg...)`: calls a builtin function _name_ with
    arguments _arg..._. The _name_ can specify a circuit file (*.circ)
    or one of the following builtin functions:
    - `hamming(a, b uint)` computes the bitwise hamming distance between argument values
- - `size(VARIABLE)`: returns the bit size of the argument _variable_.
+ - `size(variable)`: returns the bit size of the argument _variable_.
 
 ## SSA (Static single assignment form)
 

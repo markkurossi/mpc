@@ -240,6 +240,10 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 				o[bit-from] = w
 			}
+			// Make sure all output bits are wired.
+			for bit := to - from; bit < len(o); bit++ {
+				o[bit] = cc.ZeroWire()
+			}
 			err := prog.SetWires(instr.Out.String(), o)
 			if err != nil {
 				return err

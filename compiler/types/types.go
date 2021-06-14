@@ -151,7 +151,33 @@ func (i Info) Undefined() bool {
 
 // Equal tests if the argument type is equal to this type info.
 func (i Info) Equal(o Info) bool {
-	return i.Type == o.Type && i.Bits == o.Bits
+	if i.Type != o.Type {
+		return false
+	}
+	switch i.Type {
+	case TUndefined, TBool, TInt, TUint, TFloat, TString:
+		return i.Bits == o.Bits
+
+	case TStruct:
+		if len(i.Struct) != len(o.Struct) || i.Bits != o.Bits {
+			return false
+		}
+		for idx, ie := range i.Struct {
+			if ie.Type.Equal(o.Struct[idx].Type) {
+				return false
+			}
+		}
+		return true
+
+	case TArray:
+		if i.ArraySize != o.ArraySize || i.Bits != o.Bits {
+			return false
+		}
+		return i.ArrayElement.Equal(*o.ArrayElement)
+
+	default:
+		panic(fmt.Sprintf("Info.Equal called for %v (%T)", i.Type, i.Type))
+	}
 }
 
 // CanAssignConst tests if the argument const type can be assigned to
