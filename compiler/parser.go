@@ -527,34 +527,36 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		}
 	}
 
-	body, err := p.parseBlock()
+	body, end, err := p.parseBlock()
 	if err != nil {
 		return nil, err
 	}
 
 	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body,
-		annotations), nil
+		end, annotations), nil
 }
 
-func (p *Parser) parseBlock() (ast.List, error) {
+func (p *Parser) parseBlock() (ast.List, utils.Point, error) {
 	var result ast.List
+	var end utils.Point
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			return nil, utils.Point{}, err
 		}
 		if t.Type == '}' {
+			end = t.From
 			break
 		}
 		p.lexer.Unget(t)
 
 		ast, err := p.parseStatement(false)
 		if err != nil {
-			return nil, err
+			return nil, utils.Point{}, err
 		}
 		result = append(result, ast)
 	}
-	return result, nil
+	return result, end, nil
 }
 
 func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
@@ -618,7 +620,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}
 
 		var b1, b2 ast.List
-		b1, err = p.parseBlock()
+		b1, _, err = p.parseBlock()
 		if err != nil {
 			return nil, err
 		}
@@ -632,7 +634,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
-			b2, err = p.parseBlock()
+			b2, _, err = p.parseBlock()
 			if err != nil {
 				return nil, err
 			}
@@ -699,7 +701,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		body, err := p.parseBlock()
+		body, _, err := p.parseBlock()
 		if err != nil {
 			return nil, err
 		}
