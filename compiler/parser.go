@@ -477,6 +477,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 
 	// Return values.
 	var returnValues []*ast.Variable
+	var namedReturnValues bool
 
 	n, err := p.lexer.Get()
 	if err != nil {
@@ -484,15 +485,66 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 	}
 	switch n.Type {
 	case '(':
+		var identifiers []*ast.TypeInfo
+
 		for {
 			typeInfo, err := p.parseType()
 			if err != nil {
 				return nil, err
 			}
-			returnValues = append(returnValues, &ast.Variable{
-				Point: n.From,
-				Type:  typeInfo,
-			})
+			// Peek next token.
+			n, err = p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			p.lexer.Unget(n)
+
+			switch n.Type {
+			case ',':
+				identifiers = append(identifiers, typeInfo)
+
+			case ')':
+				if namedReturnValues {
+					return nil, p.errf(typeInfo.Point,
+						"mixing named and unnamed return values")
+				}
+				identifiers = append(identifiers, typeInfo)
+				for _, id := range identifiers {
+					returnValues = append(returnValues, &ast.Variable{
+						Point: id.Point,
+						Type:  typeInfo,
+					})
+				}
+
+			default:
+				// typeInfo is named return variable and the next
+				// component is its type.
+				if !typeInfo.IsIdentifier() {
+					return nil, p.errf(n.From,
+						"unexpected %s, expecting comma or )", n)
+				}
+				identifiers = append(identifiers, typeInfo)
+
+				typeInfo, err = p.parseType()
+				if err != nil {
+					return nil, err
+				}
+				// Add current list of identifiers to return
+				// values. All elements in identifiers must be
+				// identifiers.
+				for _, id := range identifiers {
+					if !id.IsIdentifier() {
+						return nil, p.errf(id.Point,
+							"mixing named and unnamed return values")
+					}
+					returnValues = append(returnValues, &ast.Variable{
+						Point: id.Point,
+						Name:  id.String(),
+						Type:  typeInfo,
+					})
+				}
+				namedReturnValues = true
+			}
 			n, err = p.lexer.Get()
 			if err != nil {
 				return nil, err
@@ -532,8 +584,8 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 		return nil, err
 	}
 
-	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues, body,
-		end, annotations), nil
+	return ast.NewFunc(name.From, name.StrVal, arguments, returnValues,
+		namedReturnValues, body, end, annotations), nil
 }
 
 func (p *Parser) parseBlock() (ast.List, utils.Point, error) {

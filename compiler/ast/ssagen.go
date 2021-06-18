@@ -622,12 +622,29 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var v []ssa.Variable
 	var err error
 
-	for _, expr := range ast.Exprs {
-		block, v, err = expr.SSA(block, ctx, gen)
-		if err != nil {
-			return nil, nil, err
+	// Compute return values.
+	if ctx.Func().NamedReturn && len(ast.Exprs) == 0 {
+		for _, ret := range ctx.Func().Return {
+			expr := &VariableRef{
+				Point: ret.Point,
+				Name: Identifier{
+					Name: ret.Name,
+				},
+			}
+			block, v, err = expr.SSA(block, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
+			rValues = append(rValues, v)
 		}
-		rValues = append(rValues, v)
+	} else {
+		for _, expr := range ast.Exprs {
+			block, v, err = expr.SSA(block, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
+			rValues = append(rValues, v)
+		}
 	}
 	if len(rValues) == 0 {
 		if len(ctx.Func().Return) != 0 {

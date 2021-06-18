@@ -77,6 +77,44 @@ type StructField struct {
 	Type *TypeInfo
 }
 
+func (ti *TypeInfo) String() string {
+	switch ti.Type {
+	case TypeName:
+		return ti.Name.String()
+
+	case TypeArray:
+		return fmt.Sprintf("[%s]%s", ti.ArrayLength, ti.ElementType)
+
+	case TypeSlice:
+		return fmt.Sprintf("[]%s", ti.ElementType)
+
+	case TypeStruct:
+		name := fmt.Sprintf("struct %s {", ti.TypeName)
+		for idx, field := range ti.StructFields {
+			if idx > 0 {
+				name += ", "
+			}
+			name += fmt.Sprintf("%s %s", field.Name, field.Type.String())
+		}
+		return name + "}"
+
+	case TypeAlias:
+		return fmt.Sprintf("%s=%s", ti.TypeName, ti.AliasType)
+
+	case TypePointer:
+		return fmt.Sprintf("*%s", ti.ElementType)
+
+	default:
+		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
+	}
+}
+
+// IsIdentifier returns true if the type info specifies a type name
+// without package.
+func (ti *TypeInfo) IsIdentifier() bool {
+	return ti.Type == TypeName && len(ti.Name.Package) == 0
+}
+
 var reSizedType = regexp.MustCompilePOSIX(
 	`^(uint|int|float|string)([[:digit:]]*)$`)
 
@@ -174,38 +212,6 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 }
 
-func (ti *TypeInfo) String() string {
-	switch ti.Type {
-	case TypeName:
-		return ti.Name.String()
-
-	case TypeArray:
-		return fmt.Sprintf("[%s]%s", ti.ArrayLength, ti.ElementType)
-
-	case TypeSlice:
-		return fmt.Sprintf("[]%s", ti.ElementType)
-
-	case TypeStruct:
-		name := fmt.Sprintf("struct %s {", ti.TypeName)
-		for idx, field := range ti.StructFields {
-			if idx > 0 {
-				name += ", "
-			}
-			name += fmt.Sprintf("%s %s", field.Name, field.Type.String())
-		}
-		return name + "}"
-
-	case TypeAlias:
-		return fmt.Sprintf("%s=%s", ti.TypeName, ti.AliasType)
-
-	case TypePointer:
-		return fmt.Sprintf("*%s", ti.ElementType)
-
-	default:
-		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
-	}
-}
-
 // Identifier implements an AST identifier.
 type Identifier struct {
 	Defined string
@@ -287,6 +293,7 @@ type Func struct {
 	Name         string
 	Args         []*Variable
 	Return       []*Variable
+	NamedReturn  bool
 	Body         List
 	End          utils.Point
 	NumInstances int
@@ -298,12 +305,14 @@ type Annotations []string
 
 // NewFunc creates a new function definition.
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
-	body List, end utils.Point, annotations Annotations) *Func {
+	namedReturn bool, body List, end utils.Point,
+	annotations Annotations) *Func {
 	return &Func{
 		Point:       loc,
 		Name:        name,
 		Args:        args,
 		Return:      ret,
+		NamedReturn: namedReturn,
 		Body:        body,
 		End:         end,
 		Annotations: annotations,
