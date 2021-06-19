@@ -1212,21 +1212,28 @@ primary:
 		case '(':
 			// Arguments.
 			var arguments []ast.AST
-			for {
-				expr, err := p.parseExpr(needLBrace)
-				if err != nil {
-					return nil, err
-				}
-				arguments = append(arguments, expr)
+			n, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type != ')' {
+				p.lexer.Unget(n)
+				for {
+					expr, err := p.parseExpr(needLBrace)
+					if err != nil {
+						return nil, err
+					}
+					arguments = append(arguments, expr)
 
-				n, err := p.lexer.Get()
-				if err != nil {
-					return nil, err
-				}
-				if n.Type == ')' {
-					break
-				} else if n.Type != ',' {
-					return nil, p.errf(n.From, "unexpected token %s", n)
+					n, err := p.lexer.Get()
+					if err != nil {
+						return nil, err
+					}
+					if n.Type == ')' {
+						break
+					} else if n.Type != ',' {
+						return nil, p.errf(n.From, "unexpected token %s", n)
+					}
 				}
 			}
 			vr, ok := primary.(*ast.VariableRef)
