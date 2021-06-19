@@ -250,14 +250,14 @@ form assembly:
      - [ ] unary expressions
        - [ ] logical not
      - [ ] BitShift
-   - Circuit & garbling:
+   - [ ] Circuit & garbling:
      - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
      - [ ] Half AND
      - [ ] Oblivious transfer extensions
-   - Misc:
+   - [ ] Misc:
      - [ ] TLS for garbler-evaluator protocol
- - Ed25519
+ - [ ] Ed25519
    - [X] Parsing Ed25519 MPCL files
      - [ ] for-range statements
    - [ ] Pointer handling
