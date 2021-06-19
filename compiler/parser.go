@@ -793,9 +793,17 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}, nil
 
 	case TSymFor:
-		init, err := p.parseStatement(false)
+		var init ast.AST
+		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
+		}
+		p.lexer.Unget(n)
+		if n.Type != ';' {
+			init, err = p.parseStatement(false)
+			if err != nil {
+				return nil, err
+			}
 		}
 		_, err = p.needToken(';')
 		if err != nil {
