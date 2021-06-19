@@ -230,7 +230,7 @@ form assembly:
      - [X] Struct input types
      - [X] Binary serialization format for circuits
      - [X] RSA 128-bit signature
-   - Circuit & garbling
+   - [ ] Circuit & garbling
      - [X] RSA 128-bit signature
      - [ ] BMR multi-party protocol
  - [ ] Phase 2
