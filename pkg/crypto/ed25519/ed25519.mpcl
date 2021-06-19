@@ -989,7 +989,9 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	var e [64]int8
 
-	for i, v := range a {
+	// for i, v := range a {
+	for i := 0; i < len(a); i++ {
+		v := a[i]
 		e[2*i] = int8(v & 15)
 		e[2*i+1] = int8((v >> 4) & 15)
 	}
