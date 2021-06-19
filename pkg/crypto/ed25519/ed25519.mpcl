@@ -760,8 +760,11 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 		FeMul(&p.X, &p.X, &SqrtM1)
 
 		FeToBytes(&tmpX, &p.X)
-		for i, v := range tmpX {
-			tmp2[31-i] = v
+		// for i, v := range tmpX {
+		// 	tmp2[31-i] = v
+		// }
+		for i := 0; i < len(tmpX); i++ {
+			tmp2[31-i] - tmpX[i]
 		}
 	}
 
@@ -855,11 +858,15 @@ func geMixedSub(r *CompletedGroupElement, p *ExtendedGroupElement, q *PreCompute
 }
 
 func slide(r *[256]int8, a *[32]byte) {
-	for i := range r {
+	// for i := range r {
+	// 	r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
+	// }
+	for i := 0; i < len(r); i++ {
 		r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
 	}
 
-	for i := range r {
+	// for i := range r {
+	for i := 0; i < len(r); i++ {
 		if r[i] != 0 {
 			for b := 1; b <= 6 && i+b < 256; b++ {
 				if r[i+b] != 0 {
