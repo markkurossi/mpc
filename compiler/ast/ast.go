@@ -269,7 +269,11 @@ func (env *Env) Set(v ssa.Variable, val *ssa.Variable) {
 type List []AST
 
 func (ast List) String() string {
-	return fmt.Sprintf("%v", []AST(ast))
+	result := "{\n"
+	for _, a := range ast {
+		result += fmt.Sprintf("\t%s\n", a)
+	}
+	return result + "}\n"
 }
 
 // Location implements the compiler.utils.Locator interface.
@@ -291,6 +295,7 @@ type Variable struct {
 type Func struct {
 	utils.Point
 	Name         string
+	This         *Variable
 	Args         []*Variable
 	Return       []*Variable
 	NamedReturn  bool
@@ -320,7 +325,11 @@ func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 }
 
 func (ast *Func) String() string {
-	return fmt.Sprintf("func %s()", ast.Name)
+	if ast.This != nil {
+		return fmt.Sprintf("func (%s %s) %s() %s", ast.This.Name, ast.This.Type,
+			ast.Name, ast.Body)
+	}
+	return fmt.Sprintf("func %s() %s", ast.Name, ast.Body)
 }
 
 // ConstantDef implements an AST constant definition.

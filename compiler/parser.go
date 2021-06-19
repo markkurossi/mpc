@@ -209,15 +209,68 @@ func (p *Parser) parseToplevel() error {
 		return p.parseTypeDecl()
 
 	case TSymFunc:
-		f, err := p.parseFunc(p.lexer.Annotations(token.From))
+		// FunctionDecl | MethodDecl
+		//
+		// FunctionDecl = "func" FunctionName Signature [ FunctionBody ] .
+		// FunctionName = identifier .
+		// FunctionBody = Block .
+		//
+		// MethodDecl = "func" Receiver MethodName Signature [ FunctionBody ] .
+		// MethodName = identifier .
+		// Receiver   = Parameters .
+		n, err := p.lexer.Get()
 		if err != nil {
 			return err
 		}
-		_, ok := p.pkg.Functions[f.Name]
-		if ok {
-			return p.errf(f.Location(), "function %s already defined", f.Name)
+		p.lexer.Unget(n)
+		switch n.Type {
+		case TIdentifier:
+			f, err := p.parseFunc(p.lexer.Annotations(token.From))
+			if err != nil {
+				return err
+			}
+			_, ok := p.pkg.Functions[f.Name]
+			if ok {
+				return p.errf(f.Location(), "function %s already defined",
+					f.Name)
+			}
+			p.pkg.Functions[f.Name] = f
+
+		case '(':
+			loc := n.From
+			_, err = p.needToken('(')
+			if err != nil {
+				return err
+			}
+			n, err := p.lexer.Get()
+			if err != nil {
+				return err
+			}
+			if n.Type != TIdentifier {
+				return p.errUnexpected(n, TIdentifier)
+			}
+			ti, err := p.parseType()
+			if err != nil {
+				return err
+			}
+			_, err = p.needToken(')')
+			if err != nil {
+				return err
+			}
+			f, err := p.parseFunc(p.lexer.Annotations(token.From))
+			if err != nil {
+				return err
+			}
+			f.This = &ast.Variable{
+				Point: loc,
+				Name:  n.StrVal,
+				Type:  ti,
+			}
+			// fmt.Printf("%s\n", f)
+
+		default:
+			return p.errf(n.From, "unexpected '%s', expecting name or (", n)
 		}
-		p.pkg.Functions[f.Name] = f
 
 	default:
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
