@@ -257,6 +257,12 @@ form assembly:
      - [ ] Oblivious transfer extensions
    - Misc:
      - [ ] TLS for garbler-evaluator protocol
+ - Ed25519
+   - [X] Parsing Ed25519 MPCL files
+     - [ ] for-range statements
+   - [ ] Pointer handling
+   - [ ] Method calls
+   - [ ] Signed / unsigned arithmetics
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 
