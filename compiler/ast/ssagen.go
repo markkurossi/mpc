@@ -392,7 +392,7 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// False (else) branch.
-	if len(ast.False) == 0 {
+	if ast.False == nil {
 		// No else branch.
 		if tNext.Dead {
 			// True branch terminated.

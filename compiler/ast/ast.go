@@ -389,8 +389,8 @@ func (ast *Assign) String() string {
 type If struct {
 	utils.Point
 	Expr  AST
-	True  List
-	False List
+	True  AST
+	False AST
 }
 
 func (ast *If) String() string {

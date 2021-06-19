@@ -724,7 +724,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 
-		var b1, b2 ast.List
+		var b1, b2 ast.AST
 		b1, _, err = p.parseBlock()
 		if err != nil {
 			return nil, err
@@ -734,14 +734,25 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		if t.Type == TSymElse {
-			// XXX parse IfStmt
-			_, err = p.needToken('{')
+			n, err := p.lexer.Get()
 			if err != nil {
 				return nil, err
 			}
-			b2, _, err = p.parseBlock()
-			if err != nil {
-				return nil, err
+			switch n.Type {
+			case '{':
+				b2, _, err = p.parseBlock()
+				if err != nil {
+					return nil, err
+				}
+
+			case TSymIf:
+				p.lexer.Unget(n)
+				b2, err = p.parseStatement(needLBrace)
+				if err != nil {
+				}
+
+			default:
+				return nil, p.errf(n.From, "unexpected %s, expected if or {", n)
 			}
 		} else {
 			p.lexer.Unget(t)
