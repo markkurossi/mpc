@@ -593,8 +593,8 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		if !a.TypeCompatible(args[idx]) {
 			return nil, nil, ctx.Errorf(ast,
-				"invalid value %v for argument %d of %s",
-				args[idx].Type, idx, called)
+				"cannot use %s (type %v) as type %s in argument to %s",
+				args[idx].Name, args[idx].Type, typeInfo, called.Name)
 		}
 		ctx.Start().Bindings.Set(a, &args[idx])
 
