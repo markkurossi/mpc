@@ -167,16 +167,28 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			}
 			gen.AddConstant(init)
 		} else {
-			var v []ssa.Variable
-			block, v, err = ast.Init.SSA(block, ctx, gen)
+			// Check if the init value is constant.
+			env := NewEnv(block)
+			constVal, ok, err := ast.Init.Eval(env, ctx, gen)
 			if err != nil {
 				return nil, nil, err
 			}
-			if len(v) != 1 {
-				return nil, nil, ctx.Errorf(ast,
-					"multiple-value %s used in single-value context", ast.Init)
+			if ok {
+				gen.AddConstant(constVal)
+				init = constVal
+			} else {
+				var v []ssa.Variable
+				block, v, err = ast.Init.SSA(block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				if len(v) != 1 {
+					return nil, nil, ctx.Errorf(ast,
+						"multiple-value %s used in single-value context",
+						ast.Init)
+				}
+				init = v[0]
 			}
-			init = v[0]
 		}
 		block.AddInstr(ssa.NewMovInstr(init, lValue))
 	}

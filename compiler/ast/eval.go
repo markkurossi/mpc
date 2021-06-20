@@ -281,7 +281,23 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval for unary expressions.
 func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Variable, bool, error) {
-	return ssa.Undefined, false, fmt.Errorf("Unary.Eval not implemented yet")
+	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
+	if err != nil || !ok {
+		return ssa.Undefined, ok, err
+	}
+	switch val := expr.ConstValue.(type) {
+	case int32:
+		switch ast.Type {
+		case UnaryMinus:
+			return gen.Constant(-val, types.Int32)
+		default:
+			return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+				"Unary.Eval: '%s%T' not implemented yet", ast.Type, val)
+		}
+	default:
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+			"invalid value %s%T", ast.Type, val)
+	}
 }
 
 // Eval implements the compiler.ast.AST.Eval for slice expressions.
@@ -429,6 +445,21 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, err
 	}
 	switch typeInfo.Type {
+	case types.TStruct:
+		// Check if all elements are constants.
+		var values []interface{}
+		for _, el := range ast.Value {
+			// XXX check if el.Key is specified
+
+			v, ok, err := el.Element.Eval(env, ctx, gen)
+			if err != nil || !ok {
+				return ssa.Undefined, ok, err
+			}
+			// XXX chck that v is assignment compatible with typeInfo.Struct[i]
+			values = append(values, v)
+		}
+		return gen.Constant(values, typeInfo)
+
 	case types.TArray:
 		// Check if all elements are constants.
 		var values []interface{}

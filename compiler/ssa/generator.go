@@ -280,6 +280,12 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		}
 
 	case []interface{}:
+		if !ti.Undefined() && ti.Type == types.TStruct {
+			v.Name = ti.String()
+			v.Type = ti
+			return v, true, nil
+		}
+
 		var bits int
 		var length string
 		var name string
