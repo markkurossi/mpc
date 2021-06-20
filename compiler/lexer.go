@@ -50,6 +50,7 @@ const (
 	TMinusEq
 	TOrEq
 	TXorEq
+	TAndEq
 	TLt
 	TLe
 	TGt
@@ -87,6 +88,7 @@ var tokenTypes = map[TokenType]string{
 	TMinusEq:    "-=",
 	TOrEq:       "|=",
 	TXorEq:      "^=",
+	TAndEq:      "&=",
 	TLt:         "<",
 	TLe:         "<=",
 	TGt:         ">",
@@ -529,6 +531,8 @@ func (l *Lexer) Get() (*Token, error) {
 				return l.Token(TAnd), nil
 			case '^':
 				return l.Token(TBitClear), nil
+			case '=':
+				return l.Token(TAndEq), nil
 			default:
 				l.UnreadRune()
 				return l.Token('&'), nil
