@@ -68,7 +68,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return ssa.Undefined, false, err
 		}
 		gen.AddConstant(constVal)
-		arrType.ArrayElement = &constVal.Type
+		arrType.ElementType = &constVal.Type
 
 		ref, ok := lv.(*VariableRef)
 		if !ok {

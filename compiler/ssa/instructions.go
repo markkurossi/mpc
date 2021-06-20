@@ -664,7 +664,7 @@ func isSet(v interface{}, bit int) bool {
 			return isSet(val.ConstValue, bit)
 
 		case types.TArray:
-			elType := val.Type.ArrayElement
+			elType := val.Type.ElementType
 			idx := bit / elType.Bits
 			mod := bit % elType.Bits
 			if idx >= val.Type.ArraySize {

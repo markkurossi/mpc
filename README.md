@@ -263,6 +263,7 @@ form assembly:
    - [ ] Pointer handling
    - [ ] Method calls
    - [ ] Signed / unsigned arithmetics
+   - [ ] `byte` type
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 

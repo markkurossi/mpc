@@ -92,10 +92,10 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, nil, ctx.Errorf(loc,
 			"second argument to copy should be slice or array")
 	}
-	if !dst.Type.ArrayElement.Equal(*src.Type.ArrayElement) {
+	if !dst.Type.ElementType.Equal(*src.Type.ElementType) {
 		return nil, nil, ctx.Errorf(loc,
 			"arguments to copy have different element types: %s and %s",
-			dst.Type.ArrayElement, src.Type.ArrayElement)
+			dst.Type.ElementType, src.Type.ElementType)
 	}
 
 	lValue, err := gen.NewVar(dst.Name, dst.Type, ctx.Scope())

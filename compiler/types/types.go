@@ -46,6 +46,7 @@ const (
 	TString
 	TStruct
 	TArray
+	TPtr
 )
 
 // Types define MPCL types and their names.
@@ -58,6 +59,7 @@ var Types = map[string]Type{
 	"string":      TString,
 	"struct":      TStruct,
 	"array":       TArray,
+	"ptr":         TPtr,
 }
 
 var shortTypes = map[Type]string{
@@ -69,17 +71,18 @@ var shortTypes = map[Type]string{
 	TString:    "str",
 	TStruct:    "struct",
 	TArray:     "arr",
+	TPtr:       "*",
 }
 
 // Info specifies information about a type.
 type Info struct {
-	Type         Type
-	Bits         int
-	MinBits      int
-	Struct       []StructField
-	ArrayElement *Info
-	ArraySize    int
-	Offset       int
+	Type        Type
+	Bits        int
+	MinBits     int
+	Struct      []StructField
+	ElementType *Info
+	ArraySize   int
+	Offset      int
 }
 
 // Undefined defines type info for undefined types.
@@ -131,7 +134,7 @@ func (i Info) String() string {
 		return i.Type.String()
 	}
 	if i.Type == TArray {
-		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ArrayElement)
+		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ElementType)
 	}
 	return fmt.Sprintf("%s%d", i.Type, i.Bits)
 }
@@ -173,7 +176,7 @@ func (i Info) Equal(o Info) bool {
 		if i.ArraySize != o.ArraySize || i.Bits != o.Bits {
 			return false
 		}
-		return i.ArrayElement.Equal(*o.ArrayElement)
+		return i.ElementType.Equal(*o.ElementType)
 
 	default:
 		panic(fmt.Sprintf("Info.Equal called for %v (%T)", i.Type, i.Type))

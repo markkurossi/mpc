@@ -204,7 +204,7 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 	case types.TString:
 		return "", nil
 	case types.TArray:
-		elInit, err := initValue(*typeInfo.ArrayElement)
+		elInit, err := initValue(*typeInfo.ElementType)
 		if err != nil {
 			return nil, err
 		}
@@ -321,8 +321,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"invalid array index %d (out of bounds for %d-element array)",
 						index, b.Type.ArraySize)
 				}
-				from := int32(index * b.Type.ArrayElement.Bits)
-				to := int32((index + 1) * b.Type.ArrayElement.Bits)
+				from := int32(index * b.Type.ElementType.Bits)
+				to := int32((index + 1) * b.Type.ElementType.Bits)
 
 				indexType := types.Uint32
 				fromConst, _, err := gen.Constant(from, indexType)
@@ -1038,8 +1038,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		MinBits: int(to - from),
 	}
 	if expr[0].Type.Type == types.TArray {
-		ti.ArrayElement = expr[0].Type.ArrayElement
-		ti.ArraySize = ti.Bits / ti.ArrayElement.Bits
+		ti.ElementType = expr[0].Type.ElementType
+		ti.ArraySize = ti.Bits / ti.ElementType.Bits
 	}
 
 	t := gen.AnonVar(ti)
@@ -1112,8 +1112,8 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element array)",
 				index, expr.Type.ArraySize)
 		}
-		from := int32(index * expr.Type.ArrayElement.Bits)
-		to := int32((index + 1) * expr.Type.ArrayElement.Bits)
+		from := int32(index * expr.Type.ElementType.Bits)
+		to := int32((index + 1) * expr.Type.ElementType.Bits)
 
 		fromConst, _, err := gen.Constant(from, types.Uint32)
 		if err != nil {
@@ -1123,7 +1123,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		t := gen.AnonVar(*expr.Type.ArrayElement)
+		t := gen.AnonVar(*expr.Type.ElementType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
 		return block, []ssa.Variable{t}, nil

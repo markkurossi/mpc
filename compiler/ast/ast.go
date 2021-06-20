@@ -200,11 +200,22 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return result, err
 		}
 		return types.Info{
-			Type:         types.TArray,
-			Bits:         length * elInfo.Bits,
-			MinBits:      length * elInfo.MinBits,
-			ArrayElement: &elInfo,
-			ArraySize:    length,
+			Type:        types.TArray,
+			Bits:        length * elInfo.Bits,
+			MinBits:     length * elInfo.MinBits,
+			ElementType: &elInfo,
+			ArraySize:   length,
+		}, nil
+
+	case TypePointer:
+		// Element type.
+		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
+		if err != nil {
+			return result, err
+		}
+		return types.Info{
+			Type:        types.TPtr,
+			ElementType: &elInfo,
 		}, nil
 
 	default:
@@ -326,10 +337,10 @@ func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 
 func (ast *Func) String() string {
 	if ast.This != nil {
-		return fmt.Sprintf("func (%s %s) %s() %s", ast.This.Name, ast.This.Type,
-			ast.Name, ast.Body)
+		return fmt.Sprintf("func (%s %s) %s()",
+			ast.This.Name, ast.This.Type, ast.Name)
 	}
-	return fmt.Sprintf("func %s() %s", ast.Name, ast.Body)
+	return fmt.Sprintf("func %s()", ast.Name)
 }
 
 // ConstantDef implements an AST constant definition.
