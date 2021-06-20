@@ -16,31 +16,31 @@ import (
 
 // Eval implements the compiler.ast.AST.Eval for list statements.
 func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return ssa.Undefined, false, fmt.Errorf("List.Eval not implemented yet")
 }
 
 // Eval implements the compiler.ast.AST.Eval for function definitions.
 func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant definitions.
 func (ast *ConstantDef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (ssa.Variable, bool, error) {
+	gen *ssa.Generator) (ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for variable definitions.
 func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (ssa.Variable, bool, error) {
+	gen *ssa.Generator) (ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for assignment expressions.
 func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 
 	var values []interface{}
 	for _, expr := range ast.Exprs {
@@ -77,9 +77,9 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		// XXX package.name below
 
-		var lValue ssa.Variable
+		var lValue ssa.Value
 		if ast.Define {
-			lValue, err = gen.NewVar(ref.Name.Name, constVal.Type, ctx.Scope())
+			lValue, err = gen.NewVal(ref.Name.Name, constVal.Type, ctx.Scope())
 			if err != nil {
 				return ssa.Undefined, false, err
 			}
@@ -89,7 +89,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				return ssa.Undefined, false,
 					ctx.Errorf(ast, "undefined variable '%s'", ref.Name)
 			}
-			lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+			lValue, err = gen.NewVal(b.Name, b.Type, ctx.Scope())
 			if err != nil {
 				return ssa.Undefined, false, err
 			}
@@ -103,13 +103,13 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 // Eval implements the compiler.ast.AST.Eval for if statements.
 func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for call expressions.
 func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 
 	// Resolve called.
 	var pkgName string
@@ -147,19 +147,19 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 // Eval implements the compiler.ast.AST.Eval for return statements.
 func (ast *Return) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for for statements.
 func (ast *For) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for binary expressions.
 func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	l, ok, err := ast.Left.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return ssa.Undefined, ok, err
@@ -280,7 +280,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 // Eval implements the compiler.ast.AST.Eval for unary expressions.
 func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return ssa.Undefined, ok, err
@@ -302,7 +302,7 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 // Eval implements the compiler.ast.AST.Eval for slice expressions.
 func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 
 	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
@@ -364,7 +364,7 @@ func intVal(val interface{}) (int, error) {
 
 // Eval implements the compiler.ast.AST.Eval() for index expressions.
 func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 
 	expr, ok, err := ast.Expr.Eval(env, ctx, gen)
 	if err != nil || !ok {
@@ -389,7 +389,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 // Eval implements the compiler.ast.AST.Eval for variable references.
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (ssa.Variable, bool, error) {
+	gen *ssa.Generator) (ssa.Value, bool, error) {
 
 	var b ssa.Binding
 	var ok bool
@@ -398,7 +398,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	b, ok = env.Get(ast.Name.Package)
 	if ok {
 		// Bound. We are selecting value from its value.
-		val, ok := b.Bound.(*ssa.Variable)
+		val, ok := b.Bound.(*ssa.Value)
 		if !ok || !val.Const {
 			return ssa.Undefined, false, nil
 		}
@@ -422,7 +422,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 			ast.Name.String())
 	}
 
-	val, ok := b.Bound.(*ssa.Variable)
+	val, ok := b.Bound.(*ssa.Value)
 	if !ok || !val.Const {
 		return ssa.Undefined, false, nil
 	}
@@ -432,13 +432,13 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 	return gen.Constant(ast.Value, types.Undefined)
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	ssa.Variable, bool, error) {
+	ssa.Value, bool, error) {
 
 	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
 	if err != nil {

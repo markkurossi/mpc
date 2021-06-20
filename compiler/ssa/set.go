@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,28 +10,28 @@ import (
 	"sort"
 )
 
-// Set implements variable set
-type Set map[VariableID]Variable
+// Set implements value set
+type Set map[ValueID]Value
 
 // NewSet creates a new string value set.
 func NewSet() Set {
-	return make(map[VariableID]Variable)
+	return make(map[ValueID]Value)
 }
 
 // Add adds a value to the set.
-func (set Set) Add(val Variable) {
+func (set Set) Add(val Value) {
 	set[val.ID] = val
 }
 
 // Remove removes a value from set set. The operation does nothing if
 // the value did not exist in the set.
-func (set Set) Remove(val Variable) {
+func (set Set) Remove(val Value) {
 	delete(set, val.ID)
 }
 
 // Copy creates a copy of the set.
 func (set Set) Copy() Set {
-	result := make(map[VariableID]Variable)
+	result := make(map[ValueID]Value)
 	for k, v := range set {
 		result[k] = v
 	}
@@ -46,8 +46,8 @@ func (set Set) Subtract(o Set) {
 }
 
 // Array returns the values of the set as an array.
-func (set Set) Array() []Variable {
-	var result []Variable
+func (set Set) Array() []Value {
+	var result []Value
 	for _, v := range set {
 		result = append(result, v)
 	}

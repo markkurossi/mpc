@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -20,7 +20,7 @@ type Block struct {
 	Name       string
 	From       []*Block
 	Next       *Block
-	BranchCond Variable
+	BranchCond Value
 	Branch     *Block
 	Instr      []Instr
 	Bindings   Bindings
@@ -77,9 +77,9 @@ type returnBindingKey struct {
 	Name    string
 }
 
-// ReturnBindingValue define return binding value for a return variable.
+// ReturnBindingValue define return binding value for a return value.
 type ReturnBindingValue struct {
-	v  Variable
+	v  Value
 	ok bool
 }
 
@@ -89,7 +89,7 @@ type ReturnBindingCTX struct {
 	cache map[returnBindingKey]ReturnBindingValue
 }
 
-// Get gets the return binding for the return variable in the basic
+// Get gets the return binding for the return value in the basic
 // block.
 func (ctx *ReturnBindingCTX) Get(b *Block, name string) (
 	ReturnBindingValue, bool) {
@@ -100,9 +100,9 @@ func (ctx *ReturnBindingCTX) Get(b *Block, name string) (
 	return value, ok
 }
 
-// Set sets the return binding for the return variable in the basic
+// Set sets the return binding for the return value in the basic
 // block.
-func (ctx *ReturnBindingCTX) Set(b *Block, name string, v Variable, ok bool) {
+func (ctx *ReturnBindingCTX) Set(b *Block, name string, v Value, ok bool) {
 	ctx.cache[returnBindingKey{
 		BlockID: b.ID,
 		Name:    name,
@@ -120,11 +120,11 @@ func NewReturnBindingCTX() *ReturnBindingCTX {
 }
 
 // ReturnBinding returns the return statement binding for the argument
-// variable. If the block contains a branch and variable's value is
-// modified in both branches, the function adds a Phi instruction to
-// resolve the variable's value after this basic block.
+// value. If the block contains a branch and value is modified in both
+// branches, the function adds a Phi instruction to resolve the value
+// binding after this basic block.
 func (b *Block) ReturnBinding(ctx *ReturnBindingCTX, name string,
-	retBlock *Block, gen *Generator) (v Variable, ok bool) {
+	retBlock *Block, gen *Generator) (v Value, ok bool) {
 
 	if ctx == nil {
 		return b.returnBinding(ctx, name, retBlock, gen)
@@ -140,7 +140,7 @@ func (b *Block) ReturnBinding(ctx *ReturnBindingCTX, name string,
 }
 
 func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
-	retBlock *Block, gen *Generator) (v Variable, ok bool) {
+	retBlock *Block, gen *Generator) (v Value, ok bool) {
 
 	// XXX Check if the if-ssagen could omit branch in this case?
 	if b.Branch == nil || b.Next == b.Branch {
@@ -177,7 +177,7 @@ func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
 		rType = vFalse.Type
 	}
 
-	v = gen.AnonVar(rType)
+	v = gen.AnonVal(rType)
 	retBlock.AddInstr(NewPhiInstr(b.BranchCond, vTrue, vFalse, v))
 
 	return v, true

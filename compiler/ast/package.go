@@ -77,7 +77,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 					arg.Name, main)
 		}
 		// Define argument in block.
-		a, err := gen.NewVar(arg.Name, typeInfo, ctx.Scope())
+		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -302,7 +302,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 	if err != nil {
 		return err
 	}
-	lval, err := gen.NewVar(def.TypeName, info, ctx.Scope())
+	lval, err := gen.NewVal(def.TypeName, info, ctx.Scope())
 	if err != nil {
 		return err
 	}

@@ -36,11 +36,11 @@ const (
 
 // SSA implements the builtin SSA generation.
 type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error)
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error)
 
 // Eval implements the builtin evaluation in constant folding.
 type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (ssa.Variable, bool, error)
+	loc utils.Point) (ssa.Value, bool, error)
 
 // Predeclared identifiers.
 var builtins = []Builtin{
@@ -74,7 +74,7 @@ var builtins = []Builtin{
 }
 
 func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
 
 	if len(args) != 2 {
 		return nil, nil, ctx.Errorf(loc,
@@ -98,7 +98,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			dst.Type.ElementType, src.Type.ElementType)
 	}
 
-	lValue, err := gen.NewVar(dst.Name, dst.Type, ctx.Scope())
+	lValue, err := gen.NewVal(dst.Name, dst.Type, ctx.Scope())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -141,11 +141,11 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 	gen.AddConstant(v)
 
-	return block, []ssa.Variable{v}, nil
+	return block, []ssa.Value{v}, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
 
 	if len(args) != 1 {
 		return nil, nil, ctx.Errorf(loc,
@@ -171,11 +171,11 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 	gen.AddConstant(v)
 
-	return block, []ssa.Variable{v}, nil
+	return block, []ssa.Value{v}, nil
 }
 
 func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (ssa.Variable, bool, error) {
+	loc utils.Point) (ssa.Value, bool, error) {
 
 	if len(args) != 1 {
 		return ssa.Undefined, false, ctx.Errorf(loc,
@@ -222,7 +222,7 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 }
 
 func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (ssa.Variable, bool, error) {
+	loc utils.Point) (ssa.Value, bool, error) {
 
 	if len(args) != 2 {
 		return ssa.Undefined, false, ctx.Errorf(loc,
@@ -267,7 +267,7 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
 
 	if len(args) < 1 {
 		return nil, nil, ctx.Errorf(loc,
@@ -296,11 +296,11 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			}
 		}
 
-		v := gen.AnonVar(typeInfo)
+		v := gen.AnonVal(typeInfo)
 		block.AddInstr(ssa.NewBuiltinInstr(circuits.Hamming, args[0], args[1],
 			v))
 
-		return block, []ssa.Variable{v}, nil
+		return block, []ssa.Value{v}, nil
 
 	default:
 		if strings.HasSuffix(name, ".circ") {
@@ -311,8 +311,8 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 }
 
 func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator, args []ssa.Variable, loc utils.Point) (
-	*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator, args []ssa.Value, loc utils.Point) (
+	*ssa.Block, []ssa.Value, error) {
 
 	dir := path.Dir(loc.Source)
 	fp := path.Join(dir, name)
@@ -341,10 +341,10 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 		fmt.Printf(" - native %s: %v\n", name, circ)
 	}
 
-	var result []ssa.Variable
+	var result []ssa.Value
 
 	for _, io := range circ.Outputs {
-		result = append(result, gen.AnonVar(types.Info{
+		result = append(result, gen.AnonVal(types.Info{
 			Type: types.TUndefined,
 			Bits: io.Size,
 		}))
@@ -356,7 +356,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 }
 
 func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Variable, loc utils.Point) (*ssa.Block, []ssa.Variable, error) {
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
 
 	if len(args) != 1 {
 		return nil, nil, ctx.Errorf(loc,
@@ -369,11 +369,11 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 	gen.AddConstant(v)
 
-	return block, []ssa.Variable{v}, nil
+	return block, []ssa.Value{v}, nil
 }
 
 func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (ssa.Variable, bool, error) {
+	loc utils.Point) (ssa.Value, bool, error) {
 
 	if len(args) != 1 {
 		return ssa.Undefined, false, ctx.Errorf(loc,

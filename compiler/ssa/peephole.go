@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -28,20 +28,20 @@ type Template struct {
 }
 
 // Expand expands the template with given environment bindings.
-func (t Template) Expand(env map[string]Variable) (Instr, error) {
-	var in []Variable
-	var out Variable
+func (t Template) Expand(env map[string]Value) (Instr, error) {
+	var in []Value
+	var out Value
 
 	for _, i := range t.In {
 		v, ok := env[i]
 		if !ok {
-			return Instr{}, fmt.Errorf("input variable %s not bound", i)
+			return Instr{}, fmt.Errorf("input value %s not bound", i)
 		}
 		in = append(in, v)
 	}
 	out, ok := env[t.Out]
 	if !ok {
-		return Instr{}, fmt.Errorf("output variable %s not bound", t.Out)
+		return Instr{}, fmt.Errorf("output value %s not bound", t.Out)
 	}
 
 	return Instr{
@@ -53,7 +53,7 @@ func (t Template) Expand(env map[string]Variable) (Instr, error) {
 
 // Match tests if the rule matches the steps span.
 func (rule Rule) Match(steps []Step) []Step {
-	env := make(map[string]Variable)
+	env := make(map[string]Value)
 
 	// Match all patterns
 	for idx, p := range rule.Pattern {
@@ -100,7 +100,7 @@ func (rule Rule) Match(steps []Step) []Step {
 	return result
 }
 
-func matchVar(env map[string]Variable, pattern string, v Variable) bool {
+func matchVar(env map[string]Value, pattern string, v Value) bool {
 	binding, ok := env[pattern]
 	if ok {
 		// Pattern already bound, must be equal binding.

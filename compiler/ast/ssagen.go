@@ -15,7 +15,7 @@ import (
 
 // SSA implements the compiler.ast.AST.SSA for list statements.
 func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	var err error
 
@@ -42,7 +42,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for function definitions.
 func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	ctx.Start().Name = fmt.Sprintf("%s#%d", ast.Name, ast.NumInstances)
 	ctx.Return().Name = fmt.Sprintf("%s.ret#%d", ast.Name, ast.NumInstances)
@@ -57,7 +57,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Errorf(ret, "invalid return type: %s", err)
 		}
-		r, err := gen.NewVar(ret.Name, typeInfo, ctx.Scope())
+		r, err := gen.NewVal(ret.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -75,7 +75,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Select return variables.
-	var vars []ssa.Variable
+	var vars []ssa.Value
 	for _, ret := range ast.Return {
 		v, ok := ctx.Start().ReturnBinding(ssa.NewReturnBindingCTX(), ret.Name,
 			ctx.Return(), gen)
@@ -96,7 +96,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for constant definitions.
 func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
 	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
 	if err != nil {
@@ -141,7 +141,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 
 // SSA implements the compiler.ast.AST.SSA for variable definitions.
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
 	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
 	if err != nil {
@@ -149,13 +149,13 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	for _, n := range ast.Names {
-		lValue, err := gen.NewVar(n, typeInfo, ctx.Scope())
+		lValue, err := gen.NewVal(n, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
 		block.Bindings.Set(lValue, nil)
 
-		var init ssa.Variable
+		var init ssa.Value
 		if ast.Init == nil {
 			initVal, err := initValue(lValue.Type)
 			if err != nil {
@@ -177,7 +177,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				gen.AddConstant(constVal)
 				init = constVal
 			} else {
-				var v []ssa.Variable
+				var v []ssa.Value
 				block, v, err = ast.Init.SSA(block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
@@ -220,9 +220,9 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 
 // SSA implements the compiler.ast.AST.SSA for assignment expressions.
 func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	var values []ssa.Variable
+	var values []ssa.Value
 	var err error
 
 	for _, expr := range ast.Exprs {
@@ -236,7 +236,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			gen.AddConstant(constVal)
 			values = append(values, constVal)
 		} else {
-			var v []ssa.Variable
+			var v []ssa.Value
 			block, v, err = expr.SSA(block, ctx, gen)
 			if err != nil {
 				return nil, nil, err
@@ -257,14 +257,14 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		switch lv := lvalue.(type) {
 		case *VariableRef:
 			// XXX package.name below
-			var lValue ssa.Variable
+			var lValue ssa.Value
 			b, ok := block.Bindings.Get(lv.Name.Name)
 			if ast.Define {
 				if ok {
 					return nil, nil, ctx.Errorf(ast,
 						"no new variables on left side of :=")
 				}
-				lValue, err = gen.NewVar(lv.Name.Name, values[idx].Type,
+				lValue, err = gen.NewVal(lv.Name.Name, values[idx].Type,
 					ctx.Scope())
 				if err != nil {
 					return nil, nil, err
@@ -273,7 +273,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
 				}
-				lValue, err = gen.NewVar(b.Name, b.Type, ctx.Scope())
+				lValue, err = gen.NewVal(b.Name, b.Type, ctx.Scope())
 				if err != nil {
 					return nil, nil, err
 				}
@@ -294,7 +294,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", arr.Name)
 				}
-				lValue, err := gen.NewVar(b.Name, b.Type, ctx.Scope())
+				lValue, err := gen.NewVal(b.Name, b.Type, ctx.Scope())
 				if err != nil {
 					return nil, nil, err
 				}
@@ -338,7 +338,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					b.Value(block, gen), fromConst, toConst, lValue))
 				block.Bindings.Set(lValue, nil)
 
-				return block, []ssa.Variable{lValue}, nil
+				return block, []ssa.Value{lValue}, nil
 
 			default:
 				return nil, nil, ctx.Errorf(ast,
@@ -355,7 +355,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 
 // SSA implements the compiler.ast.AST.SSA for if statements.
 func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	env := NewEnv(block)
 	constVal, ok, err := ast.Expr.Eval(env, ctx, gen)
@@ -451,12 +451,12 @@ func (ast *If) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for call expressions.
 func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	// Generate call values.
 
-	var callValues [][]ssa.Variable
-	var v []ssa.Variable
+	var callValues [][]ssa.Value
+	var v []ssa.Value
 	var err error
 
 	for _, expr := range ast.Exprs {
@@ -490,7 +490,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 					bi.Name)
 			}
 			// Flatten arguments.
-			var args []ssa.Variable
+			var args []ssa.Value
 			for _, arg := range callValues {
 				args = append(args, arg...)
 			}
@@ -519,13 +519,13 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// Convert value to type
-		t := gen.AnonVar(typeInfo)
+		t := gen.AnonVal(typeInfo)
 		block.AddInstr(ssa.NewMovInstr(callValues[0][0], t))
 
-		return block, []ssa.Variable{t}, nil
+		return block, []ssa.Value{t}, nil
 	}
 
-	var args []ssa.Variable
+	var args []ssa.Value
 
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
@@ -587,7 +587,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = args[idx].Type.Bits
 		}
-		a, err := gen.NewVar(arg.Name, typeInfo, ctx.Scope())
+		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -619,7 +619,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for return statements.
 func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	if ctx.Func() == nil {
 		return nil, nil, ctx.Errorf(ast, "return outside function")
@@ -629,9 +629,9 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			"missing return at the end of function")
 	}
 
-	var rValues [][]ssa.Variable
-	var result []ssa.Variable
-	var v []ssa.Variable
+	var rValues [][]ssa.Value
+	var result []ssa.Value
+	var v []ssa.Value
 	var err error
 
 	// Compute return values.
@@ -701,7 +701,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = result[idx].Type.Bits
 		}
-		v, err := gen.NewVar(r.Name, typeInfo, ctx.Scope())
+		v, err := gen.NewVal(r.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
@@ -726,7 +726,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
-func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Variable,
+func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Value,
 	want []*Variable) error {
 	message += "\n\thave ("
 	switch len(have) {
@@ -770,7 +770,7 @@ func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Variable,
 
 // SSA implements the compiler.ast.AST.SSA for for statements.
 func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	// Use the same env for the whole for-loop unrolling.
 	env := NewEnv(block)
@@ -833,7 +833,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for binary expressions.
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	// Check constant folding.
 	constVal, ok, err := ast.Eval(NewEnv(block), ctx, gen)
@@ -846,7 +846,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
 		gen.AddConstant(constVal)
-		return block, []ssa.Variable{constVal}, nil
+		return block, []ssa.Value{constVal}, nil
 	}
 
 	block, lArr, err := ast.Left.SSA(block, ctx, gen)
@@ -899,7 +899,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "Binary.SSA: '%s' not implemented yet",
 			ast.Op)
 	}
-	t := gen.AnonVar(resultType)
+	t := gen.AnonVal(resultType)
 
 	var instr ssa.Instr
 	switch ast.Op {
@@ -952,16 +952,15 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	block.AddInstr(instr)
 
-	return block, []ssa.Variable{t}, nil
+	return block, []ssa.Value{t}, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for unary expressions.
 func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 	switch ast.Type {
 	case UnaryAddr:
-		// The address semantics are handled in function calls. We
-		// simply pass the value here.
+		// XXX pointer handling
 		return ast.Expr.SSA(block, ctx, gen)
 
 	default:
@@ -971,7 +970,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for slice expressions.
 func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	block, expr, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
@@ -981,7 +980,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 
-	var val []ssa.Variable
+	var val []ssa.Value
 	var from int32
 	if ast.From == nil {
 		from = 0
@@ -1042,16 +1041,16 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ti.ArraySize = ti.Bits / ti.ElementType.Bits
 	}
 
-	t := gen.AnonVar(ti)
+	t := gen.AnonVal(ti)
 
 	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
 
-	return block, []ssa.Variable{t}, nil
+	return block, []ssa.Value{t}, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for index expressions.
 func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-	*ssa.Block, []ssa.Variable, error) {
+	*ssa.Block, []ssa.Value, error) {
 
 	block, exprs, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
@@ -1101,10 +1100,10 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		t := gen.AnonVar(indexType)
+		t := gen.AnonVal(indexType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
-		return block, []ssa.Variable{t}, nil
+		return block, []ssa.Value{t}, nil
 
 	case types.TArray:
 		if index < 0 || index >= expr.Type.ArraySize {
@@ -1123,10 +1122,10 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		t := gen.AnonVar(*expr.Type.ElementType)
+		t := gen.AnonVal(*expr.Type.ElementType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
-		return block, []ssa.Variable{t}, nil
+		return block, []ssa.Value{t}, nil
 
 	default:
 		return nil, nil, ctx.Errorf(ast,
@@ -1137,7 +1136,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 // SSA implements the compiler.ast.AST.SSA for variable references.
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
 	var b ssa.Binding
 	var ok bool
@@ -1165,7 +1164,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 				ast.Name.Package, ast.Name.Name, value.Type, ast.Name.Name)
 		}
 
-		t := gen.AnonVar(types.Info{
+		t := gen.AnonVal(types.Info{
 			Type:    field.Type.Type,
 			Bits:    field.Type.Bits,
 			MinBits: field.Type.Bits,
@@ -1182,7 +1181,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 
 		block.AddInstr(ssa.NewSliceInstr(value, fromConst, toConst, t))
-		return block, []ssa.Variable{t}, nil
+		return block, []ssa.Value{t}, nil
 	}
 
 	if len(ast.Name.Package) > 0 {
@@ -1218,12 +1217,12 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		gen.AddConstant(value)
 	}
 
-	return block, []ssa.Variable{value}, nil
+	return block, []ssa.Value{value}, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for constant values.
 func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
 	v, _, err := gen.Constant(ast.Value, types.Undefined)
 	if err != nil {
@@ -1231,11 +1230,11 @@ func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	}
 	gen.AddConstant(v)
 
-	return block, []ssa.Variable{v}, nil
+	return block, []ssa.Value{v}, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for constant values.
 func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Variable, error) {
+	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 	return nil, nil, fmt.Errorf("CompositeLit.SSA not implemented yet")
 }

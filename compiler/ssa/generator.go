@@ -22,25 +22,25 @@ const (
 // Generator implements code generator.
 type Generator struct {
 	Params    *utils.Params
-	versions  map[string]Variable
+	versions  map[string]Value
 	blockID   int
 	constants map[string]ConstantInst
-	nextVarID VariableID
+	nextValID ValueID
 }
 
-// ConstantInst defines a constant variable instance.
+// ConstantInst defines a constant value instance.
 type ConstantInst struct {
 	Count int
-	Const Variable
+	Const Value
 }
 
 // NewGenerator creates a new code generator.
 func NewGenerator(params *utils.Params) *Generator {
 	return &Generator{
 		Params:    params,
-		versions:  make(map[string]Variable),
+		versions:  make(map[string]Value),
 		constants: make(map[string]ConstantInst),
-		nextVarID: 1,
+		nextValID: 1,
 	}
 }
 
@@ -49,53 +49,53 @@ func (gen *Generator) Constants() map[string]ConstantInst {
 	return gen.constants
 }
 
-func (gen *Generator) nextVariableID() VariableID {
-	ret := gen.nextVarID
-	gen.nextVarID++
+func (gen *Generator) nextValueID() ValueID {
+	ret := gen.nextValID
+	gen.nextValID++
 	return ret
 }
 
-// UndefVar creates a new undefined variable.
-func (gen *Generator) UndefVar() Variable {
+// UndefVal creates a new undefined value.
+func (gen *Generator) UndefVal() Value {
 	v, ok := gen.versions[anon]
 	if !ok {
-		v = Variable{
+		v = Value{
 			Name: anon,
 		}
 	} else {
 		v.Version = v.Version + 1
 	}
 	v.Type = types.Undefined
-	v.ID = gen.nextVariableID()
+	v.ID = gen.nextValueID()
 	gen.versions[anon] = v
 	return v
 }
 
-// AnonVar creates a new anonymous variable.
-func (gen *Generator) AnonVar(t types.Info) Variable {
+// AnonVal creates a new anonymous value.
+func (gen *Generator) AnonVal(t types.Info) Value {
 	v, ok := gen.versions[anon]
 	if !ok {
-		v = Variable{
+		v = Value{
 			Name: anon,
 		}
 	} else {
 		v.Version = v.Version + 1
 	}
 	v.Type = t
-	v.ID = gen.nextVariableID()
+	v.ID = gen.nextValueID()
 	gen.versions[anon] = v
 
 	return v
 }
 
-// NewVar creates a new variable with the name, type, and scope.
-func (gen *Generator) NewVar(name string, t types.Info, scope int) (
-	Variable, error) {
+// NewVal creates a new value with the name, type, and scope.
+func (gen *Generator) NewVal(name string, t types.Info, scope int) (
+	Value, error) {
 
 	key := fmtKey(name, scope)
 	v, ok := gen.versions[key]
 	if !ok {
-		v = Variable{
+		v = Value{
 			Name:  name,
 			Scope: scope,
 			Type:  t,
@@ -104,14 +104,14 @@ func (gen *Generator) NewVar(name string, t types.Info, scope int) (
 		v.Version = v.Version + 1
 		v.Type = t
 	}
-	v.ID = gen.nextVariableID()
+	v.ID = gen.nextValueID()
 	gen.versions[key] = v
 
 	return v, nil
 }
 
 // AddConstant adds a reference to the constant.
-func (gen *Generator) AddConstant(c Variable) {
+func (gen *Generator) AddConstant(c Value) {
 	inst, ok := gen.constants[c.Name]
 	if !ok {
 		inst = ConstantInst{
@@ -125,7 +125,7 @@ func (gen *Generator) AddConstant(c Variable) {
 }
 
 // RemoveConstant drops a reference from the constant.
-func (gen *Generator) RemoveConstant(c Variable) {
+func (gen *Generator) RemoveConstant(c Value) {
 	inst, ok := gen.constants[c.Name]
 	if !ok {
 		return
@@ -168,13 +168,13 @@ func (gen *Generator) BranchBlock(b *Block) *Block {
 	return n
 }
 
-// Constant creates a constant variable for the argument value. Type
-// info is optional. If it is undefined, the type info will be
-// resolved from the constant value.
+// Constant creates a constant value for the argument value. Type info
+// is optional. If it is undefined, the type info will be resolved
+// from the constant value.
 func (gen *Generator) Constant(value interface{}, ti types.Info) (
-	Variable, bool, error) {
+	Value, bool, error) {
 
-	v := Variable{
+	v := Value{
 		Const:      true,
 		ConstValue: value,
 	}
@@ -325,7 +325,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		v.Type = val
 		v.TypeRef = true
 
-	case Variable:
+	case Value:
 		if !val.Const {
 			return v, false, fmt.Errorf("value %v (%T) is not constant",
 				val, val)
@@ -337,7 +337,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 			fmt.Errorf("Generator.Constant: %v (%T) not implemented yet",
 				val, val)
 	}
-	v.ID = gen.nextVariableID()
+	v.ID = gen.nextValueID()
 
 	return v, true, nil
 }
@@ -346,9 +346,9 @@ func arrayString(arr []interface{}) string {
 	var parts []string
 
 	for _, part := range arr {
-		variable, ok := part.(Variable)
-		if ok && variable.Const {
-			arr, ok := variable.ConstValue.([]interface{})
+		value, ok := part.(Value)
+		if ok && value.Const {
+			arr, ok := value.ConstValue.([]interface{})
 			if ok {
 				parts = append(parts, arrayString(arr))
 				continue

@@ -141,17 +141,17 @@ func (op Operand) String() string {
 // Instr implements SSA assembly instruction.
 type Instr struct {
 	Op      Operand
-	In      []Variable
-	Out     *Variable
+	In      []Value
+	Out     *Value
 	Label   *Block
 	Circ    *circuit.Circuit
 	Builtin circuits.Builtin
 	GC      string
-	Ret     []Variable
+	Ret     []Value
 }
 
 // NewAddInstr creates a new addition instruction based on the type t.
-func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -166,14 +166,14 @@ func NewAddInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewSubInstr creates a new subtraction instruction based on the type
 // t.
-func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewSubInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -187,14 +187,14 @@ func NewSubInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewMultInstr creates a new multiplication instruction based on the
 // type t.
-func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewMultInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -208,13 +208,13 @@ func NewMultInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewDivInstr creates a new division instruction based on the type t.
-func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewDivInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -228,13 +228,13 @@ func NewDivInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewModInstr creates a new modulo instruction based on the type t.
-func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewModInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -248,40 +248,40 @@ func NewModInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewLshiftInstr creates a new Lshift instruction.
-func NewLshiftInstr(l, r, o Variable) Instr {
+func NewLshiftInstr(l, r, o Value) Instr {
 	return Instr{
 		Op:  Lshift,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}
 }
 
 // NewRshiftInstr creates a new Rshift instruction.
-func NewRshiftInstr(l, r, o Variable) Instr {
+func NewRshiftInstr(l, r, o Value) Instr {
 	return Instr{
 		Op:  Rshift,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}
 }
 
 // NewSliceInstr creates a new Slice instruction.
-func NewSliceInstr(v, from, to, o Variable) Instr {
+func NewSliceInstr(v, from, to, o Value) Instr {
 	return Instr{
 		Op:  Slice,
-		In:  []Variable{v, from, to},
+		In:  []Value{v, from, to},
 		Out: &o,
 	}
 }
 
 // NewLtInstr creates a new less-than instruction based on the type t.
-func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewLtInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -295,14 +295,14 @@ func NewLtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewLeInstr creates a new less-equal instruction based on the type
 // t.
-func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewLeInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -316,14 +316,14 @@ func NewLeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewGtInstr creates a new greater-than instruction based on the type
 // t.
-func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewGtInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -337,14 +337,14 @@ func NewGtInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewGeInstr creates a new greater-equal instruction based on the
 // type t.
-func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
+func NewGeInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
 	switch t.Type {
 	case types.TInt:
@@ -358,112 +358,112 @@ func NewGeInstr(t types.Info, l, r, o Variable) (Instr, error) {
 	}
 	return Instr{
 		Op:  op,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewEqInstr creates a new Eq instruction.
-func NewEqInstr(l, r, o Variable) (Instr, error) {
+func NewEqInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Eq,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewNeqInstr creates a new Neq instruction.
-func NewNeqInstr(l, r, o Variable) (Instr, error) {
+func NewNeqInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Neq,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewAndInstr creates a new And instruction.
-func NewAndInstr(l, r, o Variable) (Instr, error) {
+func NewAndInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  And,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewOrInstr creates a new Or instruction.
-func NewOrInstr(l, r, o Variable) (Instr, error) {
+func NewOrInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Or,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewBandInstr creates a new Band instruction.
-func NewBandInstr(l, r, o Variable) (Instr, error) {
+func NewBandInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Band,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewBclrInstr creates a new Bclr instruction.
-func NewBclrInstr(l, r, o Variable) (Instr, error) {
+func NewBclrInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Bclr,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewBorInstr creates a new Bor instruction.
-func NewBorInstr(l, r, o Variable) (Instr, error) {
+func NewBorInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Bor,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewBxorInstr creates a new Bxor instruction.
-func NewBxorInstr(l, r, o Variable) (Instr, error) {
+func NewBxorInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Bxor,
-		In:  []Variable{l, r},
+		In:  []Value{l, r},
 		Out: &o,
 	}, nil
 }
 
 // NewMovInstr creates a new Mov instruction.
-func NewMovInstr(from, to Variable) Instr {
+func NewMovInstr(from, to Value) Instr {
 	return Instr{
 		Op:  Mov,
-		In:  []Variable{from},
+		In:  []Value{from},
 		Out: &to,
 	}
 }
 
 // NewAmovInstr creates a new Amov instruction.
-func NewAmovInstr(v, arr, from, to, o Variable) Instr {
+func NewAmovInstr(v, arr, from, to, o Value) Instr {
 	return Instr{
 		Op:  Amov,
-		In:  []Variable{v, arr, from, to},
+		In:  []Value{v, arr, from, to},
 		Out: &o,
 	}
 }
 
 // NewPhiInstr creates a new Phi instruction.
-func NewPhiInstr(cond, l, r, v Variable) Instr {
+func NewPhiInstr(cond, l, r, v Value) Instr {
 	return Instr{
 		Op:  Phi,
-		In:  []Variable{cond, l, r},
+		In:  []Value{cond, l, r},
 		Out: &v,
 	}
 }
 
 // NewRetInstr creates a new Ret instruction.
-func NewRetInstr(ret []Variable) Instr {
+func NewRetInstr(ret []Value) Instr {
 	return Instr{
 		Op: Ret,
 		In: ret,
@@ -471,8 +471,8 @@ func NewRetInstr(ret []Variable) Instr {
 }
 
 // NewCircInstr creates a new Circ instruction.
-func NewCircInstr(args []Variable, circ *circuit.Circuit,
-	ret []Variable) Instr {
+func NewCircInstr(args []Value, circ *circuit.Circuit,
+	ret []Value) Instr {
 	return Instr{
 		Op:   Circ,
 		In:   args,
@@ -482,10 +482,10 @@ func NewCircInstr(args []Variable, circ *circuit.Circuit,
 }
 
 // NewBuiltinInstr creates a new Builtin instruction.
-func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Variable) Instr {
+func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Value) Instr {
 	return Instr{
 		Op:      Builtin,
-		In:      []Variable{a, b},
+		In:      []Value{a, b},
 		Out:     &r,
 		Builtin: builtin,
 	}
@@ -557,9 +557,9 @@ func (i Instr) PP(out io.Writer) {
 	fmt.Fprintf(out, "\t%s\n", i)
 }
 
-// Variable implements SSA variable binding.
-type Variable struct {
-	ID         VariableID
+// Value implements SSA value binding.
+type Value struct {
+	ID         ValueID
 	Name       string
 	Scope      int
 	Version    int
@@ -569,13 +569,13 @@ type Variable struct {
 	ConstValue interface{}
 }
 
-// Undefined defines an undefined variable.
-var Undefined Variable
+// Undefined defines an undefined value.
+var Undefined Value
 
-// VariableID defines unique variable IDs.
-type VariableID uint32
+// ValueID defines unique value IDs.
+type ValueID uint32
 
-func (v Variable) String() string {
+func (v Value) String() string {
 	if v.Const {
 		return v.Name
 	}
@@ -592,22 +592,22 @@ func (v Variable) String() string {
 		v.Name, v.Scope, version, v.Type.ShortString())
 }
 
-// Equal tests if this variable is equal to the argument binding value.
-func (v *Variable) Equal(other BindingValue) bool {
-	o, ok := other.(*Variable)
+// Equal implements BindingValue.Equal.
+func (v *Value) Equal(other BindingValue) bool {
+	o, ok := other.(*Value)
 	if !ok {
 		return false
 	}
 	return o.Name == v.Name && o.Scope == v.Scope && o.Version == v.Version
 }
 
-// Value returns the variables value.
-func (v *Variable) Value(block *Block, gen *Generator) Variable {
+// Value implements BindingValue.Value.
+func (v *Value) Value(block *Block, gen *Generator) Value {
 	return *v
 }
 
-// Bit tests if the argument bit is set in the variable.
-func (v *Variable) Bit(bit int) bool {
+// Bit tests if the argument bit is set in the value.
+func (v *Value) Bit(bit int) bool {
 	arr, ok := v.ConstValue.([]interface{})
 	if ok {
 		length := len(arr)
@@ -658,7 +658,7 @@ func isSet(v interface{}, bit int) bool {
 		}
 		return bytes[idx]&(1<<mod) != 0
 
-	case Variable:
+	case Value:
 		switch val.Type.Type {
 		case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
 			return isSet(val.ConstValue, bit)
@@ -674,7 +674,7 @@ func isSet(v interface{}, bit int) bool {
 			return isSet(arr[idx], mod)
 
 		default:
-			panic(fmt.Sprintf("ssa.isSet called for invalid Variable %v (%v)",
+			panic(fmt.Sprintf("ssa.isSet called for invalid Value %v (%v)",
 				val, val.Type))
 		}
 
@@ -684,16 +684,16 @@ func isSet(v interface{}, bit int) bool {
 }
 
 // LValueFor checks if the value `o` can be assigned for lvalue of type `l`.
-func LValueFor(l types.Info, o Variable) bool {
+func LValueFor(l types.Info, o Value) bool {
 	if o.Const {
 		return l.CanAssignConst(o.Type)
 	}
 	return l.Equal(o.Type)
 }
 
-// TypeCompatible tests if the argument variable is type compatible
-// with this variable.
-func (v Variable) TypeCompatible(o Variable) bool {
+// TypeCompatible tests if the argument value is type compatible with
+// this value.
+func (v Value) TypeCompatible(o Value) bool {
 	if v.Const && o.Const {
 		return v.Type.Type == o.Type.Type
 	} else if v.Const {

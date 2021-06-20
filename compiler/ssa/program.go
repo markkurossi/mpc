@@ -79,10 +79,10 @@ type Step struct {
 	Live  Set
 }
 
-// Wires allocates unassigned wires for the argument variable.
+// Wires allocates unassigned wires for the argument value.
 func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for variable %v", v)
+		return nil, fmt.Errorf("size not set for value %v", v)
 	}
 	alloc, ok := prog.wires[v]
 	if !ok {
@@ -92,11 +92,11 @@ func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 	return alloc.Wires, nil
 }
 
-// AssignedWires allocates assigned wires for the argument variable.
+// AssignedWires allocates assigned wires for the argument value.
 func (prog *Program) AssignedWires(v string, bits int) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for variable %v", v)
+		return nil, fmt.Errorf("size not set for value %v", v)
 	}
 	alloc, ok := prog.wires[v]
 	if !ok {
@@ -159,7 +159,7 @@ func (prog *Program) recycleWires(alloc *wireAlloc) {
 	}
 }
 
-// SetWires allocates wire IDs for the variable's wires.
+// SetWires allocates wire IDs for the value's wires.
 func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 	_, ok := prog.wires[v]
 	if ok {
@@ -180,9 +180,9 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 }
 
 func (prog *Program) liveness() {
-	aliases := make(map[VariableID]Variable)
+	aliases := make(map[ValueID]Value)
 
-	// Collect variable aliases.
+	// Collect value aliases.
 	for i := 0; i < len(prog.Steps); i++ {
 		step := &prog.Steps[i]
 		switch step.Instr.Op {
@@ -237,13 +237,13 @@ func (prog *Program) liveness() {
 	}
 }
 
-// GC adds garbage collect (gc) instructions to recycle dead
-// variable wires.
+// GC adds garbage collect (gc) instructions to recycle dead value
+// wires.
 func (prog *Program) GC() {
 	steps := make([]Step, 0, len(prog.Steps))
 	last := NewSet()
 	for _, step := range prog.Steps {
-		// GC dead variables.
+		// GC dead values.
 		deleted := last.Copy()
 		deleted.Subtract(step.Live)
 		if len(last) > 0 {
@@ -264,7 +264,7 @@ func (prog *Program) GC() {
 // DefineConstants defines the program constants.
 func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
-	var consts []Variable
+	var consts []Value
 	for _, c := range prog.Constants {
 		consts = append(consts, c.Const)
 	}

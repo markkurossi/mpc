@@ -47,7 +47,7 @@ func (ctx *Codegen) Func() *Func {
 	return ctx.Stack[len(ctx.Stack)-1].Called
 }
 
-// Scope returns the variable scope in the current compilation.
+// Scope returns the value scope in the current compilation.
 func (ctx *Codegen) Scope() int {
 	if ctx.Func() != nil {
 		return 1

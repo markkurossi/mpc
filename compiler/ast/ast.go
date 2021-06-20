@@ -164,7 +164,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		// Check dynamic types from the env.
 		b, ok := env.Get(ti.Name.Name)
 		if ok {
-			val, ok := b.Bound.(*ssa.Variable)
+			val, ok := b.Bound.(*ssa.Value)
 			if ok && val.TypeRef {
 				return val.Type, nil
 			}
@@ -247,10 +247,10 @@ type AST interface {
 	// sequential basic block. The `ssa.Dead' is set to `true' if the
 	// code terminates i.e. all following AST nodes are dead code.
 	SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
-		*ssa.Block, []ssa.Variable, error)
+		*ssa.Block, []ssa.Value, error)
 	// Eval evaluates the AST node during constant propagation.
 	Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
-		value ssa.Variable, isConstant bool, err error)
+		value ssa.Value, isConstant bool, err error)
 }
 
 // NewEnv creates a new environment based on the current environment
@@ -261,18 +261,18 @@ func NewEnv(block *ssa.Block) *Env {
 	}
 }
 
-// Env implements a variable bindings environment.
+// Env implements a value bindings environment.
 type Env struct {
 	Bindings ssa.Bindings
 }
 
-// Get gets the variable binding from the environment.
+// Get gets the value binding from the environment.
 func (env *Env) Get(name string) (ssa.Binding, bool) {
 	return env.Bindings.Get(name)
 }
 
-// Set sets the variable binding to the environment.
-func (env *Env) Set(v ssa.Variable, val *ssa.Variable) {
+// Set sets the value binding to the environment.
+func (env *Env) Set(v ssa.Value, val *ssa.Value) {
 	env.Bindings.Set(v, val)
 }
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,13 +13,13 @@ import (
 func TestBindings(t *testing.T) {
 	var a, b Bindings
 
-	a.Set(Variable{
+	a.Set(Value{
 		Name: "a",
 	}, nil)
-	b.Set(Variable{
+	b.Set(Value{
 		Name: "a",
 	}, nil)
-	merged := a.Merge(Variable{
+	merged := a.Merge(Value{
 		Name: "c",
 	}, b)
 	if len(merged) != 1 {
