@@ -152,6 +152,28 @@ func (i Info) Undefined() bool {
 	return i.Type == TUndefined
 }
 
+// Instantiate instantiates template type to match parameter type.
+func (i *Info) Instantiate(o Info) bool {
+	if i.Type != o.Type {
+		return false
+	}
+	if i.Bits != 0 {
+		return false
+	}
+	switch i.Type {
+	case TStruct, TArray:
+		return false
+
+	case TPtr:
+		i.Bits = o.Bits
+		return i.ElementType.Instantiate(*o.ElementType)
+
+	default:
+		i.Bits = o.Bits
+		return true
+	}
+}
+
 // Equal tests if the argument type is equal to this type info.
 func (i Info) Equal(o Info) bool {
 	if i.Type != o.Type {
@@ -176,6 +198,9 @@ func (i Info) Equal(o Info) bool {
 		if i.ArraySize != o.ArraySize || i.Bits != o.Bits {
 			return false
 		}
+		return i.ElementType.Equal(*o.ElementType)
+
+	case TPtr:
 		return i.ElementType.Equal(*o.ElementType)
 
 	default:

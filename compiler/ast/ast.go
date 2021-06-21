@@ -169,6 +169,14 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				return val.Type, nil
 			}
 		}
+		// Check dynamic types from the pkg.
+		b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
+		if ok {
+			val, ok := b.Bound.(*ssa.Value)
+			if ok && val.TypeRef {
+				return val.Type, nil
+			}
+		}
 		return result, fmt.Errorf("undefined name: %s", ti)
 
 	case TypeArray:

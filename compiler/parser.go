@@ -1120,8 +1120,9 @@ func (p *Parser) parseExprUnary(needLBrace bool) (ast.AST, error) {
 			return nil, err
 		}
 		return &ast.Unary{
-			Type: t.Type.UnaryType(),
-			Expr: expr,
+			Point: t.From,
+			Type:  t.Type.UnaryType(),
+			Expr:  expr,
 		}, nil
 
 	default:

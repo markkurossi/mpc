@@ -584,8 +584,9 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
+		// Instantiate argument types of template functions.
 		if typeInfo.Bits == 0 {
-			typeInfo.Bits = args[idx].Type.Bits
+			typeInfo.Instantiate(args[idx].Type)
 		}
 		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
@@ -960,11 +961,28 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 	switch ast.Type {
 	case UnaryAddr:
-		// XXX pointer handling
-		return ast.Expr.SSA(block, ctx, gen)
+		switch v := ast.Expr.(type) {
+		case *VariableRef:
+			b, ok := block.Bindings.Get(v.Name.Name)
+			if !ok {
+				return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+			}
+			// XXX LValue containing assignment lvalues
+			t := gen.AnonVal(types.Info{
+				Type:        types.TPtr,
+				Bits:        b.Type.Bits,
+				MinBits:     b.Type.Bits,
+				ElementType: &b.Type,
+			})
+			return block, []ssa.Value{t}, nil
+
+		default:
+			return nil, nil, ctx.Errorf(ast, "Unary.SSA: '%T' not supported", v)
+		}
 
 	default:
-		return nil, nil, fmt.Errorf("Unary.SSA not implemented yet: %v", ast)
+		return nil, nil, ctx.Errorf(ast, "Unary.SSA not implemented yet: %v",
+			ast)
 	}
 }
 
