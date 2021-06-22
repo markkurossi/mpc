@@ -110,6 +110,8 @@ transformation does also type checks so that all variable assignments
 and function call arguments and return values are checked (or
 converted) to be or correct type.
 
+<img aling="center" src="docs/mpcc.png">
+
 ### Types
 
 | Name    | Size          | Signed |
