@@ -133,16 +133,25 @@ func (i Info) String() string {
 	if i.Bits == 0 {
 		return i.Type.String()
 	}
-	if i.Type == TArray {
+	switch i.Type {
+	case TArray:
 		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ElementType)
+
+	case TPtr:
+		return fmt.Sprintf("*%s", i.ElementType)
+
+	default:
+		return fmt.Sprintf("%s%d", i.Type, i.Bits)
 	}
-	return fmt.Sprintf("%s%d", i.Type, i.Bits)
 }
 
 // ShortString returns a short string name for the type info.
 func (i Info) ShortString() string {
 	if i.Bits == 0 {
 		return i.Type.ShortString()
+	}
+	if i.Type == TPtr {
+		return fmt.Sprintf("*%s", i.ElementType.ShortString())
 	}
 	return fmt.Sprintf("%s%d", i.Type.ShortString(), i.Bits)
 }

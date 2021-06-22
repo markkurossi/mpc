@@ -345,6 +345,47 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					"array expression not supported: %T", arr)
 			}
 
+		case *Unary:
+			// XXX This should be refactored into:
+			//
+			//   dereference() (Binding, Bindings, error)
+			//
+			if ast.Define {
+				return nil, nil, ctx.Errorf(ast,
+					"a non-name %s on left side of :=", lv)
+			}
+			if lv.Type != UnaryPtr {
+				return nil, nil, ctx.Errorf(ast, "cannot assign to %s", lv)
+			}
+			switch ptr := lv.Expr.(type) {
+			case *VariableRef:
+				b, ok := block.Bindings.Get(ptr.Name.Name)
+				if !ok {
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", ptr.Name)
+				}
+				fmt.Printf("*** pointer assignment: lvalue=%v, bound=%v, value=%v\n",
+					b, b.Bound, values[idx])
+				switch bound := b.Bound.(type) {
+				case *ssa.Value:
+					lValue, err := gen.NewVal(bound.PtrInfo.Name,
+						values[idx].Type, ctx.Scope() /*XXX*/)
+					if err != nil {
+						return nil, nil, err
+					}
+					block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
+					bound.PtrInfo.Bindings.Set(lValue, &values[idx])
+					fmt.Printf(" - PtrInfo: %v\n", bound.PtrInfo.Bindings)
+
+				default:
+					return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)",
+						bound, bound)
+				}
+
+			default:
+				return nil, nil, ctx.Errorf(ast,
+					"assignment to pointer to %T not supported", ptr)
+			}
+
 		default:
 			return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)", lv, lv)
 		}
@@ -974,6 +1015,10 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				MinBits:     b.Type.Bits,
 				ElementType: &b.Type,
 			})
+			t.PtrInfo = ssa.PtrInfo{
+				Name:     v.Name.Name,
+				Bindings: block.Bindings,
+			}
 			return block, []ssa.Value{t}, nil
 
 		default:

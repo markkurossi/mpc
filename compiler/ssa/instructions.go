@@ -565,8 +565,16 @@ type Value struct {
 	Version    int
 	Type       types.Info
 	TypeRef    bool
+	PtrInfo    PtrInfo
 	Const      bool
 	ConstValue interface{}
+}
+
+// PtrInfo defines context information for pointer values.
+type PtrInfo struct {
+	Name     string
+	Bindings Bindings
+	// XXX bits
 }
 
 // Undefined defines an undefined value.
@@ -587,6 +595,12 @@ func (v Value) String() string {
 		version = fmt.Sprintf("%d", v.Version)
 	} else {
 		version = "?"
+	}
+
+	// XXX Value should have type, now we have flags and Type.Type
+	if v.Type.Type == types.TPtr {
+		return fmt.Sprintf("%s{%d,%s}%s{%s}",
+			v.Name, v.Scope, version, v.Type.ShortString(), v.PtrInfo.Name)
 	}
 	return fmt.Sprintf("%s{%d,%s}%s",
 		v.Name, v.Scope, version, v.Type.ShortString())
