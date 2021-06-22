@@ -97,7 +97,9 @@ programming language, however it is not using the Go's compiler or any
 other related components. The compiler is an independent
 implementation of the relevant parts of the Go syntax.
 
-## Syntax and parser
+## Compiler
+
+<img align="center" src="docs/mpcl-compiler.png">
 
 The parser parses the MPCL input files, including any referenced
 packages, and creates an abstract syntax tree (AST).
