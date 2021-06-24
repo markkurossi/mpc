@@ -570,35 +570,25 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		}
 	} else if len(callValues) == 1 {
 		if len(callValues[0]) < len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		} else if len(callValues[0]) > len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"too many arguments in call to %s", ast.Ref)
-			// TODO \thave (int, int)
-			// TODO \twant ()
+			return nil, nil, ast.error(ctx, "too many arguments",
+				callValues, called.Args)
 		}
 		args = callValues[0]
 	} else {
 		if len(callValues) < len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		} else if len(callValues) > len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"too many arguments in call to %s", ast.Ref)
-			// TODO \thave (int, int)
-			// TODO \twant ()
+			return nil, nil, ast.error(ctx, "too many arguments",
+				callValues, called.Args)
 		} else {
 			for idx, ca := range callValues {
 				expr := ast.Exprs[idx]
@@ -657,6 +647,51 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	ctx.PopCompilation()
 
 	return block, returnValues, nil
+}
+
+func (ast *Call) error(ctx *Codegen, message string, have [][]ssa.Value,
+	want []*Variable) error {
+
+	message += fmt.Sprintf(" in call to %s", ast.Ref)
+	message += "\n\thave ("
+	switch len(have) {
+	case 0:
+
+	case 1:
+		for i, v := range have[0] {
+			if i > 0 {
+				message += ", "
+			}
+			message += v.Type.Type.String()
+		}
+
+	default:
+		for i, vi := range have {
+			if i > 0 {
+				message += ", "
+			}
+			if len(vi) > 0 {
+				message += "("
+			}
+			for j, vj := range vi {
+				if j > 0 {
+					message += ", "
+				}
+				message += vj.Type.Type.String()
+			}
+			if len(vi) > 0 {
+				message += ")"
+			}
+		}
+	}
+	message += ")\n\twant ("
+	for i, v := range want {
+		if i > 0 {
+			message += ", "
+		}
+		message += v.Type.String()
+	}
+	return ctx.Errorf(ast, "%s)", message)
 }
 
 // SSA implements the compiler.ast.AST.SSA for return statements.
@@ -770,6 +805,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Value,
 	want []*Variable) error {
+
 	message += "\n\thave ("
 	switch len(have) {
 	case 0:
@@ -781,6 +817,7 @@ func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Value,
 			}
 			message += v.Type.Type.String()
 		}
+
 	default:
 		for i, vi := range have {
 			if i > 0 {
