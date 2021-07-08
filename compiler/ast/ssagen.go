@@ -641,6 +641,8 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	block.SetNext(ctx.Start())
 
+	rblock.Bindings = block.Bindings.Clone()
+
 	ctx.Return().SetNext(rblock)
 	block = rblock
 

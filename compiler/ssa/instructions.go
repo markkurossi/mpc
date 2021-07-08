@@ -150,6 +150,19 @@ type Instr struct {
 	Ret     []Value
 }
 
+// Check verifies that the instruction values are properly set. If any
+// unspecified values are found, the Check function panics.
+func (i Instr) Check() {
+	for idx, in := range i.In {
+		if !in.Check() {
+			panic(fmt.Sprintf("invalid input %d: %s", idx, in))
+		}
+	}
+	if i.Out != nil && !i.Out.Check() {
+		panic(fmt.Sprintf("invalid output: %s", i.Out))
+	}
+}
+
 // NewAddInstr creates a new addition instruction based on the type t.
 func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
@@ -582,6 +595,11 @@ var Undefined Value
 
 // ValueID defines unique value IDs.
 type ValueID uint32
+
+// Check tests that the value type is properly set.
+func (v Value) Check() bool {
+	return v.Type.Type != types.TUndefined && v.Type.Bits != 0
+}
 
 func (v Value) String() string {
 	if v.Const {
