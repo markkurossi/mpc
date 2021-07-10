@@ -363,18 +363,17 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", ptr.Name)
 				}
-				fmt.Printf("*** pointer assignment: lvalue=%v, bound=%v, value=%v\n",
-					b, b.Bound, values[idx])
+				fmt.Printf(" *= %v => %v = value=%v\n", b, b.Bound, values[idx])
 				switch bound := b.Bound.(type) {
 				case *ssa.Value:
 					lValue, err := gen.NewVal(bound.PtrInfo.Name,
-						values[idx].Type, ctx.Scope() /*XXX*/)
+						values[idx].Type, bound.PtrInfo.Scope)
 					if err != nil {
 						return nil, nil, err
 					}
 					block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
 					bound.PtrInfo.Bindings.Set(lValue, &values[idx])
-					fmt.Printf(" - PtrInfo: %v\n", bound.PtrInfo.Bindings)
+					fmt.Printf(" => %v\n", bound.PtrInfo.Bindings)
 
 				default:
 					return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)",
@@ -1056,6 +1055,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			})
 			t.PtrInfo = ssa.PtrInfo{
 				Name:     v.Name.Name,
+				Scope:    b.Scope,
 				Bindings: block.Bindings,
 			}
 			return block, []ssa.Value{t}, nil

@@ -587,7 +587,12 @@ type Value struct {
 type PtrInfo struct {
 	Name     string
 	Bindings Bindings
+	Scope    int
 	// XXX bits
+}
+
+func (ptr PtrInfo) String() string {
+	return fmt.Sprintf("*%s@%d", ptr.Name, ptr.Scope)
 }
 
 // Undefined defines an undefined value.
