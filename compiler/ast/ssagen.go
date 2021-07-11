@@ -1042,9 +1042,20 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
+			var bindings ssa.Bindings
+
+			// First check block bindings.
 			b, ok := block.Bindings.Get(v.Name.Name)
-			if !ok {
-				return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+			if ok {
+				bindings = block.Bindings
+			} else {
+				// Check names in the current package.
+				b, ok = ctx.Package.Bindings.Get(v.Name.Name)
+				if ok {
+					bindings = ctx.Package.Bindings
+				} else {
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+				}
 			}
 			// XXX LValue containing assignment lvalues
 			t := gen.AnonVal(types.Info{
@@ -1056,7 +1067,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			t.PtrInfo = ssa.PtrInfo{
 				Name:     v.Name.Name,
 				Scope:    b.Scope,
-				Bindings: block.Bindings,
+				Bindings: bindings,
 			}
 			return block, []ssa.Value{t}, nil
 
