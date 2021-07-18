@@ -271,7 +271,7 @@ func NewEnv(block *ssa.Block) *Env {
 
 // Env implements a value bindings environment.
 type Env struct {
-	Bindings ssa.Bindings
+	Bindings *ssa.Bindings
 }
 
 // Get gets the value binding from the environment.

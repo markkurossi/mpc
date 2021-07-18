@@ -18,11 +18,13 @@ var (
 )
 
 // Bindings defines value bindings.
-type Bindings []Binding
+type Bindings struct {
+	Values []Binding
+}
 
 // Set adds a new binding for the value.
 func (bindings *Bindings) Set(v Value, val *Value) {
-	for idx, b := range *bindings {
+	for idx, b := range bindings.Values {
 		if b.Name == v.Name && b.Scope == v.Scope {
 			b.Type = v.Type
 			if val != nil {
@@ -30,7 +32,7 @@ func (bindings *Bindings) Set(v Value, val *Value) {
 			} else {
 				b.Bound = &v
 			}
-			(*bindings)[idx] = b
+			bindings.Values[idx] = b
 			return
 		}
 	}
@@ -46,12 +48,12 @@ func (bindings *Bindings) Set(v Value, val *Value) {
 		b.Bound = &v
 	}
 
-	*bindings = append(*bindings, b)
+	bindings.Values = append(bindings.Values, b)
 }
 
 // Get gets the value binding.
 func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
-	for _, b := range bindings {
+	for _, b := range bindings.Values {
 		if b.Name == name {
 			if len(ret.Name) == 0 || b.Scope > ret.Scope {
 				ret = b
@@ -65,25 +67,27 @@ func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
 }
 
 // Clone makes a copy of the bindings.
-func (bindings Bindings) Clone() Bindings {
-	result := make(Bindings, len(bindings))
-	copy(result, bindings)
+func (bindings Bindings) Clone() *Bindings {
+	result := &Bindings{
+		Values: make([]Binding, len(bindings.Values)),
+	}
+	copy(result.Values, bindings.Values)
 	return result
 }
 
 // Merge merges the argument false-branch bindings into this bindings
 // instance that represents the true-branch values.
-func (bindings Bindings) Merge(cond Value, falseBindings Bindings) Bindings {
+func (bindings Bindings) Merge(cond Value, falseBindings *Bindings) *Bindings {
 	names := make(map[string]bool)
 
-	for _, b := range bindings {
+	for _, b := range bindings.Values {
 		names[b.Name] = true
 	}
-	for _, b := range falseBindings {
+	for _, b := range falseBindings.Values {
 		names[b.Name] = true
 	}
 
-	var result Bindings
+	var result []Binding
 	for name := range names {
 		bTrue, ok1 := bindings.Get(name)
 		bFalse, ok2 := falseBindings.Get(name)
@@ -118,7 +122,9 @@ func (bindings Bindings) Merge(cond Value, falseBindings Bindings) Bindings {
 			}
 		}
 	}
-	return result
+	return &Bindings{
+		Values: result,
+	}
 }
 
 // Binding implements a value binding.

@@ -73,6 +73,11 @@ func (gen *Generator) UndefVal() Value {
 
 // AnonVal creates a new anonymous value.
 func (gen *Generator) AnonVal(t types.Info) Value {
+
+	if t.Type == types.TPtr && t.ElementType == nil {
+		panic("pointer with nil element type")
+	}
+
 	v, ok := gen.versions[anon]
 	if !ok {
 		v = Value{
@@ -145,7 +150,8 @@ func fmtKey(name string, scope int) string {
 // Block creates a new basic block.
 func (gen *Generator) Block() *Block {
 	block := &Block{
-		ID: fmt.Sprintf("l%d", gen.blockID),
+		ID:       fmt.Sprintf("l%d", gen.blockID),
+		Bindings: new(Bindings),
 	}
 	gen.blockID++
 

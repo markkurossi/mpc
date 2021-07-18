@@ -23,7 +23,7 @@ type Block struct {
 	BranchCond Value
 	Branch     *Block
 	Instr      []Instr
-	Bindings   Bindings
+	Bindings   *Bindings
 	Dead       bool
 	Processed  bool
 }

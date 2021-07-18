@@ -83,22 +83,41 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	dst := args[0]
 	src := args[1]
 
-	if dst.Type.Type != types.TArray {
+	var dstName string
+	var dstType types.Info
+	var dstScope int
+	var dstBindings *ssa.Bindings
+
+	switch dst.Type.Type {
+	case types.TArray:
+		dstName = dst.Name
+		dstType = dst.Type
+		dstScope = dst.Scope
+		dstBindings = block.Bindings
+
+	case types.TPtr:
+		dstName = dst.PtrInfo.Name
+		dstType = *dst.Type.ElementType
+		dstScope = dst.PtrInfo.Scope
+		dstBindings = dst.PtrInfo.Bindings
+
+	default:
 		return nil, nil, ctx.Errorf(loc,
 			"arguments to copy must be slices; have %s, %s",
 			dst.Type.Type, src.Type.Type)
 	}
+
 	if src.Type.Type != types.TArray {
 		return nil, nil, ctx.Errorf(loc,
 			"second argument to copy should be slice or array")
 	}
-	if !dst.Type.ElementType.Equal(*src.Type.ElementType) {
+	if !dstType.ElementType.Equal(*src.Type.ElementType) {
 		return nil, nil, ctx.Errorf(loc,
 			"arguments to copy have different element types: %s and %s",
-			dst.Type.ElementType, src.Type.ElementType)
+			dstType.ElementType, src.Type.ElementType)
 	}
 
-	lValue, err := gen.NewVal(dst.Name, dst.Type, ctx.Scope())
+	lValue, err := gen.NewVal(dstName, dstType, dstScope)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -107,7 +126,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	//    len(dst) < len(src): 	  slice src 0 len(dst) dst
 	//    len(dst) = len(src): 	  move  src dst
 	var copied int
-	if dst.Type.ArraySize > src.Type.ArraySize {
+	if dstType.ArraySize > src.Type.ArraySize {
 		copied = src.Type.ArraySize
 		fromConst, _, err := gen.Constant(int32(0), types.Uint32)
 		if err != nil {
@@ -118,22 +137,22 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			return nil, nil, err
 		}
 		block.AddInstr(ssa.NewAmovInstr(src, dst, fromConst, toConst, lValue))
-	} else if dst.Type.ArraySize < src.Type.ArraySize {
-		copied = dst.Type.ArraySize
+	} else if dstType.ArraySize < src.Type.ArraySize {
+		copied = dstType.ArraySize
 		fromConst, _, err := gen.Constant(int32(0), types.Uint32)
 		if err != nil {
 			return nil, nil, err
 		}
-		toConst, _, err := gen.Constant(int32(dst.Type.Bits), types.Uint32)
+		toConst, _, err := gen.Constant(int32(dstType.Bits), types.Uint32)
 		if err != nil {
 			return nil, nil, err
 		}
 		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, lValue))
 	} else {
-		copied = dst.Type.ArraySize
+		copied = dstType.ArraySize
 		block.AddInstr(ssa.NewMovInstr(src, lValue))
 	}
-	block.Bindings.Set(lValue, nil)
+	dstBindings.Set(lValue, nil)
 
 	v, _, err := gen.Constant(int32(copied), types.Int32)
 	if err != nil {

@@ -586,7 +586,7 @@ type Value struct {
 // PtrInfo defines context information for pointer values.
 type PtrInfo struct {
 	Name     string
-	Bindings Bindings
+	Bindings *Bindings
 	Scope    int
 	// XXX bits
 }

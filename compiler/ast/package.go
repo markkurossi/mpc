@@ -21,7 +21,7 @@ type Package struct {
 	Source      string
 	Initialized bool
 	Imports     map[string]string
-	Bindings    ssa.Bindings
+	Bindings    *ssa.Bindings
 	Types       []*TypeInfo
 	Constants   []*ConstantDef
 	Variables   []*VariableDef
@@ -34,6 +34,7 @@ func NewPackage(name, source string) *Package {
 		Name:      name,
 		Source:    source,
 		Imports:   make(map[string]string),
+		Bindings:  new(ssa.Bindings),
 		Functions: make(map[string]*Func),
 	}
 }
