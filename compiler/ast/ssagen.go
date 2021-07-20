@@ -1231,6 +1231,16 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", v)
 	}
 
+	// Dereference pointers.
+	if expr.Type.Type == types.TPtr {
+		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
+				expr.PtrInfo.Name)
+		}
+		expr = b.Value(block, gen)
+	}
+
 	switch expr.Type.Type {
 	case types.TString:
 		length := expr.Type.Bits / types.ByteBits
