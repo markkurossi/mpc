@@ -644,8 +644,9 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		// Instantiate argument types of template functions.
 		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
-			return nil, nil, ctx.Errorf(arg, "cannot instantiate %s with %s",
-				typeInfo, args[idx].Type)
+			return nil, nil, ctx.Errorf(ast.Exprs[idx],
+				"cannot use %v as type %s in argument to %s",
+				args[idx].Type, typeInfo, called.Name)
 		}
 		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
@@ -653,8 +654,8 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		if !a.TypeCompatible(args[idx]) {
 			return nil, nil, ctx.Errorf(ast,
-				"cannot use %s (type %v) as type %s in argument to %s",
-				args[idx].Name, args[idx].Type, typeInfo, called.Name)
+				"cannot use %v as type %s in argument to %s",
+				args[idx].Type, typeInfo, called.Name)
 		}
 		ctx.Start().Bindings.Set(a, &args[idx])
 
@@ -1114,13 +1115,14 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 
-	block, expr, err := ast.Expr.SSA(block, ctx, gen)
+	block, exprs, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(expr) != 1 {
+	if len(exprs) != 1 {
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
+	expr := exprs[0]
 
 	var val []ssa.Value
 	var from int32
@@ -1143,7 +1145,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	var to int32
 	if ast.To == nil {
-		to = int32(expr[0].Type.Bits)
+		to = int32(expr.Type.Bits)
 	} else {
 		block, val, err = ast.To.SSA(block, ctx, gen)
 		if err != nil {
@@ -1159,7 +1161,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.From, "invalid to index: %T", v)
 		}
 	}
-	if from >= int32(expr[0].Type.Bits) || from >= to {
+	if from >= int32(expr.Type.Bits) || from >= to {
 		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}
@@ -1173,33 +1175,37 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 
+	// Dereference pointers.
+	if expr.Type.Type == types.TPtr {
+		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
+				expr.PtrInfo.Name)
+		}
+		expr = b.Value(block, gen)
+	}
+
 	ti := types.Info{
-		Type:    expr[0].Type.Type,
+		Type:    expr.Type.Type,
 		Bits:    int(to - from),
 		MinBits: int(to - from),
 	}
-	var ptrInfo ssa.PtrInfo
 
-	switch expr[0].Type.Type {
+	switch expr.Type.Type {
 	case types.TInt, types.TUint:
 
 	case types.TArray:
-		ti.ElementType = expr[0].Type.ElementType
+		ti.ElementType = expr.Type.ElementType
 		ti.ArraySize = ti.Bits / ti.ElementType.Bits
-
-	case types.TPtr:
-		ti.ElementType = expr[0].Type.ElementType
-		ptrInfo = expr[0].PtrInfo
 
 	default:
 		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
-			expr[0].Type.Type)
+			expr.Type.Type)
 	}
 
 	t := gen.AnonVal(ti)
-	t.PtrInfo = ptrInfo
 
-	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
+	block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
 	return block, []ssa.Value{t}, nil
 }
