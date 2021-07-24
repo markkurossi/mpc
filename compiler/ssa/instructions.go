@@ -158,9 +158,6 @@ func (i Instr) Check() {
 			panic(fmt.Sprintf("invalid input %d: %s", idx, in))
 		}
 	}
-	if i.Out != nil && !i.Out.Check() {
-		panic(fmt.Sprintf("invalid output: %s", i.Out))
-	}
 }
 
 // NewAddInstr creates a new addition instruction based on the type t.
