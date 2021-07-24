@@ -643,8 +643,9 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		// Instantiate argument types of template functions.
-		if typeInfo.Bits == 0 {
-			typeInfo.Instantiate(args[idx].Type)
+		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
+			return nil, nil, ctx.Errorf(arg, "cannot instantiate %s with %s",
+				typeInfo, args[idx].Type)
 		}
 		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {

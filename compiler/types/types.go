@@ -130,9 +130,6 @@ func (f StructField) String() string {
 }
 
 func (i Info) String() string {
-	if i.Bits == 0 {
-		return i.Type.String()
-	}
 	switch i.Type {
 	case TArray:
 		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ElementType)
@@ -141,6 +138,9 @@ func (i Info) String() string {
 		return fmt.Sprintf("*%s", i.ElementType)
 
 	default:
+		if i.Bits == 0 {
+			return i.Type.String()
+		}
 		return fmt.Sprintf("%s%d", i.Type, i.Bits)
 	}
 }
@@ -170,12 +170,23 @@ func (i *Info) Instantiate(o Info) bool {
 		return false
 	}
 	switch i.Type {
-	case TStruct, TArray:
+	case TStruct:
 		return false
 
-	case TPtr:
+	case TArray:
+		if i.ElementType.Type != o.ElementType.Type {
+			return false
+		}
 		i.Bits = o.Bits
-		return i.ElementType.Instantiate(*o.ElementType)
+		i.ArraySize = o.ArraySize
+		return true
+
+	case TPtr:
+		if i.ElementType.Type != o.ElementType.Type {
+			return false
+		}
+		i.Bits = o.Bits
+		return true
 
 	default:
 		i.Bits = o.Bits

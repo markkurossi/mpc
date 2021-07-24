@@ -231,6 +231,19 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			ArraySize:   length,
 		}, nil
 
+	case TypeSlice:
+		// Element type.
+		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
+		if err != nil {
+			return result, err
+		}
+		// Bits and ArraySize are left uninitialized and they must be
+		// defined when type is instantiated.
+		return types.Info{
+			Type:        types.TArray,
+			ElementType: &elInfo,
+		}, nil
+
 	case TypePointer:
 		// Element type.
 		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
