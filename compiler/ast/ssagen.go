@@ -313,6 +313,15 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					dstType = *v.Type.ElementType
 					dstScope = v.PtrInfo.Scope
 					dstBindings = v.PtrInfo.Bindings
+					b, ok = dstBindings.Get(dstName)
+					if !ok {
+						return nil, nil, ctx.Errorf(ast, "undefined: %s",
+							dstName)
+					}
+					if b.Type.Type != types.TArray {
+						return nil, nil, ctx.Errorf(ast,
+							"setting elements of non-array %s", b.Type)
+					}
 
 				default:
 					return nil, nil, ctx.Errorf(ast,
@@ -351,8 +360,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"invalid array index %d (out of bounds for %d-element array)",
 						index, dstType.ArraySize)
 				}
-				from := int32(index * b.Type.ElementType.Bits)
-				to := int32((index + 1) * b.Type.ElementType.Bits)
+				from := int32(index * dstType.ElementType.Bits)
+				to := int32((index + 1) * dstType.ElementType.Bits)
 
 				indexType := types.Uint32
 				fromConst, _, err := gen.Constant(from, indexType)
