@@ -652,7 +652,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		if !a.TypeCompatible(args[idx]) {
+		if a.TypeCompatible(args[idx]) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
@@ -818,7 +818,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			result[idx].Type.Type = typeInfo.Type
 		}
 
-		if !v.TypeCompatible(result[idx]) {
+		if v.TypeCompatible(result[idx]) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for result value %v",
 				result[idx].Type, v.Type)
@@ -987,7 +987,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	l := lArr[0]
 	r := rArr[0]
 
-	if !l.TypeCompatible(r) {
+	superType := l.TypeCompatible(r)
+	if superType == nil {
 		return nil, nil,
 			ctx.Errorf(ast, "invalid types: %s %s %s", l.Type, ast.Op, r.Type)
 	}
@@ -998,7 +999,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case BinaryMult, BinaryDiv, BinaryMod, BinaryLshift, BinaryRshift,
 		BinaryBand, BinaryBclear,
 		BinaryPlus, BinaryMinus, BinaryBor, BinaryBxor:
-		resultType = l.Type
+		resultType = *superType
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
 		BinaryAnd, BinaryOr:

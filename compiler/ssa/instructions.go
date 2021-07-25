@@ -707,6 +707,16 @@ func isSet(v interface{}, bit int) bool {
 			arr := val.ConstValue.([]interface{})
 			return isSet(arr[idx], mod)
 
+		case types.TStruct:
+			fieldValues := val.ConstValue.([]interface{})
+			for idx, f := range val.Type.Struct {
+				if bit < f.Type.Bits {
+					return isSet(fieldValues[idx], bit)
+				}
+				bit -= f.Type.Bits
+			}
+			fallthrough
+
 		default:
 			panic(fmt.Sprintf("ssa.isSet called for invalid Value %v (%v)",
 				val, val.Type))
@@ -727,13 +737,22 @@ func LValueFor(l types.Info, o Value) bool {
 
 // TypeCompatible tests if the argument value is type compatible with
 // this value.
-func (v Value) TypeCompatible(o Value) bool {
+func (v Value) TypeCompatible(o Value) *types.Info {
 	if v.Const && o.Const {
-		return v.Type.Type == o.Type.Type
+		if v.Type.Type == o.Type.Type {
+			return &v.Type
+		}
 	} else if v.Const {
-		return o.Type.CanAssignConst(v.Type)
+		if o.Type.CanAssignConst(v.Type) {
+			return &o.Type
+		}
 	} else if o.Const {
-		return v.Type.CanAssignConst(o.Type)
+		if v.Type.CanAssignConst(o.Type) {
+			return &v.Type
+		}
 	}
-	return v.Type.Equal(o.Type)
+	if v.Type.Equal(o.Type) {
+		return &v.Type
+	}
+	return nil
 }
