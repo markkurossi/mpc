@@ -764,7 +764,7 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 		// 	tmp2[31-i] = v
 		// }
 		for i := 0; i < len(tmpX); i++ {
-			tmp2[31-i] - tmpX[i]
+			tmp2[31-i] = tmpX[i]
 		}
 	}
 
