@@ -185,6 +185,38 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		ConstValue: value,
 	}
 	switch val := value.(type) {
+	case int8:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 8; minBits++ {
+			if (0xffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.TInt,
+			Bits:    8,
+			MinBits: minBits,
+		}
+
+	case uint8:
+		var minBits int
+		// Count minimum bits needed to represent the value.
+		for minBits = 1; minBits < 8; minBits++ {
+			if (0xffffffff<<minBits)&uint64(val) == 0 {
+				break
+			}
+		}
+
+		v.Name = fmt.Sprintf("$%d", val)
+		v.Type = types.Info{
+			Type:    types.TUint,
+			Bits:    8,
+			MinBits: minBits,
+		}
+
 	case int32:
 		var minBits int
 		// Count minimum bits needed to represent the value.

@@ -97,6 +97,20 @@ var Bool = Info{
 	MinBits: 1,
 }
 
+// Byte defines type info for byte values.
+var Byte = Info{
+	Type:    TUint,
+	Bits:    8,
+	MinBits: 8,
+}
+
+// Rune defines type info for rune values.
+var Rune = Info{
+	Type:    TInt,
+	Bits:    32,
+	MinBits: 32,
+}
+
 // Int32 defines type info for signed 32bit integers.
 var Int32 = Info{
 	Type:    TInt,

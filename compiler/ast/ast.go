@@ -164,16 +164,10 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return types.Bool, nil
 
 		case "byte":
-			return types.Info{
-				Type: types.TUint,
-				Bits: 8,
-			}, nil
+			return types.Byte, nil
 
 		case "rune":
-			return types.Info{
-				Type: types.TInt,
-				Bits: 32,
-			}, nil
+			return types.Rune, nil
 
 		default:
 			// Check dynamic types from the env.

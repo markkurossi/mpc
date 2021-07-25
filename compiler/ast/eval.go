@@ -357,6 +357,13 @@ func intVal(val interface{}) (int, error) {
 	switch v := val.(type) {
 	case int32:
 		return int(v), nil
+
+	case ssa.Value:
+		if !v.Const {
+			return 0, fmt.Errorf("non-const slice index: %v", v)
+		}
+		return intVal(v.ConstValue)
+
 	default:
 		return 0, fmt.Errorf("invalid slice index: %T", v)
 	}
@@ -375,12 +382,21 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil || !ok {
 		return ssa.Undefined, ok, err
 	}
-	_, err = intVal(val)
+	index, err := intVal(val)
 	if err != nil {
 		return ssa.Undefined, false, ctx.Errorf(ast.Index, err.Error())
 	}
 
 	switch val := expr.ConstValue.(type) {
+	case string:
+		bytes := []byte(val)
+		if index < 0 || index >= len(bytes) {
+			return ssa.Undefined, false, ctx.Errorf(ast.Index,
+				"invalid array index %d (out of bounds for %d-element string)",
+				index, len(bytes))
+		}
+		return gen.Constant(bytes[index], types.Int32)
+
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"Index.Eval: expr %T not implemented yet", val)
@@ -415,7 +431,12 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 		}
 		b, ok = pkg.Bindings.Get(ast.Name.Name)
 	} else {
+		// First check env bindings.
 		b, ok = env.Get(ast.Name.Name)
+		if !ok {
+			// Check names in the current package.
+			b, ok = ctx.Package.Bindings.Get(ast.Name.Name)
+		}
 	}
 	if !ok {
 		return ssa.Undefined, false, ctx.Errorf(ast, "undefined variable '%s'",

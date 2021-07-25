@@ -536,10 +536,21 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var v []ssa.Value
 	var err error
 
+	env := NewEnv(block)
+
 	for _, expr := range ast.Exprs {
-		block, v, err = expr.SSA(block, ctx, gen)
+		constVal, ok, err := expr.Eval(env, ctx, gen)
 		if err != nil {
 			return nil, nil, err
+		}
+		if ok {
+			gen.AddConstant(constVal)
+			v = []ssa.Value{constVal}
+		} else {
+			block, v, err = expr.SSA(block, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		callValues = append(callValues, v)
 	}

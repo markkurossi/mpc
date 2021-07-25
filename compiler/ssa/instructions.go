@@ -665,6 +665,12 @@ func isSet(v interface{}, bit int) bool {
 		}
 		return false
 
+	case int8:
+		return (val & (1 << bit)) != 0
+
+	case uint8:
+		return (val & (1 << bit)) != 0
+
 	case int32:
 		return (val & (1 << bit)) != 0
 
