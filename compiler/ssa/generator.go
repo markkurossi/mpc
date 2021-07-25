@@ -196,9 +196,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.TInt,
 			Bits:    8,
 			MinBits: minBits,
+		}
+		if val < 0 {
+			v.Type.Type = types.TInt
+		} else {
+			v.Type.Type = types.TUint
 		}
 
 	case uint8:
@@ -228,9 +232,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.TUint,
 			Bits:    32,
 			MinBits: minBits,
+		}
+		if val < 0 {
+			v.Type.Type = types.TInt
+		} else {
+			v.Type.Type = types.TUint
 		}
 
 	case int64:
@@ -251,9 +259,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 		v.Name = fmt.Sprintf("$%d", val)
 		v.Type = types.Info{
-			Type:    types.TUint,
 			Bits:    bits,
 			MinBits: minBits,
+		}
+		if val < 0 {
+			v.Type.Type = types.TInt
+		} else {
+			v.Type.Type = types.TUint
 		}
 
 	case uint64:
