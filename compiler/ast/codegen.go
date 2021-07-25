@@ -91,10 +91,14 @@ func (ctx *Codegen) Caller() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Caller
 }
 
-// Compilation contains information about a function call compilation.
+// Compilation contains information about a compilation
+// scope. Toplevel, each function call, and each nested block specify
+// their own scope with their own variable bindings.
 type Compilation struct {
 	Start  *ssa.Block
 	Return *ssa.Block
 	Caller *ssa.Block
 	Called *Func
+	// XXX Bindings
+	// XXX Parent scope.
 }

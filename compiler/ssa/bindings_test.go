@@ -11,7 +11,8 @@ import (
 )
 
 func TestBindings(t *testing.T) {
-	var a, b Bindings
+	a := new(Bindings)
+	b := new(Bindings)
 
 	a.Set(Value{
 		Name: "a",
@@ -22,7 +23,7 @@ func TestBindings(t *testing.T) {
 	merged := a.Merge(Value{
 		Name: "c",
 	}, b)
-	if len(merged) != 1 {
+	if len(merged.Values) != 1 {
 		t.Errorf("Bindings.Merge failed")
 	}
 }

@@ -23,7 +23,7 @@ type Block struct {
 	BranchCond Value
 	Branch     *Block
 	Instr      []Instr
-	Bindings   Bindings
+	Bindings   *Bindings
 	Dead       bool
 	Processed  bool
 }
@@ -69,6 +69,7 @@ func (b *Block) addFrom(o *Block) {
 
 // AddInstr adds an instruction to this basic block.
 func (b *Block) AddInstr(instr Instr) {
+	instr.Check()
 	b.Instr = append(b.Instr, instr)
 }
 
@@ -125,10 +126,6 @@ func NewReturnBindingCTX() *ReturnBindingCTX {
 // binding after this basic block.
 func (b *Block) ReturnBinding(ctx *ReturnBindingCTX, name string,
 	retBlock *Block, gen *Generator) (v Value, ok bool) {
-
-	if ctx == nil {
-		return b.returnBinding(ctx, name, retBlock, gen)
-	}
 
 	binding, ok := ctx.Get(b, name)
 	if ok {

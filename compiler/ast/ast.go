@@ -149,7 +149,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 					bits = 0
 				}
 				if bits > gen.Params.MaxVarBits {
-					return result, fmt.Errorf("bit size too large: %d > %d",
+					return result, ctx.Errorf(ti, "bit size too large: %d > %d",
 						bits, gen.Params.MaxVarBits)
 				}
 				return types.Info{
@@ -158,26 +158,42 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				}, nil
 			}
 		}
-		if ti.Name.Name == "bool" {
+
+		switch ti.Name.Name {
+		case "bool":
 			return types.Bool, nil
-		}
-		// Check dynamic types from the env.
-		b, ok := env.Get(ti.Name.Name)
-		if ok {
-			val, ok := b.Bound.(*ssa.Value)
-			if ok && val.TypeRef {
-				return val.Type, nil
+
+		case "byte":
+			return types.Info{
+				Type: types.TUint,
+				Bits: 8,
+			}, nil
+
+		case "rune":
+			return types.Info{
+				Type: types.TInt,
+				Bits: 32,
+			}, nil
+
+		default:
+			// Check dynamic types from the env.
+			b, ok := env.Get(ti.Name.Name)
+			if ok {
+				val, ok := b.Bound.(*ssa.Value)
+				if ok && val.TypeRef {
+					return val.Type, nil
+				}
 			}
-		}
-		// Check dynamic types from the pkg.
-		b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
-		if ok {
-			val, ok := b.Bound.(*ssa.Value)
-			if ok && val.TypeRef {
-				return val.Type, nil
+			// Check dynamic types from the pkg.
+			b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
+			if ok {
+				val, ok := b.Bound.(*ssa.Value)
+				if ok && val.TypeRef {
+					return val.Type, nil
+				}
 			}
+			return result, ctx.Errorf(ti, "undefined name: %s", ti)
 		}
-		return result, fmt.Errorf("undefined name: %s", ti)
 
 	case TypeArray:
 		// Array length.
@@ -215,6 +231,19 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			ArraySize:   length,
 		}, nil
 
+	case TypeSlice:
+		// Element type.
+		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
+		if err != nil {
+			return result, err
+		}
+		// Bits and ArraySize are left uninitialized and they must be
+		// defined when type is instantiated.
+		return types.Info{
+			Type:        types.TArray,
+			ElementType: &elInfo,
+		}, nil
+
 	case TypePointer:
 		// Element type.
 		elInfo, err := ti.ElementType.Resolve(env, ctx, gen)
@@ -227,7 +256,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}, nil
 
 	default:
-		return result, fmt.Errorf("unsupported type %s", ti)
+		return result, ctx.Errorf(ti, "can't resolve type %s", ti)
 	}
 }
 
@@ -271,7 +300,7 @@ func NewEnv(block *ssa.Block) *Env {
 
 // Env implements a value bindings environment.
 type Env struct {
-	Bindings ssa.Bindings
+	Bindings *ssa.Bindings
 }
 
 // Get gets the value binding from the environment.

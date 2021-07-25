@@ -294,7 +294,46 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", arr.Name)
 				}
-				lValue, err := gen.NewVal(b.Name, b.Type, ctx.Scope())
+
+				var dstName string
+				var dstType types.Info
+				var dstScope int
+				var dstBindings *ssa.Bindings
+
+				switch b.Type.Type {
+				case types.TArray:
+					dstName = b.Name
+					dstType = b.Type
+					dstScope = b.Scope
+					dstBindings = block.Bindings
+
+				case types.TPtr:
+					v := b.Value(block, gen)
+					dstName = v.PtrInfo.Name
+					dstType = *v.Type.ElementType
+					dstScope = v.PtrInfo.Scope
+					dstBindings = v.PtrInfo.Bindings
+					b, ok = dstBindings.Get(dstName)
+					if !ok {
+						return nil, nil, ctx.Errorf(ast, "undefined: %s",
+							dstName)
+					}
+					if b.Type.Type != types.TArray {
+						return nil, nil, ctx.Errorf(ast,
+							"setting elements of non-array %s", b.Type)
+					}
+
+				default:
+					return nil, nil, ctx.Errorf(ast,
+						"setting elements of non-array %s", arr)
+				}
+
+				if dstType.Type != types.TArray {
+					return nil, nil, ctx.Errorf(ast,
+						"setting elements of non-array %s", arr)
+				}
+
+				lValue, err := gen.NewVal(dstName, dstType, dstScope)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -316,13 +355,13 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 
 				// Convert index to bit range.
-				if index >= b.Type.ArraySize {
+				if index >= dstType.ArraySize {
 					return nil, nil, ctx.Errorf(lv.Index,
 						"invalid array index %d (out of bounds for %d-element array)",
-						index, b.Type.ArraySize)
+						index, dstType.ArraySize)
 				}
-				from := int32(index * b.Type.ElementType.Bits)
-				to := int32((index + 1) * b.Type.ElementType.Bits)
+				from := int32(index * dstType.ElementType.Bits)
+				to := int32((index + 1) * dstType.ElementType.Bits)
 
 				indexType := types.Uint32
 				fromConst, _, err := gen.Constant(from, indexType)
@@ -336,7 +375,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 
 				block.AddInstr(ssa.NewAmovInstr(values[idx],
 					b.Value(block, gen), fromConst, toConst, lValue))
-				block.Bindings.Set(lValue, nil)
+				dstBindings.Set(lValue, nil)
 
 				return block, []ssa.Value{lValue}, nil
 
@@ -363,18 +402,15 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", ptr.Name)
 				}
-				fmt.Printf("*** pointer assignment: lvalue=%v, bound=%v, value=%v\n",
-					b, b.Bound, values[idx])
 				switch bound := b.Bound.(type) {
 				case *ssa.Value:
 					lValue, err := gen.NewVal(bound.PtrInfo.Name,
-						values[idx].Type, ctx.Scope() /*XXX*/)
+						values[idx].Type, bound.PtrInfo.Scope)
 					if err != nil {
 						return nil, nil, err
 					}
 					block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
 					bound.PtrInfo.Bindings.Set(lValue, &values[idx])
-					fmt.Printf(" - PtrInfo: %v\n", bound.PtrInfo.Bindings)
 
 				default:
 					return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)",
@@ -570,35 +606,25 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	if len(callValues) == 0 {
 		if len(called.Args) != 0 {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		}
 	} else if len(callValues) == 1 {
 		if len(callValues[0]) < len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		} else if len(callValues[0]) > len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"too many arguments in call to %s", ast.Ref)
-			// TODO \thave (int, int)
-			// TODO \twant ()
+			return nil, nil, ast.error(ctx, "too many arguments",
+				callValues, called.Args)
 		}
 		args = callValues[0]
 	} else {
 		if len(callValues) < len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"not enough arguments in call to %s", ast.Ref)
-			// TODO \thave ()
-			// TODO \twant (int, int)
+			return nil, nil, ast.error(ctx, "not enough arguments",
+				callValues, called.Args)
 		} else if len(callValues) > len(called.Args) {
-			return nil, nil, ctx.Errorf(ast,
-				"too many arguments in call to %s", ast.Ref)
-			// TODO \thave (int, int)
-			// TODO \twant ()
+			return nil, nil, ast.error(ctx, "too many arguments",
+				callValues, called.Args)
 		} else {
 			for idx, ca := range callValues {
 				expr := ast.Exprs[idx]
@@ -626,17 +652,19 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		// Instantiate argument types of template functions.
-		if typeInfo.Bits == 0 {
-			typeInfo.Instantiate(args[idx].Type)
+		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
+			return nil, nil, ctx.Errorf(ast.Exprs[idx],
+				"cannot use %v as type %s in argument to %s",
+				args[idx].Type, typeInfo, called.Name)
 		}
 		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if err != nil {
 			return nil, nil, err
 		}
-		if !a.TypeCompatible(args[idx]) {
+		if a.TypeCompatible(args[idx]) == nil {
 			return nil, nil, ctx.Errorf(ast,
-				"cannot use %s (type %v) as type %s in argument to %s",
-				args[idx].Name, args[idx].Type, typeInfo, called.Name)
+				"cannot use %v as type %s in argument to %s",
+				args[idx].Type, typeInfo, called.Name)
 		}
 		ctx.Start().Bindings.Set(a, &args[idx])
 
@@ -651,12 +679,59 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	block.SetNext(ctx.Start())
 
+	rblock.Bindings = block.Bindings.Clone()
+
 	ctx.Return().SetNext(rblock)
 	block = rblock
 
 	ctx.PopCompilation()
 
 	return block, returnValues, nil
+}
+
+func (ast *Call) error(ctx *Codegen, message string, have [][]ssa.Value,
+	want []*Variable) error {
+
+	message += fmt.Sprintf(" in call to %s", ast.Ref)
+	message += "\n\thave ("
+	switch len(have) {
+	case 0:
+
+	case 1:
+		for i, v := range have[0] {
+			if i > 0 {
+				message += ", "
+			}
+			message += v.Type.Type.String()
+		}
+
+	default:
+		for i, vi := range have {
+			if i > 0 {
+				message += ", "
+			}
+			if len(vi) > 0 {
+				message += "("
+			}
+			for j, vj := range vi {
+				if j > 0 {
+					message += ", "
+				}
+				message += vj.Type.Type.String()
+			}
+			if len(vi) > 0 {
+				message += ")"
+			}
+		}
+	}
+	message += ")\n\twant ("
+	for i, v := range want {
+		if i > 0 {
+			message += ", "
+		}
+		message += v.Type.String()
+	}
+	return ctx.Errorf(ast, "%s)", message)
 }
 
 // SSA implements the compiler.ast.AST.SSA for return statements.
@@ -752,7 +827,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			result[idx].Type.Type = typeInfo.Type
 		}
 
-		if !v.TypeCompatible(result[idx]) {
+		if v.TypeCompatible(result[idx]) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for result value %v",
 				result[idx].Type, v.Type)
@@ -770,6 +845,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Value,
 	want []*Variable) error {
+
 	message += "\n\thave ("
 	switch len(have) {
 	case 0:
@@ -781,6 +857,7 @@ func (ast *Return) error(ctx *Codegen, message string, have [][]ssa.Value,
 			}
 			message += v.Type.Type.String()
 		}
+
 	default:
 		for i, vi := range have {
 			if i > 0 {
@@ -919,7 +996,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	l := lArr[0]
 	r := rArr[0]
 
-	if !l.TypeCompatible(r) {
+	superType := l.TypeCompatible(r)
+	if superType == nil {
 		return nil, nil,
 			ctx.Errorf(ast, "invalid types: %s %s %s", l.Type, ast.Op, r.Type)
 	}
@@ -930,7 +1008,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case BinaryMult, BinaryDiv, BinaryMod, BinaryLshift, BinaryRshift,
 		BinaryBand, BinaryBclear,
 		BinaryPlus, BinaryMinus, BinaryBor, BinaryBxor:
-		resultType = l.Type
+		resultType = *superType
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
 		BinaryAnd, BinaryOr:
@@ -1004,9 +1082,20 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
+			var bindings *ssa.Bindings
+
+			// First check block bindings.
 			b, ok := block.Bindings.Get(v.Name.Name)
-			if !ok {
-				return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+			if ok {
+				bindings = block.Bindings
+			} else {
+				// Check names in the current package.
+				b, ok = ctx.Package.Bindings.Get(v.Name.Name)
+				if ok {
+					bindings = ctx.Package.Bindings
+				} else {
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+				}
 			}
 			// XXX LValue containing assignment lvalues
 			t := gen.AnonVal(types.Info{
@@ -1017,7 +1106,8 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			})
 			t.PtrInfo = ssa.PtrInfo{
 				Name:     v.Name.Name,
-				Bindings: block.Bindings,
+				Scope:    b.Scope,
+				Bindings: bindings,
 			}
 			return block, []ssa.Value{t}, nil
 
@@ -1035,13 +1125,14 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 
-	block, expr, err := ast.Expr.SSA(block, ctx, gen)
+	block, exprs, err := ast.Expr.SSA(block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(expr) != 1 {
+	if len(exprs) != 1 {
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
+	expr := exprs[0]
 
 	var val []ssa.Value
 	var from int32
@@ -1064,7 +1155,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	var to int32
 	if ast.To == nil {
-		to = int32(expr[0].Type.Bits)
+		to = int32(expr.Type.Bits)
 	} else {
 		block, val, err = ast.To.SSA(block, ctx, gen)
 		if err != nil {
@@ -1080,7 +1171,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.From, "invalid to index: %T", v)
 		}
 	}
-	if from >= int32(expr[0].Type.Bits) || from >= to {
+	if from >= int32(expr.Type.Bits) || from >= to {
 		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}
@@ -1094,19 +1185,37 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 
+	// Dereference pointers.
+	if expr.Type.Type == types.TPtr {
+		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
+				expr.PtrInfo.Name)
+		}
+		expr = b.Value(block, gen)
+	}
+
 	ti := types.Info{
-		Type:    expr[0].Type.Type,
+		Type:    expr.Type.Type,
 		Bits:    int(to - from),
 		MinBits: int(to - from),
 	}
-	if expr[0].Type.Type == types.TArray {
-		ti.ElementType = expr[0].Type.ElementType
+
+	switch expr.Type.Type {
+	case types.TInt, types.TUint:
+
+	case types.TArray:
+		ti.ElementType = expr.Type.ElementType
 		ti.ArraySize = ti.Bits / ti.ElementType.Bits
+
+	default:
+		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
+			expr.Type.Type)
 	}
 
 	t := gen.AnonVal(ti)
 
-	block.AddInstr(ssa.NewSliceInstr(expr[0], fromConst, toConst, t))
+	block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
 	return block, []ssa.Value{t}, nil
 }
@@ -1137,6 +1246,16 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		index = int(v)
 	default:
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", v)
+	}
+
+	// Dereference pointers.
+	if expr.Type.Type == types.TPtr {
+		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
+				expr.PtrInfo.Name)
+		}
+		expr = b.Value(block, gen)
 	}
 
 	switch expr.Type.Type {

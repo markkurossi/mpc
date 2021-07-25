@@ -150,6 +150,16 @@ type Instr struct {
 	Ret     []Value
 }
 
+// Check verifies that the instruction values are properly set. If any
+// unspecified values are found, the Check function panics.
+func (i Instr) Check() {
+	for idx, in := range i.In {
+		if !in.Check() {
+			panic(fmt.Sprintf("invalid input %d: %s", idx, in))
+		}
+	}
+}
+
 // NewAddInstr creates a new addition instruction based on the type t.
 func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 	var op Operand
@@ -573,8 +583,13 @@ type Value struct {
 // PtrInfo defines context information for pointer values.
 type PtrInfo struct {
 	Name     string
-	Bindings Bindings
+	Bindings *Bindings
+	Scope    int
 	// XXX bits
+}
+
+func (ptr PtrInfo) String() string {
+	return fmt.Sprintf("*%s@%d", ptr.Name, ptr.Scope)
 }
 
 // Undefined defines an undefined value.
@@ -582,6 +597,11 @@ var Undefined Value
 
 // ValueID defines unique value IDs.
 type ValueID uint32
+
+// Check tests that the value type is properly set.
+func (v Value) Check() bool {
+	return v.Type.Type != types.TUndefined && v.Type.Bits != 0
+}
 
 func (v Value) String() string {
 	if v.Const {
@@ -687,6 +707,16 @@ func isSet(v interface{}, bit int) bool {
 			arr := val.ConstValue.([]interface{})
 			return isSet(arr[idx], mod)
 
+		case types.TStruct:
+			fieldValues := val.ConstValue.([]interface{})
+			for idx, f := range val.Type.Struct {
+				if bit < f.Type.Bits {
+					return isSet(fieldValues[idx], bit)
+				}
+				bit -= f.Type.Bits
+			}
+			fallthrough
+
 		default:
 			panic(fmt.Sprintf("ssa.isSet called for invalid Value %v (%v)",
 				val, val.Type))
@@ -707,13 +737,22 @@ func LValueFor(l types.Info, o Value) bool {
 
 // TypeCompatible tests if the argument value is type compatible with
 // this value.
-func (v Value) TypeCompatible(o Value) bool {
+func (v Value) TypeCompatible(o Value) *types.Info {
 	if v.Const && o.Const {
-		return v.Type.Type == o.Type.Type
+		if v.Type.Type == o.Type.Type {
+			return &v.Type
+		}
 	} else if v.Const {
-		return o.Type.CanAssignConst(v.Type)
+		if o.Type.CanAssignConst(v.Type) {
+			return &o.Type
+		}
 	} else if o.Const {
-		return v.Type.CanAssignConst(o.Type)
+		if v.Type.CanAssignConst(o.Type) {
+			return &v.Type
+		}
 	}
-	return v.Type.Equal(o.Type)
+	if v.Type.Equal(o.Type) {
+		return &v.Type
+	}
+	return nil
 }
