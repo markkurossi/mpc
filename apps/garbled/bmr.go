@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -43,7 +43,7 @@ func bmrMode(circ *circuit.Circuit, input *big.Int, player int) error {
 		return err
 	}
 
-	printResult(result, circ.Outputs)
+	printResults(result, circ.Outputs)
 	return nil
 }
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -40,7 +40,7 @@ func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
 			return err
 		}
 
-		printResult(result, outputs)
+		printResults(result, outputs)
 		if once {
 			return nil
 		}
@@ -63,6 +63,6 @@ func streamGarblerMode(params *utils.Params, input input, args []string) error {
 	if err != nil {
 		return err
 	}
-	printResult(result, outputs)
+	printResults(result, outputs)
 	return nil
 }

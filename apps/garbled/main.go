@@ -17,7 +17,9 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"regexp"
 	"runtime/pprof"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -273,7 +275,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
 			return err
 		}
 
-		printResult(result, circ.Outputs)
+		printResults(result, circ.Outputs)
 		if once {
 			return nil
 		}
@@ -292,12 +294,12 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	if err != nil {
 		return err
 	}
-	printResult(result, circ.Outputs)
+	printResults(result, circ.Outputs)
 
 	return nil
 }
 
-func printResult(results []*big.Int, outputs circuit.IO) {
+func printResults(results []*big.Int, outputs circuit.IO) {
 	for idx, result := range results {
 		if outputs == nil {
 			fmt.Printf("Result[%d]: %v\n", idx, result)
@@ -308,39 +310,99 @@ func printResult(results []*big.Int, outputs circuit.IO) {
 			}
 			fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
 		} else {
-			output := outputs[idx]
-			if strings.HasPrefix(output.Type, "string") {
-				mask := big.NewInt(0xff)
-				var str string
-
-				for i := 0; i < output.Size/8; i++ {
-					tmp := new(big.Int).Rsh(result, uint(i*8))
-					r := rune(tmp.And(tmp, mask).Uint64())
-					if unicode.IsPrint(r) {
-						str += string(r)
-					}
-				}
-				fmt.Printf("Result[%d]: %s\n", idx, str)
-			} else if strings.HasPrefix(output.Type, "uint") ||
-				strings.HasPrefix(output.Type, "int") {
-
-				bytes := result.Bytes()
-				if len(bytes) == 0 {
-					bytes = []byte{0}
-				}
-				if output.Size <= 64 {
-					fmt.Printf("Result[%d]: 0x%x\t%v\n", idx, bytes, result)
-				} else {
-					fmt.Printf("Result[%d]: 0x%x\n", idx, bytes)
-				}
-			} else if strings.HasPrefix(output.Type, "bool") {
-				fmt.Printf("Result[%d]: %v\n", idx, result.Uint64() != 0)
-			} else {
-				fmt.Printf("Result[%d]: %v (%s)\n", idx, result,
-					outputs[idx].Type)
-			}
+			fmt.Printf("Result[%d]: %s\n", idx,
+				printResult(result, outputs[idx], false))
 		}
 	}
+}
+
+func printResult(result *big.Int, output circuit.IOArg, short bool) string {
+	var str string
+
+	if strings.HasPrefix(output.Type, "string") {
+		mask := big.NewInt(0xff)
+		var str string
+
+		for i := 0; i < output.Size/8; i++ {
+			tmp := new(big.Int).Rsh(result, uint(i*8))
+			r := rune(tmp.And(tmp, mask).Uint64())
+			if unicode.IsPrint(r) {
+				str += string(r)
+			}
+		}
+	} else if strings.HasPrefix(output.Type, "uint") ||
+		strings.HasPrefix(output.Type, "int") {
+
+		bytes := result.Bytes()
+		if len(bytes) == 0 {
+			bytes = []byte{0}
+		}
+		if short {
+			str = fmt.Sprintf("%v", result)
+		} else if output.Size <= 64 {
+			str = fmt.Sprintf("0x%x\t%v", bytes, result)
+		} else {
+			str = fmt.Sprintf("0x%x", bytes)
+		}
+	} else if strings.HasPrefix(output.Type, "bool") {
+		str = fmt.Sprintf("%v", result.Uint64() != 0)
+	} else {
+		matches := reArr.FindStringSubmatch(output.Type)
+		if matches != nil {
+			count, err := strconv.Atoi(matches[1])
+			if err != nil {
+				panic(fmt.Sprintf("invalid array size: %s", matches[1]))
+			}
+			elementSize := size(matches[2])
+
+			mask := new(big.Int)
+			for i := 0; i < elementSize; i++ {
+				mask.SetBit(mask, i, 1)
+			}
+
+			str = "["
+			for i := 0; i < count; i++ {
+				if i > 0 {
+					str += " "
+				}
+				r := new(big.Int).Rsh(result, uint(i*elementSize))
+				r = r.And(r, mask)
+
+				str += printResult(r, circuit.IOArg{
+					Type: matches[2],
+					Size: elementSize,
+				}, true)
+			}
+			str += "]"
+		} else {
+			str = fmt.Sprintf("%v (%s)", result, output.Type)
+		}
+	}
+
+	return str
+}
+
+var reArr = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
+var reSized = regexp.MustCompilePOSIX(`^[[:^digit:]]+([[:digit:]]+)$`)
+
+func size(t string) int {
+	matches := reArr.FindStringSubmatch(t)
+	if matches != nil {
+		count, err := strconv.Atoi(matches[1])
+		if err != nil {
+			panic(fmt.Sprintf("invalid array size: %s", matches[1]))
+		}
+		return count * size(matches[2])
+	}
+	matches = reSized.FindStringSubmatch(t)
+	if matches == nil {
+		panic(fmt.Sprintf("invalid type: %s", t))
+	}
+	bits, err := strconv.Atoi(matches[1])
+	if err != nil {
+		panic(fmt.Sprintf("invalid bit count: %s", matches[1]))
+	}
+	return bits
 }
 
 func makeOutput(base, suffix string) (io.WriteCloser, error) {
