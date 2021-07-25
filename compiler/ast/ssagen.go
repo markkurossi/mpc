@@ -1134,8 +1134,35 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	expr := exprs[0]
 
+	// Dereference pointers.
+	if expr.Type.Type == types.TPtr {
+		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast, "undefined: %s",
+				expr.PtrInfo.Name)
+		}
+		expr = b.Value(block, gen)
+	}
+
+	var elementSize int
+	var elementCount int
+
+	switch expr.Type.Type {
+	case types.TInt, types.TUint:
+		elementSize = 1
+		elementCount = expr.Type.Bits
+
+	case types.TArray:
+		elementSize = expr.Type.ElementType.Bits
+		elementCount = expr.Type.ArraySize
+
+	default:
+		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
+			expr.Type.Type)
+	}
+
 	var val []ssa.Value
-	var from int32
+	var from int
 	if ast.From == nil {
 		from = 0
 	} else {
@@ -1148,14 +1175,14 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch v := val[0].ConstValue.(type) {
 		case int32:
-			from = v
+			from = int(v)
 		default:
 			return nil, nil, ctx.Errorf(ast.From, "invalid from index: %T", v)
 		}
 	}
-	var to int32
+	var to int
 	if ast.To == nil {
-		to = int32(expr.Type.Bits)
+		to = elementCount
 	} else {
 		block, val, err = ast.To.SSA(block, ctx, gen)
 		if err != nil {
@@ -1166,51 +1193,35 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch v := val[0].ConstValue.(type) {
 		case int32:
-			to = v
+			to = int(v)
 		default:
 			return nil, nil, ctx.Errorf(ast.From, "invalid to index: %T", v)
 		}
 	}
-	if from >= int32(expr.Type.Bits) || from >= to {
+	if from >= elementCount || from >= to {
 		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}
 
-	fromConst, _, err := gen.Constant(from, types.Uint32)
+	fromConst, _, err := gen.Constant(int32(from*elementSize), types.Uint32)
 	if err != nil {
 		return nil, nil, err
 	}
-	toConst, _, err := gen.Constant(to, types.Uint32)
+	toConst, _, err := gen.Constant(int32(to*elementSize), types.Uint32)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Dereference pointers.
-	if expr.Type.Type == types.TPtr {
-		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
-		if !ok {
-			return nil, nil, ctx.Errorf(ast, "undefined: %s",
-				expr.PtrInfo.Name)
-		}
-		expr = b.Value(block, gen)
 	}
 
 	ti := types.Info{
-		Type:    expr.Type.Type,
-		Bits:    int(to - from),
-		MinBits: int(to - from),
+		Type: expr.Type.Type,
 	}
 
-	switch expr.Type.Type {
-	case types.TInt, types.TUint:
+	ti.Bits = (to - from) * elementSize
+	ti.MinBits = ti.Bits
 
-	case types.TArray:
+	if expr.Type.Type == types.TArray {
 		ti.ElementType = expr.Type.ElementType
 		ti.ArraySize = ti.Bits / ti.ElementType.Bits
-
-	default:
-		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
-			expr.Type.Type)
 	}
 
 	t := gen.AnonVal(ti)
