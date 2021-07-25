@@ -264,10 +264,10 @@ form assembly:
  - [ ] Ed25519
    - [X] Parsing Ed25519 MPCL files
      - [ ] for-range statements
-   - [ ] Pointer handling
+   - [X] Pointer handling
    - [ ] Method calls
    - [ ] Signed / unsigned arithmetics
-   - [ ] `byte` type
+   - [X] `byte` type
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 
