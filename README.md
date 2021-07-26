@@ -268,6 +268,9 @@ form assembly:
    - [ ] Method calls
    - [ ] Signed / unsigned arithmetics
    - [X] `byte` type
+   - [ ] Ed25519 functions
+     - [X] ScMulAdd
+     - [X] ScReduce
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 
