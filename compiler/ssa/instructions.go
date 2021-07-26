@@ -159,7 +159,7 @@ type Instr struct {
 func (i Instr) Check() {
 	for idx, in := range i.In {
 		if !in.Check() {
-			panic(fmt.Sprintf("invalid input %d: %s", idx, in))
+			panic(fmt.Sprintf("invalid input %d: %s (%#v)", idx, in, in))
 		}
 	}
 }

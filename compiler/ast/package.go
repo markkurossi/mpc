@@ -265,6 +265,10 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			if err != nil {
 				return err
 			}
+			if info.Bits == 0 {
+				return ctx.Errorf(field,
+					"unspecified size for struct field %s", field.Name)
+			}
 			field := types.StructField{
 				Name: field.Name,
 				Type: info,

@@ -73,6 +73,7 @@ type TypeInfo struct {
 
 // StructField contains AST structure field information.
 type StructField struct {
+	utils.Point
 	Name string
 	Type *TypeInfo
 }

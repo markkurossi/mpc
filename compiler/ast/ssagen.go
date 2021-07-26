@@ -203,6 +203,16 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 		return int32(0), nil
 	case types.TString:
 		return "", nil
+	case types.TStruct:
+		var init []interface{}
+		for _, field := range typeInfo.Struct {
+			fieldInit, err := initValue(field.Type)
+			if err != nil {
+				return nil, err
+			}
+			init = append(init, fieldInit)
+		}
+		return init, nil
 	case types.TArray:
 		elInit, err := initValue(*typeInfo.ElementType)
 		if err != nil {

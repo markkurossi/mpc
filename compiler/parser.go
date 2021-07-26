@@ -388,12 +388,12 @@ func (p *Parser) parseTypeDecl() error {
 			if t.Type == '}' {
 				break
 			}
-			var names []string
+			var names []*Token
 			for {
 				if t.Type != TIdentifier {
 					return p.errf(t.From, "unexpected token '%s'", t.Type)
 				}
-				names = append(names, t.StrVal)
+				names = append(names, t)
 				t, err = p.lexer.Get()
 				if err != nil {
 					return err
@@ -415,8 +415,9 @@ func (p *Parser) parseTypeDecl() error {
 			// Expand names.
 			for _, n := range names {
 				fields = append(fields, ast.StructField{
-					Name: n,
-					Type: typeInfo,
+					Point: n.From,
+					Name:  n.StrVal,
+					Type:  typeInfo,
 				})
 			}
 		}
