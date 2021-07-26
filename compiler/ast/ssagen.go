@@ -607,8 +607,37 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// Convert value to type
+
+		cv := callValues[0][0]
 		t := gen.AnonVal(typeInfo)
-		block.AddInstr(ssa.NewMovInstr(callValues[0][0], t))
+
+		if cv.Type.Type == types.TInt && typeInfo.Type == types.TInt &&
+			typeInfo.Bits > cv.Type.Bits {
+
+			// The src and dst are signed integers and we are casting
+			// to bigger bit size, we must create a branch on sign bit
+			// to decide if we sign extend the value or not.
+
+			sign := gen.AnonVal(types.Bool)
+
+			bitIndex, _, err := gen.Constant(int32(cv.Type.Bits-1), types.Int32)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// Test sign bit.
+			block.AddInstr(ssa.NewBtsInstr(cv, bitIndex, sign))
+
+			tv := gen.AnonVal(typeInfo)
+			block.AddInstr(ssa.NewSmovInstr(cv, tv))
+
+			fv := gen.AnonVal(typeInfo)
+			block.AddInstr(ssa.NewMovInstr(cv, fv))
+
+			block.AddInstr(ssa.NewPhiInstr(sign, tv, fv, t))
+		} else {
+			block.AddInstr(ssa.NewMovInstr(cv, t))
+		}
 
 		return block, []ssa.Value{t}, nil
 	}
@@ -1043,7 +1072,28 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case BinaryLshift:
 		instr = ssa.NewLshiftInstr(l, r, t)
 	case BinaryRshift:
-		instr = ssa.NewRshiftInstr(l, r, t)
+		if l.Type.Type == types.TInt {
+			// Check if we must sign extend the value.
+			sign := gen.AnonVal(types.Bool)
+
+			bitIndex, _, err := gen.Constant(int32(l.Type.Bits-1), types.Int32)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// Test sign bit.
+			block.AddInstr(ssa.NewBtsInstr(l, bitIndex, sign))
+
+			tv := gen.AnonVal(resultType)
+			block.AddInstr(ssa.NewSrshiftInstr(l, r, tv))
+
+			fv := gen.AnonVal(resultType)
+			block.AddInstr(ssa.NewRshiftInstr(l, r, fv))
+
+			instr = ssa.NewPhiInstr(sign, tv, fv, t)
+		} else {
+			instr = ssa.NewRshiftInstr(l, r, t)
+		}
 	case BinaryBand:
 		instr, err = ssa.NewBandInstr(l, r, t)
 	case BinaryBclear:

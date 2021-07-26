@@ -170,7 +170,13 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
-		case Rshift:
+		case Rshift, Srshift:
+			var signWire *circuits.Wire
+			if instr.Op == Srshift {
+				signWire = cc.OneWire()
+			} else {
+				signWire = cc.ZeroWire()
+			}
 			if !instr.In[1].Const {
 				return fmt.Errorf("%s: only constant shift supported", instr.Op)
 			}
@@ -192,7 +198,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				if bit+count < len(wires[0]) {
 					w = wires[0][bit+count]
 				} else {
-					w = cc.ZeroWire()
+					w = signWire
 				}
 				o[bit] = w
 			}
@@ -409,7 +415,14 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
-		case Mov:
+		case Mov, Smov:
+			var signWire *circuits.Wire
+			if instr.Op == Smov {
+				signWire = cc.OneWire()
+			} else {
+				signWire = cc.ZeroWire()
+			}
+
 			o := make([]*circuits.Wire, instr.Out.Type.Bits)
 
 			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
@@ -417,7 +430,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				if bit < len(wires[0]) {
 					w = wires[0][bit]
 				} else {
-					w = cc.ZeroWire()
+					w = signWire
 				}
 				o[bit] = w
 			}

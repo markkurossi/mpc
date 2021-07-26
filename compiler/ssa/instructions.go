@@ -44,6 +44,7 @@ const (
 	Fmod
 	Lshift
 	Rshift
+	Srshift
 	Slice
 	Ilt
 	Ult
@@ -62,6 +63,7 @@ const (
 	And
 	Or
 	Mov
+	Smov
 	Amov
 	Phi
 	Ret
@@ -94,6 +96,7 @@ var operands = map[Operand]string{
 	Fmod:    "fmod",
 	Lshift:  "lshift",
 	Rshift:  "rshift",
+	Srshift: "srshift",
 	Slice:   "slice",
 	Ilt:     "ilt",
 	Ult:     "ult",
@@ -112,6 +115,7 @@ var operands = map[Operand]string{
 	And:     "and",
 	Or:      "or",
 	Mov:     "mov",
+	Smov:    "smov",
 	Amov:    "amov",
 	Phi:     "phi",
 	Ret:     "ret",
@@ -281,6 +285,15 @@ func NewRshiftInstr(l, r, o Value) Instr {
 	}
 }
 
+// NewSrshiftInstr creates a new Srshift instruction.
+func NewSrshiftInstr(l, r, o Value) Instr {
+	return Instr{
+		Op:  Srshift,
+		In:  []Value{l, r},
+		Out: &o,
+	}
+}
+
 // NewSliceInstr creates a new Slice instruction.
 func NewSliceInstr(v, from, to, o Value) Instr {
 	return Instr{
@@ -427,6 +440,15 @@ func NewBclrInstr(l, r, o Value) (Instr, error) {
 	}, nil
 }
 
+// NewBtsInstr creates a new Bts instruction.
+func NewBtsInstr(l, r, o Value) Instr {
+	return Instr{
+		Op:  Bts,
+		In:  []Value{l, r},
+		Out: &o,
+	}
+}
+
 // NewBorInstr creates a new Bor instruction.
 func NewBorInstr(l, r, o Value) (Instr, error) {
 	return Instr{
@@ -454,6 +476,15 @@ func NewMovInstr(from, to Value) Instr {
 	}
 }
 
+// NewSmovInstr creates a new Mov instruction.
+func NewSmovInstr(from, to Value) Instr {
+	return Instr{
+		Op:  Smov,
+		In:  []Value{from},
+		Out: &to,
+	}
+}
+
 // NewAmovInstr creates a new Amov instruction.
 func NewAmovInstr(v, arr, from, to, o Value) Instr {
 	return Instr{
@@ -464,10 +495,10 @@ func NewAmovInstr(v, arr, from, to, o Value) Instr {
 }
 
 // NewPhiInstr creates a new Phi instruction.
-func NewPhiInstr(cond, l, r, v Value) Instr {
+func NewPhiInstr(cond, t, f, v Value) Instr {
 	return Instr{
 		Op:  Phi,
-		In:  []Value{cond, l, r},
+		In:  []Value{cond, t, f},
 		Out: &v,
 	}
 }
