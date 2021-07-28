@@ -40,24 +40,22 @@ func NewPackage(name, source string) *Package {
 }
 
 // Compile compiles the package.
-func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
-	params *utils.Params) (*ssa.Program, Annotations, error) {
+func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 
 	main, ok := pkg.Functions["main"]
 	if !ok {
-		return nil, nil, logger.Errorf(utils.Point{
+		return nil, nil, ctx.Errorf(utils.Point{
 			Source: pkg.Source,
 		}, "no main function defined")
 	}
 
-	gen := ssa.NewGenerator(params)
-	ctx := NewCodegen(logger, pkg, packages, params.Verbose)
+	gen := ssa.NewGenerator(ctx.Params)
 
 	// Init is the program start point.
 	init := gen.Block()
 
 	// Init package.
-	block, err := pkg.Init(packages, init, ctx, gen)
+	block, err := pkg.Init(ctx.Packages, init, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -134,7 +132,7 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 
 	steps := init.Serialize()
 
-	program, err := ssa.NewProgram(params, inputs, outputs, gen.Constants(),
+	program, err := ssa.NewProgram(ctx.Params, inputs, outputs, gen.Constants(),
 		steps)
 	if err != nil {
 		return nil, nil, err
@@ -145,11 +143,11 @@ func (pkg *Package) Compile(packages map[string]*Package, logger *utils.Logger,
 	}
 	program.GC()
 
-	if params.SSAOut != nil {
-		program.PP(params.SSAOut)
+	if ctx.Params.SSAOut != nil {
+		program.PP(ctx.Params.SSAOut)
 	}
-	if params.SSADotOut != nil {
-		ssa.Dot(params.SSADotOut, init)
+	if ctx.Params.SSADotOut != nil {
+		ssa.Dot(ctx.Params.SSADotOut, init)
 	}
 
 	return program, main.Annotations, nil
@@ -303,6 +301,8 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		return ctx.Errorf(def, "invalid type definition: %s", def)
 	}
 
+	info.ID = ctx.DefineType(def)
+
 	v, _, err := gen.Constant(info, types.Undefined)
 	if err != nil {
 		return err
@@ -312,5 +312,6 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 		return err
 	}
 	pkg.Bindings.Set(lval, &v)
+
 	return nil
 }

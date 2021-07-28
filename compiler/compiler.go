@@ -61,7 +61,9 @@ func (c *Compiler) compile(source string, in io.Reader) (
 		return nil, nil, err
 	}
 
-	program, annotation, err := pkg.Compile(c.packages, logger, c.params)
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params)
+
+	program, annotation, err := pkg.Compile(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -97,7 +99,9 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 		return nil, nil, err
 	}
 
-	program, _, err := pkg.Compile(c.packages, logger, c.params)
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params)
+
+	program, _, err := pkg.Compile(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

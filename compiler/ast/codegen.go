@@ -10,26 +10,31 @@ package ast
 
 import (
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 // Codegen implements compilation stack.
 type Codegen struct {
 	logger   *utils.Logger
+	Params   *utils.Params
 	Verbose  bool
 	Package  *Package
 	Packages map[string]*Package
 	Stack    []Compilation
+	Types    map[types.ID]*TypeInfo
 }
 
 // NewCodegen creates a new compilation.
 func NewCodegen(logger *utils.Logger, pkg *Package,
-	packages map[string]*Package, verbose bool) *Codegen {
+	packages map[string]*Package, params *utils.Params) *Codegen {
 	return &Codegen{
 		logger:   logger,
+		Params:   params,
+		Verbose:  params.Verbose,
 		Package:  pkg,
 		Packages: packages,
-		Verbose:  verbose,
+		Types:    make(map[types.ID]*TypeInfo),
 	}
 }
 
@@ -37,6 +42,60 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 func (ctx *Codegen) Errorf(locator utils.Locator, format string,
 	a ...interface{}) error {
 	return ctx.logger.Errorf(locator.Location(), format, a...)
+}
+
+// DefineType defines the argument type and assigns it an unique type
+// ID.
+func (ctx *Codegen) DefineType(t *TypeInfo) types.ID {
+	id := types.ID(len(ctx.Types) + 0x80000000)
+	ctx.Types[id] = t
+	return id
+}
+
+// LookupFunc resolves the named function from the context.
+func (ctx *Codegen) LookupFunc(block *ssa.Block, ref *VariableRef) (
+	*Func, error) {
+
+	// First, check method calls.
+	if len(ref.Name.Package) > 0 {
+		// Check if package name is bound to a value.
+		var b ssa.Binding
+		var ok bool
+
+		b, ok = block.Bindings.Get(ref.Name.Package)
+		if !ok {
+			// Check names in the current package.
+			b, ok = ctx.Package.Bindings.Get(ref.Name.Package)
+		}
+		if ok {
+			info, ok := ctx.Types[b.Type.ID]
+			if !ok {
+				return nil, ctx.Errorf(ref, "%s undefined", ref)
+			}
+			method, ok := info.Methods[ref.Name.Name]
+			if !ok {
+				return nil, ctx.Errorf(ref, "%s undefined", ref)
+			}
+			return method, nil
+		}
+	}
+
+	// Next, check function calls.
+	var pkgName string
+	if len(ref.Name.Package) > 0 {
+		pkgName = ref.Name.Package
+	} else {
+		pkgName = ref.Name.Defined
+	}
+	pkg, ok := ctx.Packages[pkgName]
+	if !ok {
+		return nil, ctx.Errorf(ref, "package '%s' not found", pkgName)
+	}
+	called, ok := pkg.Functions[ref.Name.Name]
+	if !ok {
+		return nil, nil
+	}
+	return called, nil
 }
 
 // Func returns the current function in the current compilation.

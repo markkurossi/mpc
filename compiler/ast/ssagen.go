@@ -566,18 +566,11 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Resolve called.
-	var pkgName string
-	if len(ast.Ref.Name.Package) > 0 {
-		pkgName = ast.Ref.Name.Package
-	} else {
-		pkgName = ast.Ref.Name.Defined
+	called, err := ctx.LookupFunc(block, ast.Ref)
+	if err != nil {
+		return nil, nil, err
 	}
-	pkg, ok := ctx.Packages[pkgName]
-	if !ok {
-		return nil, nil, ctx.Errorf(ast, "package '%s' not found", pkgName)
-	}
-	called, ok := pkg.Functions[ast.Ref.Name.Name]
-	if !ok {
+	if called == nil {
 		// Check builtin functions.
 		for _, bi := range builtins {
 			if bi.Name != ast.Ref.Name.Name {
@@ -719,6 +712,58 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		ctx.Start().Bindings.Set(a, &args[idx])
 
 		block.AddInstr(ssa.NewMovInstr(args[idx], a))
+	}
+	// This for method calls.
+	if called.This != nil {
+		typeInfo, err := called.This.Type.Resolve(env, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		var this ssa.Value
+		var bindings *ssa.Bindings
+
+		// First check block bindings.
+		b, ok := block.Bindings.Get(ast.Ref.Name.Package)
+		if ok {
+			bindings = block.Bindings
+		} else {
+			// Check names in the current package.
+			b, ok = ctx.Package.Bindings.Get(ast.Ref.Name.Package)
+			if ok {
+				bindings = ctx.Package.Bindings
+			} else {
+				return nil, nil, ctx.Errorf(ast, "undefined: %s",
+					ast.Ref.Name.Package)
+			}
+		}
+		if typeInfo.Type == types.TPtr {
+			// Pointer receiver.
+			this = gen.AnonVal(types.Info{
+				Type:        types.TPtr,
+				Bits:        b.Type.Bits,
+				MinBits:     b.Type.Bits,
+				ElementType: &b.Type,
+			})
+			this.PtrInfo = ssa.PtrInfo{
+				Name:     ast.Ref.Name.Package,
+				Scope:    b.Scope,
+				Bindings: bindings,
+			}
+		} else {
+			// Value receiver.
+			this = b.Value(block, gen)
+		}
+		a, err := gen.NewVal(called.This.Name, typeInfo, ctx.Scope())
+		if err != nil {
+			return nil, nil, err
+		}
+		if a.TypeCompatible(this) == nil {
+			return nil, nil, ctx.Errorf(ast,
+				"cannot use %v as type %s in receiver to %s",
+				this.Type, typeInfo, called.Name)
+		}
+		ctx.Start().Bindings.Set(a, &this)
+		block.AddInstr(ssa.NewMovInstr(this, a))
 	}
 
 	// Instantiate called function.

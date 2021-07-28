@@ -69,6 +69,7 @@ type TypeInfo struct {
 	TypeName     string
 	StructFields []StructField
 	AliasType    *TypeInfo
+	Methods      map[string]*Func
 }
 
 // StructField contains AST structure field information.
@@ -173,19 +174,13 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		default:
 			// Check dynamic types from the env.
 			b, ok := env.Get(ti.Name.Name)
-			if ok {
-				val, ok := b.Bound.(*ssa.Value)
-				if ok && val.TypeRef {
-					return val.Type, nil
-				}
+			if !ok {
+				// Check dynamic types from the pkg.
+				b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
 			}
-			// Check dynamic types from the pkg.
-			b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
-			if ok {
-				val, ok := b.Bound.(*ssa.Value)
-				if ok && val.TypeRef {
-					return val.Type, nil
-				}
+			val, ok := b.Bound.(*ssa.Value)
+			if ok && val.TypeRef {
+				return val.Type, nil
 			}
 			return result, ctx.Errorf(ti, "undefined name: %s", ti)
 		}

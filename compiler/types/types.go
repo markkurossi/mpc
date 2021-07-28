@@ -12,6 +12,9 @@ import (
 	"fmt"
 )
 
+// ID specifies an unique ID for names types.
+type ID int
+
 // Type specifies an MPCL type.
 type Type int
 
@@ -76,6 +79,7 @@ var shortTypes = map[Type]string{
 
 // Info specifies information about a type.
 type Info struct {
+	ID          ID
 	Type        Type
 	Bits        int
 	MinBits     int
@@ -226,7 +230,7 @@ func (i Info) Equal(o Info) bool {
 			return false
 		}
 		for idx, ie := range i.Struct {
-			if ie.Type.Equal(o.Struct[idx].Type) {
+			if !ie.Type.Equal(o.Struct[idx].Type) {
 				return false
 			}
 		}

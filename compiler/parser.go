@@ -266,7 +266,7 @@ func (p *Parser) parseToplevel() error {
 				Name:  n.StrVal,
 				Type:  ti,
 			}
-			// fmt.Printf("%s\n", f)
+			return p.addMethod(ti, f)
 
 		default:
 			return p.errf(n.From, "unexpected '%s', expecting name or (", n)
@@ -274,6 +274,35 @@ func (p *Parser) parseToplevel() error {
 
 	default:
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
+	}
+
+	return nil
+}
+
+func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
+	var typeName string
+
+	t := ti
+	if t.Type == ast.TypePointer {
+		t = t.ElementType
+	}
+	if t.Type != ast.TypeName {
+		return p.errf(ti.Point,
+			"invalid receiver type %s (%s is not a defined type)", ti, ti)
+	}
+
+	for _, pkgType := range p.pkg.Types {
+		if pkgType.Name.Name == typeName {
+			if pkgType.Methods == nil {
+				pkgType.Methods = make(map[string]*ast.Func)
+			}
+			_, ok := pkgType.Methods[f.Name]
+			if ok {
+				return p.errf(f.Point, "(%s).%s redeclared in this block",
+					ti, f.Name)
+			}
+			pkgType.Methods[f.Name] = f
+		}
 	}
 
 	return nil
