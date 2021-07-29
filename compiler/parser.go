@@ -280,8 +280,6 @@ func (p *Parser) parseToplevel() error {
 }
 
 func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
-	var typeName string
-
 	t := ti
 	if t.Type == ast.TypePointer {
 		t = t.ElementType
@@ -292,7 +290,7 @@ func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
 	}
 
 	for _, pkgType := range p.pkg.Types {
-		if pkgType.Name.Name == typeName {
+		if pkgType.Name.Name == t.Name.Name {
 			if pkgType.Methods == nil {
 				pkgType.Methods = make(map[string]*ast.Func)
 			}

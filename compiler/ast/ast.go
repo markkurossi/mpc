@@ -178,9 +178,11 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				// Check dynamic types from the pkg.
 				b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
 			}
-			val, ok := b.Bound.(*ssa.Value)
-			if ok && val.TypeRef {
-				return val.Type, nil
+			if ok {
+				val, ok := b.Bound.(*ssa.Value)
+				if ok && val.TypeRef {
+					return val.Type, nil
+				}
 			}
 			return result, ctx.Errorf(ti, "undefined name: %s", ti)
 		}
