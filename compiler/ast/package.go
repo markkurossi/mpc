@@ -76,10 +76,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 					arg.Name, main)
 		}
 		// Define argument in block.
-		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
+		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		ctx.Start().Bindings.Set(a, nil)
 
 		arg := circuit.IOArg{
@@ -303,14 +300,8 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 
 	info.ID = ctx.DefineType(def)
 
-	v, _, err := gen.Constant(info, types.Undefined)
-	if err != nil {
-		return err
-	}
-	lval, err := gen.NewVal(def.TypeName, info, ctx.Scope())
-	if err != nil {
-		return err
-	}
+	v := gen.Constant(info, types.Undefined)
+	lval := gen.NewVal(def.TypeName, info, ctx.Scope())
 	pkg.Bindings.Set(lval, &v)
 
 	return nil

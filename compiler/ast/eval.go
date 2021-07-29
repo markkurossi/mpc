@@ -63,10 +63,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	for idx, lv := range ast.LValues {
-		constVal, _, err := gen.Constant(values[idx], types.Undefined)
-		if err != nil {
-			return ssa.Undefined, false, err
-		}
+		constVal := gen.Constant(values[idx], types.Undefined)
 		gen.AddConstant(constVal)
 		arrType.ElementType = &constVal.Type
 
@@ -79,26 +76,20 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 		var lValue ssa.Value
 		if ast.Define {
-			lValue, err = gen.NewVal(ref.Name.Name, constVal.Type, ctx.Scope())
-			if err != nil {
-				return ssa.Undefined, false, err
-			}
+			lValue = gen.NewVal(ref.Name.Name, constVal.Type, ctx.Scope())
 		} else {
 			b, ok := env.Get(ref.Name.Name)
 			if !ok {
 				return ssa.Undefined, false,
 					ctx.Errorf(ast, "undefined variable '%s'", ref.Name)
 			}
-			lValue, err = gen.NewVal(b.Name, b.Type, ctx.Scope())
-			if err != nil {
-				return ssa.Undefined, false, err
-			}
+			lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
 		}
 		env.Set(lValue, &constVal)
 	}
 	arrType.ArraySize = len(values)
 
-	return gen.Constant(values, arrType)
+	return gen.Constant(values, arrType), true, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for if statements.
@@ -181,41 +172,41 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return gen.Constant(lval*rval, types.Int32)
+			return gen.Constant(lval*rval, types.Int32), true, nil
 		case BinaryDiv:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval/rval, types.Int32)
+			return gen.Constant(lval/rval, types.Int32), true, nil
 		case BinaryMod:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval%rval, types.Int32)
+			return gen.Constant(lval%rval, types.Int32), true, nil
 		case BinaryLshift:
-			return gen.Constant(lval<<rval, types.Int32)
+			return gen.Constant(lval<<rval, types.Int32), true, nil
 		case BinaryRshift:
-			return gen.Constant(lval>>rval, types.Int32)
+			return gen.Constant(lval>>rval, types.Int32), true, nil
 
 		case BinaryPlus:
-			return gen.Constant(lval+rval, types.Int32)
+			return gen.Constant(lval+rval, types.Int32), true, nil
 		case BinaryMinus:
-			return gen.Constant(lval-rval, types.Int32)
+			return gen.Constant(lval-rval, types.Int32), true, nil
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.Bool)
+			return gen.Constant(lval == rval, types.Bool), true, nil
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.Bool)
+			return gen.Constant(lval != rval, types.Bool), true, nil
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.Bool)
+			return gen.Constant(lval < rval, types.Bool), true, nil
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.Bool)
+			return gen.Constant(lval <= rval, types.Bool), true, nil
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.Bool)
+			return gen.Constant(lval > rval, types.Bool), true, nil
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.Bool)
+			return gen.Constant(lval >= rval, types.Bool), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -232,41 +223,41 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch ast.Op {
 		case BinaryMult:
-			return gen.Constant(lval*rval, types.Uint64)
+			return gen.Constant(lval*rval, types.Uint64), true, nil
 		case BinaryDiv:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval/rval, types.Uint64)
+			return gen.Constant(lval/rval, types.Uint64), true, nil
 		case BinaryMod:
 			if rval == 0 {
 				return ssa.Undefined, false, ctx.Errorf(ast.Right,
 					"integer divide by zero")
 			}
-			return gen.Constant(lval%rval, types.Uint64)
+			return gen.Constant(lval%rval, types.Uint64), true, nil
 		case BinaryLshift:
-			return gen.Constant(lval<<rval, types.Uint64)
+			return gen.Constant(lval<<rval, types.Uint64), true, nil
 		case BinaryRshift:
-			return gen.Constant(lval>>rval, types.Uint64)
+			return gen.Constant(lval>>rval, types.Uint64), true, nil
 
 		case BinaryPlus:
-			return gen.Constant(lval+rval, types.Uint64)
+			return gen.Constant(lval+rval, types.Uint64), true, nil
 		case BinaryMinus:
-			return gen.Constant(lval-rval, types.Uint64)
+			return gen.Constant(lval-rval, types.Uint64), true, nil
 
 		case BinaryEq:
-			return gen.Constant(lval == rval, types.Bool)
+			return gen.Constant(lval == rval, types.Bool), true, nil
 		case BinaryNeq:
-			return gen.Constant(lval != rval, types.Bool)
+			return gen.Constant(lval != rval, types.Bool), true, nil
 		case BinaryLt:
-			return gen.Constant(lval < rval, types.Bool)
+			return gen.Constant(lval < rval, types.Bool), true, nil
 		case BinaryLe:
-			return gen.Constant(lval <= rval, types.Bool)
+			return gen.Constant(lval <= rval, types.Bool), true, nil
 		case BinaryGt:
-			return gen.Constant(lval > rval, types.Bool)
+			return gen.Constant(lval > rval, types.Bool), true, nil
 		case BinaryGe:
-			return gen.Constant(lval >= rval, types.Bool)
+			return gen.Constant(lval >= rval, types.Bool), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
@@ -289,7 +280,7 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	case int32:
 		switch ast.Type {
 		case UnaryMinus:
-			return gen.Constant(-val, types.Int32)
+			return gen.Constant(-val, types.Int32), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 				"Unary.Eval: '%s%T' not implemented yet", ast.Type, val)
@@ -345,7 +336,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
-		return gen.Constant(int32(tmp), types.Int32)
+		return gen.Constant(int32(tmp), types.Int32), true, nil
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
@@ -395,7 +386,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element string)",
 				index, len(bytes))
 		}
-		return gen.Constant(bytes[index], types.Int32)
+		return gen.Constant(bytes[index], types.Int32), true, nil
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
@@ -454,7 +445,7 @@ func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
-	return gen.Constant(ast.Value, types.Undefined)
+	return gen.Constant(ast.Value, types.Undefined), true, nil
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.
@@ -479,7 +470,7 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			// XXX chck that v is assignment compatible with typeInfo.Struct[i]
 			values = append(values, v)
 		}
-		return gen.Constant(values, typeInfo)
+		return gen.Constant(values, typeInfo), true, nil
 
 	case types.TArray:
 		// Check if all elements are constants.
@@ -494,7 +485,7 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			// XXX check that v is assignment compatible with array.
 			values = append(values, v)
 		}
-		return gen.Constant(values, typeInfo)
+		return gen.Constant(values, typeInfo), true, nil
 
 	default:
 		fmt.Printf("CompositeLit.Eval: not implemented yet: %v, Value: %v\n",

@@ -94,8 +94,7 @@ func (gen *Generator) AnonVal(t types.Info) Value {
 }
 
 // NewVal creates a new value with the name, type, and scope.
-func (gen *Generator) NewVal(name string, t types.Info, scope int) (
-	Value, error) {
+func (gen *Generator) NewVal(name string, t types.Info, scope int) Value {
 
 	key := fmtKey(name, scope)
 	v, ok := gen.versions[key]
@@ -112,7 +111,7 @@ func (gen *Generator) NewVal(name string, t types.Info, scope int) (
 	v.ID = gen.nextValueID()
 	gen.versions[key] = v
 
-	return v, nil
+	return v
 }
 
 // AddConstant adds a reference to the constant.
@@ -177,8 +176,7 @@ func (gen *Generator) BranchBlock(b *Block) *Block {
 // Constant creates a constant value for the argument value. Type info
 // is optional. If it is undefined, the type info will be resolved
 // from the constant value.
-func (gen *Generator) Constant(value interface{}, ti types.Info) (
-	Value, bool, error) {
+func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 
 	v := Value{
 		Const:      true,
@@ -330,29 +328,24 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 		}
 
 	case []interface{}:
-		if !ti.Undefined() && ti.Type == types.TStruct {
-			v.Name = ti.String()
-			v.Type = ti
-			return v, true, nil
-		}
-
 		var bits int
 		var length string
 		var name string
 
 		if len(val) > 0 {
-			ev, ok, err := gen.Constant(val[0], types.Undefined)
-			if err != nil {
-				return v, false, err
-			}
-			if !ok {
-				return v, false, fmt.Errorf("array element is not constant")
-			}
+			ev := gen.Constant(val[0], types.Undefined)
 			bits = ev.Type.Bits * len(val)
 			name = ev.Type.String()
 			length = fmt.Sprintf("%d", len(val))
 		} else {
 			name = "interface{}"
+		}
+		if !ti.Undefined() && ti.Type == types.TStruct {
+			v.Name = ti.String()
+			ti.Bits = bits
+			ti.MinBits = bits
+			v.Type = ti
+			return v
 		}
 
 		v.Name = fmt.Sprintf("$[%s]%s%s", length, name, arrayString(val))
@@ -377,19 +370,17 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) (
 
 	case Value:
 		if !val.Const {
-			return v, false, fmt.Errorf("value %v (%T) is not constant",
-				val, val)
+			panic(fmt.Sprintf("value %v (%T) is not constant", val, val))
 		}
 		v = val
 
 	default:
-		return v, false,
-			fmt.Errorf("Generator.Constant: %v (%T) not implemented yet",
-				val, val)
+		panic(fmt.Sprintf("Generator.Constant: %v (%T) not implemented yet",
+			val, val))
 	}
 	v.ID = gen.nextValueID()
 
-	return v, true, nil
+	return v
 }
 
 func arrayString(arr []interface{}) string {

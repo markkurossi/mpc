@@ -57,10 +57,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Errorf(ret, "invalid return type: %s", err)
 		}
-		r, err := gen.NewVal(ret.Name, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
+		r := gen.NewVal(ret.Name, typeInfo, ctx.Scope())
 		block.Bindings.Set(r, nil)
 	}
 
@@ -112,10 +109,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	if !ok {
 		return nil, nil, ctx.Errorf(ast.Init, "init value is not constant")
 	}
-	constVar, _, err := gen.Constant(constVal, typeInfo)
-	if err != nil {
-		return nil, nil, err
-	}
+	constVar := gen.Constant(constVal, typeInfo)
 	if typeInfo.Type == types.TUndefined {
 		typeInfo.Type = constVar.Type.Type
 	}
@@ -149,22 +143,16 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	for _, n := range ast.Names {
-		lValue, err := gen.NewVal(n, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
-		block.Bindings.Set(lValue, nil)
-
 		var init ssa.Value
 		if ast.Init == nil {
-			initVal, err := initValue(lValue.Type)
+			if typeInfo.Undefined() {
+				return nil, nil, ctx.Errorf(ast, "undefined variable")
+			}
+			initVal, err := initValue(typeInfo)
 			if err != nil {
 				return nil, nil, ctx.Errorf(ast, "%s", err)
 			}
-			init, _, err = gen.Constant(initVal, typeInfo)
-			if err != nil {
-				return nil, nil, err
-			}
+			init = gen.Constant(initVal, typeInfo)
 			gen.AddConstant(init)
 		} else {
 			// Check if the init value is constant.
@@ -173,6 +161,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			if err != nil {
 				return nil, nil, err
 			}
+
 			if ok {
 				gen.AddConstant(constVal)
 				init = constVal
@@ -190,6 +179,18 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				init = v[0]
 			}
 		}
+
+		if typeInfo.Undefined() {
+			typeInfo = init.Type
+		} else if !typeInfo.CanAssignConst(init.Type) {
+			return nil, nil, ctx.Errorf(ast,
+				"cannot use %s (type %s) as type %s in assignment",
+				init, init.Type, typeInfo)
+		}
+
+		lValue := gen.NewVal(n, typeInfo, ctx.Scope())
+		block.Bindings.Set(lValue, nil)
+
 		block.AddInstr(ssa.NewMovInstr(init, lValue))
 	}
 	return block, nil, nil
@@ -233,7 +234,6 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
 	var values []ssa.Value
-	var err error
 
 	for _, expr := range ast.Exprs {
 		// Check if init value is constant.
@@ -266,27 +266,95 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	for idx, lvalue := range ast.LValues {
 		switch lv := lvalue.(type) {
 		case *VariableRef:
-			// XXX package.name below
+			// Three options:
+			//   1) struct.member
+			//   2) package.variable
+			//   3) variable
+
+			var dstBindings *ssa.Bindings
+
+			b, ok := block.Bindings.Get(lv.Name.Package)
+			if ok {
+				dstBindings = block.Bindings
+			} else {
+				b, ok = ctx.Package.Bindings.Get(lv.Name.Package)
+				if ok {
+					dstBindings = ctx.Package.Bindings
+				}
+			}
+
+			if ok {
+				var dstName string
+				var dstType types.Info
+				var dstScope int
+
+				switch b.Type.Type {
+				case types.TStruct:
+					dstName = b.Name
+					dstType = b.Type
+					dstScope = b.Scope
+
+				case types.TPtr:
+					v := b.Value(block, gen)
+					dstName = v.PtrInfo.Name
+					dstType = *v.Type.ElementType
+					dstScope = v.PtrInfo.Scope
+					dstBindings = v.PtrInfo.Bindings
+					b, ok = dstBindings.Get(dstName)
+					if !ok {
+						return nil, nil, ctx.Errorf(ast, "undefined: %s",
+							dstName)
+					}
+					if b.Type.Type != types.TStruct {
+						return nil, nil, ctx.Errorf(ast,
+							"%s undefined (%s has no field or method %s)",
+							lv.Name, b.Type, lv.Name.Name)
+					}
+
+				default:
+					return nil, nil, ctx.Errorf(ast,
+						"setting elements of non-struct %s", b.Type)
+				}
+
+				// Lookup struct field.
+				var field *types.StructField
+				for _, f := range b.Type.Struct {
+					if f.Name == lv.Name.Name {
+						field = &f
+						break
+					}
+				}
+				if field == nil {
+					return nil, nil, ctx.Errorf(ast,
+						"%s undefined (%s has no field or method %s)",
+						lv.Name, b.Type, lv.Name.Name)
+				}
+
+				fromConst := gen.Constant(int32(field.Type.Offset), types.Int32)
+				toConst := gen.Constant(int32(field.Type.Offset+
+					field.Type.Bits), types.Int32)
+				lValue := gen.NewVal(dstName, dstType, dstScope)
+
+				block.AddInstr(ssa.NewAmovInstr(values[idx],
+					b.Value(block, gen), fromConst, toConst, lValue))
+				dstBindings.Set(lValue, nil)
+
+				return block, []ssa.Value{lValue}, nil
+			}
+
 			var lValue ssa.Value
-			b, ok := block.Bindings.Get(lv.Name.Name)
+			b, ok = block.Bindings.Get(lv.Name.Name)
 			if ast.Define {
 				if ok {
 					return nil, nil, ctx.Errorf(ast,
 						"no new variables on left side of :=")
 				}
-				lValue, err = gen.NewVal(lv.Name.Name, values[idx].Type,
-					ctx.Scope())
-				if err != nil {
-					return nil, nil, err
-				}
+				lValue = gen.NewVal(lv.Name.Name, values[idx].Type, ctx.Scope())
 			} else {
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
 				}
-				lValue, err = gen.NewVal(b.Name, b.Type, ctx.Scope())
-				if err != nil {
-					return nil, nil, err
-				}
+				lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
 			}
 
 			block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
@@ -343,10 +411,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"setting elements of non-array %s", arr)
 				}
 
-				lValue, err := gen.NewVal(dstName, dstType, dstScope)
-				if err != nil {
-					return nil, nil, err
-				}
+				lValue := gen.NewVal(dstName, dstType, dstScope)
 
 				block, val, err := lv.Index.SSA(block, ctx, gen)
 				if err != nil {
@@ -374,14 +439,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				to := int32((index + 1) * dstType.ElementType.Bits)
 
 				indexType := types.Uint32
-				fromConst, _, err := gen.Constant(from, indexType)
-				if err != nil {
-					return nil, nil, err
-				}
-				toConst, _, err := gen.Constant(to, indexType)
-				if err != nil {
-					return nil, nil, err
-				}
+				fromConst := gen.Constant(from, indexType)
+				toConst := gen.Constant(to, indexType)
 
 				block.AddInstr(ssa.NewAmovInstr(values[idx],
 					b.Value(block, gen), fromConst, toConst, lValue))
@@ -414,11 +473,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 				switch bound := b.Bound.(type) {
 				case *ssa.Value:
-					lValue, err := gen.NewVal(bound.PtrInfo.Name,
-						values[idx].Type, bound.PtrInfo.Scope)
-					if err != nil {
-						return nil, nil, err
-					}
+					lValue := gen.NewVal(bound.PtrInfo.Name, values[idx].Type,
+						bound.PtrInfo.Scope)
 					block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
 					bound.PtrInfo.Bindings.Set(lValue, &values[idx])
 
@@ -622,11 +678,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// to decide if we sign extend the value or not.
 
 			sign := gen.AnonVal(types.Bool)
-
-			bitIndex, _, err := gen.Constant(int32(cv.Type.Bits-1), types.Int32)
-			if err != nil {
-				return nil, nil, err
-			}
+			bitIndex := gen.Constant(int32(cv.Type.Bits-1), types.Int32)
 
 			// Test sign bit.
 			block.AddInstr(ssa.NewBtsInstr(cv, bitIndex, sign))
@@ -700,10 +752,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
 		}
-		a, err := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
+		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		if a.TypeCompatible(args[idx]) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in argument to %s",
@@ -753,10 +802,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// Value receiver.
 			this = b.Value(block, gen)
 		}
-		a, err := gen.NewVal(called.This.Name, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
+		a := gen.NewVal(called.This.Name, typeInfo, ctx.Scope())
 		if a.TypeCompatible(this) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in receiver to %s",
@@ -913,10 +959,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if typeInfo.Bits == 0 {
 			typeInfo.Bits = result[idx].Type.Bits
 		}
-		v, err := gen.NewVal(r.Name, typeInfo, ctx.Scope())
-		if err != nil {
-			return nil, nil, err
-		}
+		v := gen.NewVal(r.Name, typeInfo, ctx.Scope())
 
 		if result[idx].Type.Type == types.TUndefined {
 			result[idx].Type.Type = typeInfo.Type
@@ -1130,11 +1173,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if l.Type.Type == types.TInt {
 			// Check if we must sign extend the value.
 			sign := gen.AnonVal(types.Bool)
-
-			bitIndex, _, err := gen.Constant(int32(l.Type.Bits-1), types.Int32)
-			if err != nil {
-				return nil, nil, err
-			}
+			bitIndex := gen.Constant(int32(l.Type.Bits-1), types.Int32)
 
 			// Test sign bit.
 			block.AddInstr(ssa.NewBtsInstr(l, bitIndex, sign))
@@ -1319,14 +1358,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			from, to)
 	}
 
-	fromConst, _, err := gen.Constant(int32(from*elementSize), types.Uint32)
-	if err != nil {
-		return nil, nil, err
-	}
-	toConst, _, err := gen.Constant(int32(to*elementSize), types.Uint32)
-	if err != nil {
-		return nil, nil, err
-	}
+	fromConst := gen.Constant(int32(from*elementSize), types.Uint32)
+	toConst := gen.Constant(int32(to*elementSize), types.Uint32)
 
 	ti := types.Info{
 		Type: expr.Type.Type,
@@ -1401,14 +1434,9 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			Bits:    types.ByteBits,
 			MinBits: types.ByteBits,
 		}
-		fromConst, _, err := gen.Constant(from, indexType)
-		if err != nil {
-			return nil, nil, err
-		}
-		toConst, _, err := gen.Constant(to, indexType)
-		if err != nil {
-			return nil, nil, err
-		}
+		fromConst := gen.Constant(from, indexType)
+		toConst := gen.Constant(to, indexType)
+
 		t := gen.AnonVal(indexType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
@@ -1423,14 +1451,9 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		from := int32(index * expr.Type.ElementType.Bits)
 		to := int32((index + 1) * expr.Type.ElementType.Bits)
 
-		fromConst, _, err := gen.Constant(from, types.Uint32)
-		if err != nil {
-			return nil, nil, err
-		}
-		toConst, _, err := gen.Constant(to, types.Uint32)
-		if err != nil {
-			return nil, nil, err
-		}
+		fromConst := gen.Constant(from, types.Uint32)
+		toConst := gen.Constant(to, types.Uint32)
+
 		t := gen.AnonVal(*expr.Type.ElementType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
@@ -1447,16 +1470,23 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	var b ssa.Binding
-	var ok bool
-
 	// Check if package name is bound to variable.
-	b, ok = block.Bindings.Get(ast.Name.Package)
+	b, ok := block.Bindings.Get(ast.Name.Package)
+	if !ok {
+		b, ok = ctx.Package.Bindings.Get(ast.Name.Package)
+	}
 	if ok {
 		// Selector.
 		value := b.Value(block, gen)
+
+		// Dereference pointers.
+		value, err := ctx.Dereference(ast, value, block, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+
 		if value.Type.Type != types.TStruct {
-			return nil, nil, ctx.Errorf(ast, "%s.%s undefined",
+			return nil, nil, ctx.Errorf(ast, "%s.%s undefined!",
 				ast.Name.Package, ast.Name.Name)
 		}
 
@@ -1469,8 +1499,8 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 		if field == nil {
 			return nil, nil, ctx.Errorf(ast,
-				"%s.%s undefined (type %s has no field or method %s)",
-				ast.Name.Package, ast.Name.Name, value.Type, ast.Name.Name)
+				"%s undefined (type %s has no field or method %s)",
+				ast.Name, value.Type, ast.Name.Name)
 		}
 
 		t := gen.AnonVal(types.Info{
@@ -1479,12 +1509,9 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 			MinBits: field.Type.Bits,
 		})
 
-		fromConst, _, err := gen.Constant(int32(field.Type.Offset), types.Int32)
-		if err != nil {
-			return nil, nil, err
-		}
-		toConst, _, err := gen.Constant(
-			int32(field.Type.Offset+field.Type.Bits), types.Int32)
+		fromConst := gen.Constant(int32(field.Type.Offset), types.Int32)
+		toConst := gen.Constant(int32(field.Type.Offset+field.Type.Bits),
+			types.Int32)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -1533,10 +1560,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	v, _, err := gen.Constant(ast.Value, types.Undefined)
-	if err != nil {
-		return nil, nil, err
-	}
+	v := gen.Constant(ast.Value, types.Undefined)
 	gen.AddConstant(v)
 
 	return block, []ssa.Value{v}, nil
