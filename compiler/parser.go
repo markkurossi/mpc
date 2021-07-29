@@ -290,7 +290,7 @@ func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
 	}
 
 	for _, pkgType := range p.pkg.Types {
-		if pkgType.Name.Name == t.Name.Name {
+		if pkgType.TypeName == t.Name.Name {
 			if pkgType.Methods == nil {
 				pkgType.Methods = make(map[string]*ast.Func)
 			}
@@ -300,10 +300,11 @@ func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
 					ti, f.Name)
 			}
 			pkgType.Methods[f.Name] = f
+			return nil
 		}
 	}
 
-	return nil
+	return fmt.Errorf("type %s.%s not found", p.pkg.Name, t.Name)
 }
 
 func (p *Parser) parseGlobalVar(isConst bool) error {
@@ -1337,6 +1338,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			operandName = &ast.VariableRef{
 				Point: t.From,
 				Name: ast.Identifier{
+					Defined: p.pkg.Name,
 					Package: t.StrVal,
 					Name:    id.StrVal,
 				},
@@ -1519,6 +1521,7 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 			Point: loc,
 			Type:  ast.TypeName,
 			Name: ast.Identifier{
+				Defined: p.pkg.Name,
 				Package: pkg,
 				Name:    name,
 			},

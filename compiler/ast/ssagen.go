@@ -785,7 +785,8 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 					ast.Ref.Name.Package)
 			}
 		}
-		if typeInfo.Type == types.TPtr {
+		// XXX only one level of pointers.
+		if typeInfo.Type == types.TPtr && b.Type.Type != types.TPtr {
 			// Pointer receiver.
 			this = gen.AnonVal(types.Info{
 				Type:        types.TPtr,

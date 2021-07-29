@@ -83,7 +83,14 @@ func (ctx *Codegen) LookupFunc(block *ssa.Block, ref *VariableRef) (
 			b, ok = ctx.Package.Bindings.Get(ref.Name.Package)
 		}
 		if ok {
-			info, ok := ctx.Types[b.Type.ID]
+			var typeInfo types.Info
+			if b.Type.Type == types.TPtr {
+				typeInfo = *b.Type.ElementType
+			} else {
+				typeInfo = b.Type
+			}
+
+			info, ok := ctx.Types[typeInfo.ID]
 			if !ok {
 				return nil, ctx.Errorf(ref, "%s undefined", ref)
 			}

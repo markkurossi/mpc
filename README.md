@@ -264,8 +264,10 @@ form assembly:
  - [ ] Ed25519
    - [X] Parsing Ed25519 MPCL files
      - [ ] for-range statements
-   - [X] Pointer handling
-   - [ ] Method calls
+     - [ ] local variables in for-loop unrolling
+   - [ ] Pointer handling
+     - [ ] Pointer to struct field
+   - [X] Method calls
    - [ ] Signed / unsigned arithmetics
    - [X] `byte` type
    - [ ] Ed25519 functions

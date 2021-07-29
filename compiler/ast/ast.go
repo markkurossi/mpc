@@ -130,7 +130,6 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	switch ti.Type {
 	case TypeName:
-		// XXX package
 		matches := reSizedType.FindStringSubmatch(ti.Name.Name)
 		if matches != nil {
 			tt, ok := types.Types[matches[1]]
@@ -173,10 +172,35 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 		default:
 			// Check dynamic types from the env.
-			b, ok := env.Get(ti.Name.Name)
+			var b ssa.Binding
+			var pkg *Package
+			var ok bool
+
+			if len(ti.Name.Package) == 0 {
+				// Plain indentifiers.
+				b, ok = env.Get(ti.Name.Name)
+				if !ok {
+					// Check dynamic types from the pkg.
+					b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
+				}
+			}
 			if !ok {
-				// Check dynamic types from the pkg.
-				b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
+				// Qualified names and package-local names.
+				var pkgName string
+				if len(ti.Name.Package) > 0 {
+					pkgName = ti.Name.Package
+				} else if ti.Name.Defined != ctx.Package.Name {
+					pkgName = ti.Name.Defined
+				}
+
+				if len(pkgName) > 0 {
+					pkg, ok = ctx.Packages[pkgName]
+					if !ok {
+						return result, ctx.Errorf(ti, "unknown package: %s",
+							pkgName)
+					}
+					b, ok = pkg.Bindings.Get(ti.Name.Name)
+				}
 			}
 			if ok {
 				val, ok := b.Bound.(*ssa.Value)

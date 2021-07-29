@@ -201,13 +201,21 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 				"undefined variable '%s'", arg.Name.String())
 		}
 
-		switch b.Type.Type {
+		var typeInfo types.Info
+		if b.Type.Type == types.TPtr {
+			typeInfo = *b.Type.ElementType
+		} else {
+			typeInfo = b.Type
+		}
+
+		switch typeInfo.Type {
 		case types.TString:
-			return gen.Constant(int32(b.Type.Bits/types.ByteBits), types.Int32),
-				true, nil
+			return gen.Constant(int32(typeInfo.Bits/types.ByteBits),
+				types.Int32), true, nil
 
 		case types.TArray:
-			return gen.Constant(int32(b.Type.ArraySize), types.Int32), true, nil
+			return gen.Constant(int32(typeInfo.ArraySize), types.Int32),
+				true, nil
 
 		default:
 			return ssa.Undefined, false, ctx.Errorf(loc,
