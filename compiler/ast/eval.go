@@ -398,40 +398,9 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (ssa.Value, bool, error) {
 
-	var b ssa.Binding
-	var ok bool
-
-	// Check if package name is bound to variable.
-	b, ok = env.Get(ast.Name.Package)
-	if ok {
-		// Bound. We are selecting value from its value.
-		val, ok := b.Bound.(*ssa.Value)
-		if !ok || !val.Const {
-			return ssa.Undefined, false, nil
-		}
-		return ssa.Undefined, false, ctx.Errorf(ast,
-			"VariableRef.Eval: select not implemented yet")
-	}
-
-	if len(ast.Name.Package) > 0 {
-		var pkg *Package
-		pkg, ok = ctx.Packages[ast.Name.Package]
-		if !ok {
-			return ssa.Undefined, false, ctx.Errorf(ast,
-				"package '%s' not found", ast.Name.Package)
-		}
-		b, ok = pkg.Bindings.Get(ast.Name.Name)
-	} else {
-		// First check env bindings.
-		b, ok = env.Get(ast.Name.Name)
-		if !ok {
-			// Check names in the current package.
-			b, ok = ctx.Package.Bindings.Get(ast.Name.Name)
-		}
-	}
-	if !ok {
-		return ssa.Undefined, false, ctx.Errorf(ast, "undefined variable '%s'",
-			ast.Name.String())
+	b, ok, err := ctx.LookupVar(env.Bindings, ast)
+	if !ok || err != nil {
+		return ssa.Undefined, ok, err
 	}
 
 	val, ok := b.Bound.(*ssa.Value)
@@ -451,6 +420,9 @@ func (ast *BasicLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval for constant values.
 func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
+
+	// XXX the init values might be short so we must pad them with
+	// zero values so that we create correctly sized values.
 
 	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
 	if err != nil {

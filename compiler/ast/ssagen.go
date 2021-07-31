@@ -11,6 +11,7 @@ import (
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 // SSA implements the compiler.ast.AST.SSA for list statements.
@@ -264,6 +265,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	for idx, lvalue := range ast.LValues {
+		rv := values[idx]
 		switch lv := lvalue.(type) {
 		case *VariableRef:
 			// Three options:
@@ -297,7 +299,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				case types.TPtr:
 					v := b.Value(block, gen)
 					dstName = v.PtrInfo.Name
-					dstType = *v.Type.ElementType
+					dstType = v.PtrInfo.ContainerType
 					dstScope = v.PtrInfo.Scope
 					dstBindings = v.PtrInfo.Bindings
 					b, ok = dstBindings.Get(dstName)
@@ -335,8 +337,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					field.Type.Bits), types.Int32)
 				lValue := gen.NewVal(dstName, dstType, dstScope)
 
-				block.AddInstr(ssa.NewAmovInstr(values[idx],
-					b.Value(block, gen), fromConst, toConst, lValue))
+				block.AddInstr(ssa.NewAmovInstr(rv, b.Value(block, gen),
+					fromConst, toConst, lValue))
 				dstBindings.Set(lValue, nil)
 
 				return block, []ssa.Value{lValue}, nil
@@ -349,7 +351,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					return nil, nil, ctx.Errorf(ast,
 						"no new variables on left side of :=")
 				}
-				lValue = gen.NewVal(lv.Name.Name, values[idx].Type, ctx.Scope())
+				lValue = gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
 			} else {
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
@@ -357,8 +359,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
 			}
 
-			block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
-			block.Bindings.Set(lValue, &values[idx])
+			block.AddInstr(ssa.NewMovInstr(rv, lValue))
+			block.Bindings.Set(lValue, &rv)
 
 		case *Index:
 			if ast.Define {
@@ -377,6 +379,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				var dstType types.Info
 				var dstScope int
 				var dstBindings *ssa.Bindings
+				var arraySize int
+				var elementSize int
+				var ptrOffset int
 
 				switch b.Type.Type {
 				case types.TArray:
@@ -384,29 +389,32 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					dstType = b.Type
 					dstScope = b.Scope
 					dstBindings = block.Bindings
+					arraySize = b.Type.ArraySize
+					elementSize = b.Type.ElementType.Bits
 
 				case types.TPtr:
 					v := b.Value(block, gen)
+					elementType := v.ElementType()
+					if elementType.Type != types.TArray {
+						return nil, nil, ctx.Errorf(ast,
+							"setting elements of non-array %s",
+							elementType)
+					}
 					dstName = v.PtrInfo.Name
-					dstType = *v.Type.ElementType
+					dstType = v.PtrInfo.ContainerType
 					dstScope = v.PtrInfo.Scope
 					dstBindings = v.PtrInfo.Bindings
+					arraySize = elementType.ArraySize
+					elementSize = elementType.Bits
+					ptrOffset = v.PtrInfo.Offset
+
 					b, ok = dstBindings.Get(dstName)
 					if !ok {
 						return nil, nil, ctx.Errorf(ast, "undefined: %s",
 							dstName)
 					}
-					if b.Type.Type != types.TArray {
-						return nil, nil, ctx.Errorf(ast,
-							"setting elements of non-array %s", b.Type)
-					}
 
 				default:
-					return nil, nil, ctx.Errorf(ast,
-						"setting elements of non-array %s", arr)
-				}
-
-				if dstType.Type != types.TArray {
 					return nil, nil, ctx.Errorf(ast,
 						"setting elements of non-array %s", arr)
 				}
@@ -430,20 +438,23 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 
 				// Convert index to bit range.
-				if index >= dstType.ArraySize {
+				if index >= arraySize {
 					return nil, nil, ctx.Errorf(lv.Index,
 						"invalid array index %d (out of bounds for %d-element array)",
-						index, dstType.ArraySize)
+						index, arraySize)
 				}
-				from := int32(index * dstType.ElementType.Bits)
-				to := int32((index + 1) * dstType.ElementType.Bits)
+
+				from := int32(index*elementSize + ptrOffset)
+				to := int32(from + int32(elementSize))
 
 				indexType := types.Uint32
 				fromConst := gen.Constant(from, indexType)
 				toConst := gen.Constant(to, indexType)
 
-				block.AddInstr(ssa.NewAmovInstr(values[idx],
-					b.Value(block, gen), fromConst, toConst, lValue))
+				bv := b.Value(block, gen)
+
+				block.AddInstr(ssa.NewAmovInstr(rv, bv, fromConst, toConst,
+					lValue))
 				dstBindings.Set(lValue, nil)
 
 				return block, []ssa.Value{lValue}, nil
@@ -471,17 +482,42 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", ptr.Name)
 				}
-				switch bound := b.Bound.(type) {
-				case *ssa.Value:
-					lValue := gen.NewVal(bound.PtrInfo.Name, values[idx].Type,
-						bound.PtrInfo.Scope)
-					block.AddInstr(ssa.NewMovInstr(values[idx], lValue))
-					bound.PtrInfo.Bindings.Set(lValue, &values[idx])
 
-				default:
-					return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)",
-						bound, bound)
+				if b.Type.Type != types.TPtr {
+					return nil, nil, ctx.Errorf(ast,
+						"cannot assign non-pointer: %s", ptr.Name)
 				}
+				v := b.Value(block, gen)
+				dstName := v.PtrInfo.Name
+				dstType := v.PtrInfo.ContainerType
+				dstScope := v.PtrInfo.Scope
+				dstBindings := v.PtrInfo.Bindings
+				b, ok = dstBindings.Get(dstName)
+				if !ok {
+					return nil, nil, ctx.Errorf(ast, "undefined: %s", ptr.Name)
+				}
+
+				lValue := gen.NewVal(dstName, dstType, dstScope)
+				if v.Type.CanAssignConst(rv.Type) {
+					// Pointer to value type.
+					block.AddInstr(ssa.NewMovInstr(rv, lValue))
+				} else if v.Type.ElementType.CanAssignConst(rv.Type) {
+					// Pointer to element of value type.
+					from := int32(v.PtrInfo.Offset)
+					to := from + int32(v.Type.ElementType.Bits)
+					fromConst := gen.Constant(from, types.Int32)
+					toConst := gen.Constant(to, types.Int32)
+
+					bv := b.Value(block, gen)
+
+					block.AddInstr(ssa.NewAmovInstr(rv,
+						bv, fromConst, toConst, lValue))
+				} else {
+					return nil, nil, ctx.Errorf(ast,
+						"can't assign %s with value of type %s",
+						lValue.Type.ElementType, rv.Type)
+				}
+				dstBindings.Set(lValue, nil)
 
 			default:
 				return nil, nil, ctx.Errorf(ast,
@@ -641,6 +677,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			for _, arg := range callValues {
 				args = append(args, arg...)
 			}
+			fmt.Printf("%s(%v)\n", bi.Name, args)
 			return bi.SSA(block, ctx, gen, args, ast.Location())
 		}
 
@@ -795,9 +832,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				ElementType: &b.Type,
 			})
 			this.PtrInfo = ssa.PtrInfo{
-				Name:     ast.Ref.Name.Package,
-				Scope:    b.Scope,
-				Bindings: bindings,
+				Name:          ast.Ref.Name.Package,
+				Bindings:      bindings,
+				Scope:         b.Scope,
+				ContainerType: b.Type,
 			}
 		} else {
 			// Value receiver.
@@ -1040,7 +1078,7 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if !ok {
 		return nil, nil, ctx.Errorf(ast.Init,
-			"init statement is not compile-time constant: %s", err)
+			"init statement is not compile-time constant: %s", ast.Init)
 	}
 
 	// Expand body as long as condition is true.
@@ -1234,36 +1272,91 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 // SSA implements the compiler.ast.AST.SSA for unary expressions.
 func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
+
 	switch ast.Type {
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
 			var bindings *ssa.Bindings
+			var containerType types.Info
+			var elementType types.Info
+			var elementOffset int
+			var ptrName string
+			var ptrScope int
 
-			// First check block bindings.
-			b, ok := block.Bindings.Get(v.Name.Name)
-			if ok {
-				bindings = block.Bindings
-			} else {
-				// Check names in the current package.
-				b, ok = ctx.Package.Bindings.Get(v.Name.Name)
+			if len(v.Name.Package) == 0 {
+				// Identifier
+				ptrName = v.Name.Name
+
+				// First check block bindings.
+				b, ok := block.Bindings.Get(v.Name.Name)
 				if ok {
-					bindings = ctx.Package.Bindings
+					bindings = block.Bindings
 				} else {
-					return nil, nil, ctx.Errorf(ast, "undefined: %s", v.Name)
+					// Check names in the current package.
+					b, ok = ctx.Package.Bindings.Get(v.Name.Name)
+					if ok {
+						bindings = ctx.Package.Bindings
+					} else {
+						return nil, nil,
+							ctx.Errorf(ast, "undefined: %s", v.Name)
+					}
+				}
+				containerType = b.Type
+				elementType = b.Type
+				elementOffset = 0
+				ptrScope = b.Scope
+			} else {
+				// Qualified name.
+
+				// Check block bindings.
+				b, ok := block.Bindings.Get(v.Name.Package)
+				if ok {
+					bindings = block.Bindings
+				} else {
+					// Check names in the current package.
+					b, ok = ctx.Package.Bindings.Get(v.Name.Package)
+					if ok {
+						bindings = ctx.Package.Bindings
+					} else {
+						return nil, nil,
+							ctx.Errorf(ast, "undefined: %s", v.Name)
+					}
+				}
+				containerType = b.Type
+				bValue := b.Value(block, gen)
+				container, err := ctx.Dereference(ast, bValue, block, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+
+				elementType, elementOffset, err = lookupElement(ctx, ast,
+					container, v.Name.Name)
+				if err != nil {
+					return nil, nil, err
+				}
+				if bValue.Type.Type == types.TPtr {
+					ptrName = bValue.PtrInfo.Name
+					ptrScope = bValue.PtrInfo.Scope
+					bindings = bValue.PtrInfo.Bindings
+					containerType = bValue.PtrInfo.ContainerType
+				} else {
+					ptrScope = b.Scope
+					ptrName = v.Name.Package
 				}
 			}
-			// XXX LValue containing assignment lvalues
 			t := gen.AnonVal(types.Info{
 				Type:        types.TPtr,
-				Bits:        b.Type.Bits,
-				MinBits:     b.Type.Bits,
-				ElementType: &b.Type,
+				Bits:        elementType.Bits,
+				MinBits:     elementType.Bits,
+				ElementType: &elementType,
 			})
 			t.PtrInfo = ssa.PtrInfo{
-				Name:     v.Name.Name,
-				Scope:    b.Scope,
-				Bindings: bindings,
+				Name:          ptrName,
+				Scope:         ptrScope,
+				Bindings:      bindings,
+				ContainerType: containerType,
+				Offset:        elementOffset,
 			}
 			return block, []ssa.Value{t}, nil
 
@@ -1274,6 +1367,27 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	default:
 		return nil, nil, ctx.Errorf(ast, "Unary.SSA not implemented yet: %v",
 			ast)
+	}
+}
+
+func lookupElement(ctx *Codegen, loc utils.Locator, v ssa.Value, name string) (
+	types.Info, int, error) {
+
+	switch v.Type.Type {
+	case types.TStruct:
+		var offset int
+		for _, field := range v.Type.Struct {
+			if field.Name == name {
+				return field.Type, offset, nil
+			}
+			offset += field.Type.Bits
+		}
+		return types.Undefined, 0, ctx.Errorf(loc,
+			"%s undefined (%s has no field of method %s)", name, v.Type, name)
+
+	default:
+		return types.Undefined, 0, ctx.Errorf(loc,
+			"%s undefined (%s has no field of method %s)", name, v.Type, name)
 	}
 }
 
@@ -1291,26 +1405,19 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	expr := exprs[0]
 
 	// Dereference pointers.
-	if expr.Type.Type == types.TPtr {
-		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
-		if !ok {
-			return nil, nil, ctx.Errorf(ast, "undefined: %s",
-				expr.PtrInfo.Name)
-		}
-		expr = b.Value(block, gen)
-	}
+	elementType := expr.ElementType()
 
 	var elementSize int
 	var elementCount int
 
-	switch expr.Type.Type {
+	switch elementType.Type {
 	case types.TInt, types.TUint:
 		elementSize = 1
-		elementCount = expr.Type.Bits
+		elementCount = elementType.Bits
 
 	case types.TArray:
-		elementSize = expr.Type.ElementType.Bits
-		elementCount = expr.Type.ArraySize
+		elementSize = elementType.ElementType.Bits
+		elementCount = elementType.ArraySize
 
 	default:
 		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
@@ -1363,14 +1470,14 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	toConst := gen.Constant(int32(to*elementSize), types.Uint32)
 
 	ti := types.Info{
-		Type: expr.Type.Type,
+		Type: elementType.Type,
 	}
 
 	ti.Bits = (to - from) * elementSize
 	ti.MinBits = ti.Bits
 
-	if expr.Type.Type == types.TArray {
-		ti.ElementType = expr.Type.ElementType
+	if elementType.Type == types.TArray {
+		ti.ElementType = elementType.ElementType
 		ti.ArraySize = ti.Bits / ti.ElementType.Bits
 	}
 
@@ -1504,12 +1611,9 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 				ast.Name, value.Type, ast.Name.Name)
 		}
 
-		t := gen.AnonVal(types.Info{
-			Type:    field.Type.Type,
-			Bits:    field.Type.Bits,
-			MinBits: field.Type.Bits,
-		})
-
+		fieldType := field.Type
+		fieldType.Offset = 0
+		t := gen.AnonVal(fieldType)
 		fromConst := gen.Constant(int32(field.Type.Offset), types.Int32)
 		toConst := gen.Constant(int32(field.Type.Offset+field.Type.Bits),
 			types.Int32)

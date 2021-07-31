@@ -120,6 +120,52 @@ func (ctx *Codegen) LookupFunc(block *ssa.Block, ref *VariableRef) (
 	return called, nil
 }
 
+// LookupVar resolved the named variable from the context.
+func (ctx *Codegen) LookupVar(bindings *ssa.Bindings, ref *VariableRef) (
+	ssa.Binding, bool, error) {
+
+	var b ssa.Binding
+	var ok bool
+
+	if len(ref.Name.Package) > 0 {
+		// Check if package name is bound to a value.
+		b, ok = bindings.Get(ref.Name.Package)
+		if !ok {
+			// Check names in the current package.
+			b, ok = ctx.Package.Bindings.Get(ref.Name.Package)
+		}
+		if ok {
+			return b, true, nil
+		}
+	}
+
+	// Name from environment bindings.
+	b, ok = bindings.Get(ref.Name.Name)
+	if ok {
+		return b, ok, nil
+	}
+
+	// Global symbols from the package.
+	var pkgName string
+	if len(ref.Name.Package) > 0 {
+		pkgName = ref.Name.Package
+	} else {
+		pkgName = ref.Name.Defined
+	}
+	pkg, ok := ctx.Packages[pkgName]
+	if !ok {
+		return ssa.Binding{}, false,
+			ctx.Errorf(ref, "package '%s' not found", pkgName)
+	}
+	b, ok = pkg.Bindings.Get(ref.Name.Name)
+	if !ok {
+		return ssa.Binding{}, false,
+			ctx.Errorf(ref, "undefined variable '%s'", ref.Name)
+	}
+
+	return b, true, nil
+}
+
 // Func returns the current function in the current compilation.
 func (ctx *Codegen) Func() *Func {
 	if len(ctx.Stack) == 0 {

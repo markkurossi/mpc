@@ -613,10 +613,11 @@ type Value struct {
 
 // PtrInfo defines context information for pointer values.
 type PtrInfo struct {
-	Name     string
-	Bindings *Bindings
-	Scope    int
-	// XXX bits
+	Name          string
+	Bindings      *Bindings
+	Scope         int
+	ContainerType types.Info
+	Offset        int
 }
 
 func (ptr PtrInfo) String() string {
@@ -632,6 +633,24 @@ type ValueID uint32
 // Check tests that the value type is properly set.
 func (v Value) Check() bool {
 	return v.Type.Type != types.TUndefined && v.Type.Bits != 0
+}
+
+// ElementType returns the pointer element type of the value. For
+// non-pointer values, this returns the value type itself.
+func (v Value) ElementType() types.Info {
+	if v.Type.Type == types.TPtr {
+		return *v.Type.ElementType
+	}
+	return v.Type
+}
+
+// ContainerType returs the pointer container type of the value. For
+// non-pointer values, this returns the value type itself.
+func (v Value) ContainerType() types.Info {
+	if v.Type.Type == types.TPtr {
+		return v.PtrInfo.ContainerType
+	}
+	return v.Type
 }
 
 func (v Value) String() string {
@@ -650,8 +669,10 @@ func (v Value) String() string {
 
 	// XXX Value should have type, now we have flags and Type.Type
 	if v.Type.Type == types.TPtr {
-		return fmt.Sprintf("%s{%d,%s}%s{%s}",
-			v.Name, v.Scope, version, v.Type.ShortString(), v.PtrInfo.Name)
+		return fmt.Sprintf("%s{%d,%s}%s{%s{%d}%s[%d-%d]}",
+			v.Name, v.Scope, version, v.Type.ShortString(),
+			v.PtrInfo.Name, v.PtrInfo.Scope, v.PtrInfo.ContainerType,
+			v.PtrInfo.Offset, v.PtrInfo.Offset+v.Type.Bits)
 	}
 	return fmt.Sprintf("%s{%d,%s}%s",
 		v.Name, v.Scope, version, v.Type.ShortString())
@@ -682,13 +703,13 @@ func (v *Value) Bit(bit int) bool {
 		if idx >= length {
 			return false
 		}
-		return isSet(arr[idx], ofs)
+		return isSet(arr[idx], v.Type, ofs)
 	}
 
-	return isSet(v.ConstValue, bit)
+	return isSet(v.ConstValue, v.Type, bit)
 }
 
-func isSet(v interface{}, bit int) bool {
+func isSet(v interface{}, vt types.Info, bit int) bool {
 	switch val := v.(type) {
 	case bool:
 		if bit == 0 {
@@ -732,7 +753,7 @@ func isSet(v interface{}, bit int) bool {
 	case Value:
 		switch val.Type.Type {
 		case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
-			return isSet(val.ConstValue, bit)
+			return isSet(val.ConstValue, val.Type, bit)
 
 		case types.TArray:
 			elType := val.Type.ElementType
@@ -742,25 +763,34 @@ func isSet(v interface{}, bit int) bool {
 				return false
 			}
 			arr := val.ConstValue.([]interface{})
-			return isSet(arr[idx], mod)
+			return isSet(arr[idx], *elType, mod)
 
 		case types.TStruct:
 			fieldValues := val.ConstValue.([]interface{})
 			for idx, f := range val.Type.Struct {
 				if bit < f.Type.Bits {
-					return isSet(fieldValues[idx], bit)
+					return isSet(fieldValues[idx], f.Type, bit)
 				}
 				bit -= f.Type.Bits
 			}
 			fallthrough
 
 		default:
-			panic(fmt.Sprintf("ssa.isSet called for invalid Value %v (%v)",
+			panic(fmt.Sprintf("ssa.isSet: invalid Value %v (%v)",
 				val, val.Type))
 		}
 
+	case []interface{}:
+		for idx, f := range vt.Struct {
+			if bit < f.Type.Bits {
+				return isSet(val[idx], f.Type, bit)
+			}
+			bit -= f.Type.Bits
+		}
+		panic(fmt.Sprintf("ssa.isSet: bit overflow for %v", vt))
+
 	default:
-		panic(fmt.Sprintf("ssa.isSet called for non const %v (%T)", v, val))
+		panic(fmt.Sprintf("ssa.isSet: non const %v (%T)", v, val))
 	}
 }
 

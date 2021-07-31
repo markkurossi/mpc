@@ -267,6 +267,7 @@ form assembly:
      - [ ] local variables in for-loop unrolling
    - [ ] Pointer handling
      - [ ] Pointer to struct field
+   - [ ] Compound init values must be zero-padded to full size
    - [X] Method calls
    - [ ] Signed / unsigned arithmetics
    - [X] `byte` type
