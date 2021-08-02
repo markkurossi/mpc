@@ -9,6 +9,8 @@
 package ast
 
 import (
+	"fmt"
+
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -120,50 +122,196 @@ func (ctx *Codegen) LookupFunc(block *ssa.Block, ref *VariableRef) (
 	return called, nil
 }
 
-// LookupVar resolved the named variable from the context.
-func (ctx *Codegen) LookupVar(bindings *ssa.Bindings, ref *VariableRef) (
-	ssa.Binding, bool, error) {
+// LRValue implements value as l-value or r-value. The LRValues have
+// two types: 1) base type that specifies the base memory location
+// containing the value, and 2) value type that specifies the wires of
+// the value. Both types can be the same.
+type LRValue struct {
+	ctx         *Codegen
+	ast         AST
+	block       *ssa.Block
+	gen         *ssa.Generator
+	baseInfo    ssa.PtrInfo
+	baseValue   ssa.Value
+	valueType   types.Info
+	value       ssa.Value
+	structField *types.StructField
+}
 
+func (lrv LRValue) String() string {
+	offset := lrv.baseInfo.Offset + lrv.valueType.Offset
+	return fmt.Sprintf("%s[%d-%d]@%s{%d}%s",
+		lrv.valueType, offset, offset+lrv.valueType.Bits,
+		lrv.baseInfo.Name, lrv.baseInfo.Scope, lrv.baseInfo.ContainerType)
+}
+
+// BaseType returns the base type of the LRValue.
+func (lrv *LRValue) BaseType() types.Info {
+	return lrv.baseInfo.ContainerType
+}
+
+// ValueType returns the value type of the LRValue.
+func (lrv *LRValue) ValueType() types.Info {
+	return lrv.valueType
+}
+
+func (lrv *LRValue) ptrBaseValue() (ssa.Value, error) {
+	b, ok := lrv.baseInfo.Bindings.Get(lrv.baseInfo.Name)
+	if !ok {
+		return ssa.Undefined, lrv.ctx.Errorf(lrv.ast, "undefined: %s",
+			lrv.baseInfo.Name)
+	}
+	return b.Value(lrv.block, lrv.gen), nil
+}
+
+// ConstValue returns the constant value of the LRValue if available.
+func (lrv *LRValue) ConstValue() (ssa.Value, bool, error) {
+	switch lrv.value.Type.Type {
+	case types.TUndefined:
+		return lrv.value, false, nil
+
+	case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
+		return lrv.value, true, nil
+
+	default:
+		return ssa.Undefined, false, nil
+		// lrv.ctx.Errorf(lrv.ast,
+		// "LRValue.ConstValue: %s not supported yet", lrv.baseValue.Type)
+	}
+}
+
+// LookupVar resolved the named variable from the context.
+func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
+	bindings *ssa.Bindings, ref *VariableRef) (*LRValue, bool, error) {
+
+	lrv := &LRValue{
+		ctx:   ctx,
+		ast:   ref,
+		block: block,
+		gen:   gen,
+	}
+
+	var err error
+	var env *ssa.Bindings
 	var b ssa.Binding
 	var ok bool
 
 	if len(ref.Name.Package) > 0 {
 		// Check if package name is bound to a value.
 		b, ok = bindings.Get(ref.Name.Package)
-		if !ok {
+		if ok {
+			env = bindings
+		} else {
 			// Check names in the current package.
 			b, ok = ctx.Package.Bindings.Get(ref.Name.Package)
+			if ok {
+				env = ctx.Package.Bindings
+			}
 		}
 		if ok {
-			return b, true, nil
+			if block != nil {
+				lrv.baseValue = b.Value(block, gen)
+			} else {
+				// Evaluating a const value.
+				v, ok := b.Bound.(*ssa.Value)
+				if !ok || !v.Const {
+					// Value is not const
+					return nil, false, nil
+				}
+				lrv.baseValue = *v
+			}
+
+			if lrv.baseValue.Type.Type == types.TPtr {
+				lrv.baseInfo = lrv.baseValue.PtrInfo
+				lrv.baseValue, err = lrv.ptrBaseValue()
+				if err != nil {
+					return nil, false, err
+				}
+			} else {
+				lrv.baseInfo = ssa.PtrInfo{
+					Name:          ref.Name.Package,
+					Bindings:      env,
+					Scope:         b.Scope,
+					ContainerType: b.Type,
+				}
+			}
+
+			if lrv.baseValue.Type.Type != types.TStruct {
+				return nil, false, ctx.Errorf(ref, "%s undefined", ref.Name)
+			}
+
+			for _, f := range lrv.baseValue.Type.Struct {
+				if f.Name == ref.Name.Name {
+					lrv.structField = &f
+					break
+				}
+			}
+			if lrv.structField == nil {
+				return nil, false, ctx.Errorf(ref,
+					"%s undefined (type %s has no field or method %s)",
+					ref.Name, lrv.baseValue.Type, ref.Name.Name)
+			}
+			lrv.valueType = lrv.structField.Type
+
+			return lrv, true, nil
 		}
 	}
 
 	// Name from environment bindings.
 	b, ok = bindings.Get(ref.Name.Name)
 	if ok {
-		return b, ok, nil
-	}
-
-	// Global symbols from the package.
-	var pkgName string
-	if len(ref.Name.Package) > 0 {
-		pkgName = ref.Name.Package
+		env = bindings
 	} else {
-		pkgName = ref.Name.Defined
+		// Global symbols from the package.
+		var pkgName string
+		var pkg *Package
+		if len(ref.Name.Package) > 0 {
+			pkgName = ref.Name.Package
+		} else {
+			pkgName = ref.Name.Defined
+		}
+		pkg, ok = ctx.Packages[pkgName]
+		if !ok {
+			return nil, false, ctx.Errorf(ref, "package '%s' not found",
+				pkgName)
+		}
+		env = pkg.Bindings
+		b, ok = pkg.Bindings.Get(ref.Name.Name)
 	}
-	pkg, ok := ctx.Packages[pkgName]
 	if !ok {
-		return ssa.Binding{}, false,
-			ctx.Errorf(ref, "package '%s' not found", pkgName)
-	}
-	b, ok = pkg.Bindings.Get(ref.Name.Name)
-	if !ok {
-		return ssa.Binding{}, false,
-			ctx.Errorf(ref, "undefined variable '%s'", ref.Name)
+		return nil, false, ctx.Errorf(ref, "undefined variable '%s'", ref.Name)
 	}
 
-	return b, true, nil
+	if block != nil {
+		lrv.value = b.Value(block, gen)
+	} else {
+		// Evaluating const value.
+		v, ok := b.Bound.(*ssa.Value)
+		if !ok || !v.Const {
+			// Value is not const
+			return nil, false, nil
+		}
+		lrv.value = *v
+	}
+	lrv.valueType = lrv.value.Type
+
+	if lrv.value.Type.Type == types.TPtr {
+		lrv.baseInfo = lrv.value.PtrInfo
+		lrv.baseValue, err = lrv.ptrBaseValue()
+		if err != nil {
+			return nil, false, err
+		}
+	} else {
+		lrv.baseInfo = ssa.PtrInfo{
+			Name:          ref.Name.Name,
+			Bindings:      env,
+			Scope:         b.Scope,
+			ContainerType: b.Type,
+		}
+		lrv.baseValue = lrv.value
+	}
+
+	return lrv, true, nil
 }
 
 // Func returns the current function in the current compilation.

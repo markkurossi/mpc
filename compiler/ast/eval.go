@@ -395,20 +395,15 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 }
 
 // Eval implements the compiler.ast.AST.Eval for variable references.
-func (ast *VariableRef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (ssa.Value, bool, error) {
+func (ast *VariableRef) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
 
-	b, ok, err := ctx.LookupVar(env.Bindings, ast)
+	lrv, ok, err := ctx.LookupVar(nil, gen, env.Bindings, ast)
 	if !ok || err != nil {
 		return ssa.Undefined, ok, err
 	}
 
-	val, ok := b.Bound.(*ssa.Value)
-	if !ok || !val.Const {
-		return ssa.Undefined, false, nil
-	}
-
-	return *val, true, nil
+	return lrv.ConstValue()
 }
 
 // Eval implements the compiler.ast.AST.Eval for constant values.

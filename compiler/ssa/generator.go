@@ -341,7 +341,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			name = "interface{}"
 		}
 		if !ti.Undefined() && ti.Type == types.TStruct {
-			v.Name = ti.String()
+			v.Name = "$" + ti.String()
 			ti.Bits = bits
 			ti.MinBits = bits
 			v.Type = ti
