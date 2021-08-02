@@ -150,6 +150,24 @@ func (lrv *LRValue) BaseType() types.Info {
 	return lrv.baseInfo.ContainerType
 }
 
+// RValue returns the r-value of the LRValue.
+func (lrv *LRValue) RValue() ssa.Value {
+	if lrv.value.Type.Undefined() && lrv.structField != nil {
+		fieldType := lrv.valueType
+		fieldType.Offset = 0
+
+		lrv.value = lrv.gen.AnonVal(fieldType)
+
+		fromConst := lrv.gen.Constant(int32(lrv.valueType.Offset), types.Int32)
+		toConst := lrv.gen.Constant(int32(lrv.valueType.Offset+
+			lrv.valueType.Bits), types.Int32)
+
+		lrv.block.AddInstr(ssa.NewSliceInstr(lrv.baseValue, fromConst, toConst,
+			lrv.value))
+	}
+	return lrv.value
+}
+
 // ValueType returns the value type of the LRValue.
 func (lrv *LRValue) ValueType() types.Info {
 	return lrv.valueType
@@ -257,26 +275,36 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 		}
 	}
 
-	// Name from environment bindings.
-	b, ok = bindings.Get(ref.Name.Name)
-	if ok {
-		env = bindings
-	} else {
-		// Global symbols from the package.
-		var pkgName string
-		var pkg *Package
-		if len(ref.Name.Package) > 0 {
-			pkgName = ref.Name.Package
-		} else {
-			pkgName = ref.Name.Defined
-		}
-		pkg, ok = ctx.Packages[pkgName]
+	// Explicit package references.
+	var pkg *Package
+	if len(ref.Name.Package) > 0 {
+		pkg, ok = ctx.Packages[ref.Name.Package]
 		if !ok {
 			return nil, false, ctx.Errorf(ref, "package '%s' not found",
-				pkgName)
+				ref.Name.Package)
 		}
 		env = pkg.Bindings
-		b, ok = pkg.Bindings.Get(ref.Name.Name)
+		b, ok = env.Get(ref.Name.Name)
+		if !ok {
+			return nil, false, ctx.Errorf(ref, "undefined variable '%s'",
+				ref.Name)
+		}
+	} else {
+		// Check block bindings.
+		env = bindings
+		b, ok = env.Get(ref.Name.Name)
+		if !ok {
+			// Check names in the name's package.
+			if len(ref.Name.Defined) > 0 {
+				pkg, ok = ctx.Packages[ref.Name.Defined]
+				if !ok {
+					return nil, false, ctx.Errorf(ref, "package '%s' not found",
+						ref.Name.Defined)
+				}
+				env = pkg.Bindings
+				b, ok = env.Get(ref.Name.Name)
+			}
+		}
 	}
 	if !ok {
 		return nil, false, ctx.Errorf(ref, "undefined variable '%s'", ref.Name)
