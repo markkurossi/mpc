@@ -130,6 +130,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	lValue := constVar
 	lValue.Name = ast.Name
 	block.Bindings.Set(lValue, &constVar)
+	gen.AddConstant(constVal)
 
 	return block, nil, nil
 }
@@ -1273,7 +1274,50 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 
+	constVal, ok, err := ast.Eval(NewEnv(block), ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ok {
+		if ctx.Verbose {
+			fmt.Printf("ConstFold: %v => %v\n", ast, constVal)
+		}
+		gen.AddConstant(constVal)
+		return block, []ssa.Value{constVal}, nil
+	}
+
 	switch ast.Type {
+	case UnaryMinus:
+		block, exprs, err := ast.Expr.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(exprs) != 1 {
+			return nil, nil, ctx.Errorf(ast,
+				"multiple-value %s used in single-value context", ast.Expr)
+		}
+		expr := exprs[0]
+
+		t := gen.AnonVal(expr.Type)
+		switch expr.Type.Type {
+		case types.TInt, types.TUint:
+			zero := gen.Constant(int32(0), types.Info{
+				Type:    types.TInt,
+				MinBits: 1,
+				Bits:    1,
+			})
+			gen.AddConstant(zero)
+			instr, err := ssa.NewSubInstr(expr.Type, zero, expr, t)
+			if err != nil {
+				return nil, nil, err
+			}
+			block.AddInstr(instr)
+			return block, []ssa.Value{t}, nil
+
+		default:
+			return nil, nil, ctx.Errorf(ast, "%s not supported", ast)
+		}
+
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
