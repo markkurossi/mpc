@@ -678,6 +678,20 @@ func (v Value) String() string {
 		v.Name, v.Scope, version, v.Type.ShortString())
 }
 
+// ConstInt returns the value as const integer.
+func (v *Value) ConstInt() (int, error) {
+	if !v.Const {
+		return 0, fmt.Errorf("value is not constant")
+	}
+	switch val := v.ConstValue.(type) {
+	case int32:
+		return int(val), nil
+
+	default:
+		return 0, fmt.Errorf("cannot use %v as integer", val)
+	}
+}
+
 // Equal implements BindingValue.Equal.
 func (v *Value) Equal(other BindingValue) bool {
 	o, ok := other.(*Value)

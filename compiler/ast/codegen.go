@@ -150,6 +150,11 @@ func (lrv *LRValue) BaseType() types.Info {
 	return lrv.baseInfo.ContainerType
 }
 
+// BasePtrInfo returns the base value as PtrInfo.
+func (lrv *LRValue) BasePtrInfo() ssa.PtrInfo {
+	return lrv.baseInfo
+}
+
 // RValue returns the r-value of the LRValue.
 func (lrv *LRValue) RValue() ssa.Value {
 	if lrv.value.Type.Undefined() && lrv.structField != nil {

@@ -1404,6 +1404,52 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 			return block, []ssa.Value{t}, nil
 
+		case *Index:
+			switch indexed := v.Expr.(type) {
+			case *VariableRef:
+				lrv, _, err := ctx.LookupVar(block, gen, block.Bindings,
+					indexed)
+				if err != nil {
+					return nil, nil, err
+				}
+				vt := lrv.ValueType()
+				if vt.Type != types.TArray {
+					return nil, nil, ctx.Errorf(indexed,
+						"invalid operation: %s (type %s does not support indexing)",
+						v, vt)
+				}
+				var indices []ssa.Value
+				block, indices, err = v.Index.SSA(block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				if len(indices) != 1 {
+					return nil, nil, ctx.Errorf(indexed, "invalid index")
+				}
+				index, err := indices[0].ConstInt()
+				if err != nil {
+					return nil, nil, ctx.Errorf(indexed, "invalid index")
+				}
+				if index < 0 || index >= vt.ArraySize {
+					return nil, nil, ctx.Errorf(v.Index,
+						"invalid array index %d (out of bounds for %d-element string)",
+						index, vt.ArraySize)
+				}
+				t := gen.AnonVal(types.Info{
+					Type:        types.TPtr,
+					Bits:        vt.ElementType.Bits,
+					MinBits:     vt.ElementType.Bits,
+					ElementType: vt.ElementType,
+				})
+				t.PtrInfo = lrv.BasePtrInfo()
+				t.PtrInfo.Offset += index * t.Type.Bits
+				return block, []ssa.Value{t}, nil
+
+			default:
+				return nil, nil, ctx.Errorf(ast, "&%s not supported (%T)",
+					v, indexed)
+			}
+
 		default:
 			return nil, nil, ctx.Errorf(ast, "Unary.SSA: '%T' not supported", v)
 		}
@@ -1575,12 +1621,9 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if len(val) != 1 || !val[0].Const {
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index")
 	}
-	var index int
-	switch v := val[0].ConstValue.(type) {
-	case int32:
-		index = int(v)
-	default:
-		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", v)
+	index, err := val[0].ConstInt()
+	if err != nil {
+		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", val[0])
 	}
 
 	// Dereference pointers.
