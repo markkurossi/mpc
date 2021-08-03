@@ -83,23 +83,46 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	dst := args[0]
 	src := args[1]
 
-	var dstName string
-	var dstType types.Info
-	var dstScope int
-	var dstBindings *ssa.Bindings
+	var baseName string
+	var baseType types.Info
+	var baseScope int
+	var baseBindings *ssa.Bindings
+	var base ssa.Value
+
+	var dstOffset int
+	var elementType types.Info
 
 	switch dst.Type.Type {
 	case types.TArray:
-		dstName = dst.Name
-		dstType = dst.Type
-		dstScope = dst.Scope
-		dstBindings = block.Bindings
+		baseName = dst.Name
+		baseType = dst.Type
+		baseScope = dst.Scope
+		baseBindings = block.Bindings
+
+		dstOffset = 0
+		elementType = *dst.Type.ElementType
+		base = dst
 
 	case types.TPtr:
-		dstName = dst.PtrInfo.Name
-		dstType = *dst.Type.ElementType
-		dstScope = dst.PtrInfo.Scope
-		dstBindings = dst.PtrInfo.Bindings
+		elementType = *dst.Type.ElementType
+		if elementType.Type != types.TArray {
+			return nil, nil, ctx.Errorf(loc,
+				"setting elements of non-array %s",
+				elementType)
+		}
+		baseName = dst.PtrInfo.Name
+		baseType = dst.PtrInfo.ContainerType
+		baseScope = dst.PtrInfo.Scope
+		baseBindings = dst.PtrInfo.Bindings
+
+		dstOffset = dst.PtrInfo.Offset
+		elementType = *elementType.ElementType
+
+		b, ok := baseBindings.Get(baseName)
+		if !ok {
+			return nil, nil, ctx.Errorf(loc, "undefined: %s", baseName)
+		}
+		base = b.Value(block, gen)
 
 	default:
 		return nil, nil, ctx.Errorf(loc,
@@ -111,33 +134,37 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, nil, ctx.Errorf(loc,
 			"second argument to copy should be slice or array")
 	}
-	if !dstType.ElementType.Equal(*src.Type.ElementType) {
+	if !elementType.Equal(*src.Type.ElementType) {
 		return nil, nil, ctx.Errorf(loc,
 			"arguments to copy have different element types: %s and %s",
-			dstType.ElementType, src.Type.ElementType)
+			baseType.ElementType, src.Type.ElementType)
 	}
 
-	lValue := gen.NewVal(dstName, dstType, dstScope)
+	dstBits := dst.Type.Bits
+	srcBits := src.Type.Bits
 
-	// If len(dst) > len(src): 	  amov  src dst 0 len(src)
-	//    len(dst) < len(src): 	  slice src 0 len(dst) dst
-	//    len(dst) = len(src): 	  move  src dst
 	var copied int
-	if dstType.ArraySize > src.Type.ArraySize {
-		copied = src.Type.ArraySize
+	if srcBits > dstBits {
 		fromConst := gen.Constant(int32(0), types.Uint32)
-		toConst := gen.Constant(int32(src.Type.Bits), types.Uint32)
-		block.AddInstr(ssa.NewAmovInstr(src, dst, fromConst, toConst, lValue))
-	} else if dstType.ArraySize < src.Type.ArraySize {
-		copied = dstType.ArraySize
-		fromConst := gen.Constant(int32(0), types.Uint32)
-		toConst := gen.Constant(int32(dstType.Bits), types.Uint32)
-		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, lValue))
+		toConst := gen.Constant(int32(dstBits), types.Uint32)
+
+		tmp := gen.AnonVal(dst.Type)
+		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, tmp))
+		src = tmp
+		srcBits = dstBits
+
+		copied = dst.Type.ArraySize
 	} else {
-		copied = dstType.ArraySize
-		block.AddInstr(ssa.NewMovInstr(src, lValue))
+		copied = src.Type.ArraySize
 	}
-	dstBindings.Set(lValue, nil)
+
+	lValue := gen.NewVal(baseName, baseType, baseScope)
+
+	fromConst := gen.Constant(int32(dstOffset), types.Uint32)
+	toConst := gen.Constant(int32(dstOffset+srcBits), types.Uint32)
+
+	block.AddInstr(ssa.NewAmovInstr(src, base, fromConst, toConst, lValue))
+	baseBindings.Set(lValue, nil)
 
 	v := gen.Constant(int32(copied), types.Int32)
 	gen.AddConstant(v)

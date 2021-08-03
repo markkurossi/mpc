@@ -268,6 +268,8 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return types.Info{
 			Type:        types.TPtr,
+			Bits:        elInfo.Bits,
+			MinBits:     elInfo.Bits,
 			ElementType: &elInfo,
 		}, nil
 

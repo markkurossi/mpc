@@ -190,6 +190,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 
 		lValue := gen.NewVal(n, typeInfo, ctx.Scope())
+		// XXX lValue.Const = init.Const
 		block.Bindings.Set(lValue, nil)
 
 		block.AddInstr(ssa.NewMovInstr(init, lValue))
@@ -465,10 +466,6 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			}
 
 		case *Unary:
-			// XXX This should be refactored into:
-			//
-			//   dereference() (Binding, Bindings, error)
-			//
 			if ast.Define {
 				return nil, nil, ctx.Errorf(ast,
 					"a non-name %s on left side of :=", lv)
@@ -677,7 +674,6 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			for _, arg := range callValues {
 				args = append(args, arg...)
 			}
-			fmt.Printf("%s(%v)\n", bi.Name, args)
 			return bi.SSA(block, ctx, gen, args, ast.Location())
 		}
 
@@ -786,15 +782,17 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		// Instantiate argument types of template functions.
 		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
 			return nil, nil, ctx.Errorf(ast.Exprs[idx],
-				"cannot use %v as type %s in argument to %s",
+				"!cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
 		}
-		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
-		if a.TypeCompatible(args[idx]) == nil {
+		// XXX && false
+		if !ssa.LValueFor(typeInfo, args[idx]) && false {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
 		}
+		a := gen.NewVal(arg.Name, args[idx].Type, ctx.Scope())
+		a.PtrInfo = args[idx].PtrInfo
 		ctx.Start().Bindings.Set(a, &args[idx])
 
 		block.AddInstr(ssa.NewMovInstr(args[idx], a))
@@ -822,6 +820,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 					ast.Ref.Name.Package)
 			}
 		}
+
 		// XXX only one level of pointers.
 		if typeInfo.Type == types.TPtr && b.Type.Type != types.TPtr {
 			// Pointer receiver.
@@ -842,6 +841,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			this = b.Value(block, gen)
 		}
 		a := gen.NewVal(called.This.Name, typeInfo, ctx.Scope())
+		a.PtrInfo = this.PtrInfo
 		if a.TypeCompatible(this) == nil {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in receiver to %s",
@@ -1403,8 +1403,6 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 	expr := exprs[0]
-
-	// Dereference pointers.
 	elementType := expr.ElementType()
 
 	var elementSize int
@@ -1469,20 +1467,45 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	fromConst := gen.Constant(int32(from*elementSize), types.Uint32)
 	toConst := gen.Constant(int32(to*elementSize), types.Uint32)
 
-	ti := types.Info{
-		Type: elementType.Type,
+	bits := (to - from) * elementSize
+
+	var t ssa.Value
+
+	if expr.Type.Type == types.TPtr {
+		if elementType.Type == types.TArray {
+
+			ptrInfo := expr.PtrInfo
+			ptrInfo.Offset += from * elementSize
+
+			et := elementType
+			et.ID = 0
+			et.ArraySize = to - from
+
+			ti := types.Info{
+				Type:        types.TPtr,
+				Bits:        bits,
+				MinBits:     bits,
+				ElementType: &et,
+			}
+			t = gen.AnonVal(ti)
+			t.PtrInfo = ptrInfo
+		} else {
+			return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
+				expr.Type)
+		}
+	} else {
+		ti := types.Info{
+			Type:    elementType.Type,
+			Bits:    bits,
+			MinBits: bits,
+		}
+		if elementType.Type == types.TArray {
+			ti.ElementType = elementType.ElementType
+			ti.ArraySize = ti.Bits / ti.ElementType.Bits
+		}
+
+		t = gen.AnonVal(ti)
 	}
-
-	ti.Bits = (to - from) * elementSize
-	ti.MinBits = ti.Bits
-
-	if elementType.Type == types.TArray {
-		ti.ElementType = elementType.ElementType
-		ti.ArraySize = ti.Bits / ti.ElementType.Bits
-	}
-
-	t := gen.AnonVal(ti)
-
 	block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
 	return block, []ssa.Value{t}, nil
@@ -1578,82 +1601,12 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	// Check if package name is bound to variable.
-	b, ok := block.Bindings.Get(ast.Name.Package)
-	if !ok {
-		b, ok = ctx.Package.Bindings.Get(ast.Name.Package)
-	}
-	if ok {
-		// Selector.
-		value := b.Value(block, gen)
-
-		// Dereference pointers.
-		value, err := ctx.Dereference(ast, value, block, gen)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if value.Type.Type != types.TStruct {
-			return nil, nil, ctx.Errorf(ast, "%s.%s undefined!",
-				ast.Name.Package, ast.Name.Name)
-		}
-
-		var field *types.StructField
-		for _, f := range value.Type.Struct {
-			if f.Name == ast.Name.Name {
-				field = &f
-				break
-			}
-		}
-		if field == nil {
-			return nil, nil, ctx.Errorf(ast,
-				"%s undefined (type %s has no field or method %s)",
-				ast.Name, value.Type, ast.Name.Name)
-		}
-
-		fieldType := field.Type
-		fieldType.Offset = 0
-		t := gen.AnonVal(fieldType)
-		fromConst := gen.Constant(int32(field.Type.Offset), types.Int32)
-		toConst := gen.Constant(int32(field.Type.Offset+field.Type.Bits),
-			types.Int32)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		block.AddInstr(ssa.NewSliceInstr(value, fromConst, toConst, t))
-		return block, []ssa.Value{t}, nil
+	lrv, _, err := ctx.LookupVar(block, gen, block.Bindings, ast)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	if len(ast.Name.Package) > 0 {
-		// Explicit package reference.
-		var pkg *Package
-		pkg, ok = ctx.Packages[ast.Name.Package]
-		if !ok {
-			return nil, nil, ctx.Errorf(ast, "package '%s' not found",
-				ast.Name.Package)
-		}
-		b, ok = pkg.Bindings.Get(ast.Name.Name)
-	} else {
-		// First check block bindings.
-		b, ok = block.Bindings.Get(ast.Name.Name)
-		if !ok {
-			// Check names in the current package.
-			b, ok = ctx.Package.Bindings.Get(ast.Name.Name)
-		}
-	}
-	if !ok {
-		return nil, nil, ctx.Errorf(ast, "undefined variable '%s'",
-			ast.Name.String())
-	}
-
-	value := b.Value(block, gen)
-
-	// Bind variable with the name it was referenced.
-	lValue := value
-	lValue.Name = ast.Name.String()
-	block.Bindings.Set(lValue, &value)
-
+	value := lrv.RValue()
 	if value.Const {
 		gen.AddConstant(value)
 	}
