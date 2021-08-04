@@ -1405,50 +1405,19 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return block, []ssa.Value{t}, nil
 
 		case *Index:
-			switch indexed := v.Expr.(type) {
-			case *VariableRef:
-				lrv, _, err := ctx.LookupVar(block, gen, block.Bindings,
-					indexed)
-				if err != nil {
-					return nil, nil, err
-				}
-				vt := lrv.ValueType()
-				if vt.Type != types.TArray {
-					return nil, nil, ctx.Errorf(indexed,
-						"invalid operation: %s (type %s does not support indexing)",
-						v, vt)
-				}
-				var indices []ssa.Value
-				block, indices, err = v.Index.SSA(block, ctx, gen)
-				if err != nil {
-					return nil, nil, err
-				}
-				if len(indices) != 1 {
-					return nil, nil, ctx.Errorf(indexed, "invalid index")
-				}
-				index, err := indices[0].ConstInt()
-				if err != nil {
-					return nil, nil, ctx.Errorf(indexed, "invalid index")
-				}
-				if index < 0 || index >= vt.ArraySize {
-					return nil, nil, ctx.Errorf(v.Index,
-						"invalid array index %d (out of bounds for %d-element string)",
-						index, vt.ArraySize)
-				}
-				t := gen.AnonVal(types.Info{
-					Type:        types.TPtr,
-					Bits:        vt.ElementType.Bits,
-					MinBits:     vt.ElementType.Bits,
-					ElementType: vt.ElementType,
-				})
-				t.PtrInfo = lrv.BasePtrInfo()
-				t.PtrInfo.Offset += index * t.Type.Bits
-				return block, []ssa.Value{t}, nil
-
-			default:
-				return nil, nil, ctx.Errorf(ast, "&%s not supported (%T)",
-					v, indexed)
+			lrv, ptrType, offset, err := ast.addrIndex(block, ctx, gen, v)
+			if err != nil {
+				return nil, nil, err
 			}
+			t := gen.AnonVal(types.Info{
+				Type:        types.TPtr,
+				Bits:        ptrType.Bits,
+				MinBits:     ptrType.Bits,
+				ElementType: ptrType,
+			})
+			t.PtrInfo = lrv.BasePtrInfo()
+			t.PtrInfo.Offset += offset
+			return block, []ssa.Value{t}, nil
 
 		default:
 			return nil, nil, ctx.Errorf(ast, "Unary.SSA: '%T' not supported", v)
@@ -1458,6 +1427,55 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "Unary.SSA not implemented yet: %v",
 			ast)
 	}
+}
+
+func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	index *Index) (lrv *LRValue, ptrType *types.Info, offset int, err error) {
+
+	switch indexed := index.Expr.(type) {
+	case *VariableRef:
+		lrv, _, err = ctx.LookupVar(block, gen, block.Bindings,
+			indexed)
+		if err != nil {
+			return
+		}
+		vt := lrv.ValueType()
+		if vt.Type != types.TArray {
+			return nil, nil, 0, ctx.Errorf(indexed,
+				"invalid operation: %s (type %s does not support indexing)",
+				index, ptrType)
+		}
+		ptrType = &vt
+
+	case *Index:
+		lrv, ptrType, offset, err = ast.addrIndex(block, ctx, gen, indexed)
+
+	default:
+		return nil, nil, 0,
+			ctx.Errorf(ast, "&%s not supported (%T)", index, indexed)
+	}
+
+	var indices []ssa.Value
+	block, indices, err = index.Index.SSA(block, ctx, gen)
+	if err != nil {
+		return
+	}
+	if len(indices) != 1 {
+		return nil, nil, 0, ctx.Errorf(index, "invalid index")
+	}
+	var ival int
+	ival, err = indices[0].ConstInt()
+	if err != nil {
+		return
+	}
+	if ival < 0 || ival >= ptrType.ArraySize {
+		return nil, nil, 0, ctx.Errorf(index.Index,
+			"invalid array index %d (out of bounds for %d-element string)",
+			ival, ptrType.ArraySize)
+	}
+	fmt.Printf(" - offset=%d, ival=%d, ptrType.ElementType.Bits=%d\n",
+		offset, ival, ptrType.ElementType.Bits)
+	return lrv, ptrType.ElementType, offset + ival*ptrType.ElementType.Bits, nil
 }
 
 func lookupElement(ctx *Codegen, loc utils.Locator, v ssa.Value, name string) (

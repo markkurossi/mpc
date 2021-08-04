@@ -795,13 +795,28 @@ func isSet(v interface{}, vt types.Info, bit int) bool {
 		}
 
 	case []interface{}:
-		for idx, f := range vt.Struct {
-			if bit < f.Type.Bits {
-				return isSet(val[idx], f.Type, bit)
+		switch vt.Type {
+		case types.TStruct:
+			for idx, f := range vt.Struct {
+				if bit < f.Type.Bits {
+					return isSet(val[idx], f.Type, bit)
+				}
+				bit -= f.Type.Bits
 			}
-			bit -= f.Type.Bits
+			panic(fmt.Sprintf("ssa.isSet: bit overflow for %v", vt))
+
+		case types.TArray:
+			elType := vt.ElementType
+			idx := bit / elType.Bits
+			mod := bit % elType.Bits
+			if idx >= vt.ArraySize {
+				return false
+			}
+			return isSet(val[idx], *elType, mod)
+
+		default:
+			panic(fmt.Sprintf("ssa.isSet: type %v not supported", vt))
 		}
-		panic(fmt.Sprintf("ssa.isSet: bit overflow for %v", vt))
 
 	default:
 		panic(fmt.Sprintf("ssa.isSet: non const %v (%T)", v, val))

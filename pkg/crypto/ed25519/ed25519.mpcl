@@ -235,6 +235,7 @@ func FeIsNonZero(f *FieldElement) int32 {
 	FeToBytes(&s, f)
 	var x uint8
 
+	// XXX
 	// The `range' expression is not supported yet.
 	// for _, b := range s {
 	// 	x |= b
@@ -760,6 +761,7 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 		FeMul(&p.X, &p.X, &SqrtM1)
 
 		FeToBytes(&tmpX, &p.X)
+		// XXX
 		// for i, v := range tmpX {
 		// 	tmp2[31-i] = v
 		// }
@@ -858,6 +860,7 @@ func geMixedSub(r *CompletedGroupElement, p *ExtendedGroupElement, q *PreCompute
 }
 
 func slide(r *[256]int8, a *[32]byte) {
+	// XXX
 	// for i := range r {
 	// 	r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
 	// }
@@ -865,7 +868,7 @@ func slide(r *[256]int8, a *[32]byte) {
 		r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
 	}
 
-	// for i := range r {
+	// XXX for i := range r {
 	for i := 0; i < len(r); i++ {
 		if r[i] != 0 {
 			for b := 1; b <= 6 && i+b < 256; b++ {
@@ -971,7 +974,8 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 	bAbs := b - (((-bNegative) & b) << 1)
 
 	t.Zero()
-	for i := int32(0); i < 8; i++ {
+	// XXX for i := int32(0); i < 8; i++ {
+	for i := 0; i < 8; i++ {
 		PreComputedGroupElementCMove(t, &base[pos][i], equal(bAbs, i+1))
 	}
 	FeCopy(&minusT.yPlusX, &t.yMinusX)
@@ -989,11 +993,13 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	var e [64]int8
 
-	// for i, v := range a {
+	// XXX for i, v := range a {
 	for i := 0; i < len(a); i++ {
-		v := a[i]
-		e[2*i] = int8(v & 15)
-		e[2*i+1] = int8((v >> 4) & 15)
+		// v := a[i]
+		// e[2*i] = int8(v & 15)
+		// e[2*i+1] = int8((v >> 4) & 15)
+		e[2*i] = int8(a[i] & 15)
+		e[2*i+1] = int8((a[i] >> 4) & 15)
 	}
 
 	// each e[i] is between 0 and 15 and e[63] is between 0 and 7.
@@ -1010,7 +1016,8 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	h.Zero()
 	var t PreComputedGroupElement
 	var r CompletedGroupElement
-	for i := int32(1); i < 64; i += 2 {
+	// XXX for i := int32(1); i < 64; i += 2 {
+	for i := 1; i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
