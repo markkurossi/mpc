@@ -233,10 +233,18 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			Bits:    32,
 			MinBits: minBits,
 		}
-		if val < 0 {
-			v.Type.Type = types.TInt
+		if ti.Undefined() {
+			if val < 0 {
+				v.Type.Type = types.TInt
+			} else {
+				v.Type.Type = types.TUint
+			}
 		} else {
-			v.Type.Type = types.TUint
+			v.Type = ti
+			if v.Type.Bits == 0 {
+				v.Type.Bits = minBits
+				v.Type.MinBits = minBits
+			}
 		}
 
 	case int64:

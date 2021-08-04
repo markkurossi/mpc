@@ -130,11 +130,18 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			dst.Type.Type, src.Type.Type)
 	}
 
-	if src.Type.Type != types.TArray {
-		return nil, nil, ctx.Errorf(loc,
-			"second argument to copy should be slice or array")
+	var srcType types.Info
+	if src.Type.Type == types.TPtr {
+		srcType = *src.Type.ElementType
+	} else {
+		srcType = src.Type
 	}
-	if !elementType.Equal(*src.Type.ElementType) {
+
+	if srcType.Type != types.TArray {
+		return nil, nil, ctx.Errorf(loc,
+			"second argument to copy should be slice or array (%v)", src.Type)
+	}
+	if !elementType.Equal(*srcType.ElementType) {
 		return nil, nil, ctx.Errorf(loc,
 			"arguments to copy have different element types: %s and %s",
 			baseType.ElementType, src.Type.ElementType)

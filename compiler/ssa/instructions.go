@@ -852,3 +852,13 @@ func (v Value) TypeCompatible(o Value) *types.Info {
 	}
 	return nil
 }
+
+// IntegerLike tests if the value is an integer.
+func (v Value) IntegerLike() bool {
+	switch v.Type.Type {
+	case types.TInt, types.TUint:
+		return true
+	default:
+		return false
+	}
+}

@@ -14,6 +14,10 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
+const (
+	debugConstFold = false
+)
+
 // SSA implements the compiler.ast.AST.SSA for list statements.
 func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
@@ -149,6 +153,10 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		if ast.Init == nil {
 			if typeInfo.Undefined() {
 				return nil, nil, ctx.Errorf(ast, "undefined variable")
+			}
+			if typeInfo.Bits == 0 {
+				return nil, nil, ctx.Errorf(ast, "undefined variable size: %s",
+					typeInfo)
 			}
 			initVal, err := initValue(typeInfo)
 			if err != nil {
@@ -978,6 +986,11 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ast.error(ctx, "too many aruments to return",
 				rValues, ctx.Func().Return)
 		} else {
+			if len(ast.Exprs) != len(rValues) {
+				return nil, nil, ctx.Errorf(ast,
+					"invalid number of return values: got %d, expected %d",
+					len(ast.Exprs), len(rValues))
+			}
 			for idx, rv := range rValues {
 				expr := ast.Exprs[idx]
 				if len(rv) == 0 {
@@ -1138,7 +1151,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if ok {
-		if ctx.Verbose {
+		if ctx.Verbose && debugConstFold {
 			fmt.Printf("ConstFold: %v %s %v => %v\n",
 				ast.Left, ast.Op, ast.Right, constVal)
 		}
@@ -1174,19 +1187,26 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	l := lArr[0]
 	r := rArr[0]
 
-	superType := l.TypeCompatible(r)
-	if superType == nil {
-		return nil, nil,
-			ctx.Errorf(ast, "invalid types: %s %s %s", l.Type, ast.Op, r.Type)
-	}
-
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryMult, BinaryDiv, BinaryMod, BinaryLshift, BinaryRshift,
-		BinaryBand, BinaryBclear,
+	case BinaryMult, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
 		BinaryPlus, BinaryMinus, BinaryBor, BinaryBxor:
+		superType := l.TypeCompatible(r)
+		if superType == nil {
+			return nil, nil,
+				ctx.Errorf(ast, "invalid types: %s %s %s",
+					l.Type, ast.Op, r.Type)
+		}
 		resultType = *superType
+
+	case BinaryLshift, BinaryRshift:
+		if !l.IntegerLike() || !r.IntegerLike() {
+			return nil, nil,
+				ctx.Errorf(ast, "invalid types: %s %s %s",
+					l.Type, ast.Op, r.Type)
+		}
+		resultType = l.Type
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
 		BinaryAnd, BinaryOr:
@@ -1279,7 +1299,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if ok {
-		if ctx.Verbose {
+		if ctx.Verbose && debugConstFold {
 			fmt.Printf("ConstFold: %v => %v\n", ast, constVal)
 		}
 		gen.AddConstant(constVal)
@@ -1369,13 +1389,16 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				}
 				containerType = b.Type
 				bValue := b.Value(block, gen)
-				container, err := ctx.Dereference(ast, bValue, block, gen)
-				if err != nil {
-					return nil, nil, err
+
+				var it types.Info
+				if bValue.Type.Type == types.TPtr {
+					it = *bValue.Type.ElementType
+				} else {
+					it = bValue.Type
 				}
 
 				elementType, elementOffset, err = lookupElement(ctx, ast,
-					container, v.Name.Name)
+					it, v.Name.Name)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1473,29 +1496,27 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid array index %d (out of bounds for %d-element string)",
 			ival, ptrType.ArraySize)
 	}
-	fmt.Printf(" - offset=%d, ival=%d, ptrType.ElementType.Bits=%d\n",
-		offset, ival, ptrType.ElementType.Bits)
 	return lrv, ptrType.ElementType, offset + ival*ptrType.ElementType.Bits, nil
 }
 
-func lookupElement(ctx *Codegen, loc utils.Locator, v ssa.Value, name string) (
+func lookupElement(ctx *Codegen, loc utils.Locator, t types.Info, name string) (
 	types.Info, int, error) {
 
-	switch v.Type.Type {
+	switch t.Type {
 	case types.TStruct:
 		var offset int
-		for _, field := range v.Type.Struct {
+		for _, field := range t.Struct {
 			if field.Name == name {
 				return field.Type, offset, nil
 			}
 			offset += field.Type.Bits
 		}
 		return types.Undefined, 0, ctx.Errorf(loc,
-			"%s undefined (%s has no field of method %s)", name, v.Type, name)
+			"%s undefined (%s has no field of method %s)", name, t, name)
 
 	default:
 		return types.Undefined, 0, ctx.Errorf(loc,
-			"%s undefined (%s has no field of method %s)", name, v.Type, name)
+			"%s undefined (%s has no field of method %s)", name, t, name)
 	}
 }
 
@@ -1644,19 +1665,16 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", val[0])
 	}
 
-	// Dereference pointers.
+	var it types.Info
 	if expr.Type.Type == types.TPtr {
-		b, ok := expr.PtrInfo.Bindings.Get(expr.PtrInfo.Name)
-		if !ok {
-			return nil, nil, ctx.Errorf(ast, "undefined: %s",
-				expr.PtrInfo.Name)
-		}
-		expr = b.Value(block, gen)
+		it = *expr.Type.ElementType
+	} else {
+		it = expr.Type
 	}
 
-	switch expr.Type.Type {
+	switch it.Type {
 	case types.TString:
-		length := expr.Type.Bits / types.ByteBits
+		length := it.Bits / types.ByteBits
 		if index < 0 || index >= length {
 			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element string)",
@@ -1679,18 +1697,18 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return block, []ssa.Value{t}, nil
 
 	case types.TArray:
-		if index < 0 || index >= expr.Type.ArraySize {
+		if index < 0 || index >= it.ArraySize {
 			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
-				index, expr.Type.ArraySize)
+				index, it.ArraySize)
 		}
-		from := int32(index * expr.Type.ElementType.Bits)
-		to := int32((index + 1) * expr.Type.ElementType.Bits)
+		from := int32(index * it.ElementType.Bits)
+		to := int32((index + 1) * it.ElementType.Bits)
 
 		fromConst := gen.Constant(from, types.Uint32)
 		toConst := gen.Constant(to, types.Uint32)
 
-		t := gen.AnonVal(*expr.Type.ElementType)
+		t := gen.AnonVal(*it.ElementType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 
 		return block, []ssa.Value{t}, nil

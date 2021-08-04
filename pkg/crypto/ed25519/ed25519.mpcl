@@ -475,7 +475,8 @@ func feSquare(f *FieldElement) (h0, h1, h2, h3, h4, h5, h6, h7, h8, h9 int64) {
 	h8 = f0_2*f8 + f1_2*f7_2 + f2_2*f6 + f3_2*f5_2 + f4*f4 + f9*f9_38
 	h9 = f0_2*f9 + f1_2*f8 + f2_2*f7 + f3_2*f6 + f4_2*f5
 
-	return
+	// XXX return
+	return h0, h1, h2, h3, h4, h5, h6, h7, h8, h9
 }
 
 // FeSquare calculates h = f*f. Can overlap h with f.
@@ -519,7 +520,7 @@ func FeSquare2(h, f *FieldElement) {
 
 func FeInvert(out, z *FieldElement) {
 	var t0, t1, t2, t3 FieldElement
-	var i int
+	var i int32
 
 	FeSquare(&t0, z)        // 2^1
 	FeSquare(&t1, &t0)      // 2^2
@@ -1034,7 +1035,8 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	s.Double(&r)
 	r.ToExtended(h)
 
-	for i := int32(0); i < 64; i += 2 {
+	// XXX for i := int32(0); i < 64; i += 2 {
+	for i := 0; i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
