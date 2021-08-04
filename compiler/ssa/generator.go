@@ -241,9 +241,9 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		} else {
 			v.Type = ti
+			v.Type.MinBits = minBits
 			if v.Type.Bits == 0 {
 				v.Type.Bits = minBits
-				v.Type.MinBits = minBits
 			}
 		}
 
