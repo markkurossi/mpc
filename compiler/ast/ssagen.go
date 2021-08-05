@@ -435,16 +435,12 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if err != nil {
 					return nil, nil, err
 				}
-				if len(val) != 1 || !val[0].Const {
+				if len(val) != 1 {
 					return nil, nil, ctx.Errorf(lv.Index, "invalid index")
 				}
-				var index int
-				switch v := val[0].ConstValue.(type) {
-				case int32:
-					index = int(v)
-				default:
-					return nil, nil, ctx.Errorf(lv.Index, "invalid index: %T",
-						v)
+				index, err := val[0].ConstInt()
+				if err != nil {
+					return nil, nil, ctx.Errorf(lv.Index, "%s", err)
 				}
 
 				// Convert index to bit range.
@@ -1487,6 +1483,7 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	var ival int
 	ival, err = indices[0].ConstInt()
 	if err != nil {
+		err = ctx.Errorf(index.Index, "%s", err)
 		return
 	}
 	if ival < 0 || ival >= ptrType.ArraySize {
