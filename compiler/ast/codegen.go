@@ -54,21 +54,6 @@ func (ctx *Codegen) DefineType(t *TypeInfo) types.ID {
 	return id
 }
 
-// Dereference dereferences the pointer value. If the value is not a
-// pointer, returns argument value.
-func (ctx *Codegen) Dereference(ast AST, ptr ssa.Value, block *ssa.Block,
-	gen *ssa.Generator) (ssa.Value, error) {
-
-	if ptr.Type.Type != types.TPtr {
-		return ptr, nil
-	}
-	b, ok := ptr.PtrInfo.Bindings.Get(ptr.PtrInfo.Name)
-	if !ok {
-		return ssa.Undefined, ctx.Errorf(ast, "undefined: %s", ptr.PtrInfo.Name)
-	}
-	return b.Value(block, gen), nil
-}
-
 // LookupFunc resolves the named function from the context.
 func (ctx *Codegen) LookupFunc(block *ssa.Block, ref *VariableRef) (
 	*Func, error) {
