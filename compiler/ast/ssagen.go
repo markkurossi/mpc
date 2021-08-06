@@ -379,57 +379,22 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			}
 			switch arr := lv.Expr.(type) {
 			case *VariableRef:
-				// XXX package.name below
-				b, ok := block.Bindings.Get(arr.Name.Name)
-				if !ok {
-					return nil, nil, ctx.Errorf(ast, "undefined: %s", arr.Name)
+				lrv, _, err := ctx.LookupVar(block, gen, block.Bindings, arr)
+				if err != nil {
+					return nil, nil, err
+				}
+				valueType := lrv.ValueType()
+				if valueType.Type == types.TPtr {
+					valueType = *valueType.ElementType
 				}
 
-				var dstName string
-				var dstType types.Info
-				var dstScope int
-				var dstBindings *ssa.Bindings
-				var arraySize int
-				var elementSize int
-				var ptrOffset int
-
-				switch b.Type.Type {
-				case types.TArray:
-					dstName = b.Name
-					dstType = b.Type
-					dstScope = b.Scope
-					dstBindings = block.Bindings
-					arraySize = b.Type.ArraySize
-					elementSize = b.Type.ElementType.Bits
-
-				case types.TPtr:
-					v := b.Value(block, gen)
-					elementType := v.ElementType()
-					if elementType.Type != types.TArray {
-						return nil, nil, ctx.Errorf(ast,
-							"setting elements of non-array %s",
-							elementType)
-					}
-					dstName = v.PtrInfo.Name
-					dstType = v.PtrInfo.ContainerType
-					dstScope = v.PtrInfo.Scope
-					dstBindings = v.PtrInfo.Bindings
-					arraySize = elementType.ArraySize
-					elementSize = elementType.Bits
-					ptrOffset = v.PtrInfo.Offset
-
-					b, ok = dstBindings.Get(dstName)
-					if !ok {
-						return nil, nil, ctx.Errorf(ast, "undefined: %s",
-							dstName)
-					}
-
-				default:
+				if valueType.Type != types.TArray {
 					return nil, nil, ctx.Errorf(ast,
-						"setting elements of non-array %s", arr)
+						"setting elements of non-array %s (%s)",
+						arr, lrv.ValueType())
 				}
-
-				lValue := gen.NewVal(dstName, dstType, dstScope)
+				arraySize := valueType.ArraySize
+				elementSize := valueType.ElementType.Bits
 
 				block, val, err := lv.Index.SSA(block, ctx, gen)
 				if err != nil {
@@ -449,19 +414,18 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"invalid array index %d (out of bounds for %d-element array)",
 						index, arraySize)
 				}
-
-				from := int32(index*elementSize + ptrOffset)
+				basePtrInfo := lrv.BasePtrInfo()
+				from := int32(index*elementSize + basePtrInfo.Offset)
 				to := int32(from + int32(elementSize))
 
 				indexType := types.Uint32
 				fromConst := gen.Constant(from, indexType)
 				toConst := gen.Constant(to, indexType)
 
-				bv := b.Value(block, gen)
-
-				block.AddInstr(ssa.NewAmovInstr(rv, bv, fromConst, toConst,
-					lValue))
-				dstBindings.Set(lValue, nil)
+				lValue := lrv.LValue()
+				block.AddInstr(ssa.NewAmovInstr(rv, lrv.BaseValue(),
+					fromConst, toConst, lValue))
+				basePtrInfo.Bindings.Set(lValue, nil)
 
 				return block, []ssa.Value{lValue}, nil
 

@@ -135,9 +135,20 @@ func (lrv *LRValue) BaseType() types.Info {
 	return lrv.baseInfo.ContainerType
 }
 
+// BaseValue returns the base value of the LRValue
+func (lrv *LRValue) BaseValue() ssa.Value {
+	return lrv.baseValue
+}
+
 // BasePtrInfo returns the base value as PtrInfo.
 func (lrv *LRValue) BasePtrInfo() ssa.PtrInfo {
 	return lrv.baseInfo
+}
+
+// LValue returns the l-valiue of the LRValue.
+func (lrv *LRValue) LValue() ssa.Value {
+	return lrv.gen.NewVal(lrv.baseInfo.Name, lrv.baseInfo.ContainerType,
+		lrv.baseInfo.Scope)
 }
 
 // RValue returns the r-value of the LRValue.
@@ -182,9 +193,8 @@ func (lrv *LRValue) ConstValue() (ssa.Value, bool, error) {
 		return lrv.value, true, nil
 
 	default:
-		return ssa.Undefined, false, nil
-		// lrv.ctx.Errorf(lrv.ast,
-		// "LRValue.ConstValue: %s not supported yet", lrv.baseValue.Type)
+		return ssa.Undefined, false, lrv.ctx.Errorf(lrv.ast,
+			"LRValue.ConstValue: %s not supported yet", lrv.value.Type)
 	}
 }
 
