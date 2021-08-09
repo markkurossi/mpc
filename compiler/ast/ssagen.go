@@ -751,11 +751,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		// Instantiate argument types of template functions.
 		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
 			return nil, nil, ctx.Errorf(ast.Exprs[idx],
-				"!cannot use %v as type %s in argument to %s",
+				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
 		}
-		// XXX && false
-		if !ssa.LValueFor(typeInfo, args[idx]) && false {
+		if !ssa.LValueFor(typeInfo, args[idx]) {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
@@ -1519,14 +1518,12 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		if len(val) != 1 || !val[0].Const {
+		if len(val) != 1 {
 			return nil, nil, ctx.Errorf(ast.From, "invalid from index")
 		}
-		switch v := val[0].ConstValue.(type) {
-		case int32:
-			from = int(v)
-		default:
-			return nil, nil, ctx.Errorf(ast.From, "invalid from index: %T", v)
+		from, err = val[0].ConstInt()
+		if err != nil {
+			return nil, nil, ctx.Errorf(ast.From, "%s", err)
 		}
 	}
 	var to int
@@ -1537,14 +1534,12 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, err
 		}
-		if len(val) != 1 || !val[0].Const {
+		if len(val) != 1 {
 			return nil, nil, ctx.Errorf(ast.To, "invalid to index")
 		}
-		switch v := val[0].ConstValue.(type) {
-		case int32:
-			to = int(v)
-		default:
-			return nil, nil, ctx.Errorf(ast.From, "invalid to index: %T", v)
+		to, err = val[0].ConstInt()
+		if err != nil {
+			return nil, nil, ctx.Errorf(ast.To, "%s", err)
 		}
 	}
 	if from >= elementCount || from >= to {
@@ -1616,17 +1611,25 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(val) != 1 || !val[0].Const {
+	if len(val) != 1 {
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index")
 	}
 	index, err := val[0].ConstInt()
 	if err != nil {
-		return nil, nil, ctx.Errorf(ast.Index, "invalid index: %T", val[0])
+		return nil, nil, ctx.Errorf(ast.Index, "%s", err)
 	}
 
 	var it types.Info
+	var ptrInfo ssa.PtrInfo
 	if expr.Type.Type == types.TPtr {
 		it = *expr.Type.ElementType
+		ptrInfo = expr.PtrInfo
+		b, ok := ptrInfo.Bindings.Get(ptrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast.Index, "undefined: %s",
+				ptrInfo.Name)
+		}
+		expr = b.Value(block, gen)
 	} else {
 		it = expr.Type
 	}
@@ -1639,16 +1642,17 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element string)",
 				index, length)
 		}
-		from := int32(index * types.ByteBits)
-		to := int32((index + 1) * types.ByteBits)
+		from := int32(index*types.ByteBits + ptrInfo.Offset)
+		to := int32((index+1)*types.ByteBits + ptrInfo.Offset)
+
+		fromConst := gen.Constant(from, types.Uint32)
+		toConst := gen.Constant(to, types.Uint32)
 
 		indexType := types.Info{
 			Type:    types.TUint,
 			Bits:    types.ByteBits,
 			MinBits: types.ByteBits,
 		}
-		fromConst := gen.Constant(from, indexType)
-		toConst := gen.Constant(to, indexType)
 
 		t := gen.AnonVal(indexType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
@@ -1661,8 +1665,8 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element array)",
 				index, it.ArraySize)
 		}
-		from := int32(index * it.ElementType.Bits)
-		to := int32((index + 1) * it.ElementType.Bits)
+		from := int32(index*it.ElementType.Bits + ptrInfo.Offset)
+		to := int32((index+1)*it.ElementType.Bits + ptrInfo.Offset)
 
 		fromConst := gen.Constant(from, types.Uint32)
 		toConst := gen.Constant(to, types.Uint32)

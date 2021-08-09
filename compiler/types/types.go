@@ -182,11 +182,18 @@ func (i Info) Undefined() bool {
 // Instantiate instantiates template type to match parameter type.
 func (i *Info) Instantiate(o Info) bool {
 	if i.Type != o.Type {
-		if i.Type != TArray || o.Type != TPtr || i.Type != o.ElementType.Type {
+		switch i.Type {
+		case TArray:
+			if o.Type != TPtr || i.Type != o.ElementType.Type {
+				return false
+			}
+			// Instantiating array from pointer to array i.e. continue below.
+			i.Type = TPtr
+			i.ElementType = o.ElementType
+
+		default:
 			return false
 		}
-		// Instantiating array from pointer to array i.e. continue below.
-		o = *o.ElementType
 	}
 	if i.Bits != 0 {
 		return false
