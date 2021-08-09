@@ -269,7 +269,21 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				out[bit].ID = id
 			}
 
-		case Rshift:
+		case Rshift, Srshift:
+			var signWire *circuits.Wire
+			if instr.Op == Srshift {
+				one, err := prog.OneWire(conn, streaming)
+				if err != nil {
+					return nil, nil, err
+				}
+				signWire = one
+			} else {
+				zero, err := prog.ZeroWire(conn, streaming)
+				if err != nil {
+					return nil, nil, err
+				}
+				signWire = zero
+			}
 			if !instr.In[1].Const {
 				return nil, nil,
 					fmt.Errorf("%s: only constant shift supported", instr.Op)
@@ -291,11 +305,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				if bit+count < len(wires[0]) {
 					id = wires[0][bit+count].ID
 				} else {
-					w, err := prog.ZeroWire(conn, streaming)
-					if err != nil {
-						return nil, nil, err
-					}
-					id = w.ID
+					id = signWire.ID
 				}
 				out[bit].ID = id
 			}
@@ -344,17 +354,88 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				out[bit-from].ID = id
 			}
 
-		case Mov:
+		case Mov, Smov:
+			var signWire *circuits.Wire
+			if instr.Op == Srshift {
+				one, err := prog.OneWire(conn, streaming)
+				if err != nil {
+					return nil, nil, err
+				}
+				signWire = one
+			} else {
+				zero, err := prog.ZeroWire(conn, streaming)
+				if err != nil {
+					return nil, nil, err
+				}
+				signWire = zero
+			}
 			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
 				var id uint32
 				if bit < len(wires[0]) {
 					id = wires[0][bit].ID
 				} else {
-					w, err := prog.ZeroWire(conn, streaming)
-					if err != nil {
-						return nil, nil, err
+					id = signWire.ID
+				}
+				out[bit].ID = id
+			}
+
+		case Amov:
+			// v arr from to:
+			// array[from:to] = v
+
+			if !instr.In[2].Const {
+				return nil, nil, fmt.Errorf("%s: only constant index supported",
+					instr.Op)
+			}
+			var from int
+			switch val := instr.In[2].ConstValue.(type) {
+			case int32:
+				from = int(val)
+			default:
+				return nil, nil, fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+
+			if !instr.In[3].Const {
+				return nil, nil, fmt.Errorf("%s: only constant index supported",
+					instr.Op)
+			}
+			var to int
+			switch val := instr.In[3].ConstValue.(type) {
+			case int32:
+				to = int(val)
+			default:
+				return nil, nil, fmt.Errorf("%s: unsupported index type %T",
+					instr.Op, val)
+			}
+			if from < 0 || from >= to {
+				return nil, nil, fmt.Errorf("%s: bounds out of range [%d:%d]",
+					instr.Op, from, to)
+			}
+
+			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+				var id uint32
+				if bit < from || bit >= to {
+					if bit < len(wires[1]) {
+						id = wires[1][bit].ID
+					} else {
+						w, err := prog.ZeroWire(conn, streaming)
+						if err != nil {
+							return nil, nil, err
+						}
+						id = w.ID
 					}
-					id = w.ID
+				} else {
+					idx := bit - from
+					if idx < len(wires[0]) {
+						id = wires[0][idx].ID
+					} else {
+						w, err := prog.ZeroWire(conn, streaming)
+						if err != nil {
+							return nil, nil, err
+						}
+						id = w.ID
+					}
 				}
 				out[bit].ID = id
 			}
