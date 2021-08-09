@@ -265,15 +265,15 @@ form assembly:
    - [X] Parsing Ed25519 MPCL files
      - [ ] for-range statements
      - [ ] local variables in for-loop unrolling
-   - [ ] Pointer handling
-     - [ ] Pointer to struct field
+   - [X] Pointer handling
+     - [X] Pointer to struct field
    - [ ] Compound init values must be zero-padded to full size
    - [X] Method calls
-   - [ ] Signed / unsigned arithmetics
+   - [X] Signed / unsigned arithmetics
    - [X] `byte` type
-   - [ ] Ed25519 functions
-     - [X] ScMulAdd
-     - [X] ScReduce
+   - [ ] Circuit generation:
+     - [ ] SSA variable liveness analysis must be optimized
+     - [ ] Optimizing ssa.Value memory usage
 
 # Running benchmark: 32-bit RSA encryption (64-bit modp)
 
