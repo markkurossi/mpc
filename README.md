@@ -267,10 +267,8 @@ form assembly:
      - [ ] local variables in for-loop unrolling
    - [X] Pointer handling
      - [X] Pointer to struct field
+     - [ ] Cleanup pointer r-value handling
    - [ ] Compound init values must be zero-padded to full size
-   - [X] Method calls
-   - [X] Signed / unsigned arithmetics
-   - [X] `byte` type
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
      - [ ] Optimizing ssa.Value memory usage
