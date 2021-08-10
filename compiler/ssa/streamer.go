@@ -14,6 +14,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
@@ -369,9 +370,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				}
 				signWire = zero
 			}
-			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+			for bit := types.Size(0); bit < instr.Out.Type.Bits; bit++ {
 				var id uint32
-				if bit < len(wires[0]) {
+				if bit < types.Size(len(wires[0])) {
 					id = wires[0][bit].ID
 				} else {
 					id = signWire.ID
@@ -387,10 +388,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				return nil, nil, fmt.Errorf("%s: only constant index supported",
 					instr.Op)
 			}
-			var from int
+			var from types.Size
 			switch val := instr.In[2].ConstValue.(type) {
 			case int32:
-				from = int(val)
+				from = types.Size(val)
 			default:
 				return nil, nil, fmt.Errorf("%s: unsupported index type %T",
 					instr.Op, val)
@@ -400,10 +401,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				return nil, nil, fmt.Errorf("%s: only constant index supported",
 					instr.Op)
 			}
-			var to int
+			var to types.Size
 			switch val := instr.In[3].ConstValue.(type) {
 			case int32:
-				to = int(val)
+				to = types.Size(val)
 			default:
 				return nil, nil, fmt.Errorf("%s: unsupported index type %T",
 					instr.Op, val)
@@ -413,10 +414,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 					instr.Op, from, to)
 			}
 
-			for bit := 0; bit < instr.Out.Type.Bits; bit++ {
+			for bit := types.Size(0); bit < instr.Out.Type.Bits; bit++ {
 				var id uint32
 				if bit < from || bit >= to {
-					if bit < len(wires[1]) {
+					if bit < types.Size(len(wires[1])) {
 						id = wires[1][bit].ID
 					} else {
 						w, err := prog.ZeroWire(conn, streaming)
@@ -427,7 +428,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 					}
 				} else {
 					idx := bit - from
-					if idx < len(wires[0]) {
+					if idx < types.Size(len(wires[0])) {
 						id = wires[0][idx].ID
 					} else {
 						w, err := prog.ZeroWire(conn, streaming)
@@ -521,13 +522,13 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				var flat []*circuits.Wire
 
 				for _, in := range wires {
-					w := circuits.MakeWires(len(in))
+					w := circuits.MakeWires(types.Size(len(in)))
 					cIn = append(cIn, w)
 					flat = append(flat, w...)
 				}
 
 				cOut := circuits.MakeWires(instr.Out.Type.Bits)
-				for i := 0; i < instr.Out.Type.Bits; i++ {
+				for i := types.Size(0); i < instr.Out.Type.Bits; i++ {
 					cOut[i].Output = true
 				}
 
@@ -853,33 +854,21 @@ var circuitGenerators = map[Operand]NewCircuit{
 	},
 	Bts: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 		out []*circuits.Wire) (bool, error) {
-		if !instr.In[1].Const {
+		index, err := instr.In[1].ConstInt()
+		if err != nil {
 			return false,
-				fmt.Errorf("%s only constant index supported", instr.Op)
-		}
-		var index int
-		switch val := instr.In[1].ConstValue.(type) {
-		case int32:
-			index = int(val)
-		default:
-			return false,
-				fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+				fmt.Errorf("%s unsupported index type %T: %s",
+					instr.Op, instr.In[1], err)
 		}
 		return false, circuits.NewBitSetTest(cc, in[0], index, out)
 	},
 	Btc: func(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 		out []*circuits.Wire) (bool, error) {
-		if !instr.In[1].Const {
+		index, err := instr.In[1].ConstInt()
+		if err != nil {
 			return false,
-				fmt.Errorf("%s only constant index supported", instr.Op)
-		}
-		var index int
-		switch val := instr.In[1].ConstValue.(type) {
-		case int32:
-			index = int(val)
-		default:
-			return false,
-				fmt.Errorf("%s unsupported index type %T", instr.Op, val)
+				fmt.Errorf("%s unsupported index type %T: %s",
+					instr.Op, instr.In[1], err)
 		}
 		return false, circuits.NewBitClrTest(cc, in[0], index, out)
 	},

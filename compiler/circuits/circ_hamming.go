@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,6 +8,7 @@ package circuits
 
 import (
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 // Hamming creates a hamming distance circuit computing computing the
@@ -26,7 +27,7 @@ func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 		var n [][]*Wire
 		for i := 0; i < len(arr); i += 2 {
 			if i+1 < len(arr) {
-				result := MakeWires(len(arr[i]) + 1)
+				result := MakeWires(types.Size(len(arr[i]) + 1))
 				err := NewAdder(compiler, arr[i], arr[i+1], result)
 				if err != nil {
 					return err

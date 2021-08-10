@@ -598,16 +598,19 @@ func (i Instr) PP(out io.Writer) {
 	fmt.Fprintf(out, "\t%s\n", i)
 }
 
+// Scope defines variable scope (max 256 levels of nested blocks).
+type Scope int16
+
 // Value implements SSA value binding.
 type Value struct {
-	ID         ValueID
 	Name       string
-	Scope      int
-	Version    int
-	Type       types.Info
+	ID         ValueID
 	TypeRef    bool
-	PtrInfo    PtrInfo
 	Const      bool
+	Scope      Scope
+	Version    int32
+	Type       types.Info
+	PtrInfo    *PtrInfo
 	ConstValue interface{}
 }
 
@@ -615,9 +618,9 @@ type Value struct {
 type PtrInfo struct {
 	Name          string
 	Bindings      *Bindings
-	Scope         int
+	Scope         Scope
+	Offset        types.Size
 	ContainerType types.Info
-	Offset        int
 }
 
 func (ptr PtrInfo) String() string {
@@ -679,13 +682,19 @@ func (v Value) String() string {
 }
 
 // ConstInt returns the value as const integer.
-func (v *Value) ConstInt() (int, error) {
+func (v *Value) ConstInt() (types.Size, error) {
 	if !v.Const {
 		return 0, fmt.Errorf("value is not constant")
 	}
 	switch val := v.ConstValue.(type) {
+	case int:
+		return types.Size(val), nil
 	case int32:
-		return int(val), nil
+		return types.Size(val), nil
+	case int64:
+		return types.Size(val), nil
+	case uint64:
+		return types.Size(val), nil
 
 	default:
 		return 0, fmt.Errorf("cannot use %v as integer", val)
@@ -707,10 +716,10 @@ func (v *Value) Value(block *Block, gen *Generator) Value {
 }
 
 // Bit tests if the argument bit is set in the value.
-func (v *Value) Bit(bit int) bool {
+func (v *Value) Bit(bit types.Size) bool {
 	arr, ok := v.ConstValue.([]interface{})
 	if ok {
-		length := len(arr)
+		length := types.Size(len(arr))
 		elBits := v.Type.Bits / length
 		idx := bit / elBits
 		ofs := bit % elBits
@@ -723,7 +732,7 @@ func (v *Value) Bit(bit int) bool {
 	return isSet(v.ConstValue, v.Type, bit)
 }
 
-func isSet(v interface{}, vt types.Info, bit int) bool {
+func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 	switch val := v.(type) {
 	case bool:
 		if bit == 0 {
@@ -750,16 +759,16 @@ func isSet(v interface{}, vt types.Info, bit int) bool {
 		return (val & (1 << bit)) != 0
 
 	case *big.Int:
-		if bit > val.BitLen() {
+		if bit > types.Size(val.BitLen()) {
 			return false
 		}
-		return val.Bit(bit) != 0
+		return val.Bit(int(bit)) != 0
 
 	case string:
 		bytes := []byte(val)
 		idx := bit / types.ByteBits
 		mod := bit % types.ByteBits
-		if idx >= len(bytes) {
+		if idx >= types.Size(len(bytes)) {
 			return false
 		}
 		return bytes[idx]&(1<<mod) != 0

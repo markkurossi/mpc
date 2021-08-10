@@ -130,7 +130,7 @@ func (bindings Bindings) Merge(cond Value, falseBindings *Bindings) *Bindings {
 // Binding implements a value binding.
 type Binding struct {
 	Name  string
-	Scope int
+	Scope Scope
 	Type  types.Info
 	Bound BindingValue
 }

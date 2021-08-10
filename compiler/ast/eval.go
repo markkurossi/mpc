@@ -87,7 +87,7 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		env.Set(lValue, &constVal)
 	}
-	arrType.ArraySize = len(values)
+	arrType.ArraySize = types.Size(len(values))
 
 	return gen.Constant(values, arrType), true, nil
 }

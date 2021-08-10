@@ -82,7 +82,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		arg := circuit.IOArg{
 			Name: a.String(),
 			Type: a.Type.String(),
-			Size: a.Type.Bits,
+			Size: int(a.Type.Bits),
 		}
 		if typeInfo.Type == types.TStruct {
 			arg.Compound = flattenStruct(typeInfo)
@@ -123,7 +123,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		outputs = append(outputs, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type.String(),
-			Size: v.Type.Bits,
+			Size: int(v.Type.Bits),
 		})
 	}
 
@@ -164,7 +164,7 @@ func flattenStruct(t types.Info) circuit.IO {
 			result = append(result, circuit.IOArg{
 				Name: f.Name,
 				Type: f.Type.String(),
-				Size: f.Type.Bits,
+				Size: int(f.Type.Bits),
 			})
 		}
 	}
@@ -252,9 +252,9 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 	case TypeStruct:
 		// Construct compound type.
 		var fields []types.StructField
-		var bits int
-		var minBits int
-		var offset int
+		var bits types.Size
+		var minBits types.Size
+		var offset types.Size
 		for _, field := range def.StructFields {
 			info, err := field.Type.Resolve(env, ctx, gen)
 			if err != nil {

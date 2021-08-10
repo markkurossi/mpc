@@ -15,6 +15,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -28,7 +29,7 @@ type Program struct {
 	Constants      map[string]ConstantInst
 	Steps          []Step
 	wires          map[string]*wireAlloc
-	freeWires      map[int][][]*circuits.Wire
+	freeWires      map[types.Size][][]*circuits.Wire
 	nextWireID     uint32
 	zeroWire       *circuits.Wire
 	oneWire        *circuits.Wire
@@ -54,7 +55,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Constants: consts,
 		Steps:     steps,
 		wires:     make(map[string]*wireAlloc),
-		freeWires: make(map[int][][]*circuits.Wire),
+		freeWires: make(map[types.Size][][]*circuits.Wire),
 	}
 
 	// Inputs into wires.
@@ -62,7 +63,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		if len(arg.Name) == 0 {
 			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
-		wires, err := prog.Wires(arg.Name, arg.Size)
+		wires, err := prog.Wires(arg.Name, types.Size(arg.Size))
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +81,9 @@ type Step struct {
 }
 
 // Wires allocates unassigned wires for the argument value.
-func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
+func (prog *Program) Wires(v string, bits types.Size) (
+	[]*circuits.Wire, error) {
+
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
@@ -93,7 +96,7 @@ func (prog *Program) Wires(v string, bits int) ([]*circuits.Wire, error) {
 }
 
 // AssignedWires allocates assigned wires for the argument value.
-func (prog *Program) AssignedWires(v string, bits int) (
+func (prog *Program) AssignedWires(v string, bits types.Size) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
@@ -106,7 +109,7 @@ func (prog *Program) AssignedWires(v string, bits int) (
 	return alloc.Wires, nil
 }
 
-func (prog *Program) allocWires(bits int, assign bool) *wireAlloc {
+func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
 
 	result := &wireAlloc{
 		Base: circuits.UnassignedID,
@@ -124,7 +127,7 @@ func (prog *Program) allocWires(bits int, assign bool) *wireAlloc {
 	if assign && result.Base == circuits.UnassignedID {
 		// Assign wire IDs.
 		result.Base = prog.nextWireID
-		for i := 0; i < bits; i++ {
+		for i := 0; i < int(bits); i++ {
 			result.Wires[i].ID = prog.nextWireID + uint32(i)
 		}
 		prog.nextWireID += uint32(bits)
@@ -138,8 +141,8 @@ func (prog *Program) recycleWires(alloc *wireAlloc) {
 		alloc.Base = alloc.Wires[0].ID
 	}
 	// Clear wires and reassign their IDs.
-	bits := len(alloc.Wires)
-	for i := 0; i < bits; i++ {
+	bits := types.Size(len(alloc.Wires))
+	for i := 0; i < int(bits); i++ {
 		alloc.Wires[i].ID = alloc.Base + uint32(i)
 		alloc.Wires[i].Output = false
 		alloc.Wires[i].NumOutputs = 0
@@ -286,7 +289,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
 		var wires []*circuits.Wire
 		var bitString string
-		for bit := 0; bit < c.Type.MinBits; bit++ {
+		for bit := types.Size(0); bit < c.Type.MinBits; bit++ {
 			var w *circuits.Wire
 			if c.Bit(bit) {
 				bitString = "1" + bitString

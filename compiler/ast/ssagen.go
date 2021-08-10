@@ -231,7 +231,7 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 			return nil, err
 		}
 		init := make([]interface{}, typeInfo.ArraySize)
-		for i := 0; i < typeInfo.ArraySize; i++ {
+		for i := types.Size(0); i < typeInfo.ArraySize; i++ {
 			init[i] = elInit
 		}
 		return init, nil
@@ -298,7 +298,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			if ok {
 				var dstName string
 				var dstType types.Info
-				var dstScope int
+				var dstScope ssa.Scope
 
 				switch b.Type.Type {
 				case types.TStruct:
@@ -798,7 +798,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				MinBits:     b.Type.Bits,
 				ElementType: &b.Type,
 			})
-			this.PtrInfo = ssa.PtrInfo{
+			this.PtrInfo = &ssa.PtrInfo{
 				Name:          ast.Ref.Name.Package,
 				Bindings:      bindings,
 				Scope:         b.Scope,
@@ -1301,9 +1301,9 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			var bindings *ssa.Bindings
 			var containerType types.Info
 			var elementType types.Info
-			var elementOffset int
+			var elementOffset types.Size
 			var ptrName string
-			var ptrScope int
+			var ptrScope ssa.Scope
 
 			if len(v.Name.Package) == 0 {
 				// Identifier
@@ -1375,7 +1375,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				MinBits:     elementType.Bits,
 				ElementType: &elementType,
 			})
-			t.PtrInfo = ssa.PtrInfo{
+			t.PtrInfo = &ssa.PtrInfo{
 				Name:          ptrName,
 				Scope:         ptrScope,
 				Bindings:      bindings,
@@ -1410,7 +1410,8 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 }
 
 func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	index *Index) (lrv *LRValue, ptrType *types.Info, offset int, err error) {
+	index *Index) (
+	lrv *LRValue, ptrType *types.Info, offset types.Size, err error) {
 
 	switch indexed := index.Expr.(type) {
 	case *VariableRef:
@@ -1443,7 +1444,7 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	if len(indices) != 1 {
 		return nil, nil, 0, ctx.Errorf(index, "invalid index")
 	}
-	var ival int
+	var ival types.Size
 	ival, err = indices[0].ConstInt()
 	if err != nil {
 		err = ctx.Errorf(index.Index, "%s", err)
@@ -1458,11 +1459,11 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 }
 
 func lookupElement(ctx *Codegen, loc utils.Locator, t types.Info, name string) (
-	types.Info, int, error) {
+	types.Info, types.Size, error) {
 
 	switch t.Type {
 	case types.TStruct:
-		var offset int
+		var offset types.Size
 		for _, field := range t.Struct {
 			if field.Name == name {
 				return field.Type, offset, nil
@@ -1492,8 +1493,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	expr := exprs[0]
 	elementType := expr.ElementType()
 
-	var elementSize int
-	var elementCount int
+	var elementSize types.Size
+	var elementCount types.Size
 
 	switch elementType.Type {
 	case types.TInt, types.TUint:
@@ -1510,7 +1511,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	var val []ssa.Value
-	var from int
+	var from types.Size
 	if ast.From == nil {
 		from = 0
 	} else {
@@ -1526,7 +1527,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.From, "%s", err)
 		}
 	}
-	var to int
+	var to types.Size
 	if ast.To == nil {
 		to = elementCount
 	} else {
@@ -1623,7 +1624,7 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var ptrInfo ssa.PtrInfo
 	if expr.Type.Type == types.TPtr {
 		it = *expr.Type.ElementType
-		ptrInfo = expr.PtrInfo
+		ptrInfo = *expr.PtrInfo
 		b, ok := ptrInfo.Bindings.Get(ptrInfo.Name)
 		if !ok {
 			return nil, nil, ctx.Errorf(ast.Index, "undefined: %s",

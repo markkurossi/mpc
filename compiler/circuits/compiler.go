@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,6 +11,7 @@ import (
 	"math"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -257,9 +258,9 @@ func NewWire() *Wire {
 }
 
 // MakeWires creates bits number of wires.
-func MakeWires(bits int) []*Wire {
+func MakeWires(bits types.Size) []*Wire {
 	result := make([]*Wire, bits)
-	for i := 0; i < bits; i++ {
+	for i := 0; i < int(bits); i++ {
 		result[i] = NewWire()
 	}
 	return result

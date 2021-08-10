@@ -134,7 +134,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		if matches != nil {
 			tt, ok := types.Types[matches[1]]
 			if ok {
-				var bits int
+				var bits types.Size
 				if len(matches[2]) > 0 {
 					bits64, err := strconv.ParseUint(matches[2], 10, 64)
 					if err != nil {
@@ -143,13 +143,13 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 					if bits64 > math.MaxInt32 {
 						bits = math.MaxInt32
 					} else {
-						bits = int(bits64)
+						bits = types.Size(bits64)
 					}
 				} else {
 					// Undefined size.
 					bits = 0
 				}
-				if bits > gen.Params.MaxVarBits {
+				if bits > types.Size(gen.Params.MaxVarBits) {
 					return result, ctx.Errorf(ti, "bit size too large: %d > %d",
 						bits, gen.Params.MaxVarBits)
 				}
@@ -221,17 +221,10 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return result, ctx.Errorf(ti.ArrayLength,
 				"array length is not constant: %s", ti.ArrayLength)
 		}
-		var length int
-		switch l := constLength.ConstValue.(type) {
-		case int:
-			length = l
-		case int32:
-			length = int(l)
-		case uint64:
-			length = int(l)
-		default:
+		length, err := constLength.ConstInt()
+		if err != nil {
 			return result, ctx.Errorf(ti.ArrayLength,
-				"invalid array length: %s", ti.ArrayLength)
+				"invalid array length: %s", err)
 		}
 
 		// Element type.

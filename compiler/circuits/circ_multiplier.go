@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 // NewMultiplier creates a multiplier circuit implementing x*y=z.
@@ -171,34 +172,34 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 	bLow := b[:mid]
 	bHigh := b[mid:]
 
-	z0 := MakeWires(min(max(len(aLow), len(bLow))*2, len(r)))
+	z0 := MakeWires(types.Size(min(max(len(aLow), len(bLow))*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aLow, bLow, z0); err != nil {
 		return err
 	}
 	aSumLen := max(len(aLow), len(aHigh)) + 1
-	aSum := MakeWires(aSumLen)
+	aSum := MakeWires(types.Size(aSumLen))
 	if err := NewAdder(cc, aLow, aHigh, aSum); err != nil {
 		return err
 	}
 	bSumLen := max(len(bLow), len(bHigh)) + 1
-	bSum := MakeWires(bSumLen)
+	bSum := MakeWires(types.Size(bSumLen))
 	if err := NewAdder(cc, bLow, bHigh, bSum); err != nil {
 		return err
 	}
-	z1 := MakeWires(min(max(aSumLen, bSumLen)*2, len(r)))
+	z1 := MakeWires(types.Size(min(max(aSumLen, bSumLen)*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aSum, bSum, z1); err != nil {
 		return err
 	}
-	z2 := MakeWires(min(max(len(aHigh), len(bHigh))*2, len(r)))
+	z2 := MakeWires(types.Size(min(max(len(aHigh), len(bHigh))*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aHigh, bHigh, z2); err != nil {
 		return err
 	}
 
-	sub1 := MakeWires(len(r))
+	sub1 := MakeWires(types.Size(len(r)))
 	if err := NewSubtractor(cc, z1, z2, sub1); err != nil {
 		return err
 	}
-	sub2 := MakeWires(len(r))
+	sub2 := MakeWires(types.Size(len(r)))
 	if err := NewSubtractor(cc, sub1, z0, sub2); err != nil {
 		return err
 	}
@@ -206,7 +207,7 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 	shift1 := cc.ShiftLeft(z2, len(r), mid*2)
 	shift2 := cc.ShiftLeft(sub2, len(r), mid)
 
-	add1 := MakeWires(len(r))
+	add1 := MakeWires(types.Size(len(r)))
 	if err := NewAdder(cc, shift1, shift2, add1); err != nil {
 		return err
 	}

@@ -85,11 +85,11 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	var baseName string
 	var baseType types.Info
-	var baseScope int
+	var baseScope ssa.Scope
 	var baseBindings *ssa.Bindings
 	var base ssa.Value
 
-	var dstOffset int
+	var dstOffset types.Size
 	var elementType types.Info
 
 	switch dst.Type.Type {
@@ -150,7 +150,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	dstBits := dst.Type.Bits
 	srcBits := src.Type.Bits
 
-	var copied int
+	var copied types.Size
 	if srcBits > dstBits {
 		fromConst := gen.Constant(int32(0), types.Uint32)
 		toConst := gen.Constant(int32(dstBits), types.Uint32)
@@ -187,7 +187,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to len")
 	}
 
-	var val int
+	var val types.Size
 	switch args[0].Type.Type {
 	case types.TString:
 		val = args[0].Type.Bits / types.ByteBits
@@ -293,14 +293,11 @@ func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		return ssa.Undefined, false, ctx.Errorf(args[1], "%s", err)
 	}
 
-	var bits int
-	switch val := constVal.ConstValue.(type) {
-	case int32:
-		bits = int(val)
-
-	default:
+	bits, err := constVal.ConstInt()
+	if err != nil {
 		return ssa.Undefined, false, ctx.Errorf(loc,
-			"non-integer (%T) len argument in make(%s)", val, typeInfo)
+			"non-integer (%T) len argument in make(%s): %s",
+			constVal, typeInfo, err)
 	}
 	typeInfo.Bits = bits
 
@@ -371,7 +368,8 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	// Check that the argument types match.
 	for idx, io := range circ.Inputs {
 		arg := args[idx]
-		if io.Size < arg.Type.Bits || io.Size > arg.Type.Bits && !arg.Const {
+		if io.Size < int(arg.Type.Bits) || io.Size > int(arg.Type.Bits) &&
+			!arg.Const {
 			return nil, nil, ctx.Errorf(loc,
 				"invalid argument %d for native circuit: got %s, need %d",
 				idx, arg.Type, io.Size)
@@ -387,7 +385,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	for _, io := range circ.Outputs {
 		result = append(result, gen.AnonVal(types.Info{
 			Type: types.TUndefined,
-			Bits: io.Size,
+			Bits: types.Size(io.Size),
 		}))
 	}
 

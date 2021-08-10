@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/types"
 )
 
 // comparator tests if x>y if cin=0, and x>=y if cin=1.
@@ -130,12 +131,14 @@ func NewLogicalOR(compiler *Compiler, x, y, r []*Wire) error {
 }
 
 // NewBitSetTest tests if the index'th bit of x is set.
-func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
+func NewBitSetTest(compiler *Compiler, x []*Wire, index types.Size,
+	r []*Wire) error {
+
 	if len(r) != 1 {
 		return fmt.Errorf("invalid bit set test arguments: x=%d, r=%d",
 			len(x), len(r))
 	}
-	if index < len(x) {
+	if index < types.Size(len(x)) {
 		w := compiler.ZeroWire()
 		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
 	} else {
@@ -145,12 +148,14 @@ func NewBitSetTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
 }
 
 // NewBitClrTest tests if the index'th bit of x is unset.
-func NewBitClrTest(compiler *Compiler, x []*Wire, index int, r []*Wire) error {
+func NewBitClrTest(compiler *Compiler, x []*Wire, index types.Size,
+	r []*Wire) error {
+
 	if len(r) != 1 {
 		return fmt.Errorf("invalid bit clear test arguments: x=%d, r=%d",
 			len(x), len(r))
 	}
-	if index < len(x) {
+	if index < types.Size(len(x)) {
 		w := compiler.OneWire()
 		compiler.AddGate(NewBinary(circuit.XOR, x[index], w, r[0]))
 	} else {

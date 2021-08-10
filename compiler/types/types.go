@@ -12,11 +12,14 @@ import (
 	"fmt"
 )
 
-// ID specifies an unique ID for names types.
-type ID int
+// ID specifies an unique ID for named types.
+type ID int32
 
 // Type specifies an MPCL type.
-type Type int
+type Type int8
+
+// Size specify sizes and bit counts in circuits.
+type Size int32
 
 func (t Type) String() string {
 	for k, v := range Types {
@@ -81,12 +84,12 @@ var shortTypes = map[Type]string{
 type Info struct {
 	ID          ID
 	Type        Type
-	Bits        int
-	MinBits     int
+	Bits        Size
+	MinBits     Size
 	Struct      []StructField
 	ElementType *Info
-	ArraySize   int
-	Offset      int
+	ArraySize   Size
+	Offset      Size
 }
 
 // Undefined defines type info for undefined types.

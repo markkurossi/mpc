@@ -94,7 +94,7 @@ func (gen *Generator) AnonVal(t types.Info) Value {
 }
 
 // NewVal creates a new value with the name, type, and scope.
-func (gen *Generator) NewVal(name string, t types.Info, scope int) Value {
+func (gen *Generator) NewVal(name string, t types.Info, scope Scope) Value {
 
 	key := fmtKey(name, scope)
 	v, ok := gen.versions[key]
@@ -142,7 +142,7 @@ func (gen *Generator) RemoveConstant(c Value) {
 	}
 }
 
-func fmtKey(name string, scope int) string {
+func fmtKey(name string, scope Scope) string {
 	return fmt.Sprintf("%s@%d", name, scope)
 }
 
@@ -178,13 +178,15 @@ func (gen *Generator) BranchBlock(b *Block) *Block {
 // from the constant value.
 func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 
+	var minBits types.Size
+	var bits types.Size
+
 	v := Value{
 		Const:      true,
 		ConstValue: value,
 	}
 	switch val := value.(type) {
 	case int8:
-		var minBits int
 		// Count minimum bits needed to represent the value.
 		for minBits = 1; minBits < 8; minBits++ {
 			if (0xffffffff<<minBits)&uint64(val) == 0 {
@@ -204,7 +206,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 	case uint8:
-		var minBits int
 		// Count minimum bits needed to represent the value.
 		for minBits = 1; minBits < 8; minBits++ {
 			if (0xffffffff<<minBits)&uint64(val) == 0 {
@@ -220,7 +221,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 	case int32:
-		var minBits int
 		// Count minimum bits needed to represent the value.
 		for minBits = 1; minBits < 32; minBits++ {
 			if (0xffffffff<<minBits)&uint64(val) == 0 {
@@ -248,7 +248,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 	case int64:
-		var minBits int
 		// Count minimum bits needed to represent the value.
 		for minBits = 1; minBits < 64; minBits++ {
 			if (0xffffffffffffffff<<minBits)&uint64(val) == 0 {
@@ -256,7 +255,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 
-		var bits int
 		if minBits > 32 {
 			bits = 64
 		} else {
@@ -275,7 +273,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 	case uint64:
-		var minBits int
 		// Count minimum bits needed to represent the value.
 		for minBits = 1; minBits < 64; minBits++ {
 			if (0xffffffffffffffff<<minBits)&val == 0 {
@@ -283,7 +280,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 
-		var bits int
 		if minBits > 32 {
 			bits = 64
 		} else {
@@ -308,8 +304,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 				Type: types.TUint,
 			}
 		}
-		minBits := val.BitLen()
-		var bits int
+		minBits = types.Size(val.BitLen())
 		if minBits > 64 {
 			bits = minBits
 		} else if minBits > 32 {
@@ -327,7 +322,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 
 	case string:
 		v.Name = fmt.Sprintf("$%q", val)
-		bits := len([]byte(val)) * types.ByteBits
+		bits = types.Size(len([]byte(val)) * types.ByteBits)
 
 		v.Type = types.Info{
 			Type:    types.TString,
@@ -336,13 +331,12 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 	case []interface{}:
-		var bits int
 		var length string
 		var name string
 
 		if len(val) > 0 {
 			ev := gen.Constant(val[0], types.Undefined)
-			bits = ev.Type.Bits * len(val)
+			bits = ev.Type.Bits * types.Size(len(val))
 			name = ev.Type.String()
 			length = fmt.Sprintf("%d", len(val))
 		} else {
@@ -363,7 +357,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 				Bits:        bits,
 				MinBits:     bits,
 				ElementType: ti.ElementType,
-				ArraySize:   len(val),
+				ArraySize:   types.Size(len(val)),
 			}
 		} else {
 			v.Type = ti

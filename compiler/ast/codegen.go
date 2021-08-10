@@ -116,7 +116,7 @@ type LRValue struct {
 	ast         AST
 	block       *ssa.Block
 	gen         *ssa.Generator
-	baseInfo    ssa.PtrInfo
+	baseInfo    *ssa.PtrInfo
 	baseValue   ssa.Value
 	valueType   types.Info
 	value       ssa.Value
@@ -141,7 +141,7 @@ func (lrv *LRValue) BaseValue() ssa.Value {
 }
 
 // BasePtrInfo returns the base value as PtrInfo.
-func (lrv *LRValue) BasePtrInfo() ssa.PtrInfo {
+func (lrv *LRValue) BasePtrInfo() *ssa.PtrInfo {
 	return lrv.baseInfo
 }
 
@@ -246,7 +246,7 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 					return nil, false, err
 				}
 			} else {
-				lrv.baseInfo = ssa.PtrInfo{
+				lrv.baseInfo = &ssa.PtrInfo{
 					Name:          ref.Name.Package,
 					Bindings:      env,
 					Scope:         b.Scope,
@@ -330,7 +330,7 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 			return nil, false, err
 		}
 	} else {
-		lrv.baseInfo = ssa.PtrInfo{
+		lrv.baseInfo = &ssa.PtrInfo{
 			Name:          ref.Name.Name,
 			Bindings:      env,
 			Scope:         b.Scope,
@@ -351,7 +351,7 @@ func (ctx *Codegen) Func() *Func {
 }
 
 // Scope returns the value scope in the current compilation.
-func (ctx *Codegen) Scope() int {
+func (ctx *Codegen) Scope() ssa.Scope {
 	if ctx.Func() != nil {
 		return 1
 	}
