@@ -327,7 +327,7 @@ func (prog *Program) PP(out io.Writer) {
 		step.Instr.PP(out)
 		if false {
 			for _, live := range step.Live {
-				fmt.Fprintf(out, "#\t\t- %s\n", live)
+				fmt.Fprintf(out, "#\t\t- %v\n", live)
 			}
 		}
 	}
