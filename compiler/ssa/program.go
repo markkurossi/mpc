@@ -9,6 +9,7 @@ package ssa
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"sort"
 	"strings"
 	"time"
@@ -243,25 +244,91 @@ func (prog *Program) liveness() {
 // GC adds garbage collect (gc) instructions to recycle dead value
 // wires.
 func (prog *Program) GC() {
-	steps := make([]Step, 0, len(prog.Steps))
-	last := NewSet()
-	for _, step := range prog.Steps {
-		// GC dead values.
-		deleted := last.Copy()
-		deleted.Subtract(step.Live)
-		if len(last) > 0 {
-			for _, d := range deleted.Array() {
-				steps = append(steps, Step{
-					Instr: NewGCInstr(d.String()),
-					Live:  last.Copy(),
-				})
-				last.Remove(d)
+	set := big.NewInt(0)
+
+	// Return values are live at the end of the program.
+	if len(prog.Steps) == 0 {
+		panic("empty program")
+	}
+	last := prog.Steps[len(prog.Steps)-1]
+	if last.Instr.Op != Ret {
+		panic("last instruction is not return")
+	}
+	for _, in := range last.Instr.In {
+		set.SetBit(set, int(in.ID), 1)
+	}
+
+	if prog.Params.Verbose {
+		fmt.Println("Program.GC()...")
+	}
+	start := time.Now()
+
+	// Collect value aliases.
+	aliases := make(map[ValueID][]Value)
+	for i := 0; i < len(prog.Steps); i++ {
+		step := &prog.Steps[i]
+		switch step.Instr.Op {
+		case Lshift, Rshift, Srshift, Slice, Mov, Smov, Amov:
+			// Output is an alias for all non-const inputs.
+			for _, in := range step.Instr.In {
+				if in.Const {
+					continue
+				}
+				aliases[in.ID] = append(aliases[in.ID], *step.Instr.Out)
 			}
 		}
-		last = step.Live
-		steps = append(steps, step)
 	}
+
+	steps := make([]Step, 0, len(prog.Steps))
+
+	for i := len(prog.Steps) - 1; i >= 0; i-- {
+		step := &prog.Steps[i]
+		var gcs []Step
+
+		for _, in := range step.Instr.In {
+			if in.Const {
+				continue
+			}
+			// Is input live after this instruction?
+			if set.Bit(int(in.ID)) == 0 {
+				var live bool
+				// Check if input aliases are live.
+				for _, alias := range aliases[in.ID] {
+					if set.Bit(int(alias.ID)) == 1 {
+						live = true
+					}
+				}
+				if !live {
+					// Input is not live.
+					gcs = append(gcs, Step{
+						Instr: NewGCInstr(in.String()),
+					})
+				}
+			}
+			set.SetBit(set, int(in.ID), 1)
+		}
+		if step.Instr.Out != nil {
+			set.SetBit(set, int(step.Instr.Out.ID), 0)
+		}
+
+		reverse(gcs)
+		steps = append(steps, gcs...)
+		steps = append(steps, *step)
+	}
+	reverse(steps)
 	prog.Steps = steps
+
+	elapsed := time.Since(start)
+
+	if prog.Params.Verbose {
+		fmt.Printf("Program.GC(): %s\n", elapsed)
+	}
+}
+
+func reverse(steps []Step) {
+	for i, j := 0, len(steps)-1; i < j; i, j = i+1, j-1 {
+		steps[i], steps[j] = steps[j], steps[i]
+	}
 }
 
 // DefineConstants defines the program constants.
