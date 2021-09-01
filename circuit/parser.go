@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -101,7 +101,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 	}
 
 	gates := make([]Gate, header.NumGates)
-	stats := make(map[Operation]int)
+	var stats Stats
 	var gate int
 	for gate = 0; ; gate++ {
 		op, err := r.ReadByte()
@@ -175,9 +175,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 		default:
 			return nil, fmt.Errorf("unsupported gate type %s", Operation(op))
 		}
-		count := stats[Operation(op)]
-		count++
-		stats[Operation(op)] = count
+		stats[Operation(op)]++
 	}
 
 	if uint32(gate) != header.NumGates {
@@ -348,7 +346,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 	}
 
 	gates := make([]Gate, numGates)
-	stats := make(map[Operation]int)
+	var stats Stats
 	var gate int
 	for gate = 0; ; gate++ {
 		line, err = readLine(r)
@@ -452,9 +450,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 			Output: outputs[0],
 			Op:     op,
 		}
-		count := stats[op]
-		count++
-		stats[op] = count
+		stats[op]++
 	}
 	if gate != numGates {
 		return nil, fmt.Errorf("not enough gates: got %d, expected %d",

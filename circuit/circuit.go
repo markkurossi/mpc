@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -22,6 +22,8 @@ const (
 	OR
 	INV
 )
+
+type Stats [INV + 1]int
 
 func (op Operation) String() string {
 	switch op {
@@ -149,7 +151,7 @@ type Circuit struct {
 	Inputs   IO
 	Outputs  IO
 	Gates    []Gate
-	Stats    map[Operation]int
+	Stats    Stats
 }
 
 func (c *Circuit) String() string {

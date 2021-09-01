@@ -211,11 +211,9 @@ func (c *Compiler) Compile() *circuit.Circuit {
 		gate.Compile(c)
 	}
 
-	stats := make(map[circuit.Operation]int)
+	var stats circuit.Stats
 	for _, g := range c.compiled {
-		count := stats[g.Op]
-		count++
-		stats[g.Op] = count
+		stats[g.Op]++
 	}
 
 	result := &circuit.Circuit{
