@@ -23,6 +23,7 @@ const (
 	INV
 )
 
+// Stats holds statistics about circuit operations.
 type Stats [INV + 1]int
 
 func (op Operation) String() string {
