@@ -18,6 +18,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"runtime"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -66,6 +67,8 @@ func main() {
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDebug := flag.Bool("d", false, "debug output")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
+	memprofile := flag.String("memprofile", "",
+		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	flag.Parse()
 
@@ -105,6 +108,7 @@ func main() {
 		} else {
 			err = streamGarblerMode(params, inputFlag, flag.Args())
 		}
+		memProfile(*memprofile)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
@@ -250,6 +254,22 @@ func main() {
 	}
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func memProfile(file string) {
+	if len(file) == 0 {
+		return
+	}
+
+	f, err := os.Create(file)
+	if err != nil {
+		log.Fatal("could not create memory profile: ", err)
+	}
+	defer f.Close()
+	runtime.GC()
+	if err := pprof.WriteHeapProfile(f); err != nil {
+		log.Fatal("could not write memory profile: ", err)
 	}
 }
 
