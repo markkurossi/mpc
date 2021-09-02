@@ -273,7 +273,9 @@ form assembly:
      - [ ] SSA variable liveness analysis must be optimized
      - [ ] Optimizing ssa.Value memory usage
 
-# Running benchmark: 32-bit RSA encryption (64-bit modp)
+# Benchmarks and tests
+
+## Running benchmark: 32-bit RSA encryption (64-bit modp)
 
 ```
 Circuit: #gates=7366376 (XOR=3146111 AND=3133757 OR=1032350 INV=54158)
@@ -435,8 +437,8 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 
 Optimized dynamic memory allocations from garbling:
 
-Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=5973116
 ```
+Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=5973116
 ┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op     ┃         Time ┃      % ┃  Xfer ┃
 ┡━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
@@ -449,6 +451,39 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=59731
 └────────┴──────────────┴────────┴───────┘
 ```
 
+## Ed25519 signature computation
+
+The first signature computation without SHA-256:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │       141.651µs │  0.00% │ 276B │
+│ OT Init     │    243.714662ms │  0.06% │ 264B │
+│ Peer Inputs │     69.857046ms │  0.02% │ 10kB │
+│ Eval        │ 6m55.975310366s │ 99.92% │ 25GB │
+│ Total       │ 6m56.289023725s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 43786395, cached circuits: 26
+#gates=935552365, #non-XOR=291882258
+```
+
+Optimized p2p.Conn.SendUint{16,32}() not to allocate memory:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │        41.043µs │  0.00% │ 276B │
+│ OT Init     │     166.70528ms │  0.07% │ 264B │
+│ Peer Inputs │     66.153689ms │  0.03% │ 10kB │
+│ Eval        │ 3m48.820978578s │ 99.90% │ 25GB │
+│ Total       │  3m49.05387859s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 43786395, cached circuits: 26
+#gates=935552365, #non-XOR=291882258
+```
 
 ## RSA signature computation
 
