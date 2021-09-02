@@ -1,0 +1,39 @@
+// -*- go -*-
+
+package main
+
+import (
+	"crypto/ed25519"
+)
+
+func main(ai, bi byte) [64]byte {
+	var digest1, messageDigest, hramDigest [64]byte
+	var expandedSecretKey [32]byte
+
+	var messageDigestReduced [32]byte
+	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
+	var R ed25519.ExtendedGroupElement
+	ed25519.GeScalarMultBase(&R, &messageDigestReduced)
+
+	var encodedR [32]byte
+	R.ToBytes(&encodedR)
+
+	// h.Reset()
+	// h.Write(encodedR[:])
+	// h.Write(privateKey[32:])
+	// h.Write(message)
+	// h.Sum(hramDigest[:0])
+
+	var hramDigestReduced [32]byte
+	ed25519.ScReduce(&hramDigestReduced, &hramDigest)
+
+	var s [32]byte
+	ed25519.ScMulAdd(&s, &hramDigestReduced, &expandedSecretKey, &messageDigestReduced)
+
+	var signature [64]byte
+
+	copy(signature[:], encodedR[:])
+	copy(signature[32:], s[:])
+
+	return signature
+}

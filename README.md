@@ -485,6 +485,23 @@ Max permanent wires: 43786395, cached circuits: 26
 #gates=935552365, #non-XOR=291882258
 ```
 
+Added one missing ed25519.ScReduce() (+1220540 gates, +381217 non-XOR gates):
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │        64.159µs │  0.00% │ 276B │
+│ OT Init     │    317.026065ms │  0.14% │ 264B │
+│ Peer Inputs │     66.088379ms │  0.03% │ 10kB │
+│ Eval        │ 3m46.188650399s │ 99.83% │ 25GB │
+│ Total       │ 3m46.571829002s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 43892147, cached circuits: 26
+#gates=936772905, #non-XOR=292263475
+```
+
+
 ## RSA signature computation
 
 | Input | MODP |     Gates | Non-XOR  | Stream Gates | Stream Non-XOR |
