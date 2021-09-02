@@ -146,10 +146,11 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	stream.initCircuit(c, in, out)
 
 	// Garble gates.
+	var data ot.LabelData
 	buf := make([]ot.Label, 4)
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		err := stream.GarbleGate(gate, uint32(i), buf)
+		err := stream.GarbleGate(gate, uint32(i), buf, &data)
 		if err != nil {
 			return err
 		}
@@ -159,7 +160,7 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 
 // GarbleGate garbles the gate and streams it to the stream.
 func (stream *Streaming) GarbleGate(g *Gate, id uint32,
-	table []ot.Label) error {
+	table []ot.Label, data *ot.LabelData) error {
 
 	var a, b, c ot.Wire
 	var aIndex, bIndex, cIndex Wire
@@ -236,10 +237,10 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L0, id)
-		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L0, id)
-		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id, data)
+		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L0, id, data)
+		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L0, id, data)
+		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id, data)
 		count = 4
 
 	case OR:
@@ -249,10 +250,10 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L1, id)
-		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L1, id)
-		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id, data)
+		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L1, id, data)
+		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L1, id, data)
+		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id, data)
 		count = 4
 
 	case INV:
@@ -260,8 +261,9 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		// -----
 		// 0   1
 		// 1   0
-		table[idxUnary(a.L0)] = encrypt(stream.alg, a.L0, ot.Label{}, c.L1, id)
-		table[idxUnary(a.L1)] = encrypt(stream.alg, a.L1, ot.Label{}, c.L0, id)
+		zero := ot.Label{}
+		table[idxUnary(a.L0)] = encrypt(stream.alg, a.L0, zero, c.L1, id, data)
+		table[idxUnary(a.L1)] = encrypt(stream.alg, a.L1, zero, c.L0, id, data)
 		count = 2
 
 	default:

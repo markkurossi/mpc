@@ -1,7 +1,7 @@
 //
 // enc_test.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -31,7 +31,9 @@ func TestEnc(t *testing.T) {
 		t.Fatalf("Failed to create cipher: %s", err)
 	}
 
-	encrypted := encrypt(cipher, a, b, c, tweak)
+	var data ot.LabelData
+
+	encrypted := encrypt(cipher, a, b, c, tweak, &data)
 	if err != nil {
 		t.Fatalf("Encrypt failed: %s", err)
 	}
@@ -67,8 +69,9 @@ func BenchmarkEnc(b *testing.B) {
 		b.Fatalf("Failed to create label: %s", err)
 	}
 
+	var data ot.LabelData
 	for i := 0; i < b.N; i++ {
-		encrypt(cipher, al, bl, cl, uint32(i))
+		encrypt(cipher, al, bl, cl, uint32(i), &data)
 	}
 }
 

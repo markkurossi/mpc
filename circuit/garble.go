@@ -39,16 +39,17 @@ func idx(l0, l1 ot.Label) int {
 	return ret
 }
 
-func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32) ot.Label {
+func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32,
+	data *ot.LabelData) ot.Label {
+
 	k := makeK(a, b, t)
 
-	var data ot.LabelData
-	k.GetData(&data)
+	k.GetData(data)
 
 	alg.Encrypt(data[:], data[:])
 
 	var pi ot.Label
-	pi.SetData(&data)
+	pi.SetData(data)
 
 	pi.Xor(k)
 	pi.Xor(c)
@@ -155,9 +156,10 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	}
 
 	// Garble gates.
+	var data ot.LabelData
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.Garble(wires, alg, r, uint32(i))
+		data, err := gate.Garble(wires, alg, r, uint32(i), &data)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +175,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 
 // Garble garbles the gate and returns it labels.
 func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
-	id uint32) ([]ot.Label, error) {
+	id uint32, data *ot.LabelData) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
@@ -237,10 +239,10 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// 0 1 0
 		// 1 0 0
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id)
-		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id)
-		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id, data)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id, data)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id, data)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id, data)
 		count = 4
 
 	case OR:
@@ -250,10 +252,10 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id)
-		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id)
-		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id)
-		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id)
+		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id, data)
+		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id, data)
+		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id, data)
+		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id, data)
 		count = 4
 
 	case INV:
@@ -261,8 +263,8 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// -----
 		// 0   1
 		// 1   0
-		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id)
-		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id)
+		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id, data)
+		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id, data)
 		count = 2
 
 	default:
