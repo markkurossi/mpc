@@ -81,7 +81,10 @@ func (stream *Streaming) ensureWires(wires []Wire) {
 		}
 	}
 	if len(stream.wires) <= int(max) {
-		n := make([]ot.Wire, max+1)
+		var i int
+		for i = 1024; i <= int(max); i <<= 1 {
+		}
+		n := make([]ot.Wire, i)
 		copy(n, stream.wires)
 		stream.wires = n
 	}
