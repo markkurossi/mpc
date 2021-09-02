@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -88,8 +88,10 @@ func (c *Conn) SendByte(val byte) error {
 
 // SendUint16 sends an uint16 value.
 func (c *Conn) SendUint16(val int) error {
-	err := binary.Write(c.io, binary.BigEndian, uint16(val))
-	if err != nil {
+	if err := c.io.WriteByte(byte((uint32(val) >> 8) & 0xff)); err != nil {
+		return err
+	}
+	if err := c.io.WriteByte(byte(uint32(val) & 0xff)); err != nil {
 		return err
 	}
 	c.Stats.Sent += 2
@@ -98,8 +100,16 @@ func (c *Conn) SendUint16(val int) error {
 
 // SendUint32 sends an uint32 value.
 func (c *Conn) SendUint32(val int) error {
-	err := binary.Write(c.io, binary.BigEndian, uint32(val))
-	if err != nil {
+	if err := c.io.WriteByte(byte((uint32(val) >> 24) & 0xff)); err != nil {
+		return err
+	}
+	if err := c.io.WriteByte(byte((uint32(val) >> 16) & 0xff)); err != nil {
+		return err
+	}
+	if err := c.io.WriteByte(byte((uint32(val) >> 8) & 0xff)); err != nil {
+		return err
+	}
+	if err := c.io.WriteByte(byte(uint32(val) & 0xff)); err != nil {
 		return err
 	}
 	c.Stats.Sent += 4
