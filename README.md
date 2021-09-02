@@ -433,6 +433,23 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0)
 ┗━━━━━━━━┻━━━━━━━━━━━━━━┻━━━━━━━━┻━━━━━━━┛
 ```
 
+Optimized dynamic memory allocations from garbling:
+
+Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=5973116
+```
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Wait   │ 574.859679ms │ 35.11% │       │
+│ Recv   │ 678.520719ms │ 41.44% │ 126MB │
+│ Inputs │  274.49709ms │ 16.77% │  41kB │
+│ Eval   │   109.1673ms │  6.67% │       │
+│ Result │    158.416µs │  0.01% │   1kB │
+│ Total  │ 1.637203204s │        │ 126MB │
+└────────┴──────────────┴────────┴───────┘
+```
+
+
 ## RSA signature computation
 
 | Input | MODP |     Gates | Non-XOR  | Stream Gates | Stream Non-XOR |
