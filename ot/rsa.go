@@ -1,7 +1,7 @@
 //
 // rsa.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -186,8 +186,8 @@ func (l *Label) Xor(o Label) {
 
 // GetData gets the labels as label data.
 func (l Label) GetData(buf *LabelData) {
-	binary.BigEndian.PutUint64((*buf)[0:8], l.d0)
-	binary.BigEndian.PutUint64((*buf)[8:16], l.d1)
+	binary.BigEndian.PutUint64(buf[0:8], l.d0)
+	binary.BigEndian.PutUint64(buf[8:16], l.d1)
 }
 
 // SetData sets the labels from label data.
@@ -197,9 +197,8 @@ func (l *Label) SetData(data *LabelData) {
 }
 
 // Bytes returns the label data as bytes.
-func (l Label) Bytes() []byte {
-	var buf LabelData
-	l.GetData(&buf)
+func (l Label) Bytes(buf *LabelData) []byte {
+	l.GetData(buf)
 	return buf[:]
 }
 

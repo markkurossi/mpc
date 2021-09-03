@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -456,8 +456,9 @@ func (peer *Peer) otrRespond(x1, x2 []ot.Label) error {
 		if err != nil {
 			return err
 		}
-		m0 := x1[bit].Bytes()
-		m1 := x2[bit].Bytes()
+		var m0Buf, m1Buf ot.LabelData
+		m0 := x1[bit].Bytes(&m0Buf)
+		m1 := x2[bit].Bytes(&m1Buf)
 
 		xfer, err := peer.otSender.NewTransfer(m0, m1)
 		if err != nil {
@@ -565,8 +566,9 @@ func (peer *Peer) exchangeSendArr(arr []ot.Label) (err error) {
 	if err := peer.conn.SendUint32(len(arr)); err != nil {
 		return err
 	}
+	var labelData ot.LabelData
 	for _, label := range arr {
-		if err := peer.conn.SendLabel(label); err != nil {
+		if err := peer.conn.SendLabel(label, &labelData); err != nil {
 			return err
 		}
 	}

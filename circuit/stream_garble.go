@@ -325,7 +325,7 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	}
 
 	for i := 0; i < count; i++ {
-		if err := stream.conn.SendLabel(table[i]); err != nil {
+		if err := stream.conn.SendLabel(table[i], data); err != nil {
 			return err
 		}
 	}

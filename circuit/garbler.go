@@ -77,12 +77,13 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	if err := conn.SendUint32(len(garbled.Gates)); err != nil {
 		return nil, err
 	}
+	var labelData ot.LabelData
 	for _, data := range garbled.Gates {
 		if err := conn.SendUint32(len(data)); err != nil {
 			return nil, err
 		}
 		for _, d := range data {
-			if err := conn.SendLabel(d); err != nil {
+			if err := conn.SendLabel(d, &labelData); err != nil {
 				return nil, err
 			}
 		}
@@ -108,7 +109,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 		if verbose && false {
 			fmt.Printf("N1[%d]:\t%s\n", idx, i)
 		}
-		if err := conn.SendLabel(i); err != nil {
+		if err := conn.SendLabel(i, &labelData); err != nil {
 			return nil, err
 		}
 	}
@@ -169,8 +170,9 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 			wire := garbled.Wires[bit]
 
-			m0Data := wire.L0.Bytes()
-			m1Data := wire.L1.Bytes()
+			var m0Buf, m1Buf ot.LabelData
+			m0Data := wire.L0.Bytes(&m0Buf)
+			m1Data := wire.L1.Bytes(&m1Buf)
 
 			xfer, err := sender.NewTransfer(m0Data, m1Data)
 			if err != nil {

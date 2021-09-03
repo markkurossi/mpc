@@ -131,8 +131,8 @@ func (c *Conn) SendData(val []byte) error {
 }
 
 // SendLabel sends an OT label.
-func (c *Conn) SendLabel(val ot.Label) error {
-	n, err := c.io.Write(val.Bytes())
+func (c *Conn) SendLabel(val ot.Label, data *ot.LabelData) error {
+	n, err := c.io.Write(val.Bytes(data))
 	if err != nil {
 		return err
 	}

@@ -1,7 +1,7 @@
 //
-// garbler.go
+// evaluator.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -141,8 +141,9 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	if err := conn.SendUint32(OpResult); err != nil {
 		return nil, err
 	}
+	var labelData ot.LabelData
 	for _, l := range labels {
-		if err := conn.SendLabel(l); err != nil {
+		if err := conn.SendLabel(l, &labelData); err != nil {
 			return nil, err
 		}
 	}

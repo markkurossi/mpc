@@ -90,11 +90,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	}
 
 	// Send our inputs.
+	var labelData ot.LabelData
 	for idx, i := range n1 {
 		if params.Verbose && false {
 			fmt.Printf("N1[%d]:\t%s\n", idx, i)
 		}
-		if err := conn.SendLabel(i); err != nil {
+		if err := conn.SendLabel(i, &labelData); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -131,8 +132,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 		wire := streaming.GetInput(circuit.Wire(bit))
 
-		m0Data := wire.L0.Bytes()
-		m1Data := wire.L1.Bytes()
+		var m0Buf, m1Buf ot.LabelData
+		m0Data := wire.L0.Bytes(&m0Buf)
+		m1Data := wire.L1.Bytes(&m1Buf)
 
 		xfer, err := sender.NewTransfer(m0Data, m1Data)
 		if err != nil {
@@ -535,6 +537,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 	}
 
+	result := new(big.Int)
+
 	op, err := conn.ReceiveUint32()
 	if err != nil {
 		return nil, nil, err
@@ -542,8 +546,6 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	if op != circuit.OpResult {
 		return nil, nil, fmt.Errorf("unexpected operation: %d", op)
 	}
-
-	result := new(big.Int)
 
 	for i := 0; i < prog.Outputs.Size(); i++ {
 		label, err := conn.ReceiveLabel()

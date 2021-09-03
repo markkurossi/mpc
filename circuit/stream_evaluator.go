@@ -379,8 +379,9 @@ loop:
 			if err := conn.SendUint32(OpResult); err != nil {
 				return nil, nil, err
 			}
+			var labelData ot.LabelData
 			for _, l := range labels {
-				if err := conn.SendLabel(l); err != nil {
+				if err := conn.SendLabel(l, &labelData); err != nil {
 					return nil, nil, err
 				}
 			}

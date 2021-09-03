@@ -501,6 +501,22 @@ Max permanent wires: 43892147, cached circuits: 26
 #gates=936772905, #non-XOR=292263475
 ```
 
+Optimizing p2p.Conn.SendLabel() not to allocate memory:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │        73.349µs │  0.00% │ 276B │
+│ OT Init     │    231.818904ms │  0.13% │ 264B │
+│ Peer Inputs │     67.641816ms │  0.04% │ 10kB │
+│ Eval        │ 2m57.583645976s │ 99.83% │ 25GB │
+│ Total       │ 2m57.883180045s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 43892147, cached circuits: 26
+#gates=936772905, #non-XOR=292263475
+```
+
 
 ## RSA signature computation
 
