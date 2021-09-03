@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -34,8 +34,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	m0Data := m0.Bytes()
-	m1Data := m1.Bytes()
+	var m0Buf, m1Buf ot.LabelData
+	m0Data := m0.Bytes(&m0Buf)
+	m1Data := m1.Bytes(&m1Buf)
 
 	sXfer, err := sender.NewTransfer(m0Data, m1Data)
 	if err != nil {
