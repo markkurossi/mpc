@@ -59,12 +59,18 @@ func (stream *StreamEval) Set(tmp bool, w int, label ot.Label) {
 // InitCircuit initializes the stream evaluator with wires.
 func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
 	if numWires > len(stream.wires) {
-		n := make([]ot.Label, numWires)
+		var size int
+		for size = 1024; size < numWires; size *= 2 {
+		}
+		n := make([]ot.Label, size)
 		copy(n, stream.wires)
 		stream.wires = n
 	}
 	if numTmpWires > len(stream.tmp) {
-		stream.tmp = make([]ot.Label, numTmpWires)
+		var size int
+		for size = 1024; size < numTmpWires; size *= 2 {
+		}
+		stream.tmp = make([]ot.Label, size)
 	}
 }
 

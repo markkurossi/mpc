@@ -8,7 +8,6 @@ package p2p
 
 import (
 	"bufio"
-	"encoding/binary"
 	"io"
 
 	"github.com/markkurossi/mpc/ot"
@@ -157,28 +156,41 @@ func (c *Conn) ReceiveByte() (byte, error) {
 
 // ReceiveUint16 receives an uint16 value.
 func (c *Conn) ReceiveUint16() (int, error) {
-	var buf [2]byte
-
-	_, err := io.ReadFull(c.io, buf[:])
+	b0, err := c.io.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b1, err := c.io.ReadByte()
 	if err != nil {
 		return 0, err
 	}
 	c.Stats.Recvd += 2
 
-	return int(binary.BigEndian.Uint16(buf[:])), nil
+	return int(uint32(b0)<<8 | uint32(b1)), nil
 }
 
 // ReceiveUint32 receives an uint32 value.
 func (c *Conn) ReceiveUint32() (int, error) {
-	var buf [4]byte
-
-	_, err := io.ReadFull(c.io, buf[:])
+	b0, err := c.io.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b1, err := c.io.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b2, err := c.io.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b3, err := c.io.ReadByte()
 	if err != nil {
 		return 0, err
 	}
 	c.Stats.Recvd += 4
 
-	return int(binary.BigEndian.Uint32(buf[:])), nil
+	return int(uint32(b0)<<24 | uint32(b1)<<16 | uint32(b2)<<8 | uint32(b3)),
+		nil
 }
 
 // ReceiveData receives binary data.
