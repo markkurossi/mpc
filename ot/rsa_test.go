@@ -1,7 +1,7 @@
 //
 // rsa_test.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -30,9 +30,10 @@ func benchmark(b *testing.B, keySize int) {
 
 	b.ResetTimer()
 
+	var l0Buf, l1Buf LabelData
 	for i := 0; i < b.N; i++ {
-		l0Data := l0.Bytes()
-		l1Data := l1.Bytes()
+		l0Data := l0.Bytes(&l0Buf)
+		l1Data := l1.Bytes(&l1Buf)
 		sXfer, err := sender.NewTransfer(l0Data, l1Data)
 		if err != nil {
 			b.Fatal(err)
