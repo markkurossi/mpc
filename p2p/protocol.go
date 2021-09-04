@@ -211,17 +211,15 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 }
 
 // ReceiveLabel receives an OT label.
-func (c *Conn) ReceiveLabel() (ot.Label, error) {
-	var buf ot.LabelData
-	n, err := io.ReadFull(c.io, buf[:])
+func (c *Conn) ReceiveLabel(val *ot.Label, data *ot.LabelData) error {
+	n, err := io.ReadFull(c.io, data[:])
 	if err != nil {
-		return ot.Label{}, err
+		return err
 	}
 	c.Stats.Recvd += uint64(n)
 
-	var result ot.Label
-	result.SetData(&buf)
-	return result, nil
+	val.SetData(data)
+	return nil
 }
 
 // ReceiveString receives a string value.

@@ -51,6 +51,8 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 		return nil, fmt.Errorf("wrong number of gates: got %d, expected %d",
 			count, circ.NumGates)
 	}
+	var label ot.Label
+	var labelData ot.LabelData
 	for i := 0; i < circ.NumGates; i++ {
 		count, err := conn.ReceiveUint32()
 		if err != nil {
@@ -59,11 +61,11 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 		values := make([]ot.Label, count)
 		for j := 0; j < count; j++ {
-			v, err := conn.ReceiveLabel()
+			err := conn.ReceiveLabel(&label, &labelData)
 			if err != nil {
 				return nil, err
 			}
-			values[j] = v
+			values[j] = label
 		}
 		garbled[i] = values
 	}
@@ -72,7 +74,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 	// Receive peer inputs.
 	for i := 0; i < circ.Inputs[0].Size; i++ {
-		label, err := conn.ReceiveLabel()
+		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +143,6 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	if err := conn.SendUint32(OpResult); err != nil {
 		return nil, err
 	}
-	var labelData ot.LabelData
 	for _, l := range labels {
 		if err := conn.SendLabel(l, &labelData); err != nil {
 			return nil, err

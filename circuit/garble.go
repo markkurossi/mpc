@@ -57,23 +57,22 @@ func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32,
 	return pi
 }
 
-func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label) (
-	ot.Label, error) {
+func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label,
+	data *ot.LabelData) ot.Label {
 
 	k := makeK(a, b, t)
 
-	var data ot.LabelData
-	k.GetData(&data)
+	k.GetData(data)
 
 	alg.Encrypt(data[:], data[:])
 
 	var crypted ot.Label
-	crypted.SetData(&data)
+	crypted.SetData(data)
 
 	c.Xor(crypted)
 	c.Xor(k)
 
-	return c, nil
+	return c
 }
 
 func makeK(a, b ot.Label, t uint32) ot.Label {

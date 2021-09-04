@@ -136,8 +136,10 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	}
 
 	// Receive peer inputs.
+	var label ot.Label
+	var labelData ot.LabelData
 	for w := 0; w < in1.Size; w++ {
-		label, err := conn.ReceiveLabel()
+		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -306,10 +308,11 @@ loop:
 				}
 
 				for c := 0; c < count; c++ {
-					garbled[c], err = conn.ReceiveLabel()
+					err = conn.ReceiveLabel(&label, &labelData)
 					if err != nil {
 						return nil, nil, err
 					}
+					garbled[c] = label
 				}
 
 				var a, b ot.Label
@@ -346,10 +349,8 @@ loop:
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, count)
 					}
-					output, err = decrypt(alg, a, b, uint32(i), garbled[index])
-					if err != nil {
-						return nil, nil, err
-					}
+					output = decrypt(alg, a, b, uint32(i), garbled[index],
+						&labelData)
 
 				case INV:
 					index := idxUnary(a)
@@ -358,10 +359,8 @@ loop:
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, count)
 					}
-					output, err = decrypt(alg, a, b, uint32(i), garbled[index])
-					if err != nil {
-						return nil, nil, err
-					}
+					output = decrypt(alg, a, b, uint32(i), garbled[index],
+						&labelData)
 				}
 				streaming.Set(cTmp, cIndex, output)
 			}

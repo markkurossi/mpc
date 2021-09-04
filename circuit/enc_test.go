@@ -38,10 +38,7 @@ func TestEnc(t *testing.T) {
 		t.Fatalf("Encrypt failed: %s", err)
 	}
 
-	plain, err := decrypt(cipher, a, b, tweak, encrypted)
-	if err != nil {
-		t.Fatalf("Decrypt failed: %s", err)
-	}
+	plain := decrypt(cipher, a, b, tweak, encrypted, &data)
 
 	if !c.Equal(plain) {
 		t.Fatalf("Encrypt-decrypt failed")

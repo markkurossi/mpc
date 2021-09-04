@@ -624,8 +624,10 @@ func (peer *Peer) exchangeReceiveArr() ([]ot.Label, error) {
 		return nil, err
 	}
 	var result []ot.Label
+	var label ot.Label
+	var data ot.LabelData
 	for i := 0; i < count; i++ {
-		label, err := peer.conn.ReceiveLabel()
+		err := peer.conn.ReceiveLabel(&label, &data)
 		if err != nil {
 			return nil, err
 		}

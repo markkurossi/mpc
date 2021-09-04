@@ -517,6 +517,20 @@ Max permanent wires: 43892147, cached circuits: 26
 #gates=936772905, #non-XOR=292263475
 ```
 
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │        72.412µs │  0.00% │ 276B │
+│ OT Init     │     201.50279ms │  0.12% │ 264B │
+│ Peer Inputs │     66.133977ms │  0.04% │ 10kB │
+│ Eval        │ 2m43.437916872s │ 99.84% │ 25GB │
+│ Total       │ 2m43.705626051s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 43893683, cached circuits: 26
+#gates=936737641, #non-XOR=292263475
+```
+
 
 ## RSA signature computation
 

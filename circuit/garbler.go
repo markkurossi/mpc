@@ -151,6 +151,8 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	done := false
 	result := big.NewInt(0)
 
+	var label ot.Label
+
 	for !done {
 		op, err := conn.ReceiveUint32()
 		if err != nil {
@@ -209,7 +211,7 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 		case OpResult:
 			for i := 0; i < circ.Outputs.Size(); i++ {
-				label, err := conn.ReceiveLabel()
+				err := conn.ReceiveLabel(&label, &labelData)
 				if err != nil {
 					return nil, err
 				}

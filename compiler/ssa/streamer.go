@@ -547,8 +547,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		return nil, nil, fmt.Errorf("unexpected operation: %d", op)
 	}
 
+	var label ot.Label
+
 	for i := 0; i < prog.Outputs.Size(); i++ {
-		label, err := conn.ReceiveLabel()
+		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, nil, err
 		}

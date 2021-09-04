@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Markku Rossi
+// Copyright (c) 2019-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -21,6 +21,8 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	if err != nil {
 		return err
 	}
+
+	var data ot.LabelData
 
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
@@ -54,10 +56,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output, err = decrypt(alg, a, b, uint32(i), row[index])
-			if err != nil {
-				return err
-			}
+			output = decrypt(alg, a, b, uint32(i), row[index], &data)
 
 		case INV:
 			row := garbled[i]
@@ -66,10 +65,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output, err = decrypt(alg, a, ot.Label{}, uint32(i), row[index])
-			if err != nil {
-				return err
-			}
+			output = decrypt(alg, a, ot.Label{}, uint32(i), row[index], &data)
 		}
 		wires[gate.Output] = output
 	}
