@@ -803,6 +803,9 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 				val, val.Type))
 		}
 
+	case types.Info:
+		return false
+
 	case []interface{}:
 		switch vt.Type {
 		case types.TStruct:

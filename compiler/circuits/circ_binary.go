@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,8 +15,9 @@ import (
 // NewBinaryAND creates a new binary AND circuit implementing r=x&y
 func NewBinaryAND(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(r) != len(x) {
-		return fmt.Errorf("invalid binary and arguments: r=%d", len(r))
+	if len(r) < len(x) {
+		x = x[0:len(r)]
+		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
 		compiler.AddGate(NewBinary(circuit.AND, x[i], y[i], r[i]))

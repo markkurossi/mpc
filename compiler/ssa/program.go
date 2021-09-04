@@ -356,7 +356,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
 		var wires []*circuits.Wire
 		var bitString string
-		for bit := types.Size(0); bit < c.Type.MinBits; bit++ {
+		for bit := types.Size(0); bit < c.Type.Bits; bit++ {
 			var w *circuits.Wire
 			if c.Bit(bit) {
 				bitString = "1" + bitString

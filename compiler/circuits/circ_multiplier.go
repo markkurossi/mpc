@@ -9,8 +9,6 @@
 package circuits
 
 import (
-	"fmt"
-
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/types"
 )
@@ -36,8 +34,8 @@ func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
 	if len(x) > len(z) {
-		return fmt.Errorf("invalid multiplier arguments: x=%d, y=%d, z=%d",
-			len(x), len(y), len(z))
+		x = x[0:len(z)]
+		y = y[0:len(z)]
 	}
 
 	// One bit multiplication is AND.
@@ -155,8 +153,8 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 
 	a, b = cc.ZeroPad(a, b)
 	if len(a) > len(r) {
-		return fmt.Errorf("invalid multiplier arguments: a=%d, b=%d, r=%d",
-			len(a), len(b), len(r))
+		a = a[0:len(r)]
+		b = b[0:len(r)]
 	}
 
 	// Compute smaller multiplications with array multiplier.

@@ -10,6 +10,9 @@ func main(ai, bi byte) [64]byte {
 	var digest1, messageDigest, hramDigest [64]byte
 	var expandedSecretKey [32]byte
 
+	messageDigest[0] = ai
+	messageDigest[1] = bi
+
 	var messageDigestReduced [32]byte
 	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
 	var R ed25519.ExtendedGroupElement
@@ -23,6 +26,8 @@ func main(ai, bi byte) [64]byte {
 	// h.Write(privateKey[32:])
 	// h.Write(message)
 	// h.Sum(hramDigest[:0])
+
+	copy(hramDigest, encodedR)
 
 	var hramDigestReduced [32]byte
 	ed25519.ScReduce(&hramDigestReduced, &hramDigest)

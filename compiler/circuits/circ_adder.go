@@ -9,8 +9,6 @@
 package circuits
 
 import (
-	"fmt"
-
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -55,9 +53,9 @@ func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
 // NewAdder creates a new adder circuit implementing z=x+y.
 func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(z) < len(x) {
-		return fmt.Errorf("invalid adder arguments: x=%d, y=%d, z=%d",
-			len(x), len(y), len(z))
+	if len(x) > len(z) {
+		x = x[0:len(z)]
+		y = y[0:len(z)]
 	}
 
 	if len(x) == 1 {
