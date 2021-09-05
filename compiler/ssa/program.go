@@ -34,8 +34,8 @@ type Program struct {
 	nextWireID     uint32
 	zeroWire       *circuits.Wire
 	oneWire        *circuits.Wire
-	numGates       uint64
-	numNonXOR      uint64
+	stats          circuit.Stats
+	numWires       int
 	garbleDuration time.Duration
 }
 

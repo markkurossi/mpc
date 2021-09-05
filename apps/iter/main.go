@@ -32,10 +32,10 @@ func main(a, b int%d) int {
 type result struct {
 	bits       int
 	bestLimit  int
-	bestCost   int
+	bestCost   uint64
 	worstLimit int
-	worstCost  int
-	costs      []int
+	worstCost  uint64
+	costs      []uint64
 }
 
 func main() {
@@ -67,10 +67,10 @@ func main() {
 			for ; bits <= *endBits; bits += *numWorkers {
 				code := fmt.Sprintf(template, bits)
 				var bestLimit int
-				var bestCost int
+				var bestCost uint64
 				var worstLimit int
-				var worstCost int
-				var costs []int
+				var worstCost uint64
+				var costs []uint64
 
 				params := utils.NewParams()
 
@@ -137,13 +137,13 @@ outer:
 
 // Sparkline creates a histogram chart of values. The chart is scaled
 // to [min...max] containing differences between values.
-func Sparkline(values []int) string {
+func Sparkline(values []uint64) string {
 	if len(values) == 0 {
 		return ""
 	}
 
-	min := math.MaxInt32
-	max := math.MinInt32
+	var min uint64 = math.MaxUint64
+	var max uint64
 
 	for _, v := range values {
 		if v < min {
@@ -157,7 +157,7 @@ func Sparkline(values []int) string {
 
 	var sb strings.Builder
 	for _, v := range values {
-		var tick int
+		var tick uint64
 		if delta == 0 {
 			tick = 4
 		} else {

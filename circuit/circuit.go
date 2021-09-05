@@ -24,7 +24,36 @@ const (
 )
 
 // Stats holds statistics about circuit operations.
-type Stats [INV + 1]int
+type Stats [INV + 1]uint64
+
+// Add adds the argument statistics to this statistics object.
+func (stats *Stats) Add(o Stats) {
+	for i := XOR; i <= INV; i++ {
+		stats[i] += o[i]
+	}
+}
+
+// Count returns the number of gates in the statistics object.
+func (stats Stats) Count() uint64 {
+	var result uint64
+	for i := XOR; i <= INV; i++ {
+		result += stats[i]
+	}
+	return result
+}
+
+func (stats Stats) String() string {
+	var result string
+
+	for i := XOR; i <= INV; i++ {
+		v := stats[i]
+		if len(result) > 0 {
+			result += " "
+		}
+		result += fmt.Sprintf("%s=%d", i, v)
+	}
+	return result
+}
 
 func (op Operation) String() string {
 	switch op {
@@ -156,20 +185,11 @@ type Circuit struct {
 }
 
 func (c *Circuit) String() string {
-	var stats string
-
-	for k := XOR; k <= INV; k++ {
-		v := c.Stats[k]
-		if len(stats) > 0 {
-			stats += " "
-		}
-		stats += fmt.Sprintf("%s=%d", k, v)
-	}
-	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, stats, c.NumWires)
+	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, c.Stats, c.NumWires)
 }
 
 // Cost computes the relative computational cost of the circuit.
-func (c *Circuit) Cost() int {
+func (c *Circuit) Cost() uint64 {
 	return (c.Stats[AND]+c.Stats[OR])*4 + c.Stats[INV]*2
 }
 

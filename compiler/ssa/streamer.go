@@ -582,7 +582,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
 		prog.nextWireID, len(cache))
-	fmt.Printf("#gates=%d, #non-XOR=%d\n", prog.numGates, prog.numNonXOR)
+	fmt.Printf("#gates=%d (%s) #w=%d\n", prog.stats.Count(), prog.stats,
+		prog.numWires)
 
 	return prog.Outputs, prog.Outputs.Split(result), nil
 }
@@ -631,10 +632,8 @@ func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
 			step, float64(circ.NumGates)/elapsed, dt)
 	}
 	prog.garbleDuration += dt
-	prog.numGates += uint64(circ.NumGates)
-	prog.numNonXOR += uint64(circ.Stats[circuit.AND])
-	prog.numNonXOR += uint64(circ.Stats[circuit.OR])
-	prog.numNonXOR += uint64(circ.Stats[circuit.INV])
+	prog.stats.Add(circ.Stats)
+	prog.numWires += circ.NumWires
 
 	return nil
 }
@@ -672,6 +671,9 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 					Output: 1,
 					Op:     circuit.XOR,
 				},
+			},
+			Stats: circuit.Stats{
+				circuit.XOR: 1,
 			},
 		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
 		if err != nil {
@@ -715,6 +717,9 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 					Output: 1,
 					Op:     circuit.XNOR,
 				},
+			},
+			Stats: circuit.Stats{
+				circuit.XNOR: 1,
 			},
 		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
 		if err != nil {
