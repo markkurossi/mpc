@@ -134,9 +134,11 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	err = program.Peephole()
-	if err != nil {
-		return nil, nil, err
+	if false { // XXX
+		err = program.Peephole()
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	program.GC()
 
