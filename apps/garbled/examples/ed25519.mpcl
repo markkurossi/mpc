@@ -32,6 +32,11 @@
 // TODO: the example is not yet fully functional:
 //  - arrays and slices must be passed by pointer, not by value
 //  - SHA-512 computation is missing
+//
+// The estimated performance:
+//  - The Ed25519 arithmetics: ~180s
+//  - 3x SHA-512 = 3*9s:        ~27s
+//  - Ed25519 sign:            ~207s = ~3m27s
 
 package main
 
