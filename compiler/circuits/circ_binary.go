@@ -7,8 +7,6 @@
 package circuits
 
 import (
-	"fmt"
-
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -28,8 +26,9 @@ func NewBinaryAND(compiler *Compiler, x, y, r []*Wire) error {
 // NewBinaryClear creates a new binary clear circuit implementing r=x&^y.
 func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(r) != len(x) {
-		return fmt.Errorf("invalid binary clear arguments: r=%d", len(r))
+	if len(r) < len(x) {
+		x = x[0:len(r)]
+		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
 		w := NewWire()
@@ -42,8 +41,9 @@ func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 // NewBinaryOR creates a new binary OR circuit implementing r=x|y.
 func NewBinaryOR(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(r) != len(x) {
-		return fmt.Errorf("invalid binary or arguments: r=%d", len(r))
+	if len(r) < len(x) {
+		x = x[0:len(r)]
+		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
 		compiler.AddGate(NewBinary(circuit.OR, x[i], y[i], r[i]))
@@ -54,8 +54,9 @@ func NewBinaryOR(compiler *Compiler, x, y, r []*Wire) error {
 // NewBinaryXOR creates a new binary XOR circuit implementing r=x^y.
 func NewBinaryXOR(compiler *Compiler, x, y, r []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(r) != len(x) {
-		return fmt.Errorf("invalid binary xor arguments: r=%d", len(r))
+	if len(r) < len(x) {
+		x = x[0:len(r)]
+		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
 		compiler.AddGate(NewBinary(circuit.XOR, x[i], y[i], r[i]))
