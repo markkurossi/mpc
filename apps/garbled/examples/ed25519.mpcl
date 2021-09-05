@@ -1,17 +1,87 @@
 // -*- go -*-
 
+// This example implements Ed25519 signature computation. The Ed25519
+// keypair is:
+//
+//	 pub  : eeaf1edd378f775a72e6ed706fd30077d3b21595af99898f3cdd0b450482b76f
+//
+//	 priv : 189d087817983d5d68c5fae03a74a719b49f4f0a0a82fe83f265c92e88faaa27
+//	        eeaf1edd378f775a72e6ed706fd30077d3b21595af99898f3cdd0b450482b76f
+//
+// The Garbler and Evaluator share the private key as two random
+// shares. The private key is contructed during the signature
+// computation by XOR:ing the random shares together:
+//
+// 	 privG: 5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd
+// 	        49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449
+//
+// 	 privE: 46eb82a021d88960fb13388b0e76ba13b84524ffe114d7f3a728b39efc185eea
+// 	        a7137132182bab7504daf200d882b787ee8b9b1c9f41be9c38fb4e0ba1aff326
+//
+//   priv = privG ^ privE
+//
+// Run the Evaluator with one input: the Evaluator's private key share:
+//
+// $ ./garbled -e -v -stream -i 0x46eb82a021d88960fb13388b0e76ba13b84524ffe114d7f3a728b39efc185eeaa7137132182bab7504daf200d882b787ee8b9b1c9f41be9c38fb4e0ba1aff326
+//
+// The Garbler takes two inputs: the message to sign, and the
+// Garbler's private key share:
+//
+// $ ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0x5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449 examples/ed25519.mpcl
+//
+// TODO: the example is not yet fully functional:
+//  - arrays and slices must be passed by pointer, not by value
+//  - SHA-512 computation is missing
+
 package main
 
 import (
 	"crypto/ed25519"
 )
 
-func main(ai, bi byte) [64]byte {
+type Garbler struct {
+	msg       [64]byte
+	privShare [64]byte
+}
+
+func main(g Garbler, privShare [64]byte) [64]byte {
+	var priv [64]byte
+
+	for i := 0; i < len(priv); i++ {
+		priv[i] = g.privShare[i] ^ privShare[i]
+	}
+
+	//return ed25519.Sign(priv, g.msg)
+	return Sign(priv, g.msg)
+}
+
+func Sign(privateKey [64]byte, message []byte) [64]byte {
+	var signature [64]byte
+	return sign(signature, privateKey, message)
+}
+
+func sign(signature, privateKey, message []byte) [64]byte {
+	// XXX h := sha512.New()
+	// XXX h.Write(privateKey[:32])
+
 	var digest1, messageDigest, hramDigest [64]byte
 	var expandedSecretKey [32]byte
 
-	messageDigest[0] = ai
-	messageDigest[1] = bi
+	// XXX h.Sum(digest1[:0])
+	copy(digest1, privateKey)
+
+	copy(expandedSecretKey[:], digest1[:])
+	expandedSecretKey[0] &= 248
+	expandedSecretKey[31] &= 63
+	expandedSecretKey[31] |= 64
+
+	// XXX h.Reset()
+	// XXX h.Write(digest1[32:])
+	// XXX h.Write(message)
+	// XXX h.Sum(messageDigest[:0])
+	for i := 0; i < len(privateKey); i++ {
+		messageDigest[i] = privateKey[i] ^ message[i]
+	}
 
 	var messageDigestReduced [32]byte
 	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
@@ -21,21 +91,20 @@ func main(ai, bi byte) [64]byte {
 	var encodedR [32]byte
 	R.ToBytes(&encodedR)
 
-	// h.Reset()
-	// h.Write(encodedR[:])
-	// h.Write(privateKey[32:])
-	// h.Write(message)
-	// h.Sum(hramDigest[:0])
-
-	copy(hramDigest, encodedR)
+	// XXX h.Reset()
+	// XXX h.Write(encodedR[:])
+	// XXX h.Write(privateKey[32:])
+	// XXX h.Write(message)
+	// XXX h.Sum(hramDigest[:0])
+	for i := 0; i < len(privateKey); i++ {
+		hramDigest[i] = privateKey[i] ^ message[i]
+	}
 
 	var hramDigestReduced [32]byte
 	ed25519.ScReduce(&hramDigestReduced, &hramDigest)
 
 	var s [32]byte
 	ed25519.ScMulAdd(&s, &hramDigestReduced, &expandedSecretKey, &messageDigestReduced)
-
-	var signature [64]byte
 
 	copy(signature[:], encodedR[:])
 	copy(signature[32:], s[:])

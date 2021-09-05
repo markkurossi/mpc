@@ -268,10 +268,11 @@ form assembly:
    - [X] Pointer handling
      - [X] Pointer to struct field
      - [ ] Cleanup pointer r-value handling
+     - [ ] Slices are passed by value instead of by reference
    - [ ] Compound init values must be zero-padded to full size
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
-     - [ ] Optimizing ssa.Value memory usage
+   - [ ] SHA-512 message digest
 
 # Benchmarks and tests
 

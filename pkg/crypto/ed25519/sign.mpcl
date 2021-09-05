@@ -26,30 +26,39 @@ const (
 	SeedSize = 32
 )
 
-// Sign signs the message with privateKey and returns a signature. It will
-// panic if len(privateKey) is not PrivateKeySize.
-func Sign(privateKey PrivateKey, message []byte) []byte {
+// XXX type PrivateKey [PrivateKeySize]byte
+type PrivateKey [64]byte
+
+// Sign signs the message with privateKey and returns a signature.
+// XXX []byte return value type
+func Sign(privateKey PrivateKey, message []byte) [64]byte {
 	var signature [SignatureSize]byte
 	sign(signature, privateKey, message)
 	return signature
 }
 
 func sign(signature, privateKey, message []byte) {
-	h := sha512.New()
-	h.Write(privateKey[:32])
+	// XXX h := sha512.New()
+	// XXX h.Write(privateKey[:32])
 
 	var digest1, messageDigest, hramDigest [64]byte
 	var expandedSecretKey [32]byte
-	h.Sum(digest1[:0])
+
+	// XXX h.Sum(digest1[:0])
+	copy(digest1, privateKey)
+
 	copy(expandedSecretKey[:], digest1[:])
 	expandedSecretKey[0] &= 248
 	expandedSecretKey[31] &= 63
 	expandedSecretKey[31] |= 64
 
-	h.Reset()
-	h.Write(digest1[32:])
-	h.Write(message)
-	h.Sum(messageDigest[:0])
+	// XXX h.Reset()
+	// XXX h.Write(digest1[32:])
+	// XXX h.Write(message)
+	// XXX h.Sum(messageDigest[:0])
+	for i := 0; i < len(privateKey); i++ {
+		messageDigest[i] = privateKey[i] ^ message[i]
+	}
 
 	var messageDigestReduced [32]byte
 	ScReduce(&messageDigestReduced, &messageDigest)
@@ -59,11 +68,15 @@ func sign(signature, privateKey, message []byte) {
 	var encodedR [32]byte
 	R.ToBytes(&encodedR)
 
-	h.Reset()
-	h.Write(encodedR[:])
-	h.Write(privateKey[32:])
-	h.Write(message)
-	h.Sum(hramDigest[:0])
+	// XXX h.Reset()
+	// XXX h.Write(encodedR[:])
+	// XXX h.Write(privateKey[32:])
+	// XXX h.Write(message)
+	// XXX h.Sum(hramDigest[:0])
+	for i := 0; i < len(privateKey); i++ {
+		hramDigest[i] = privateKey[i] ^ message[i]
+	}
+
 	var hramDigestReduced [32]byte
 	ScReduce(&hramDigestReduced, &hramDigest)
 
