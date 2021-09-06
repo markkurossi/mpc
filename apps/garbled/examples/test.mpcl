@@ -6,29 +6,9 @@ import (
 	"encoding/binary"
 )
 
-func main(a, b uint32) uint32 {
-	return hamming(a, b)
-}
-
-func hamming(a, b uint) uint {
-	var arr []uint
-	for i := 0; i < size(a); i++ {
-		arr = append(arr, a[i:i+1]^b[i:i+1])
+func main(a, b [8]byte) []byte {
+	for i := 0; i < len(a); i++ {
+		a[i] ^= b[i]
 	}
-
-	for len(arr) > 2 {
-		var n []uint
-		for i := 0; i < len(arr); i = i + 2 {
-			if i+1 < len(arr) {
-				sumType := make(uint, len(arr[i]+1))
-				n = append(n, sumType(arr[i])+sumType(arr[i+1]))
-			} else {
-				n = append(n, arr[i])
-			}
-		}
-		arr = n
-	}
-
-	sumType := make(uint, len(arr[0])+1)
-	return sumType(arr[0]) + sumType(arr[1])
+	return a
 }
