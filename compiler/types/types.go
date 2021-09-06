@@ -194,6 +194,20 @@ func (i *Info) Instantiate(o Info) bool {
 			i.Type = TPtr
 			i.ElementType = o.ElementType
 
+		case TInt:
+			switch o.Type {
+			case TUint:
+				if o.MinBits < o.Bits {
+					// Unsigned integer not using all bits i.e. it is
+					// non-negative. We can use it as r-value for
+					// signed integer.
+					i.Bits = o.Bits
+					i.MinBits = o.Bits
+					return true
+				}
+			}
+			return false
+
 		default:
 			return false
 		}

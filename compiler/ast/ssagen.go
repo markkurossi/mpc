@@ -968,18 +968,22 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Errorf(r, "invalid return type: %s", err)
 		}
-		if typeInfo.Bits == 0 {
-			typeInfo.Bits = result[idx].Type.Bits
+		// Instantiate result values for template functions.
+		if typeInfo.Bits == 0 && !typeInfo.Instantiate(result[idx].Type) {
+			return nil, nil, ctx.Errorf(ast,
+				"invalid value %v for return value %v",
+				result[idx].Type, typeInfo)
 		}
 		v := gen.NewVal(r.Name, typeInfo, ctx.Scope())
 
+		// The native() returns undefined values.
 		if result[idx].Type.Type == types.TUndefined {
 			result[idx].Type.Type = typeInfo.Type
 		}
 
-		if v.TypeCompatible(result[idx]) == nil {
+		if !ssa.LValueFor(typeInfo, result[idx]) {
 			return nil, nil, ctx.Errorf(ast,
-				"invalid value %v for result value %v",
+				"invalid value %v for return value %v",
 				result[idx].Type, v.Type)
 		}
 

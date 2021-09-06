@@ -107,15 +107,19 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		if err != nil {
 			return nil, nil, ctx.Errorf(rt, "invalid return type: %s", err)
 		}
-		if typeInfo.Bits == 0 {
-			typeInfo.Bits = returnVars[idx].Type.Bits
+		// Instantiate result values for template functions.
+		if typeInfo.Bits == 0 && !typeInfo.Instantiate(returnVars[idx].Type) {
+			return nil, nil, ctx.Errorf(main,
+				"invalid value %v for return value %d of %s",
+				returnVars[idx].Type, idx, main)
 		}
+		// The native() returns undefined values.
 		if returnVars[idx].Type.Type == types.TUndefined {
 			returnVars[idx].Type.Type = typeInfo.Type
 		}
 		if !ssa.LValueFor(typeInfo, returnVars[idx]) {
 			return nil, nil,
-				fmt.Errorf("invalid value %v for return value %d of %s",
+				ctx.Errorf(main, "invalid value %v for return value %d of %s",
 					returnVars[idx].Type, idx, main)
 		}
 
