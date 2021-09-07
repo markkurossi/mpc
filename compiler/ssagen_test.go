@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -261,7 +261,7 @@ import (
 )
 
 func main(data, a uint512) uint256 {
-    return sha256.Block(data, sha256.H0)
+    return sha256.Block(data, sha256.Init)
 }
 `,
 	},

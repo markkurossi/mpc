@@ -273,6 +273,8 @@ form assembly:
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
    - [ ] SHA-512 message digest
+     - [ ] Check that multi-block SHA-256 works
+     - [ ] Empty arrays should be allowed, now unspecified length
 
 # Benchmarks and tests
 
