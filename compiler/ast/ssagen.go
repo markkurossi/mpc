@@ -354,6 +354,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				return block, []ssa.Value{lValue}, nil
 			}
 
+			// XXX check if rv can be assigned to lv, also do not
+			// change the binding's type below in the assignment.
+
 			var lValue ssa.Value
 			b, ok = block.Bindings.Get(lv.Name.Name)
 			if ast.Define {

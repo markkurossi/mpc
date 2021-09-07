@@ -28,36 +28,36 @@ func Sum256(data []byte) [Size]byte {
 	pad[0] = 0x80
 
 	for i := 0; i < len(data); i++ {
-		block = block << 8
+		block <<= 8
 		block = block | uint512(data[i])
 
-		if i+1%BlockSize == 0 {
+		if (i+1)%BlockSize == 0 {
 			state = Block(block, state)
-			block = 0
+			block = uint512(0)
 		}
 	}
 	if len(data)%BlockSize < 56 {
 		for i := len(data) % BlockSize; i < 56; i++ {
-			block = block << 8
+			block <<= 8
 			block |= uint512(pad[i-len(data)%BlockSize])
 		}
 	} else {
 		for i := len(data) % BlockSize; i < BlockSize; i++ {
-			block = block << 8
+			block <<= 8
 			block |= uint512(pad[i-len(data)%BlockSize])
 		}
 		state = Block(block, state)
-		block = 0
+		block = uint512(0)
 	}
 	// Length in bits.
-	block = block << 64
+	block <<= 64
 	block |= uint512(len(data) << 3)
 
 	state = Block(block, state)
 
 	for i := 0; i < Size; i++ {
 		hash[Size-i-1] = byte(state & 0xff)
-		state = state >> 8
+		state >>= 8
 	}
 	return hash
 }
