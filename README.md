@@ -275,7 +275,6 @@ form assembly:
    - [ ] SHA-512 message digest
      - [X] Check that multi-block SHA-256 works
      - [ ] Empty arrays should be allowed, now unspecified length
-     - [ ] Check operator precedence in `i+1%BlockSize`
      - [ ] `block = 0` sets block's type to int32
      - [X] `block |= block << 8` not working: `block = block << 8`
 
