@@ -273,11 +273,11 @@ form assembly:
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
    - [ ] SHA-512 message digest
-     - [ ] Check that multi-block SHA-256 works
+     - [X] Check that multi-block SHA-256 works
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] Check operator precedence in `i+1%BlockSize`
      - [ ] `block = 0` sets block's type to int32
-     - [ ] `block |= block << 8` not working: `block = block << 8`
+     - [X] `block |= block << 8` not working: `block = block << 8`
 
 # Benchmarks and tests
 

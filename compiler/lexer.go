@@ -42,7 +42,9 @@ const (
 	TDefAssign
 	TMultEq
 	TDivEq
+	TLshiftEq
 	TLshift
+	TRshiftEq
 	TRshift
 	TPlusPlus
 	TPlusEq
@@ -80,7 +82,9 @@ var tokenTypes = map[TokenType]string{
 	TDefAssign:  ":=",
 	TMultEq:     "*=",
 	TDivEq:      "/=",
+	TLshiftEq:   "<<=",
 	TLshift:     "<<",
+	TRshiftEq:   ">>=",
 	TRshift:     ">>",
 	TPlusPlus:   "++",
 	TPlusEq:     "+=",
@@ -445,6 +449,17 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(TLe), nil
 			case '<':
+				r, _, err = l.ReadRune()
+				if err != nil {
+					if err == io.EOF {
+						return l.Token(TLshift), nil
+					}
+					return nil, err
+				}
+				if r == '=' {
+					return l.Token(TLshiftEq), nil
+				}
+				l.UnreadRune()
 				return l.Token(TLshift), nil
 			default:
 				l.UnreadRune()
@@ -463,6 +478,17 @@ func (l *Lexer) Get() (*Token, error) {
 			case '=':
 				return l.Token(TGe), nil
 			case '>':
+				r, _, err = l.ReadRune()
+				if err != nil {
+					if err == io.EOF {
+						return l.Token(TRshift), nil
+					}
+					return nil, err
+				}
+				if r == '=' {
+					return l.Token(TRshiftEq), nil
+				}
+				l.UnreadRune()
 				return l.Token(TRshift), nil
 			default:
 				l.UnreadRune()
