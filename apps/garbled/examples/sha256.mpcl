@@ -20,25 +20,4 @@ func main(g, e byte) []byte {
 	data[1] = 0x74
 	data[2] = 0x72
 	return sha256.Sum256(data[:])
-
-	var data [64]byte
-
-	data[0] = 0x6d
-	data[1] = 0x74
-	data[2] = 0x72
-	data[3] = 0x80
-	data[63] = 3 << 3
-
-	var block uint512
-	for i := 0; i < len(data); i++ {
-		block = block << 8
-		block |= uint512(data[i])
-	}
-	// return block
-
-	var state uint256 = sha256.Init
-
-	return sha256.Block(block, state)
-
-	//return sha256.Sum256(data)
 }
