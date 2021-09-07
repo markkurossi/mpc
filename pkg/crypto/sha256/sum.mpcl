@@ -1,0 +1,104 @@
+// -*- go -*-
+//
+// Copyright (c) 2020-2021 Markku Rossi
+//
+// All rights reserved.
+//
+
+package sha256
+
+// The size of a SHA256 checksum in bytes.
+const Size = 32
+
+// The blocksize of SHA256 and SHA224 in bytes.
+const BlockSize = 64
+
+const (
+	Chunk = 64
+	Init  = 0x6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19
+)
+
+// func (d *digest) checkSum() [Size]byte {
+// 	len := d.len
+// 	// Padding. Add a 1 bit and 0 bits until 56 bytes mod 64.
+// 	var tmp [64]byte
+// 	tmp[0] = 0x80
+// 	if len%64 < 56 {
+// 		d.Write(tmp[0 : 56-len%64])
+// 	} else {
+// 		d.Write(tmp[0 : 64+56-len%64])
+// 	}
+//
+// 	// Length in bits.
+// 	len <<= 3
+// 	binary.BigEndian.PutUint64(tmp[:], len)
+// 	d.Write(tmp[0:8])
+//
+// 	if d.nx != 0 {
+// 		panic("d.nx != 0")
+// 	}
+//
+// 	var digest [Size]byte
+//
+// 	binary.BigEndian.PutUint32(digest[0:], d.h[0])
+// 	binary.BigEndian.PutUint32(digest[4:], d.h[1])
+// 	binary.BigEndian.PutUint32(digest[8:], d.h[2])
+// 	binary.BigEndian.PutUint32(digest[12:], d.h[3])
+// 	binary.BigEndian.PutUint32(digest[16:], d.h[4])
+// 	binary.BigEndian.PutUint32(digest[20:], d.h[5])
+// 	binary.BigEndian.PutUint32(digest[24:], d.h[6])
+// 	if !d.is224 {
+// 		binary.BigEndian.PutUint32(digest[28:], d.h[7])
+// 	}
+//
+// 	return digest
+// }
+
+// Sum256 returns the SHA256 checksum of the data.
+func Sum256(data []byte) [Size]byte {
+	var state uint256 = Init
+	var block uint512
+	var hash [Size]byte
+
+	var pad [64]byte
+	pad[0] = 0x80
+
+	for i := 0; i < len(data); i++ {
+		block = block << 8
+		block = block | uint512(data[i])
+
+		if i+1%64 == 0 {
+			state = Block(block, state)
+			block = 0
+		}
+	}
+	if len(data)%64 < 56 {
+		for i := len(data) % 64; i < 56; i++ {
+			block = block << 8
+			block |= uint512(pad[i-len(data)%64])
+		}
+	} else {
+		for i := len(data) % 64; i < 64; i++ {
+			block = block << 8
+			block |= uint512(pad[i-len(data)%64])
+		}
+		state = Block(block, state)
+		block = 0
+	}
+	// Length in bits.
+	block = block << 64
+	block |= uint512(len(data) << 3)
+
+	state = Block(block, state)
+
+	for i := 0; i < Size; i++ {
+		hash[Size-i-1] = byte(state & 0xff)
+		state = state >> 8
+	}
+	return hash
+}
+
+// Block adds a new SHA-256 block to the state.
+func Block(block uint512, state uint256) uint256 {
+	return native("sha256.circ", block, state)
+}

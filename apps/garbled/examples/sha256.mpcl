@@ -6,6 +6,39 @@ import (
 	"crypto/sha256"
 )
 
-func main(block1, block2 uint512) uint256 {
-	return sha256.Block(block1, sha256.H0)
+// Tests:
+// "":    e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+// "a":   ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb
+// "m":   62c66a7a5dd70c3146618063c344e531e6d4b59e379808443ce962b3abd63c5a
+// "t":   e3b98a4da31a127d4bde6e43033f66ba274cab0eb7eb1c70ec41402bf6273dd8
+// "mt":  fe7f7ccc3fc17be1d0804567821a101836b66dd8eb03ed7604872285e013f771
+// "mtr": a39d3ae3da34f2b4c01193e62202d5de0db79f800a039624b0f950734782b863
+
+func main(g, e byte) []byte {
+	var data [3]byte
+	data[0] = 0x6d
+	data[1] = 0x74
+	data[2] = 0x72
+	return sha256.Sum256(data[:])
+
+	var data [64]byte
+
+	data[0] = 0x6d
+	data[1] = 0x74
+	data[2] = 0x72
+	data[3] = 0x80
+	data[63] = 3 << 3
+
+	var block uint512
+	for i := 0; i < len(data); i++ {
+		block = block << 8
+		block |= uint512(data[i])
+	}
+	// return block
+
+	var state uint256 = sha256.Init
+
+	return sha256.Block(block, state)
+
+	//return sha256.Sum256(data)
 }
