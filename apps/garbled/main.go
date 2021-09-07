@@ -17,10 +17,8 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"regexp"
 	"runtime"
 	"runtime/pprof"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -367,62 +365,42 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 	} else if strings.HasPrefix(output.Type, "bool") {
 		str = fmt.Sprintf("%v", result.Uint64() != 0)
 	} else {
-		matches := reArr.FindStringSubmatch(output.Type)
-		if matches != nil {
-			count, err := strconv.Atoi(matches[1])
-			if err != nil {
-				panic(fmt.Sprintf("invalid array size: %s", matches[1]))
-			}
-			elementSize := size(matches[2])
-
+		ok, count, elSize, elType := circuit.ParseArrayType(output.Type)
+		if ok {
 			mask := new(big.Int)
-			for i := 0; i < elementSize; i++ {
+			for i := 0; i < elSize; i++ {
 				mask.SetBit(mask, i, 1)
 			}
 
-			str = "["
+			hexString := elType == "uint8"
+			if !hexString {
+				str = "["
+			}
 			for i := 0; i < count; i++ {
-				if i > 0 {
-					str += " "
-				}
-				r := new(big.Int).Rsh(result, uint(i*elementSize))
+				r := new(big.Int).Rsh(result, uint(i*elSize))
 				r = r.And(r, mask)
 
-				str += printResult(r, circuit.IOArg{
-					Type: matches[2],
-					Size: elementSize,
-				}, true)
+				if hexString {
+					str += fmt.Sprintf("%02x", r.Int64())
+				} else {
+					if i > 0 {
+						str += " "
+					}
+					str += printResult(r, circuit.IOArg{
+						Type: elType,
+						Size: elSize,
+					}, true)
+				}
 			}
-			str += "]"
+			if !hexString {
+				str += "]"
+			}
 		} else {
 			str = fmt.Sprintf("%v (%s)", result, output.Type)
 		}
 	}
 
 	return str
-}
-
-var reArr = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
-var reSized = regexp.MustCompilePOSIX(`^[[:^digit:]]+([[:digit:]]+)$`)
-
-func size(t string) int {
-	matches := reArr.FindStringSubmatch(t)
-	if matches != nil {
-		count, err := strconv.Atoi(matches[1])
-		if err != nil {
-			panic(fmt.Sprintf("invalid array size: %s", matches[1]))
-		}
-		return count * size(matches[2])
-	}
-	matches = reSized.FindStringSubmatch(t)
-	if matches == nil {
-		panic(fmt.Sprintf("invalid type: %s", t))
-	}
-	bits, err := strconv.Atoi(matches[1])
-	if err != nil {
-		panic(fmt.Sprintf("invalid bit count: %s", matches[1]))
-	}
-	return bits
 }
 
 func makeOutput(base, suffix string) (io.WriteCloser, error) {
