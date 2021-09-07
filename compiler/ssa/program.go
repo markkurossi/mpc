@@ -258,9 +258,6 @@ func (prog *Program) GC() {
 		set.SetBit(set, int(in.ID), 1)
 	}
 
-	if prog.Params.Verbose {
-		fmt.Println("Program.GC()...")
-	}
 	start := time.Now()
 
 	// Collect value aliases.
@@ -321,7 +318,7 @@ func (prog *Program) GC() {
 	elapsed := time.Since(start)
 
 	if prog.Params.Verbose {
-		fmt.Printf("Program.GC(): %s\n", elapsed)
+		fmt.Printf("Program.GC: %s\n", elapsed)
 	}
 }
 
@@ -342,39 +339,34 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 		return strings.Compare(consts[i].Name, consts[j].Name) == -1
 	})
 
-	if len(consts) > 0 && prog.Params.Verbose {
-		fmt.Printf("Defining constants:\n")
-	}
+	var constWires int
 	for _, c := range consts {
-		msg := fmt.Sprintf(" - %v(%d)", c, c.Type.MinBits)
-
 		_, ok := prog.wires[c.String()]
 		if ok {
-			fmt.Printf("%s\talready defined\n", msg)
 			continue
 		}
 
+		constWires += int(c.Type.Bits)
+
 		var wires []*circuits.Wire
-		var bitString string
 		for bit := types.Size(0); bit < c.Type.Bits; bit++ {
 			var w *circuits.Wire
 			if c.Bit(bit) {
-				bitString = "1" + bitString
 				w = one
 			} else {
-				bitString = "0" + bitString
 				w = zero
 			}
 			wires = append(wires, w)
-		}
-		if prog.Params.Verbose {
-			fmt.Printf("%s\t%s\n", msg, bitString)
 		}
 
 		err := prog.SetWires(c.String(), wires)
 		if err != nil {
 			return err
 		}
+	}
+	if len(consts) > 0 && prog.Params.Verbose {
+		fmt.Printf("Defined %d constants: %d wires\n",
+			len(consts), constWires)
 	}
 	return nil
 }
