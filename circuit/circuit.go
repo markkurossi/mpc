@@ -9,6 +9,9 @@ package circuit
 import (
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 // Operation specifies gate function.
@@ -93,18 +96,67 @@ func (io IOArg) String() string {
 
 // Parse parses the I/O argument from the input string values.
 func (io IOArg) Parse(inputs []string) (*big.Int, error) {
+	result := new(big.Int)
+
 	if len(io.Compound) == 0 {
 		if len(inputs) != 1 {
 			return nil,
 				fmt.Errorf("invalid amount of arguments, got %d, expected 1",
 					len(inputs))
 		}
-		i := new(big.Int)
-		_, ok := i.SetString(inputs[0], 0)
-		if !ok {
-			return nil, fmt.Errorf("invalid input: %s", inputs[0])
+
+		if strings.HasPrefix(io.Type, "uint") ||
+			strings.HasPrefix(io.Type, "int") {
+			_, ok := result.SetString(inputs[0], 0)
+			if !ok {
+				return nil, fmt.Errorf("invalid input: %s", inputs[0])
+			}
+		} else if io.Type == "bool" {
+			switch inputs[0] {
+			case "0", "f", "false":
+			case "1", "t", "true":
+				result.SetInt64(1)
+			default:
+				return nil, fmt.Errorf("invalid bool constant: %s", inputs[0])
+			}
+		} else {
+			ok, count, elSize, _ := ParseArrayType(io.Type)
+			if ok {
+				val := new(big.Int)
+				_, ok := val.SetString(inputs[0], 0)
+				if !ok {
+					return nil, fmt.Errorf("invalid input: %s", inputs[0])
+				}
+
+				valElCount := val.BitLen() / elSize
+				if val.BitLen()%elSize != 0 {
+					valElCount++
+				}
+				if valElCount > count {
+					return nil, fmt.Errorf("too many values for input: %s",
+						inputs[0])
+				}
+				pad := count - valElCount
+				val.Lsh(val, uint(pad*elSize))
+
+				mask := new(big.Int)
+				for i := 0; i < elSize; i++ {
+					mask.SetBit(mask, i, 1)
+				}
+
+				for i := 0; i < count; i++ {
+					next := new(big.Int).Rsh(val, uint((count-i-1)*elSize))
+					next = next.And(next, mask)
+
+					next.Lsh(next, uint(i*elSize))
+					result.Or(result, next)
+				}
+			} else {
+				return nil, fmt.Errorf("unsupported input type: %s", io.Type)
+			}
 		}
-		return i, nil
+
+		return result, nil
 	}
 	if len(inputs) != len(io.Compound) {
 		return nil,
@@ -112,22 +164,62 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 				len(inputs), len(io.Compound))
 	}
 
-	result := new(big.Int)
 	var offset int
 
 	for idx, arg := range io.Compound {
-		i := new(big.Int)
-		// XXX Type checks
-		_, ok := i.SetString(inputs[idx], 0)
-		if !ok {
-			return nil, fmt.Errorf("invalid input: %s", inputs[idx])
+		input, err := arg.Parse(inputs[idx : idx+1])
+		if err != nil {
+			return nil, err
 		}
-		i.Lsh(i, uint(offset))
-		result.Or(result, i)
+
+		input.Lsh(input, uint(offset))
+		result.Or(result, input)
 
 		offset += arg.Size
 	}
 	return result, nil
+}
+
+var reArr = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
+var reSized = regexp.MustCompilePOSIX(`^[[:^digit:]]+([[:digit:]]+)$`)
+
+// ParseArrayType parses the argument value as array type.
+func ParseArrayType(val string) (ok bool, count, elementSize int,
+	elementType string) {
+
+	matches := reArr.FindStringSubmatch(val)
+	if matches == nil {
+		return
+	}
+	var err error
+	count, err = strconv.Atoi(matches[1])
+	if err != nil {
+		panic(fmt.Sprintf("invalid array size: %s", matches[1]))
+	}
+	ok = true
+	elementSize = size(matches[2])
+	elementType = matches[2]
+	return
+}
+
+func size(t string) int {
+	matches := reArr.FindStringSubmatch(t)
+	if matches != nil {
+		count, err := strconv.Atoi(matches[1])
+		if err != nil {
+			panic(fmt.Sprintf("invalid array size: %s", matches[1]))
+		}
+		return count * size(matches[2])
+	}
+	matches = reSized.FindStringSubmatch(t)
+	if matches == nil {
+		panic(fmt.Sprintf("invalid type: %s", t))
+	}
+	bits, err := strconv.Atoi(matches[1])
+	if err != nil {
+		panic(fmt.Sprintf("invalid bit count: %s", matches[1]))
+	}
+	return bits
 }
 
 // IO specifies circuit input and output arguments.
