@@ -11,6 +11,10 @@
 
 package ed25519
 
+import (
+	"crypto/sha512"
+)
+
 const (
 	// PublicKeySize is the size, in bytes, of public keys as used in
 	// this package.
@@ -33,19 +37,13 @@ type PrivateKey [64]byte
 // XXX []byte return value type
 func Sign(privateKey PrivateKey, message []byte) [64]byte {
 	var signature [SignatureSize]byte
-	sign(signature, privateKey, message)
-	return signature
+	return sign(privateKey, message, signature)
 }
 
-func sign(signature, privateKey, message []byte) {
-	// XXX h := sha512.New()
-	// XXX h.Write(privateKey[:32])
+func sign(privateKey, message, signature []byte) [64]byte {
+	digest1 := sha512.Sum512(privateKey)
 
-	var digest1, messageDigest, hramDigest [64]byte
 	var expandedSecretKey [32]byte
-
-	// XXX h.Sum(digest1[:0])
-	copy(digest1, privateKey)
 
 	copy(expandedSecretKey[:], digest1[:])
 	expandedSecretKey[0] &= 248
@@ -56,9 +54,14 @@ func sign(signature, privateKey, message []byte) {
 	// XXX h.Write(digest1[32:])
 	// XXX h.Write(message)
 	// XXX h.Sum(messageDigest[:0])
-	for i := 0; i < len(privateKey); i++ {
-		messageDigest[i] = privateKey[i] ^ message[i]
-	}
+	//
+	// =>
+	//
+	// XXX buf := make([]byte, 32+len(message)
+	// XXX copy(buf, digest1[32:])
+	// XXX copy(buf[32:], message)
+	// XXX messageDigest := sha512.Sum512(buf)
+	messageDigest := sha512.Sum512(digest1[32:])
 
 	var messageDigestReduced [32]byte
 	ScReduce(&messageDigestReduced, &messageDigest)
@@ -73,9 +76,19 @@ func sign(signature, privateKey, message []byte) {
 	// XXX h.Write(privateKey[32:])
 	// XXX h.Write(message)
 	// XXX h.Sum(hramDigest[:0])
-	for i := 0; i < len(privateKey); i++ {
-		hramDigest[i] = privateKey[i] ^ message[i]
+	//
+	// =>
+	//
+	// XXX buf2 := make([]byte, 64+len(message))
+	// XXX copy(buf2, encodedR[:])
+	// XXX copy(buf2[32:], privateKey[32:])
+	// XXX copy(buf2[64:], message)
+	var buf2 [64]byte
+	copy(buf2, encodedR[:])
+	for i := 32; i < 64; i++ {
+		buf2[i] = privateKey[i]
 	}
+	hramDigest := sha512.Sum512(buf2[:])
 
 	var hramDigestReduced [32]byte
 	ScReduce(&hramDigestReduced, &hramDigest)
@@ -85,4 +98,6 @@ func sign(signature, privateKey, message []byte) {
 
 	copy(signature[:], encodedR[:])
 	copy(signature[32:], s[:])
+
+	return signature
 }

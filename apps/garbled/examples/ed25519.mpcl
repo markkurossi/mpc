@@ -31,17 +31,18 @@
 //
 // TODO: the example is not yet fully functional:
 //  - arrays and slices must be passed by pointer, not by value
-//  - SHA-512 computation is missing
+//  - SHA-512 computation is missing message data
 //
 // The estimated performance:
 //  - The Ed25519 arithmetics: ~180s
-//  - 3x SHA-512 = 3*9s:        ~27s
-//  - Ed25519 sign:            ~207s = ~3m27s
+//  - 3x SHA-512 = 3*1s:         ~3s
+//  - Ed25519 sign:            ~183s = ~3m3s
 
 package main
 
 import (
 	"crypto/ed25519"
+	"crypto/sha512"
 )
 
 type Garbler struct {
@@ -62,18 +63,13 @@ func main(g Garbler, privShare [64]byte) [64]byte {
 
 func Sign(privateKey [64]byte, message []byte) [64]byte {
 	var signature [64]byte
-	return sign(signature, privateKey, message)
+	return sign(privateKey, message, signature)
 }
 
-func sign(signature, privateKey, message []byte) [64]byte {
-	// XXX h := sha512.New()
-	// XXX h.Write(privateKey[:32])
+func sign(privateKey, message, signature []byte) [64]byte {
+	digest1 := sha512.Sum512(privateKey)
 
-	var digest1, messageDigest, hramDigest [64]byte
 	var expandedSecretKey [32]byte
-
-	// XXX h.Sum(digest1[:0])
-	copy(digest1, privateKey)
 
 	copy(expandedSecretKey[:], digest1[:])
 	expandedSecretKey[0] &= 248
@@ -84,9 +80,14 @@ func sign(signature, privateKey, message []byte) [64]byte {
 	// XXX h.Write(digest1[32:])
 	// XXX h.Write(message)
 	// XXX h.Sum(messageDigest[:0])
-	for i := 0; i < len(privateKey); i++ {
-		messageDigest[i] = privateKey[i] ^ message[i]
-	}
+	//
+	// =>
+	//
+	// XXX buf := make([]byte, 32+len(message)
+	// XXX copy(buf, digest1[32:])
+	// XXX copy(buf[32:], message)
+	// XXX messageDigest := sha512.Sum512(buf)
+	messageDigest := sha512.Sum512(digest1[32:])
 
 	var messageDigestReduced [32]byte
 	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
@@ -101,9 +102,19 @@ func sign(signature, privateKey, message []byte) [64]byte {
 	// XXX h.Write(privateKey[32:])
 	// XXX h.Write(message)
 	// XXX h.Sum(hramDigest[:0])
-	for i := 0; i < len(privateKey); i++ {
-		hramDigest[i] = privateKey[i] ^ message[i]
+	//
+	// =>
+	//
+	// XXX buf2 := make([]byte, 64+len(message))
+	// XXX copy(buf2, encodedR[:])
+	// XXX copy(buf2[32:], privateKey[32:])
+	// XXX copy(buf2[64:], message)
+	var buf2 [64]byte
+	copy(buf2, encodedR[:])
+	for i := 32; i < 64; i++ {
+		buf2[i] = privateKey[i]
 	}
+	hramDigest := sha512.Sum512(buf2[:])
 
 	var hramDigestReduced [32]byte
 	ed25519.ScReduce(&hramDigestReduced, &hramDigest)

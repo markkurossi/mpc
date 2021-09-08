@@ -520,6 +520,8 @@ Max permanent wires: 43892147, cached circuits: 26
 #gates=936772905, #non-XOR=292263475
 ```
 
+Optimizing circuit.decrypt() not to allocate memory:
+
 ```
 ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
 ┃ Op          ┃            Time ┃      % ┃ Xfer ┃
@@ -534,6 +536,21 @@ Max permanent wires: 43893683, cached circuits: 26
 #gates=936737641, #non-XOR=292263475
 ```
 
+Added SHA-512 computation:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │       209.487µs │  0.00% │  16kB │
+│ OT Init     │     97.139359ms │  0.06% │  264B │
+│ Peer Inputs │    4.195529436s │  2.56% │ 667kB │
+│ Eval        │ 2m39.404971518s │ 97.38% │  26GB │
+│ Total       │   2m43.6978498s │        │  26GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 45442203, cached circuits: 29
+#gates=938232660 (XOR=616081537 XNOR=29253505 AND=292519636 OR=363144 INV=14838) #w=968139480
+```
 
 ## RSA signature computation
 
