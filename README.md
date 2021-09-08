@@ -456,7 +456,7 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=59731
 
 ## Ed25519 signature computation
 
-The first signature computation without SHA-256:
+The first signature computation without SHA-512:
 
 ```
 ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
