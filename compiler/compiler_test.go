@@ -237,7 +237,7 @@ import (
     "crypto/sha512"
 )
 func main(a, b uint1024) uint512 {
-    return sha512.Block(a, sha512.H0)
+    return sha512.Block(a, sha512.Init)
 }
 `,
 	},
