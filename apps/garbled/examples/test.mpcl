@@ -7,8 +7,17 @@ import (
 )
 
 func main(a, b [8]byte) []byte {
+	return concat(a, b)
+}
+
+func concat(a, b []byte) []byte {
+	result := make([]byte, len(a)+len(b))
+	// copy(result, a)
 	for i := 0; i < len(a); i++ {
-		a[i] ^= b[i]
+		result[i] = a[i]
 	}
-	return a
+	for i := 0; i < len(b); i++ {
+		result[len(a)+i] = b[i]
+	}
+	return result
 }

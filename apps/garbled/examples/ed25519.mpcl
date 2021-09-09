@@ -76,18 +76,10 @@ func sign(privateKey, message, signature []byte) [64]byte {
 	expandedSecretKey[31] &= 63
 	expandedSecretKey[31] |= 64
 
-	// XXX h.Reset()
-	// XXX h.Write(digest1[32:])
-	// XXX h.Write(message)
-	// XXX h.Sum(messageDigest[:0])
-	//
-	// =>
-	//
-	// XXX buf := make([]byte, 32+len(message)
-	// XXX copy(buf, digest1[32:])
-	// XXX copy(buf[32:], message)
-	// XXX messageDigest := sha512.Sum512(buf)
-	messageDigest := sha512.Sum512(digest1[32:])
+	buf := make([]byte, 32+len(message))
+	memcpy(buf, 0, digest1, 32)
+	memcpy(buf, 32, message, 0)
+	messageDigest := sha512.Sum512(buf)
 
 	var messageDigestReduced [32]byte
 	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
@@ -97,24 +89,11 @@ func sign(privateKey, message, signature []byte) [64]byte {
 	var encodedR [32]byte
 	R.ToBytes(&encodedR)
 
-	// XXX h.Reset()
-	// XXX h.Write(encodedR[:])
-	// XXX h.Write(privateKey[32:])
-	// XXX h.Write(message)
-	// XXX h.Sum(hramDigest[:0])
-	//
-	// =>
-	//
-	// XXX buf2 := make([]byte, 64+len(message))
-	// XXX copy(buf2, encodedR[:])
-	// XXX copy(buf2[32:], privateKey[32:])
-	// XXX copy(buf2[64:], message)
-	var buf2 [64]byte
-	copy(buf2, encodedR[:])
-	for i := 32; i < 64; i++ {
-		buf2[i] = privateKey[i]
-	}
-	hramDigest := sha512.Sum512(buf2[:])
+	buf2 := make([]byte, 64+len(message))
+	memcpy(buf2, 0, encodedR, 0)
+	memcpy(buf2, 32, privateKey, 32)
+	memcpy(buf2, 64, message, 0)
+	hramDigest := sha512.Sum512(buf2)
 
 	var hramDigestReduced [32]byte
 	ed25519.ScReduce(&hramDigestReduced, &hramDigest)
@@ -126,4 +105,10 @@ func sign(privateKey, message, signature []byte) [64]byte {
 	copy(signature[32:], s[:])
 
 	return signature
+}
+
+func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) {
+	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
+		dst[dstOfs+i] = src[srcOfs+i]
+	}
 }

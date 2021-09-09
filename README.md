@@ -275,6 +275,7 @@ form assembly:
    - [ ] SHA-512 message digest
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
+   - [ ] `copy()` does not work on arrays which have been `make()`:ed
 
 # Benchmarks and tests
 

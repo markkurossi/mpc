@@ -38,6 +38,7 @@ var (
 	_ AST = &VariableRef{}
 	_ AST = &BasicLit{}
 	_ AST = &CompositeLit{}
+	_ AST = &Make{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -697,4 +698,20 @@ func (ast *CompositeLit) String() string {
 type KeyedElement struct {
 	Key     AST
 	Element AST
+}
+
+// Make implements the builtin function make.
+type Make struct {
+	utils.Point
+	Type  *TypeInfo
+	Exprs []AST
+}
+
+func (ast *Make) String() string {
+	str := fmt.Sprintf("make(%s", ast.Type)
+	for _, expr := range ast.Exprs {
+		str += ", "
+		str += expr.String()
+	}
+	return str + ")"
 }

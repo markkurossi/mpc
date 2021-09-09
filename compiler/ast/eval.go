@@ -161,6 +161,26 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch lval := l.ConstValue.(type) {
+	case bool:
+		rval, ok := r.ConstValue.(bool)
+		if !ok {
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"invalid types: %s %s %s", l, ast.Op, r)
+		}
+		switch ast.Op {
+		case BinaryEq:
+			return gen.Constant(lval == rval, types.Bool), true, nil
+		case BinaryNeq:
+			return gen.Constant(lval != rval, types.Bool), true, nil
+		case BinaryAnd:
+			return gen.Constant(lval && rval, types.Bool), true, nil
+		case BinaryOr:
+			return gen.Constant(lval || rval, types.Bool), true, nil
+		default:
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"Binary.Eval: '%v %v %v' not supported", l, ast.Op, r)
+		}
+
 	case int32:
 		var rval int32
 		switch rv := r.ConstValue.(type) {
@@ -265,7 +285,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Left,
-			"invalid l-value %v (%T)", lval, lval)
+			"%s %v %s: invalid l-value %v (%T)", l, ast.Op, r, lval, lval)
 	}
 }
 
@@ -459,4 +479,49 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			typeInfo, ast.Value)
 		return ssa.Undefined, false, nil
 	}
+}
+
+// Eval implements the compiler.ast.AST.Eval for the builtin function make.
+func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
+	if len(ast.Exprs) != 1 {
+		return ssa.Undefined, false, ctx.Errorf(ast,
+			"invalid amount of argument in call to make")
+	}
+	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(ast.Type, "%s is not a type",
+			ast.Type)
+	}
+	if typeInfo.Bits != 0 {
+		return ssa.Undefined, false, ctx.Errorf(ast.Type,
+			"can't make specified type %s", typeInfo)
+	}
+
+	constVal, _, err := ast.Exprs[0].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(ast.Exprs[0], "%s", err)
+	}
+
+	length, err := constVal.ConstInt()
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(ast.Exprs[0],
+			"non-integer (%T) len argument in %s: %s", constVal, ast, err)
+	}
+	if typeInfo.Type == types.TArray {
+		if typeInfo.ElementType.Bits == 0 {
+			return ssa.Undefined, false, ctx.Errorf(ast.Type,
+				"unspecified array element type: %s", typeInfo.ElementType)
+		}
+		typeInfo.ArraySize = length
+		typeInfo.Bits = typeInfo.ElementType.Bits * length
+		typeInfo.MinBits = typeInfo.Bits
+		v := gen.AnonVal(typeInfo)
+
+		return v, true, nil
+	}
+
+	typeInfo.Bits = length
+
+	return gen.Constant(typeInfo, types.Undefined), true, nil
 }

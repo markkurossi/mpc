@@ -116,6 +116,10 @@ func (gen *Generator) NewVal(name string, t types.Info, scope Scope) Value {
 
 // AddConstant adds a reference to the constant.
 func (gen *Generator) AddConstant(c Value) {
+	// Add only values which have the ConstValue set.
+	if c.ConstValue == nil {
+		return
+	}
 	inst, ok := gen.constants[c.Name]
 	if !ok {
 		inst = ConstantInst{

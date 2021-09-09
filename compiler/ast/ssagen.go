@@ -1723,3 +1723,9 @@ func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 	return nil, nil, fmt.Errorf("CompositeLit.SSA not implemented yet")
 }
+
+// SSA implements the compiler.ast.AST.SSA for the builtin function make.
+func (ast *Make) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+	return nil, nil, fmt.Errorf("Make.SSA not supported")
+}

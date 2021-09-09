@@ -1254,8 +1254,18 @@ primary:
 			}
 
 		case '(':
-			// Arguments.
+			vr, ok := primary.(*ast.VariableRef)
+			if !ok {
+				return nil, p.errf(primary.Location(),
+					"non-function %s used as function", primary)
+			}
 			var arguments []ast.AST
+			var isMake bool
+			var ti *ast.TypeInfo
+
+			if vr.String() == "make" {
+				isMake = true
+			}
 			n, err := p.lexer.Get()
 			if err != nil {
 				return nil, err
@@ -1263,11 +1273,18 @@ primary:
 			if n.Type != ')' {
 				p.lexer.Unget(n)
 				for {
-					expr, err := p.parseExpr(needLBrace)
-					if err != nil {
-						return nil, err
+					if isMake && ti == nil {
+						ti, err = p.parseType()
+						if err != nil {
+							return nil, err
+						}
+					} else {
+						expr, err := p.parseExpr(needLBrace)
+						if err != nil {
+							return nil, err
+						}
+						arguments = append(arguments, expr)
 					}
-					arguments = append(arguments, expr)
 
 					n, err := p.lexer.Get()
 					if err != nil {
@@ -1280,15 +1297,22 @@ primary:
 					}
 				}
 			}
-			vr, ok := primary.(*ast.VariableRef)
-			if !ok {
-				return nil, p.errf(primary.Location(),
-					"non-function %s used as function", primary)
-			}
-			primary = &ast.Call{
-				Point: primary.Location(),
-				Ref:   vr,
-				Exprs: arguments,
+			if isMake {
+				if ti == nil {
+					return nil, p.errf(primary.Location(),
+						"missing arguments to make")
+				}
+				primary = &ast.Make{
+					Point: primary.Location(),
+					Type:  ti,
+					Exprs: arguments,
+				}
+			} else {
+				primary = &ast.Call{
+					Point: primary.Location(),
+					Ref:   vr,
+					Exprs: arguments,
+				}
 			}
 
 		default:

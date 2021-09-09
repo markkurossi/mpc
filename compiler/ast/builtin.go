@@ -56,11 +56,6 @@ var builtins = []Builtin{
 		Eval: lenEval,
 	},
 	{
-		Name: "make",
-		Type: BuiltinFunc,
-		Eval: makeEval,
-	},
-	{
 		Name: "native",
 		Type: BuiltinFunc,
 		SSA:  nativeSSA,
@@ -260,48 +255,6 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		return ssa.Undefined, false, ctx.Errorf(loc,
 			"len(%v/%T) is not constant", arg, arg)
 	}
-}
-
-func makeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
-	loc utils.Point) (ssa.Value, bool, error) {
-
-	if len(args) != 2 {
-		return ssa.Undefined, false, ctx.Errorf(loc,
-			"invalid amount of argument in call to make")
-	}
-	ref, ok := args[0].(*VariableRef)
-	if !ok {
-		return ssa.Undefined, false, ctx.Errorf(args[0], "%s is not a type",
-			args[0])
-	}
-	ti := TypeInfo{
-		Type: TypeName,
-		Name: ref.Name,
-	}
-	typeInfo, err := ti.Resolve(env, ctx, gen)
-	if err != nil {
-		return ssa.Undefined, false, ctx.Errorf(args[0], "%s is not a type",
-			args[0])
-	}
-	if typeInfo.Bits != 0 {
-		return ssa.Undefined, false, ctx.Errorf(args[0],
-			"can't make specified type %s", typeInfo)
-	}
-
-	constVal, _, err := args[1].Eval(env, ctx, gen)
-	if err != nil {
-		return ssa.Undefined, false, ctx.Errorf(args[1], "%s", err)
-	}
-
-	bits, err := constVal.ConstInt()
-	if err != nil {
-		return ssa.Undefined, false, ctx.Errorf(loc,
-			"non-integer (%T) len argument in make(%s): %s",
-			constVal, typeInfo, err)
-	}
-	typeInfo.Bits = bits
-
-	return gen.Constant(typeInfo, types.Undefined), true, nil
 }
 
 func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
