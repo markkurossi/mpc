@@ -334,7 +334,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		case Mov, Smov:
 			var signWire *circuits.Wire
-			if instr.Op == Srshift {
+			if instr.Op == Smov {
 				one, err := prog.OneWire(conn, streaming)
 				if err != nil {
 					return nil, nil, err
