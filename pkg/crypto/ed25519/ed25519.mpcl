@@ -24,7 +24,9 @@ type FieldElement [10]int32
 var zero FieldElement
 
 func FeZero(fe *FieldElement) {
-	copy(fe[:], zero[:])
+	for i := 0; i < len(fe); i++ {
+		fe[i] = zero[i]
+	}
 }
 
 func FeOne(fe *FieldElement) {
@@ -59,7 +61,9 @@ func FeSub(dst, a, b *FieldElement) {
 }
 
 func FeCopy(dst, src *FieldElement) {
-	copy(dst[:], src[:])
+	for i := 0; i < len(dst); i++ {
+		dst[i] = src[i]
+	}
 }
 
 // Replace (f,g) with (g,g) if b == 1;
@@ -976,8 +980,11 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 
 	t.Zero()
 	// XXX for i := int32(0); i < 8; i++ {
+	var x PreComputedGroupElement
 	for i := 0; i < 8; i++ {
-		PreComputedGroupElementCMove(t, &base[pos][i], equal(bAbs, i+1))
+		x = base[pos][i]
+		// XXX PreComputedGroupElementCMove(t, &base[pos][i], equal(bAbs, i+1))
+		PreComputedGroupElementCMove(t, &x, equal(bAbs, i+1))
 	}
 	FeCopy(&minusT.yPlusX, &t.yMinusX)
 	FeCopy(&minusT.yMinusX, &t.yPlusX)
@@ -1053,7 +1060,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 // Output:
 //   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
-func ScMulAdd(s, a, b, c *[32]byte) {
+func ScMulAdd(s *[32]byte, a, b, c [32]byte) {
 	a0 := 2097151 & load3(a[:])
 	a1 := 2097151 & (load4(a[2:]) >> 5)
 	a2 := 2097151 & (load3(a[5:]) >> 2)
@@ -1484,7 +1491,7 @@ func ScMulAdd(s, a, b, c *[32]byte) {
 // Output:
 //   s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
-func ScReduce(out *[32]byte, s *[64]byte) {
+func ScReduce(out *[32]byte, s [64]byte) {
 	s0 := 2097151 & load3(s[:])
 	s1 := 2097151 & (load4(s[2:]) >> 5)
 	s2 := 2097151 & (load3(s[5:]) >> 2)

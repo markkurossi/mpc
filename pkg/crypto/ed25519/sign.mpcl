@@ -40,64 +40,49 @@ func Sign(privateKey PrivateKey, message []byte) [64]byte {
 	return sign(privateKey, message, signature)
 }
 
-func sign(privateKey, message, signature []byte) [64]byte {
-	digest1 := sha512.Sum512(privateKey)
+func sign(privateKey, message, signature []byte) []byte {
+	digest1 := sha512.Sum512(privateKey[0:32])
 
 	var expandedSecretKey [32]byte
-
-	copy(expandedSecretKey[:], digest1[:])
+	expandedSecretKey = memcpy(expandedSecretKey, 0, digest1, 0)
 	expandedSecretKey[0] &= 248
 	expandedSecretKey[31] &= 63
 	expandedSecretKey[31] |= 64
 
-	// XXX h.Reset()
-	// XXX h.Write(digest1[32:])
-	// XXX h.Write(message)
-	// XXX h.Sum(messageDigest[:0])
-	//
-	// =>
-	//
-	// XXX buf := make([]byte, 32+len(message)
-	// XXX copy(buf, digest1[32:])
-	// XXX copy(buf[32:], message)
-	// XXX messageDigest := sha512.Sum512(buf)
-	messageDigest := sha512.Sum512(digest1[32:])
+	buf := make([]byte, 32+len(message))
+	buf = memcpy(buf, 0, digest1, 32)
+	buf = memcpy(buf, 32, message, 0)
+	messageDigest := sha512.Sum512(buf)
 
 	var messageDigestReduced [32]byte
-	ScReduce(&messageDigestReduced, &messageDigest)
+	ScReduce(&messageDigestReduced, messageDigest)
 	var R ExtendedGroupElement
 	GeScalarMultBase(&R, &messageDigestReduced)
 
 	var encodedR [32]byte
 	R.ToBytes(&encodedR)
 
-	// XXX h.Reset()
-	// XXX h.Write(encodedR[:])
-	// XXX h.Write(privateKey[32:])
-	// XXX h.Write(message)
-	// XXX h.Sum(hramDigest[:0])
-	//
-	// =>
-	//
-	// XXX buf2 := make([]byte, 64+len(message))
-	// XXX copy(buf2, encodedR[:])
-	// XXX copy(buf2[32:], privateKey[32:])
-	// XXX copy(buf2[64:], message)
-	var buf2 [64]byte
-	copy(buf2, encodedR[:])
-	for i := 32; i < 64; i++ {
-		buf2[i] = privateKey[i]
-	}
-	hramDigest := sha512.Sum512(buf2[:])
+	buf2 := make([]byte, 64+len(message))
+	buf2 = memcpy(buf2, 0, encodedR, 0)
+	buf2 = memcpy(buf2, 32, privateKey, 32)
+	buf2 = memcpy(buf2, 64, message, 0)
+	hramDigest := sha512.Sum512(buf2)
 
 	var hramDigestReduced [32]byte
-	ScReduce(&hramDigestReduced, &hramDigest)
+	ScReduce(&hramDigestReduced, hramDigest)
 
 	var s [32]byte
-	ScMulAdd(&s, &hramDigestReduced, &expandedSecretKey, &messageDigestReduced)
+	ScMulAdd(&s, hramDigestReduced, expandedSecretKey, messageDigestReduced)
 
-	copy(signature[:], encodedR[:])
-	copy(signature[32:], s[:])
+	signature = memcpy(signature, 0, encodedR, 0)
+	signature = memcpy(signature, 32, s, 0)
 
 	return signature
+}
+
+func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
+	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
+		dst[dstOfs+i] = src[srcOfs+i]
+	}
+	return dst
 }

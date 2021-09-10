@@ -209,6 +209,8 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval<<rval, types.Int32), true, nil
 		case BinaryRshift:
 			return gen.Constant(lval>>rval, types.Int32), true, nil
+		case BinaryBand:
+			return gen.Constant(lval&rval, types.Int32), true, nil
 
 		case BinaryPlus:
 			return gen.Constant(lval+rval, types.Int32), true, nil
@@ -229,7 +231,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval >= rval, types.Bool), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
+				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
 		}
 
 	case uint64:
@@ -280,7 +282,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval >= rval, types.Bool), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval: '%T %s %T' not implemented yet", l, ast.Op, r)
+				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
 		}
 
 	default:

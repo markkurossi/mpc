@@ -276,6 +276,11 @@ form assembly:
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
    - [ ] `copy()` does not work on arrays which have been `make()`:ed
+   - [ ] Use the topmost wire as sign sign extension wire in `smov`
+         and `srshift` instructions. This way we get the sign extension
+         with out the `phi` instruction.
+   - [ ] `&base[pos][i]` returns the address of the first element
+   - [ ] reading from `*[32]int32` returns invalid values
 
 # Benchmarks and tests
 
@@ -552,6 +557,23 @@ Added SHA-512 computation:
 Max permanent wires: 45442203, cached circuits: 29
 #gates=938232660 (XOR=616081537 XNOR=29253505 AND=292519636 OR=363144 INV=14838) #w=968139480
 ```
+
+The first correct Ed25519 signature:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │      1.204858ms │  0.00% │  20kB │
+│ OT Init     │    171.049292ms │  0.10% │  264B │
+│ Peer Inputs │    4.186015741s │  2.37% │ 667kB │
+│ Eval        │ 2m52.585569971s │ 97.54% │  26GB │
+│ Total       │ 2m56.943839862s │        │  26GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53771683, cached circuits: 29
+#gates=938713349 (XOR=616368261 XNOR=29253505 AND=292577583 OR=494216 INV=19784) #w=968883849
+```
+
 
 ## RSA signature computation
 

@@ -29,14 +29,6 @@
 //
 // $ ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0x5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449 examples/ed25519.mpcl
 //
-// TODO: the example is not yet fully functional:
-//  - arrays and slices must be passed by pointer, not by value
-//  - SHA-512 computation is missing message data
-//
-// The estimated performance:
-//  - The Ed25519 arithmetics: ~180s
-//  - 3x SHA-512 = 3*1s:         ~3s
-//  - Ed25519 sign:            ~183s = ~3m3s
 
 package main
 
@@ -50,65 +42,12 @@ type Garbler struct {
 	privShare [64]byte
 }
 
-func main(g Garbler, privShare [64]byte) [64]byte {
+func main(g Garbler, privShare [64]byte) []byte {
 	var priv [64]byte
 
 	for i := 0; i < len(priv); i++ {
 		priv[i] = g.privShare[i] ^ privShare[i]
 	}
 
-	//return ed25519.Sign(priv, g.msg)
-	return Sign(priv, g.msg)
-}
-
-func Sign(privateKey [64]byte, message []byte) [64]byte {
-	var signature [64]byte
-	return sign(privateKey, message, signature)
-}
-
-func sign(privateKey, message, signature []byte) [64]byte {
-	digest1 := sha512.Sum512(privateKey)
-
-	var expandedSecretKey [32]byte
-
-	copy(expandedSecretKey[:], digest1[:])
-	expandedSecretKey[0] &= 248
-	expandedSecretKey[31] &= 63
-	expandedSecretKey[31] |= 64
-
-	buf := make([]byte, 32+len(message))
-	memcpy(buf, 0, digest1, 32)
-	memcpy(buf, 32, message, 0)
-	messageDigest := sha512.Sum512(buf)
-
-	var messageDigestReduced [32]byte
-	ed25519.ScReduce(&messageDigestReduced, &messageDigest)
-	var R ed25519.ExtendedGroupElement
-	ed25519.GeScalarMultBase(&R, &messageDigestReduced)
-
-	var encodedR [32]byte
-	R.ToBytes(&encodedR)
-
-	buf2 := make([]byte, 64+len(message))
-	memcpy(buf2, 0, encodedR, 0)
-	memcpy(buf2, 32, privateKey, 32)
-	memcpy(buf2, 64, message, 0)
-	hramDigest := sha512.Sum512(buf2)
-
-	var hramDigestReduced [32]byte
-	ed25519.ScReduce(&hramDigestReduced, &hramDigest)
-
-	var s [32]byte
-	ed25519.ScMulAdd(&s, &hramDigestReduced, &expandedSecretKey, &messageDigestReduced)
-
-	copy(signature[:], encodedR[:])
-	copy(signature[32:], s[:])
-
-	return signature
-}
-
-func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) {
-	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
-		dst[dstOfs+i] = src[srcOfs+i]
-	}
+	return ed25519.Sign(priv, g.msg)
 }
