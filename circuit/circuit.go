@@ -197,19 +197,19 @@ func ParseArrayType(val string) (ok bool, count, elementSize int,
 		panic(fmt.Sprintf("invalid array size: %s", matches[1]))
 	}
 	ok = true
-	elementSize = size(matches[2])
+	elementSize = Size(matches[2])
 	elementType = matches[2]
 	return
 }
 
-func size(t string) int {
+func Size(t string) int {
 	matches := reArr.FindStringSubmatch(t)
 	if matches != nil {
 		count, err := strconv.Atoi(matches[1])
 		if err != nil {
 			panic(fmt.Sprintf("invalid array size: %s", matches[1]))
 		}
-		return count * size(matches[2])
+		return count * Size(matches[2])
 	}
 	matches = reSized.FindStringSubmatch(t)
 	if matches == nil {

@@ -351,6 +351,17 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 	} else if strings.HasPrefix(output.Type, "uint") ||
 		strings.HasPrefix(output.Type, "int") {
 
+		if output.Type[0] == 'i' {
+			bits := circuit.Size(output.Type)
+			if result.Bit(bits-1) == 1 {
+				// Negative number.
+				tmp := new(big.Int)
+				tmp.SetBit(tmp, bits, 1)
+				result.Sub(tmp, result)
+				result.Neg(result)
+			}
+		}
+
 		bytes := result.Bytes()
 		if len(bytes) == 0 {
 			bytes = []byte{0}
