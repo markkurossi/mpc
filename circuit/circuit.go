@@ -202,6 +202,7 @@ func ParseArrayType(val string) (ok bool, count, elementSize int,
 	return
 }
 
+// Size returns the type size in bits.
 func Size(t string) int {
 	matches := reArr.FindStringSubmatch(t)
 	if matches != nil {
