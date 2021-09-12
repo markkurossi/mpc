@@ -90,6 +90,59 @@ $ ./garbled -i 900000 examples/millionaire.mpcl
 Result[0]: true
 ```
 
+## Ed25519 Key Generation and Signature Computation
+
+The [ed25519](apps/garbled/examples/ed25519/) directory contains
+Ed25519 [key generation](apps/garbled/examples/ed25519/keygen.mpcl)
+and [signature computation](apps/garbled/examples/ed25519/sign.mpcl)
+examples.
+
+### Key Generation
+
+```
+$ ./garbled -stream -e -v -i 0x784db0ec4ca0cf5338249e6a09139109366dca1fac2838e5f0e5a46f0e191bae,0xd0da45d3c99e756da831d1e7d696eae3fa9fe39d3b1b2618c7ff997d17777989b5cf415b114298c8b10bed0f0eff118e43ab606ab01143151dff89171307dffa,0x44bf09357e19b1f96f9cf6d9e7d25a0e8dd62d6e0d4bba2bec4c59983c7dc84d1486677b6d8837746cd948c881913c36faeaee08e8309afac58be4757a1c544e
+```
+
+```
+$ ./garbled -stream -v -i 0x57c0e59c20ac7d75ef7e3188fdd7f5876abee1cab394af8125acaca9760bb54c,0x76b42e6292f4a3dc339d208481abeb9a24e08127c7cd8dbde62abcddc0c0e6f7a0f740e756b44dae137f0e7ff8eae0ceb1a962c130fdcbe8cbee3e31ab55b8dc,0xeb83eb1f5203f5b752c96264a21ff4a27fa60cf2313f5f53c3fa96e0b52a2814b786e43a3af64b66291b5b29f432cb8d5a930e31f4e6f072a6d33b861b5b5f13 examples/ed25519/keygen.mpcl
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Init        │       258.059µs │  0.00% │ 20kB │
+│ OT Init     │    140.256553ms │  0.09% │ 264B │
+│ Peer Inputs │   10.292906559s │  6.76% │  1MB │
+│ Eval        │ 2m21.830984013s │ 93.15% │ 25GB │
+│ Total       │ 2m32.264405184s │        │ 25GB │
+└─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 51993714, cached circuits: 23
+#gates=925736899 (XOR=607899819 XNOR=29055825 AND=288660077 OR=116232 INV=4946) #w=948767997
+Result[0]: 8ae64963506002e267a59665e9a2e6f9348cc159be53747894478e182ece9fcb
+Result[1]: 4ded80ae09692306c9659307f522f5dba1d96e48cde9f4f6e22fb340629db76aa2bee5867d009e008b6fb85902273acda8910c9a740a788f70c28ca0a3093835
+Result[2]: cd5c37f4497fd56e236aa858442b3ff90f7a6401ee2186ea18d074fe93d8f9d18b582fa47a1ee0f0a9083ddd9e262b8f3c642dfad68f667f87dddd4bec80aca3
+```
+
+### Signature Computation
+
+```
+$ ./garbled -stream -e -v -i 0x46eb82a021d88960fb13388b0e76ba13b84524ffe114d7f3a728b39efc185eeaa7137132182bab7504daf200d882b787ee8b9b1c9f41be9c38fb4e0ba1aff326
+```
+
+```
+$ time ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0x5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449 examples/ed25519/sign.mpcl
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │       244.421µs │  0.00% │  16kB │
+│ OT Init     │    144.588209ms │  0.09% │  264B │
+│ Peer Inputs │    4.113222291s │  2.63% │ 667kB │
+│ Eval        │  2m32.10905711s │ 97.28% │  25GB │
+│ Total       │ 2m36.367112031s │        │  25GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53770978, cached circuits: 26
+#gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
+Result[0]: b71a55aece64574bedd94729a9ca95a87b5fe0a587fecf50ff0238805132c1291e08cb871016cb4f3935bd45423626f61dc648a91affda3671b19d7b28e03505
+```
+
 # Multi-Party Computation Language (MPCL)
 
 The multi-party computation language is heavily inspired by the Go
