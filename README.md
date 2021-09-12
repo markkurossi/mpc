@@ -276,7 +276,7 @@ form assembly:
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
    - [ ] `copy()` does not work on arrays which have been `make()`:ed
-   - [ ] Use the topmost wire as sign sign extension wire in `smov`
+   - [X] Use the topmost wire as sign sign extension wire in `smov`
          and `srshift` instructions. This way we get the sign extension
          with out the `phi` instruction.
    - [ ] `&base[pos][i]` returns the address of the first element
