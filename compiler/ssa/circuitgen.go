@@ -168,7 +168,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 		case Rshift, Srshift:
 			var signWire *circuits.Wire
 			if instr.Op == Srshift {
-				signWire = cc.OneWire()
+				signWire = wires[0][len(wires[0])-1]
 			} else {
 				signWire = cc.ZeroWire()
 			}
@@ -385,7 +385,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 		case Mov, Smov:
 			var signWire *circuits.Wire
 			if instr.Op == Smov {
-				signWire = cc.OneWire()
+				signWire = wires[0][len(wires[0])-1]
 			} else {
 				signWire = cc.ZeroWire()
 			}

@@ -3,21 +3,10 @@
 package main
 
 import (
-	"encoding/binary"
+	"crypto/ed25519"
 )
 
-func main(a, b [8]byte) []byte {
-	return concat(a, b)
-}
-
-func concat(a, b []byte) []byte {
-	result := make([]byte, len(a)+len(b))
-	// copy(result, a)
-	for i := 0; i < len(a); i++ {
-		result[i] = a[i]
-	}
-	for i := 0; i < len(b); i++ {
-		result[len(a)+i] = b[i]
-	}
-	return result
+func main(a, b int32) int {
+	a = -a
+	return int64(a)
 }

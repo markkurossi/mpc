@@ -574,6 +574,21 @@ Max permanent wires: 53771683, cached circuits: 29
 #gates=938713349 (XOR=616368261 XNOR=29253505 AND=292577583 OR=494216 INV=19784) #w=968883849
 ```
 
+Optimized `smov` and `srshift` instructions:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │       213.214µs │  0.00% │  16kB │
+│ OT Init     │    188.070588ms │  0.12% │  264B │
+│ Peer Inputs │    4.129665419s │  2.60% │ 667kB │
+│ Eval        │ 2m34.291433121s │ 97.28% │  25GB │
+│ Total       │ 2m38.609382342s │        │  25GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53770978, cached circuits: 26
+#gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
+```
 
 ## RSA signature computation
 

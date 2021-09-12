@@ -269,11 +269,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		case Rshift, Srshift:
 			var signWire *circuits.Wire
 			if instr.Op == Srshift {
-				one, err := prog.OneWire(conn, streaming)
-				if err != nil {
-					return nil, nil, err
-				}
-				signWire = one
+				signWire = wires[0][len(wires[0])-1]
 			} else {
 				zero, err := prog.ZeroWire(conn, streaming)
 				if err != nil {
@@ -335,11 +331,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		case Mov, Smov:
 			var signWire *circuits.Wire
 			if instr.Op == Smov {
-				one, err := prog.OneWire(conn, streaming)
-				if err != nil {
-					return nil, nil, err
-				}
-				signWire = one
+				signWire = wires[0][len(wires[0])-1]
 			} else {
 				zero, err := prog.ZeroWire(conn, streaming)
 				if err != nil {
