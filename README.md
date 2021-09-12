@@ -269,6 +269,7 @@ form assembly:
      - [X] Pointer to struct field
      - [ ] Cleanup pointer r-value handling
      - [ ] Slices are passed by value instead of by reference
+     - [ ] Selecting struct members from struct pointer value
    - [ ] Compound init values must be zero-padded to full size
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
@@ -276,9 +277,6 @@ form assembly:
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
    - [ ] `copy()` does not work on arrays which have been `make()`:ed
-   - [X] Use the topmost wire as sign sign extension wire in `smov`
-         and `srshift` instructions. This way we get the sign extension
-         with out the `phi` instruction.
    - [ ] `&base[pos][i]` returns the address of the first element
    - [ ] reading from `*[32]int32` returns invalid values
 
