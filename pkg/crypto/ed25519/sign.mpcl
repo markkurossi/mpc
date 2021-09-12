@@ -2,8 +2,8 @@
 //
 // Copyright (c) 2021 Markku Rossi
 //
-// Ed25519 constants in MPCL. This file is derived from Go's
-// crypto/ed25519 package. The original copyright notice follows:
+// Ed25519 signature computation in MPCL. This file is derived from
+// Go's crypto/ed25519 package. The original copyright notice follows:
 //
 // Copyright 2016 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -32,6 +32,9 @@ const (
 
 // XXX type PrivateKey [PrivateKeySize]byte
 type PrivateKey [64]byte
+
+// XXX type PublicKey [PublicKeySize]byte
+type PublicKey [32]byte
 
 // Sign signs the message with privateKey and returns a signature.
 // XXX []byte return value type

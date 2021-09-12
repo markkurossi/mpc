@@ -1,0 +1,38 @@
+// -*- go -*-
+//
+// Copyright (c) 2021 Markku Rossi
+//
+// Ed25519 key generation in MPCL. This file is derived from Go's
+// crypto/ed25519 package. The original copyright notice follows:
+//
+// Copyright 2016 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package ed25519
+
+import (
+	"crypto/sha512"
+)
+
+// NewKeyFromSeed calculates a private key and a public key from a
+// seed. RFC 8032's private keys correspond to seeds in this package.
+func NewKeyFromSeed(seed [SeedSize]byte) (PublicKey, PrivateKey) {
+	digest := sha512.Sum512(seed)
+	digest[0] &= 248
+	digest[31] &= 127
+	digest[31] |= 64
+
+	var A ExtendedGroupElement
+	var hBytes [32]byte
+	hBytes = memcpy(hBytes, 0, digest, 0)
+	GeScalarMultBase(&A, &hBytes)
+	var publicKeyBytes [32]byte
+	A.ToBytes(&publicKeyBytes)
+
+	var privateKey [64]byte
+	privateKey = memcpy(privateKey, 0, seed, 0)
+	privateKey = memcpy(privateKey, 32, publicKeyBytes, 0)
+
+	return publicKeyBytes, privateKey
+}
