@@ -9,8 +9,6 @@
 package circuits
 
 import (
-	"fmt"
-
 	"github.com/markkurossi/mpc/circuit"
 )
 
@@ -34,9 +32,9 @@ func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
 // NewSubtractor creates a new subtractor circuit implementing z=x-y.
 func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 	x, y = compiler.ZeroPad(x, y)
-	if len(z) < len(x) {
-		return fmt.Errorf("invalid subtractor arguments: x=%d, y=%d, z=%d",
-			len(x), len(y), len(z))
+	if len(x) > len(z) {
+		x = x[0:len(z)]
+		y = y[0:len(z)]
 	}
 	cin := compiler.ZeroWire()
 
