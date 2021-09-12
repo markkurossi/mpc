@@ -594,7 +594,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 				for _, id := range identifiers {
 					returnValues = append(returnValues, &ast.Variable{
 						Point: id.Point,
-						Type:  typeInfo,
+						Type:  id,
 					})
 				}
 
