@@ -13,6 +13,8 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
+const bufSize = 1024 * 1024
+
 // Conn implements a protocol connection.
 type Conn struct {
 	closer io.Closer
@@ -54,8 +56,8 @@ func NewConn(conn io.ReadWriter) *Conn {
 
 	return &Conn{
 		closer: closer,
-		io: bufio.NewReadWriter(bufio.NewReader(conn),
-			bufio.NewWriter(conn)),
+		io: bufio.NewReadWriter(bufio.NewReaderSize(conn, bufSize),
+			bufio.NewWriterSize(conn, bufSize)),
 	}
 }
 

@@ -641,6 +641,23 @@ Max permanent wires: 53770978, cached circuits: 26
 #gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
 ```
 
+Increased p2p bufio buffer size to `1024 * 1024` and optimized wire
+slice allocations in `compiler/ssa/streamer.go`:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃           Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │      175.567µs │  0.00% │  16kB │
+│ OT Init     │    82.231558ms │  0.06% │  264B │
+│ Peer Inputs │   4.117307505s │  3.23% │ 667kB │
+│ Eval        │ 2m3.276233546s │ 96.71% │  25GB │
+│ Total       │ 2m7.475948176s │        │  25GB │
+└─────────────┴────────────────┴────────┴───────┘
+Max permanent wires: 53770978, cached circuits: 26
+#gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
+```
+
 ## RSA signature computation
 
 | Input | MODP |     Gates | Non-XOR  | Stream Gates | Stream !XOR | Stream   |

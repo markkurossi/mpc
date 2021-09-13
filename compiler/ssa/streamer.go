@@ -196,6 +196,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	start := time.Now()
 	lastReport := start
 
+	var wires [][]*circuits.Wire
+	var iIDs, oIDs []circuit.Wire
+
 	for idx, step := range prog.Steps {
 		if idx%10 == 0 && params.Verbose {
 			now := time.Now()
@@ -216,7 +219,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 		}
 		instr := step.Instr
-		var wires [][]*circuits.Wire
+		wires = wires[:0]
 		for _, in := range instr.In {
 			w, err := prog.AssignedWires(in.String(), in.Type.Bits)
 			if err != nil {
@@ -413,7 +416,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 		case Circ:
 			// Collect input and output IDs
-			var iIDs, oIDs []circuit.Wire
+			iIDs = iIDs[:0]
+			oIDs = oIDs[:0]
 			for i := 0; i < len(wires); i++ {
 				for j := 0; j < instr.Circ.Inputs[i].Size; j++ {
 					if j < len(wires[i]) {
@@ -441,7 +445,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				return nil, nil, fmt.Errorf("%s: output mismatch: %d vs. %d",
 					instr.Op, len(oIDs), instr.Circ.Outputs.Size())
 			}
-			if true {
+			if params.Verbose && circuit.StreamDebug {
 				fmt.Printf("%05d: - circuit: %s\n", idx, instr.Circ)
 			}
 
@@ -512,7 +516,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 
 			// Collect input and output IDs
-			var iIDs, oIDs []circuit.Wire
+			iIDs = iIDs[:0]
+			oIDs = oIDs[:0]
 			for _, vars := range wires {
 				for _, w := range vars {
 					iIDs = append(iIDs, circuit.Wire(w.ID))
