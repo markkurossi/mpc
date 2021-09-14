@@ -17,9 +17,12 @@ const bufSize = 1024 * 1024
 
 // Conn implements a protocol connection.
 type Conn struct {
-	closer io.Closer
-	io     *bufio.ReadWriter
-	Stats  IOStats
+	closer   io.Closer
+	writeBuf []byte
+	writePos int
+	writer   io.ReadWriter
+	reader   *bufio.Reader
+	Stats    IOStats
 }
 
 // IOStats implements I/O statistics.
@@ -55,15 +58,32 @@ func NewConn(conn io.ReadWriter) *Conn {
 	closer, _ := conn.(io.Closer)
 
 	return &Conn{
-		closer: closer,
-		io: bufio.NewReadWriter(bufio.NewReaderSize(conn, bufSize),
-			bufio.NewWriterSize(conn, bufSize)),
+		closer:   closer,
+		writeBuf: make([]byte, bufSize),
+		writer:   conn,
+		reader:   bufio.NewReaderSize(conn, bufSize),
 	}
 }
 
 // Flush flushed any pending data in the connection.
 func (c *Conn) Flush() error {
-	return c.io.Flush()
+	if c.writePos > 0 {
+		n, err := c.writer.Write(c.writeBuf[0:c.writePos])
+		c.Stats.Sent += uint64(n)
+		c.writePos = 0
+		return err
+	}
+	return nil
+}
+
+func (c *Conn) need(n int) error {
+	if c.writePos+n > len(c.writeBuf) {
+		err := c.Flush()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Close flushes any pending data and closes the connection.
@@ -79,41 +99,41 @@ func (c *Conn) Close() error {
 
 // SendByte sends a byte value.
 func (c *Conn) SendByte(val byte) error {
-	err := c.io.WriteByte(val)
-	if err != nil {
-		return err
+	if c.writePos+1 > len(c.writeBuf) {
+		if err := c.Flush(); err != nil {
+			return err
+		}
 	}
-	c.Stats.Sent++
+	c.writeBuf[c.writePos] = val
+	c.writePos++
 	return nil
 }
 
 // SendUint16 sends an uint16 value.
 func (c *Conn) SendUint16(val int) error {
-	if err := c.io.WriteByte(byte((uint32(val) >> 8) & 0xff)); err != nil {
-		return err
+	if c.writePos+2 > len(c.writeBuf) {
+		if err := c.Flush(); err != nil {
+			return err
+		}
 	}
-	if err := c.io.WriteByte(byte(uint32(val) & 0xff)); err != nil {
-		return err
-	}
-	c.Stats.Sent += 2
+	c.writeBuf[c.writePos+0] = byte((uint32(val) >> 8) & 0xff)
+	c.writeBuf[c.writePos+1] = byte(uint32(val) & 0xff)
+	c.writePos += 2
 	return nil
 }
 
 // SendUint32 sends an uint32 value.
 func (c *Conn) SendUint32(val int) error {
-	if err := c.io.WriteByte(byte((uint32(val) >> 24) & 0xff)); err != nil {
-		return err
+	if c.writePos+4 > len(c.writeBuf) {
+		if err := c.Flush(); err != nil {
+			return err
+		}
 	}
-	if err := c.io.WriteByte(byte((uint32(val) >> 16) & 0xff)); err != nil {
-		return err
-	}
-	if err := c.io.WriteByte(byte((uint32(val) >> 8) & 0xff)); err != nil {
-		return err
-	}
-	if err := c.io.WriteByte(byte(uint32(val) & 0xff)); err != nil {
-		return err
-	}
-	c.Stats.Sent += 4
+	c.writeBuf[c.writePos+0] = byte((uint32(val) >> 24) & 0xff)
+	c.writeBuf[c.writePos+1] = byte((uint32(val) >> 16) & 0xff)
+	c.writeBuf[c.writePos+2] = byte((uint32(val) >> 8) & 0xff)
+	c.writeBuf[c.writePos+3] = byte(uint32(val) & 0xff)
+	c.writePos += 4
 	return nil
 }
 
@@ -123,21 +143,26 @@ func (c *Conn) SendData(val []byte) error {
 	if err != nil {
 		return err
 	}
-	_, err = c.io.Write(val)
+	err = c.need(len(val))
 	if err != nil {
 		return err
 	}
-	c.Stats.Sent += uint64(len(val))
+	copy(c.writeBuf[c.writePos:], val)
+	c.writePos += len(val)
 	return nil
 }
 
 // SendLabel sends an OT label.
 func (c *Conn) SendLabel(val ot.Label, data *ot.LabelData) error {
-	n, err := c.io.Write(val.Bytes(data))
-	if err != nil {
-		return err
+	bytes := val.Bytes(data)
+	if c.writePos+len(bytes) > len(c.writeBuf) {
+		if err := c.Flush(); err != nil {
+			return err
+		}
 	}
-	c.Stats.Sent += uint64(n)
+	copy(c.writeBuf[c.writePos:], bytes)
+	c.writePos += len(bytes)
+
 	return nil
 }
 
@@ -148,7 +173,7 @@ func (c *Conn) SendString(val string) error {
 
 // ReceiveByte receives a byte value.
 func (c *Conn) ReceiveByte() (byte, error) {
-	val, err := c.io.ReadByte()
+	val, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
@@ -158,11 +183,11 @@ func (c *Conn) ReceiveByte() (byte, error) {
 
 // ReceiveUint16 receives an uint16 value.
 func (c *Conn) ReceiveUint16() (int, error) {
-	b0, err := c.io.ReadByte()
+	b0, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	b1, err := c.io.ReadByte()
+	b1, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
@@ -173,19 +198,19 @@ func (c *Conn) ReceiveUint16() (int, error) {
 
 // ReceiveUint32 receives an uint32 value.
 func (c *Conn) ReceiveUint32() (int, error) {
-	b0, err := c.io.ReadByte()
+	b0, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	b1, err := c.io.ReadByte()
+	b1, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	b2, err := c.io.ReadByte()
+	b2, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
-	b3, err := c.io.ReadByte()
+	b3, err := c.reader.ReadByte()
 	if err != nil {
 		return 0, err
 	}
@@ -203,7 +228,7 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	}
 
 	result := make([]byte, len)
-	_, err = io.ReadFull(c.io, result)
+	_, err = io.ReadFull(c.reader, result)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +239,7 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 
 // ReceiveLabel receives an OT label.
 func (c *Conn) ReceiveLabel(val *ot.Label, data *ot.LabelData) error {
-	n, err := io.ReadFull(c.io, data[:])
+	n, err := io.ReadFull(c.reader, data[:])
 	if err != nil {
 		return err
 	}
