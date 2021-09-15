@@ -7,22 +7,27 @@
 package p2p
 
 import (
-	"bufio"
 	"io"
 
 	"github.com/markkurossi/mpc/ot"
 )
 
-const bufSize = 1024 * 1024
+const (
+	writeBufSize = 512 * 1024
+	readBufSize  = 1024 * 1024
+)
 
 // Conn implements a protocol connection.
 type Conn struct {
-	closer   io.Closer
-	writeBuf []byte
-	writePos int
-	writer   io.ReadWriter
-	reader   *bufio.Reader
-	Stats    IOStats
+	closer    io.Closer
+	writeBuf  []byte
+	writePos  int
+	writer    io.ReadWriter
+	readBuf   []byte
+	readStart int
+	readEnd   int
+	reader    io.ReadWriter
+	Stats     IOStats
 }
 
 // IOStats implements I/O statistics.
@@ -59,9 +64,10 @@ func NewConn(conn io.ReadWriter) *Conn {
 
 	return &Conn{
 		closer:   closer,
-		writeBuf: make([]byte, bufSize),
+		writeBuf: make([]byte, writeBufSize),
+		readBuf:  make([]byte, readBufSize),
 		writer:   conn,
-		reader:   bufio.NewReaderSize(conn, bufSize),
+		reader:   conn,
 	}
 }
 
@@ -76,12 +82,24 @@ func (c *Conn) Flush() error {
 	return nil
 }
 
-func (c *Conn) need(n int) error {
-	if c.writePos+n > len(c.writeBuf) {
-		err := c.Flush()
+// Fill fills the input buffer from the connection. Any unused data in
+// the buffer is moved to the beginning of the buffer.
+func (c *Conn) Fill(n int) error {
+	if c.readStart < c.readEnd {
+		copy(c.readBuf[0:], c.readBuf[c.readStart:c.readEnd])
+		c.readEnd -= c.readStart
+		c.readStart = 0
+	} else {
+		c.readStart = 0
+		c.readEnd = 0
+	}
+	for c.readStart+n > c.readEnd {
+		got, err := c.reader.Read(c.readBuf[c.readEnd:])
 		if err != nil {
 			return err
 		}
+		c.Stats.Recvd += uint64(got)
+		c.readEnd += got
 	}
 	return nil
 }
@@ -139,11 +157,12 @@ func (c *Conn) SendUint32(val int) error {
 
 // SendData sends binary data.
 func (c *Conn) SendData(val []byte) error {
-	err := c.SendUint32(len(val))
-	if err != nil {
-		return err
+	if c.writePos+4+len(val) > len(c.writeBuf) {
+		if err := c.Flush(); err != nil {
+			return err
+		}
 	}
-	err = c.need(len(val))
+	err := c.SendUint32(len(val))
 	if err != nil {
 		return err
 	}
@@ -173,51 +192,48 @@ func (c *Conn) SendString(val string) error {
 
 // ReceiveByte receives a byte value.
 func (c *Conn) ReceiveByte() (byte, error) {
-	val, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
+	if c.readStart+1 > c.readEnd {
+		if err := c.Fill(1); err != nil {
+			return 0, err
+		}
 	}
-	c.Stats.Recvd++
+	val := c.readBuf[c.readStart]
+	c.readStart++
 	return val, nil
 }
 
 // ReceiveUint16 receives an uint16 value.
 func (c *Conn) ReceiveUint16() (int, error) {
-	b0, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
+	if c.readStart+2 > c.readEnd {
+		if err := c.Fill(2); err != nil {
+			return 0, err
+		}
 	}
-	b1, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
-	}
-	c.Stats.Recvd += 2
+	val := uint32(c.readBuf[c.readStart+0])
+	val <<= 8
+	val |= uint32(c.readBuf[c.readStart+1])
+	c.readStart += 2
 
-	return int(uint32(b0)<<8 | uint32(b1)), nil
+	return int(val), nil
 }
 
 // ReceiveUint32 receives an uint32 value.
 func (c *Conn) ReceiveUint32() (int, error) {
-	b0, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
+	if c.readStart+4 > c.readEnd {
+		if err := c.Fill(4); err != nil {
+			return 0, err
+		}
 	}
-	b1, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
-	}
-	b2, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
-	}
-	b3, err := c.reader.ReadByte()
-	if err != nil {
-		return 0, err
-	}
-	c.Stats.Recvd += 4
+	val := uint32(c.readBuf[c.readStart+0])
+	val <<= 8
+	val |= uint32(c.readBuf[c.readStart+1])
+	val <<= 8
+	val |= uint32(c.readBuf[c.readStart+2])
+	val <<= 8
+	val |= uint32(c.readBuf[c.readStart+3])
+	c.readStart += 4
 
-	return int(uint32(b0)<<24 | uint32(b1)<<16 | uint32(b2)<<8 | uint32(b3)),
-		nil
+	return int(val), nil
 }
 
 // ReceiveData receives binary data.
@@ -226,24 +242,28 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if c.readStart+len > c.readEnd {
+		if err := c.Fill(len); err != nil {
+			return nil, err
+		}
+	}
 
 	result := make([]byte, len)
-	_, err = io.ReadFull(c.reader, result)
-	if err != nil {
-		return nil, err
-	}
-	c.Stats.Recvd += uint64(len)
+	copy(result, c.readBuf[c.readStart:c.readStart+len])
+	c.readStart += len
 
 	return result, nil
 }
 
 // ReceiveLabel receives an OT label.
 func (c *Conn) ReceiveLabel(val *ot.Label, data *ot.LabelData) error {
-	n, err := io.ReadFull(c.reader, data[:])
-	if err != nil {
-		return err
+	if c.readStart+len(data) > c.readEnd {
+		if err := c.Fill(len(data)); err != nil {
+			return err
+		}
 	}
-	c.Stats.Recvd += uint64(n)
+	copy(data[:], c.readBuf[c.readStart:c.readStart+len(data)])
+	c.readStart += len(data)
 
 	val.SetData(data)
 	return nil
@@ -260,7 +280,6 @@ func (c *Conn) ReceiveString() (string, error) {
 
 // Receive implements OT receive for the bit value of a wire.
 func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {
-
 	if err := c.SendUint32(int(wire)); err != nil {
 		return nil, err
 	}

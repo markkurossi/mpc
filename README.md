@@ -658,17 +658,17 @@ Max permanent wires: 53770978, cached circuits: 26
 #gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
 ```
 
-Optimized p2p writer:
+Optimized p2p writer and reader:
 
 ```
 ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
 ┃ Op          ┃            Time ┃      % ┃  Xfer ┃
 ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
-│ Init        │       133.742µs │  0.00% │    0B │
-│ OT Init     │       181.624ms │  0.17% │  16kB │
-│ Peer Inputs │    4.226537428s │  3.96% │ 667kB │
-│ Eval        │ 1m42.298993929s │ 95.87% │  25GB │
-│ Total       │ 1m46.707289099s │        │  25GB │
+│ Init        │        166.41µs │  0.00% │    0B │
+│ OT Init     │    409.906284ms │  0.39% │  16kB │
+│ Peer Inputs │    4.137928557s │  3.91% │ 667kB │
+│ Eval        │ 1m41.187033817s │ 95.70% │  25GB │
+│ Total       │ 1m45.735035068s │        │  25GB │
 └─────────────┴─────────────────┴────────┴───────┘
 Max permanent wires: 53770978, cached circuits: 26
 #gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
