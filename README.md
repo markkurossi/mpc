@@ -689,6 +689,22 @@ Max permanent wires: 53770978, cached circuits: 26
 #gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
 ```
 
+Half AND:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │       165.871µs │  0.00% │    0B │
+│ OT Init     │    219.979136ms │  0.21% │  16kB │
+│ Peer Inputs │    4.091995195s │  3.94% │ 667kB │
+│ Eval        │ 1m39.488931885s │ 95.85% │  16GB │
+│ Total       │ 1m43.801072087s │        │  16GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53770978, cached circuits: 26
+#gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
+```
+
 ## RSA signature computation
 
 | Input | MODP |     Gates | Non-XOR  | Stream Gates | Stream !XOR | Stream   |

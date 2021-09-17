@@ -170,6 +170,9 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	var aTmp, bTmp, cTmp bool
 	var err error
 
+	table = table[0:4]
+	var tableCount, wireCount int
+
 	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
@@ -207,6 +210,51 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 			L1: l0,
 		}
 
+	case AND:
+		pa := a.L0.S()
+		pb := b.L0.S()
+
+		// XXX need two indices here, must communicate back how many
+		// we used.
+		j0 := id
+		j1 := id + 1
+
+		// First half gate.
+		tg := encryptHalf(stream.alg, a.L0, j0, data)
+		tg.Xor(encryptHalf(stream.alg, a.L1, j0, data))
+		if pb {
+			tg.Xor(stream.r)
+		}
+		wg0 := encryptHalf(stream.alg, a.L0, j0, data)
+		if pa {
+			wg0.Xor(tg)
+		}
+
+		// Second half gate.
+		te := encryptHalf(stream.alg, b.L0, j1, data)
+		te.Xor(encryptHalf(stream.alg, b.L1, j1, data))
+		te.Xor(a.L0)
+		we0 := encryptHalf(stream.alg, b.L0, j1, data)
+		if pb {
+			we0.Xor(te)
+			we0.Xor(a.L0)
+		}
+
+		// Combine halves
+		l0 := wg0
+		l0.Xor(we0)
+
+		l1 := l0
+		l1.Xor(stream.r)
+
+		c = ot.Wire{
+			L0: l0,
+			L1: l1,
+		}
+		table[0] = tg
+		table[1] = te
+		tableCount = 2
+
 	default:
 		c, err = makeLabels(stream.r)
 		if err != nil {
@@ -226,25 +274,14 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		fmt.Printf("Set %s\n", ws(cIndex, cTmp))
 	}
 
-	table = table[0:4]
-	var count int
-
 	switch g.Op {
 	case XOR, XNOR:
 		// Free XOR.
+		wireCount = 3
 
 	case AND:
-		// a b c
-		// -----
-		// 0 0 0
-		// 0 1 0
-		// 1 0 0
-		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id, data)
-		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L0, id, data)
-		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L0, id, data)
-		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id, data)
-		count = 4
+		// Half AND garbled above.
+		wireCount = 3
 
 	case OR:
 		// a b c
@@ -257,7 +294,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L1, id, data)
 		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L1, id, data)
 		table[idx(a.L1, b.L1)] = encrypt(stream.alg, a.L1, b.L1, c.L1, id, data)
-		count = 4
+		tableCount = 4
+		wireCount = 3
 
 	case INV:
 		// a b c
@@ -267,7 +305,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		zero := ot.Label{}
 		table[idxUnary(a.L0)] = encrypt(stream.alg, a.L0, zero, c.L1, id, data)
 		table[idxUnary(a.L1)] = encrypt(stream.alg, a.L1, zero, c.L0, id, data)
-		count = 2
+		tableCount = 2
+		wireCount = 2
 
 	default:
 		return fmt.Errorf("invalid operand %s", g.Op)
@@ -294,8 +333,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 	if err := stream.conn.SendByte(op); err != nil {
 		return err
 	}
-	switch count {
-	case 0, 4:
+	switch wireCount {
+	case 3:
 		if err := sendWire(int(aIndex)); err != nil {
 			return err
 		}
@@ -322,9 +361,12 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 			fmt.Printf("Gate%d:\t%s %s %s\n", id,
 				ws(aIndex, aTmp), g.Op, ws(cIndex, cTmp))
 		}
+
+	default:
+		panic(fmt.Sprintf("invalid wire count: %d", wireCount))
 	}
 
-	for i := 0; i < count; i++ {
+	for i := 0; i < tableCount; i++ {
 		if err := stream.conn.SendLabel(table[i], data); err != nil {
 			return err
 		}

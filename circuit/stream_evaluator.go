@@ -271,14 +271,10 @@ loop:
 				gop &^= 0b11110000
 
 				var aIndex, bIndex, cIndex int
-				var count int
+				var tableCount int
 
 				switch Operation(gop) {
-				case AND, OR:
-					count = 4
-					fallthrough
-
-				case XOR, XNOR:
+				case XOR, XNOR, AND, OR:
 					aIndex, err = recvWire()
 					if err != nil {
 						return nil, nil, err
@@ -293,7 +289,6 @@ loop:
 					}
 
 				case INV:
-					count = 2
 					aIndex, err = recvWire()
 					if err != nil {
 						return nil, nil, err
@@ -306,8 +301,16 @@ loop:
 					return nil, nil, fmt.Errorf("invalid operation %s",
 						Operation(gop))
 				}
+				switch Operation(gop) {
+				case XOR, XNOR:
+					tableCount = 0
+				case AND, INV:
+					tableCount = 2
+				case OR:
+					tableCount = 4
+				}
 
-				for c := 0; c < count; c++ {
+				for c := 0; c < tableCount; c++ {
 					err = conn.ReceiveLabel(&label, &labelData)
 					if err != nil {
 						return nil, nil, err
@@ -342,22 +345,50 @@ loop:
 					a.Xor(b)
 					output = a
 
-				case AND, OR:
+				case AND:
+					if tableCount != 2 {
+						return nil, nil,
+							fmt.Errorf("corrupted ciruit: AND table size: %d",
+								tableCount)
+					}
+					sa := a.S()
+					sb := b.S()
+
+					// XXX need two indices
+					j0 := uint32(i)
+					j1 := uint32(i + 1)
+
+					tg := garbled[0]
+					te := garbled[1]
+
+					wg := encryptHalf(alg, a, j0, &labelData)
+					if sa {
+						wg.Xor(tg)
+					}
+					we := encryptHalf(alg, b, j1, &labelData)
+					if sb {
+						we.Xor(te)
+						we.Xor(a)
+					}
+					output = wg
+					output.Xor(we)
+
+				case OR:
 					index := idx(a, b)
-					if index >= count {
+					if index >= tableCount {
 						return nil, nil,
 							fmt.Errorf("corrupted circuit: index %d >= %d",
-								index, count)
+								index, tableCount)
 					}
 					output = decrypt(alg, a, b, uint32(i), garbled[index],
 						&labelData)
 
 				case INV:
 					index := idxUnary(a)
-					if index >= count {
+					if index >= tableCount {
 						return nil, nil,
 							fmt.Errorf("corrupted circuit: index %d >= %d",
-								index, count)
+								index, tableCount)
 					}
 					output = decrypt(alg, a, b, uint32(i), garbled[index],
 						&labelData)

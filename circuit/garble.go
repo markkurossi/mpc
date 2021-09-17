@@ -242,13 +242,6 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		}
 
 	case AND:
-		// Frequently, we will omit ∧ and just juxtapose two symbols
-		// to indicate logical AND. So ab = a ∧ b. When a is a single
-		// bit and R is a long string, we write aR to mean R when a =
-		// 1 and 0|R| when a = 0.
-
-		// pbR = R iff pb==1 and 0|R| otherwise
-
 		pa := a.L0.S()
 		pb := b.L0.S()
 
@@ -306,7 +299,7 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// Free XOR.
 
 	case AND:
-		// Half gates garbled above.
+		// Half AND garbled above.
 
 	case OR:
 		// a b c
