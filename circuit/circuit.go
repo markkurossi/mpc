@@ -105,8 +105,7 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 					len(inputs))
 		}
 
-		if strings.HasPrefix(io.Type, "uint") ||
-			strings.HasPrefix(io.Type, "int") {
+		if strings.HasPrefix(io.Type, "u") || strings.HasPrefix(io.Type, "i") {
 			_, ok := result.SetString(inputs[0], 0)
 			if !ok {
 				return nil, fmt.Errorf("invalid input: %s", inputs[0])

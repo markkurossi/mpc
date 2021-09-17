@@ -49,7 +49,35 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 			a.Xor(b)
 			output = a
 
-		case AND, OR:
+		case AND:
+			row := garbled[i]
+			if len(row) != 2 {
+				return fmt.Errorf("corrupted ciruit: AND row length: %d",
+					len(row))
+			}
+			sa := a.S()
+			sb := b.S()
+
+			// XXX need two indices
+			j0 := uint32(i)
+			j1 := uint32(i + 1)
+
+			tg := row[0]
+			te := row[1]
+
+			wg := encryptHalf(alg, a, j0, &data)
+			if sa {
+				wg.Xor(tg)
+			}
+			we := encryptHalf(alg, b, j1, &data)
+			if sb {
+				we.Xor(te)
+				we.Xor(a)
+			}
+			output = wg
+			output.Xor(we)
+
+		case OR:
 			row := garbled[i]
 			index := idx(a, b)
 			if index >= len(row) {
