@@ -11,7 +11,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/types"
 )
 
 // Block implements a basic block.

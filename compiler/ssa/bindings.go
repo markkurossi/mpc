@@ -9,7 +9,7 @@ package ssa
 import (
 	"fmt"
 
-	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/types"
 )
 
 var (

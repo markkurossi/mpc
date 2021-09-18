@@ -11,7 +11,7 @@ import (
 	"math"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
-	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/types"
 )
 
 // Eval implements the compiler.ast.AST.Eval for list statements.

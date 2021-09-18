@@ -11,8 +11,8 @@ import (
 	"math"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 // Builtin implements a buitin circuit that uses input wires a and b

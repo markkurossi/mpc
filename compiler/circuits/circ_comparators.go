@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/types"
 )
 
 // comparator tests if x>y if cin=0, and x>=y if cin=1.

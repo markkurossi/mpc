@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020, 2021 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,8 +11,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 const (

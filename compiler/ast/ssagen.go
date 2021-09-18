@@ -10,8 +10,8 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
-	"github.com/markkurossi/mpc/compiler/types"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 const (

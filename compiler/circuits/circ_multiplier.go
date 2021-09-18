@@ -10,7 +10,7 @@ package circuits
 
 import (
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/compiler/types"
+	"github.com/markkurossi/mpc/types"
 )
 
 // NewMultiplier creates a multiplier circuit implementing x*y=z.
