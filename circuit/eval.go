@@ -23,6 +23,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	}
 
 	var data ot.LabelData
+	var id uint32
 
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
@@ -49,14 +50,43 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 			a.Xor(b)
 			output = a
 
-		case AND, OR:
+		case AND:
+			row := garbled[i]
+			if len(row) != 2 {
+				return fmt.Errorf("corrupted ciruit: AND row length: %d",
+					len(row))
+			}
+			sa := a.S()
+			sb := b.S()
+
+			j0 := id
+			j1 := id + 1
+			id += 2
+
+			tg := row[0]
+			te := row[1]
+
+			wg := encryptHalf(alg, a, j0, &data)
+			if sa {
+				wg.Xor(tg)
+			}
+			we := encryptHalf(alg, b, j1, &data)
+			if sb {
+				we.Xor(te)
+				we.Xor(a)
+			}
+			output = wg
+			output.Xor(we)
+
+		case OR:
 			row := garbled[i]
 			index := idx(a, b)
 			if index >= len(row) {
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output = decrypt(alg, a, b, uint32(i), row[index], &data)
+			output = decrypt(alg, a, b, id, row[index], &data)
+			id++
 
 		case INV:
 			row := garbled[i]
@@ -65,7 +95,8 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output = decrypt(alg, a, ot.Label{}, uint32(i), row[index], &data)
+			output = decrypt(alg, a, ot.Label{}, id, row[index], &data)
+			id++
 		}
 		wires[gate.Output] = output
 	}

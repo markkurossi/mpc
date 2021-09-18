@@ -45,7 +45,6 @@ func encrypt(alg cipher.Block, a, b, c ot.Label, t uint32,
 	k := makeK(a, b, t)
 
 	k.GetData(data)
-
 	alg.Encrypt(data[:], data[:])
 
 	var pi ot.Label
@@ -63,7 +62,6 @@ func decrypt(alg cipher.Block, a, b ot.Label, t uint32, c ot.Label,
 	k := makeK(a, b, t)
 
 	k.GetData(data)
-
 	alg.Encrypt(data[:], data[:])
 
 	var crypted ot.Label
@@ -84,6 +82,30 @@ func makeK(a, b ot.Label, t uint32) ot.Label {
 	a.Xor(ot.NewTweak(t))
 
 	return a
+}
+
+// Hash function for half gates: Hπ(x, i) to be π(K) ⊕ K where K = 2x ⊕ i
+func encryptHalf(alg cipher.Block, x ot.Label, i uint32,
+	data *ot.LabelData) ot.Label {
+
+	k := makeKHalf(x, i)
+
+	k.GetData(data)
+	alg.Encrypt(data[:], data[:])
+
+	var pi ot.Label
+	pi.SetData(data)
+
+	pi.Xor(k)
+
+	return pi
+}
+
+// K = 2x ⊕ i
+func makeKHalf(x ot.Label, i uint32) ot.Label {
+	x.Mul2()
+	x.Xor(ot.NewTweak(i))
+	return x
 }
 
 func makeLabels(r ot.Label) (ot.Wire, error) {
@@ -156,9 +178,10 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 
 	// Garble gates.
 	var data ot.LabelData
+	var id uint32
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.Garble(wires, alg, r, uint32(i), &data)
+		data, err := gate.garble(wires, alg, r, &id, &data)
 		if err != nil {
 			return nil, err
 		}
@@ -173,11 +196,14 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 }
 
 // Garble garbles the gate and returns it labels.
-func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
-	id uint32, data *ot.LabelData) ([]ot.Label, error) {
+func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
+	idp *uint32, data *ot.LabelData) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
+
+	var table [4]ot.Label
+	var count int
 
 	// Inputs.
 	switch g.Op {
@@ -216,6 +242,50 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 			L1: l0,
 		}
 
+	case AND:
+		pa := a.L0.S()
+		pb := b.L0.S()
+
+		j0 := *idp
+		j1 := *idp + 1
+		*idp = *idp + 2
+
+		// First half gate.
+		tg := encryptHalf(enc, a.L0, j0, data)
+		tg.Xor(encryptHalf(enc, a.L1, j0, data))
+		if pb {
+			tg.Xor(r)
+		}
+		wg0 := encryptHalf(enc, a.L0, j0, data)
+		if pa {
+			wg0.Xor(tg)
+		}
+
+		// Second half gate.
+		te := encryptHalf(enc, b.L0, j1, data)
+		te.Xor(encryptHalf(enc, b.L1, j1, data))
+		te.Xor(a.L0)
+		we0 := encryptHalf(enc, b.L0, j1, data)
+		if pb {
+			we0.Xor(te)
+			we0.Xor(a.L0)
+		}
+
+		// Combine halves
+		l0 := wg0
+		l0.Xor(we0)
+
+		l1 := l0
+		l1.Xor(r)
+
+		c = ot.Wire{
+			L0: l0,
+			L1: l1,
+		}
+		table[0] = tg
+		table[1] = te
+		count = 2
+
 	default:
 		c, err = makeLabels(r)
 		if err != nil {
@@ -224,25 +294,12 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	}
 	wires[g.Output.ID()] = c
 
-	var table [4]ot.Label
-	var count int
-
 	switch g.Op {
 	case XOR, XNOR:
 		// Free XOR.
 
 	case AND:
-		// a b c
-		// -----
-		// 0 0 0
-		// 0 1 0
-		// 1 0 0
-		// 1 1 1
-		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id, data)
-		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L0, id, data)
-		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L0, id, data)
-		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id, data)
-		count = 4
+		// Half AND garbled above.
 
 	case OR:
 		// a b c
@@ -251,6 +308,8 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
+		id := *idp
+		*idp = *idp + 1
 		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id, data)
 		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id, data)
 		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id, data)
@@ -262,6 +321,8 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// -----
 		// 0   1
 		// 1   0
+		id := *idp
+		*idp = *idp + 1
 		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id, data)
 		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id, data)
 		count = 2

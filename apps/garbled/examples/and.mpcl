@@ -2,6 +2,6 @@
 
 package main
 
-func main(a, b bool) bool {
-	return a && b
+func main(a, b uint1) uint1 {
+	return a & b
 }

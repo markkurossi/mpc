@@ -310,7 +310,7 @@ form assembly:
    - [ ] Circuit & garbling:
      - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
-     - [ ] Half AND
+     - [X] Half AND
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
      - [ ] TLS for garbler-evaluator protocol
@@ -511,6 +511,21 @@ Circuit: #gates=5972956 (XOR=4315452 XNOR=53761 AND=1603743 OR=0 INV=0) #w=59731
 └────────┴──────────────┴────────┴───────┘
 ```
 
+Half And optimization:
+
+```
+┏━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━┓
+┃ Op     ┃         Time ┃      % ┃ Xfer ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━┩
+│ Wait   │ 653.959737ms │ 50.33% │      │
+│ Recv   │ 218.966485ms │ 16.85% │ 75MB │
+│ Inputs │  255.00393ms │ 19.63% │ 41kB │
+│ Eval   │ 171.306681ms │ 13.18% │      │
+│ Result │    131.077µs │  0.01% │  1kB │
+│ Total  │  1.29936791s │        │ 75MB │
+└────────┴──────────────┴────────┴──────┘
+```
+
 ## Ed25519 signature computation
 
 The first signature computation without SHA-512:
@@ -669,6 +684,22 @@ Optimized p2p writer and reader:
 │ Peer Inputs │    4.137928557s │  3.91% │ 667kB │
 │ Eval        │ 1m41.187033817s │ 95.70% │  25GB │
 │ Total       │ 1m45.735035068s │        │  25GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53770978, cached circuits: 26
+#gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
+```
+
+Half AND:
+
+```
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━┓
+┃ Op          ┃            Time ┃      % ┃  Xfer ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━┩
+│ Init        │       165.871µs │  0.00% │    0B │
+│ OT Init     │    219.979136ms │  0.21% │  16kB │
+│ Peer Inputs │    4.091995195s │  3.94% │ 667kB │
+│ Eval        │ 1m39.488931885s │ 95.85% │  16GB │
+│ Total       │ 1m43.801072087s │        │  16GB │
 └─────────────┴─────────────────┴────────┴───────┘
 Max permanent wires: 53770978, cached circuits: 26
 #gates=932823577 (XOR=612421393 XNOR=29253505 AND=290634679 OR=494216 INV=19784) #w=956830643
