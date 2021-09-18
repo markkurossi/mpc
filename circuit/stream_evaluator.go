@@ -246,6 +246,7 @@ loop:
 				}
 			}
 			streaming.InitCircuit(numWires, numTmpWires)
+			var id uint32
 			for i := 0; i < numGates; i++ {
 				gop, err := conn.ReceiveByte()
 				if err != nil {
@@ -354,9 +355,9 @@ loop:
 					sa := a.S()
 					sb := b.S()
 
-					// XXX need two indices
-					j0 := uint32(i)
-					j1 := uint32(i + 1)
+					j0 := id
+					j1 := id + 1
+					id += 2
 
 					tg := garbled[0]
 					te := garbled[1]
@@ -380,8 +381,8 @@ loop:
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, tableCount)
 					}
-					output = decrypt(alg, a, b, uint32(i), garbled[index],
-						&labelData)
+					output = decrypt(alg, a, b, id, garbled[index], &labelData)
+					id++
 
 				case INV:
 					index := idxUnary(a)
@@ -390,8 +391,8 @@ loop:
 							fmt.Errorf("corrupted circuit: index %d >= %d",
 								index, tableCount)
 					}
-					output = decrypt(alg, a, b, uint32(i), garbled[index],
-						&labelData)
+					output = decrypt(alg, a, b, id, garbled[index], &labelData)
+					id++
 				}
 				streaming.Set(cTmp, cIndex, output)
 			}

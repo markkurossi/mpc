@@ -310,7 +310,7 @@ form assembly:
    - [ ] Circuit & garbling:
      - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
-     - [ ] Half AND
+     - [X] Half AND
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
      - [ ] TLS for garbler-evaluator protocol

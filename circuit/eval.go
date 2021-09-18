@@ -23,6 +23,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	}
 
 	var data ot.LabelData
+	var id uint32
 
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
@@ -58,9 +59,9 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 			sa := a.S()
 			sb := b.S()
 
-			// XXX need two indices
-			j0 := uint32(i)
-			j1 := uint32(i + 1)
+			j0 := id
+			j1 := id + 1
+			id += 2
 
 			tg := row[0]
 			te := row[1]
@@ -84,7 +85,8 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output = decrypt(alg, a, b, uint32(i), row[index], &data)
+			output = decrypt(alg, a, b, id, row[index], &data)
+			id++
 
 		case INV:
 			row := garbled[i]
@@ -93,7 +95,8 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
 					index, len(row))
 			}
-			output = decrypt(alg, a, ot.Label{}, uint32(i), row[index], &data)
+			output = decrypt(alg, a, ot.Label{}, id, row[index], &data)
+			id++
 		}
 		wires[gate.Output] = output
 	}

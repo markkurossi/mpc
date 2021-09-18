@@ -150,10 +150,11 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 
 	// Garble gates.
 	var data ot.LabelData
+	var id uint32
 	buf := make([]ot.Label, 4)
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		err := stream.GarbleGate(gate, uint32(i), buf, &data)
+		err := stream.garbleGate(gate, &id, buf, &data)
 		if err != nil {
 			return err
 		}
@@ -162,7 +163,7 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 }
 
 // GarbleGate garbles the gate and streams it to the stream.
-func (stream *Streaming) GarbleGate(g *Gate, id uint32,
+func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 	table []ot.Label, data *ot.LabelData) error {
 
 	var a, b, c ot.Wire
@@ -214,10 +215,9 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		pa := a.L0.S()
 		pb := b.L0.S()
 
-		// XXX need two indices here, must communicate back how many
-		// we used.
-		j0 := id
-		j1 := id + 1
+		j0 := *idp
+		j1 := *idp + 1
+		*idp = *idp + 2
 
 		// First half gate.
 		tg := encryptHalf(stream.alg, a.L0, j0, data)
@@ -290,6 +290,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
+		id := *idp
+		*idp = *idp + 1
 		table[idx(a.L0, b.L0)] = encrypt(stream.alg, a.L0, b.L0, c.L0, id, data)
 		table[idx(a.L0, b.L1)] = encrypt(stream.alg, a.L0, b.L1, c.L1, id, data)
 		table[idx(a.L1, b.L0)] = encrypt(stream.alg, a.L1, b.L0, c.L1, id, data)
@@ -303,6 +305,8 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		// 0   1
 		// 1   0
 		zero := ot.Label{}
+		id := *idp
+		*idp = *idp + 1
 		table[idxUnary(a.L0)] = encrypt(stream.alg, a.L0, zero, c.L1, id, data)
 		table[idxUnary(a.L1)] = encrypt(stream.alg, a.L1, zero, c.L0, id, data)
 		tableCount = 2
@@ -344,11 +348,6 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		if err := sendWire(int(cIndex)); err != nil {
 			return err
 		}
-		if StreamDebug {
-			fmt.Printf(" - Gate%d:\t%s %s %s %s\n", id,
-				ws(aIndex, aTmp), ws(bIndex, bTmp),
-				g.Op, ws(cIndex, cTmp))
-		}
 
 	case 2:
 		if err := sendWire(int(aIndex)); err != nil {
@@ -356,10 +355,6 @@ func (stream *Streaming) GarbleGate(g *Gate, id uint32,
 		}
 		if err := sendWire(int(cIndex)); err != nil {
 			return err
-		}
-		if StreamDebug {
-			fmt.Printf("Gate%d:\t%s %s %s\n", id,
-				ws(aIndex, aTmp), g.Op, ws(cIndex, cTmp))
 		}
 
 	default:

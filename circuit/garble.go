@@ -178,9 +178,10 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 
 	// Garble gates.
 	var data ot.LabelData
+	var id uint32
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.Garble(wires, alg, r, uint32(i), &data)
+		data, err := gate.garble(wires, alg, r, &id, &data)
 		if err != nil {
 			return nil, err
 		}
@@ -195,8 +196,8 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 }
 
 // Garble garbles the gate and returns it labels.
-func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
-	id uint32, data *ot.LabelData) ([]ot.Label, error) {
+func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
+	idp *uint32, data *ot.LabelData) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
 	var err error
@@ -245,10 +246,9 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		pa := a.L0.S()
 		pb := b.L0.S()
 
-		// XXX need two indices here, must communicate back how many
-		// we used.
-		j0 := id
-		j1 := id + 1
+		j0 := *idp
+		j1 := *idp + 1
+		*idp = *idp + 2
 
 		// First half gate.
 		tg := encryptHalf(enc, a.L0, j0, data)
@@ -308,6 +308,8 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// 0 1 1
 		// 1 0 1
 		// 1 1 1
+		id := *idp
+		*idp = *idp + 1
 		table[idx(a.L0, b.L0)] = encrypt(enc, a.L0, b.L0, c.L0, id, data)
 		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id, data)
 		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id, data)
@@ -319,6 +321,8 @@ func (g *Gate) Garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		// -----
 		// 0   1
 		// 1   0
+		id := *idp
+		*idp = *idp + 1
 		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id, data)
 		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id, data)
 		count = 2
