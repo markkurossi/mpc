@@ -27,6 +27,10 @@ var parseTests = []struct {
 		info:  Byte,
 	},
 	{
+		input: "rune",
+		info:  Rune,
+	},
+	{
 		input: "i32",
 		info:  Int32,
 	},

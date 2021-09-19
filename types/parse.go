@@ -25,15 +25,15 @@ func Parse(val string) (info Info, err error) {
 
 	switch val {
 	case "b", "bool":
-		info.Type = TBool
-		info.Bits = 1
-		info.MinBits = info.Bits
+		info = Bool
 		return
 
 	case "byte":
-		info.Type = TUint
-		info.Bits = 8
-		info.MinBits = info.Bits
+		info = Byte
+		return
+
+	case "rune":
+		info = Rune
 		return
 	}
 
