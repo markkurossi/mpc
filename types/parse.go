@@ -21,7 +21,7 @@ var (
 
 // Parse parses type definition and returns its type information.
 func Parse(val string) (info Info, err error) {
-	var ival int
+	var ival int64
 
 	switch val {
 	case "b", "bool":
@@ -52,7 +52,7 @@ func Parse(val string) (info Info, err error) {
 		default:
 			return info, fmt.Errorf("unknown type: %s", val)
 		}
-		ival, err = strconv.Atoi(m[2])
+		ival, err = strconv.ParseInt(m[2], 10, 32)
 		if err != nil {
 			return
 		}
@@ -70,7 +70,7 @@ func Parse(val string) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	ival, err = strconv.Atoi(m[1])
+	ival, err = strconv.ParseInt(m[1], 10, 32)
 	if err != nil {
 		return
 	}
