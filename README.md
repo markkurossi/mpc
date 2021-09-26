@@ -277,20 +277,7 @@ form assembly:
 
 # TODO
 
- - [X] Phase 0
-   - [X] Oblivious Transfer
-   - [X] Garbled circuit garbling and evaluation
-   - [X] MPCL compiler for basic arithmetics
- - [ ] Phase 1
-   - [X] Compiler
-     - [X] Conditionals
-     - [X] Struct input types
-     - [X] Binary serialization format for circuits
-     - [X] RSA 128-bit signature
-   - [ ] Circuit & garbling
-     - [X] RSA 128-bit signature
-     - [ ] BMR multi-party protocol
- - [ ] Phase 2
+ - [ ] Compiler
    - [ ] Incremental compiler
      - [ ] Constant folding
        - [ ] Implement using AST rewrite
@@ -303,17 +290,13 @@ form assembly:
        - [X] peephole optimization over block boundaries
        - [ ] SSA aliasing is 1:1 but `amov` has 2:1 relation
        - [ ] variable liveness analysis for templates
-     - [ ] Signed / unsigned arithmetics
-     - [ ] unary expressions
-       - [ ] logical not
      - [ ] BitShift
    - [ ] Circuit & garbling:
-     - [X] Incremental (streaming) garbling and evaluation
      - [ ] Row reduction
-     - [X] Half AND
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
      - [ ] TLS for garbler-evaluator protocol
+ - [ ] BMR multi-party protocol
  - [ ] Ed25519
    - [X] Parsing Ed25519 MPCL files
      - [ ] for-range statements
