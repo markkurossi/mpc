@@ -151,10 +151,15 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	// Garble gates.
 	var data ot.LabelData
 	var id uint32
-	buf := make([]ot.Label, 4)
+	var table [4]ot.Label
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		err := stream.garbleGate(gate, &id, buf, &data)
+		err := stream.conn.NeedSpace(512)
+		if err != nil {
+			return err
+		}
+		err = stream.garbleGate(gate, &id, table[:], &data,
+			stream.conn.WriteBuf, &stream.conn.WritePos)
 		if err != nil {
 			return err
 		}
@@ -164,7 +169,7 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 
 // GarbleGate garbles the gate and streams it to the stream.
 func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
-	table []ot.Label, data *ot.LabelData) error {
+	table []ot.Label, data *ot.LabelData, buf []byte, bufpos *int) error {
 
 	var a, b, c ot.Wire
 	var aIndex, bIndex, cIndex Wire
@@ -262,16 +267,16 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 		}
 	}
 
-	ws := func(i Wire, tmp bool) string {
-		if tmp {
-			return fmt.Sprintf("~%d", i)
-		}
-		return i.String()
-	}
-
-	cIndex, cTmp = stream.Set(g.Output, c)
-	if StreamDebug && false {
-		fmt.Printf("Set %s\n", ws(cIndex, cTmp))
+	if g.Output < stream.firstTmp {
+		cIndex = stream.in[g.Output]
+		stream.wires[cIndex] = c
+	} else if g.Output >= stream.firstOut {
+		cIndex = stream.out[g.Output-stream.firstOut]
+		stream.wires[cIndex] = c
+	} else {
+		cIndex = g.Output
+		cTmp = true
+		stream.tmp[g.Output] = c
 	}
 
 	switch g.Op {
@@ -326,45 +331,51 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 	if cTmp {
 		op |= 0b00100000
 	}
-	var sendWire func(w int) error
 	if aIndex <= 0xffff && bIndex <= 0xffff && cIndex <= 0xffff {
 		op |= 0b00010000
-		sendWire = stream.conn.SendUint16
+		buf[*bufpos] = op
+		*bufpos = *bufpos + 1
+
+		switch wireCount {
+		case 3:
+			bo.PutUint16(buf[*bufpos+0:], uint16(aIndex))
+			bo.PutUint16(buf[*bufpos+2:], uint16(bIndex))
+			bo.PutUint16(buf[*bufpos+4:], uint16(cIndex))
+			*bufpos = *bufpos + 6
+
+		case 2:
+			bo.PutUint16(buf[*bufpos+0:], uint16(aIndex))
+			bo.PutUint16(buf[*bufpos+2:], uint16(cIndex))
+			*bufpos = *bufpos + 4
+
+		default:
+			panic(fmt.Sprintf("invalid wire count: %d", wireCount))
+		}
 	} else {
-		sendWire = stream.conn.SendUint32
-	}
+		buf[*bufpos] = op
+		*bufpos = *bufpos + 1
 
-	if err := stream.conn.SendByte(op); err != nil {
-		return err
-	}
-	switch wireCount {
-	case 3:
-		if err := sendWire(int(aIndex)); err != nil {
-			return err
-		}
-		if err := sendWire(int(bIndex)); err != nil {
-			return err
-		}
-		if err := sendWire(int(cIndex)); err != nil {
-			return err
-		}
+		switch wireCount {
+		case 3:
+			bo.PutUint32(buf[*bufpos+0:], uint32(aIndex))
+			bo.PutUint32(buf[*bufpos+4:], uint32(bIndex))
+			bo.PutUint32(buf[*bufpos+8:], uint32(cIndex))
+			*bufpos = *bufpos + 12
 
-	case 2:
-		if err := sendWire(int(aIndex)); err != nil {
-			return err
-		}
-		if err := sendWire(int(cIndex)); err != nil {
-			return err
-		}
+		case 2:
+			bo.PutUint32(buf[*bufpos+0:], uint32(aIndex))
+			bo.PutUint32(buf[*bufpos+4:], uint32(cIndex))
+			*bufpos = *bufpos + 8
 
-	default:
-		panic(fmt.Sprintf("invalid wire count: %d", wireCount))
+		default:
+			panic(fmt.Sprintf("invalid wire count: %d", wireCount))
+		}
 	}
 
 	for i := 0; i < tableCount; i++ {
-		if err := stream.conn.SendLabel(table[i], data); err != nil {
-			return err
-		}
+		bytes := table[i].Bytes(data)
+		copy(buf[*bufpos:], bytes)
+		*bufpos = *bufpos + len(bytes)
 	}
 
 	return nil
