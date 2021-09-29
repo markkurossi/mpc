@@ -295,6 +295,7 @@ form assembly:
      - [ ] Row reduction
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
+     - [ ] Circuit secret constructed from peer secrets
      - [ ] TLS for garbler-evaluator protocol
  - [ ] BMR multi-party protocol
  - [ ] Ed25519
