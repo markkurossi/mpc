@@ -573,8 +573,13 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 				if r == '"' {
 					break
+				} else if r == '\\' {
+					l.UnreadRune()
+					r, err = l.readEscape()
+					if err != nil {
+						return nil, err
+					}
 				}
-				// XXX escapes
 				val += string(r)
 			}
 			token := l.Token(TConstant)
@@ -582,91 +587,9 @@ func (l *Lexer) Get() (*Token, error) {
 			return token, nil
 
 		case '\'':
-			var i32 int32
-			r, _, err := l.ReadRune()
+			i32, err := l.readEscape()
 			if err != nil {
 				return nil, err
-			}
-			if r == '\\' {
-				r, _, err = l.ReadRune()
-				if err != nil {
-					return nil, err
-				}
-				switch r {
-				case 'a':
-					i32 = '\a'
-				case 'b':
-					i32 = '\b'
-				case 'f':
-					i32 = '\f'
-				case 'n':
-					i32 = '\n'
-				case 'r':
-					i32 = '\r'
-				case 't':
-					i32 = '\t'
-				case 'v':
-					i32 = '\v'
-				case '\\':
-					i32 = '\\'
-				case 'u':
-					for i := 0; i < 4; i++ {
-						i32 <<= 4
-						r, _, err = l.ReadRune()
-						if err != nil {
-							return nil, err
-						}
-						if '0' <= r && r <= '9' {
-							i32 += r - '0'
-						} else if 'a' <= r && r <= 'f' {
-							i32 += 10 + r - 'a'
-						} else if 'A' <= r && r <= 'F' {
-							i32 += 10 + r - 'A'
-						} else {
-							l.UnreadRune()
-							return nil, l.errUnexpected(r)
-						}
-					}
-				case 'x':
-					for i := 0; i < 2; i++ {
-						i32 <<= 4
-						r, _, err = l.ReadRune()
-						if err != nil {
-							return nil, err
-						}
-						if '0' <= r && r <= '9' {
-							i32 += r - '0'
-						} else if 'a' <= r && r <= 'f' {
-							i32 += 10 + r - 'a'
-						} else if 'A' <= r && r <= 'F' {
-							i32 += 10 + r - 'A'
-						} else {
-							l.UnreadRune()
-							return nil, l.errUnexpected(r)
-						}
-					}
-				default:
-					if '0' <= r && r <= '7' {
-						i32 = r - '0'
-						for i := 0; i < 2; i++ {
-							r, _, err = l.ReadRune()
-							if err != nil {
-								return nil, err
-							}
-							if r < '0' || r > '7' {
-								l.UnreadRune()
-								return nil, l.errUnexpected(r)
-							}
-							i32 *= 8
-							i32 += r - '0'
-						}
-					} else {
-						l.UnreadRune()
-						return nil, l.errUnexpected(r)
-					}
-				}
-			} else {
-				i32 = int32(r)
 			}
 			r, _, err = l.ReadRune()
 			if err != nil {
@@ -802,6 +725,96 @@ func (l *Lexer) Get() (*Token, error) {
 			return nil, l.errUnexpected(r)
 		}
 	}
+}
+
+func (l *Lexer) readEscape() (int32, error) {
+	var i32 int32
+	r, _, err := l.ReadRune()
+	if err != nil {
+		return 0, err
+	}
+	if r == '\\' {
+		r, _, err = l.ReadRune()
+		if err != nil {
+			return 0, err
+		}
+		switch r {
+		case 'a':
+			i32 = '\a'
+		case 'b':
+			i32 = '\b'
+		case 'f':
+			i32 = '\f'
+		case 'n':
+			i32 = '\n'
+		case 'r':
+			i32 = '\r'
+		case 't':
+			i32 = '\t'
+		case 'v':
+			i32 = '\v'
+		case '\\':
+			i32 = '\\'
+		case 'u':
+			for i := 0; i < 4; i++ {
+				i32 <<= 4
+				r, _, err = l.ReadRune()
+				if err != nil {
+					return 0, err
+				}
+				if '0' <= r && r <= '9' {
+					i32 += r - '0'
+				} else if 'a' <= r && r <= 'f' {
+					i32 += 10 + r - 'a'
+				} else if 'A' <= r && r <= 'F' {
+					i32 += 10 + r - 'A'
+				} else {
+					l.UnreadRune()
+					return 0, l.errUnexpected(r)
+				}
+			}
+		case 'x':
+			for i := 0; i < 2; i++ {
+				i32 <<= 4
+				r, _, err = l.ReadRune()
+				if err != nil {
+					return 0, err
+				}
+				if '0' <= r && r <= '9' {
+					i32 += r - '0'
+				} else if 'a' <= r && r <= 'f' {
+					i32 += 10 + r - 'a'
+				} else if 'A' <= r && r <= 'F' {
+					i32 += 10 + r - 'A'
+				} else {
+					l.UnreadRune()
+					return 0, l.errUnexpected(r)
+				}
+			}
+		default:
+			if '0' <= r && r <= '7' {
+				i32 = r - '0'
+				for i := 0; i < 2; i++ {
+					r, _, err = l.ReadRune()
+					if err != nil {
+						return 0, err
+					}
+					if r < '0' || r > '7' {
+						l.UnreadRune()
+						return 0, l.errUnexpected(r)
+					}
+					i32 *= 8
+					i32 += r - '0'
+				}
+			} else {
+				l.UnreadRune()
+				return 0, l.errUnexpected(r)
+			}
+		}
+	} else {
+		i32 = int32(r)
+	}
+	return i32, nil
 }
 
 func (l *Lexer) readBinaryLiteral(val []rune) (uint64, error) {

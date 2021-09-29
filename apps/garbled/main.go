@@ -339,13 +339,14 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 
 	if strings.HasPrefix(output.Type, "string") {
 		mask := big.NewInt(0xff)
-		var str string
 
 		for i := 0; i < output.Size/8; i++ {
 			tmp := new(big.Int).Rsh(result, uint(i*8))
 			r := rune(tmp.And(tmp, mask).Uint64())
 			if unicode.IsPrint(r) {
 				str += string(r)
+			} else {
+				str += fmt.Sprintf("\\u%04x", r)
 			}
 		}
 	} else if strings.HasPrefix(output.Type, "uint") ||
