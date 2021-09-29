@@ -581,6 +581,105 @@ func (l *Lexer) Get() (*Token, error) {
 			token.ConstVal = val
 			return token, nil
 
+		case '\'':
+			var i32 int32
+			r, _, err := l.ReadRune()
+			if err != nil {
+				return nil, err
+			}
+			if r == '\\' {
+				r, _, err = l.ReadRune()
+				if err != nil {
+					return nil, err
+				}
+				switch r {
+				case 'a':
+					i32 = '\a'
+				case 'b':
+					i32 = '\b'
+				case 'f':
+					i32 = '\f'
+				case 'n':
+					i32 = '\n'
+				case 'r':
+					i32 = '\r'
+				case 't':
+					i32 = '\t'
+				case 'v':
+					i32 = '\v'
+				case '\\':
+					i32 = '\\'
+				case 'u':
+					for i := 0; i < 4; i++ {
+						i32 <<= 4
+						r, _, err = l.ReadRune()
+						if err != nil {
+							return nil, err
+						}
+						if '0' <= r && r <= '9' {
+							i32 += r - '0'
+						} else if 'a' <= r && r <= 'f' {
+							i32 += 10 + r - 'a'
+						} else if 'A' <= r && r <= 'F' {
+							i32 += 10 + r - 'A'
+						} else {
+							l.UnreadRune()
+							return nil, l.errUnexpected(r)
+						}
+					}
+				case 'x':
+					for i := 0; i < 2; i++ {
+						i32 <<= 4
+						r, _, err = l.ReadRune()
+						if err != nil {
+							return nil, err
+						}
+						if '0' <= r && r <= '9' {
+							i32 += r - '0'
+						} else if 'a' <= r && r <= 'f' {
+							i32 += 10 + r - 'a'
+						} else if 'A' <= r && r <= 'F' {
+							i32 += 10 + r - 'A'
+						} else {
+							l.UnreadRune()
+							return nil, l.errUnexpected(r)
+						}
+					}
+				default:
+					if '0' <= r && r <= '7' {
+						i32 = r - '0'
+						for i := 0; i < 2; i++ {
+							r, _, err = l.ReadRune()
+							if err != nil {
+								return nil, err
+							}
+							if r < '0' || r > '7' {
+								l.UnreadRune()
+								return nil, l.errUnexpected(r)
+							}
+							i32 *= 8
+							i32 += r - '0'
+						}
+					} else {
+						l.UnreadRune()
+						return nil, l.errUnexpected(r)
+					}
+				}
+			} else {
+				i32 = int32(r)
+			}
+			r, _, err = l.ReadRune()
+			if err != nil {
+				return nil, err
+			}
+			if r != '\'' {
+				l.UnreadRune()
+				return nil, l.errUnexpected(r)
+			}
+			token := l.Token(TConstant)
+			token.ConstVal = i32
+			return token, nil
+
 		case '!':
 			r, _, err := l.ReadRune()
 			if err != nil {
@@ -700,8 +799,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return token, nil
 			}
 			l.UnreadRune()
-			return nil, fmt.Errorf("%s: unexpected character '%s'",
-				l.point, string(r))
+			return nil, l.errUnexpected(r)
 		}
 	}
 }
@@ -829,4 +927,8 @@ func (l *Lexer) Annotations(loc utils.Point) ast.Annotations {
 		return nil
 	}
 	return l.lastComment.Lines
+}
+
+func (l *Lexer) errUnexpected(r rune) error {
+	return fmt.Errorf("%s: unexpected character '%s'", l.point, string(r))
 }
