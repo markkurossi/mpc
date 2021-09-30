@@ -200,10 +200,9 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	idp *uint32, data *ot.LabelData) ([]ot.Label, error) {
 
 	var a, b, c ot.Wire
-	var err error
 
 	var table [4]ot.Label
-	var count int
+	var start, count int
 
 	// Inputs.
 	switch g.Op {
@@ -286,13 +285,13 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		table[1] = te
 		count = 2
 
+	case OR, INV:
+		// Row reduction creates labels below so that the first row is
+		// all zero.
+
 	default:
-		c, err = makeLabels(r)
-		if err != nil {
-			return nil, err
-		}
+		panic("invalid gate type")
 	}
-	wires[g.Output.ID()] = c
 
 	switch g.Op {
 	case XOR, XNOR:
@@ -314,7 +313,26 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		table[idx(a.L0, b.L1)] = encrypt(enc, a.L0, b.L1, c.L1, id, data)
 		table[idx(a.L1, b.L0)] = encrypt(enc, a.L1, b.L0, c.L1, id, data)
 		table[idx(a.L1, b.L1)] = encrypt(enc, a.L1, b.L1, c.L1, id, data)
-		count = 4
+
+		l0Index := idx(a.L0, b.L0)
+
+		c.L0 = table[0]
+		c.L1 = table[0]
+
+		if l0Index == 0 {
+			c.L1.Xor(r)
+		} else {
+			c.L0.Xor(r)
+		}
+		for i := 0; i < 4; i++ {
+			if i == l0Index {
+				table[i].Xor(c.L0)
+			} else {
+				table[i].Xor(c.L1)
+			}
+		}
+		start = 1
+		count = 3
 
 	case INV:
 		// a b c
@@ -325,11 +343,31 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		*idp = *idp + 1
 		table[idxUnary(a.L0)] = encrypt(enc, a.L0, ot.Label{}, c.L1, id, data)
 		table[idxUnary(a.L1)] = encrypt(enc, a.L1, ot.Label{}, c.L0, id, data)
-		count = 2
+
+		l0Index := idxUnary(a.L0)
+
+		c.L0 = table[0]
+		c.L1 = table[0]
+
+		if l0Index == 0 {
+			c.L0.Xor(r)
+		} else {
+			c.L1.Xor(r)
+		}
+		for i := 0; i < 2; i++ {
+			if i == l0Index {
+				table[i].Xor(c.L1)
+			} else {
+				table[i].Xor(c.L0)
+			}
+		}
+		start = 1
+		count = 1
 
 	default:
 		return nil, fmt.Errorf("invalid operand %s", g.Op)
 	}
+	wires[g.Output.ID()] = c
 
-	return table[:count], nil
+	return table[start : start+count], nil
 }

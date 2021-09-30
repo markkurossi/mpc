@@ -292,7 +292,6 @@ form assembly:
        - [ ] variable liveness analysis for templates
      - [ ] BitShift
    - [ ] Circuit & garbling:
-     - [ ] Row reduction
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
      - [ ] Circuit secret constructed from peer secrets

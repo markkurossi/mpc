@@ -28,8 +28,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
 
-		var a ot.Label
-		var b ot.Label
+		var a, b, c ot.Label
 
 		switch gate.Op {
 		case XOR, XNOR, AND, OR:
@@ -81,21 +80,32 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 		case OR:
 			row := garbled[i]
 			index := idx(a, b)
-			if index >= len(row) {
-				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
-					index, len(row))
+			if index > 0 {
+				// First row is zero and not transmitted.
+				index--
+				if index >= len(row) {
+					return fmt.Errorf("corrupted circuit: index %d >= row %d",
+						index, len(row))
+				}
+				c = row[index]
 			}
-			output = decrypt(alg, a, b, id, row[index], &data)
+
+			output = decrypt(alg, a, b, id, c, &data)
 			id++
 
 		case INV:
 			row := garbled[i]
 			index := idxUnary(a)
-			if index >= len(row) {
-				return fmt.Errorf("corrupted circuit: index %d >= row len %d",
-					index, len(row))
+			if index > 0 {
+				// First row is zero and not transmitted.
+				index--
+				if index >= len(row) {
+					return fmt.Errorf("corrupted circuit: index %d >= row %d",
+						index, len(row))
+				}
+				c = row[index]
 			}
-			output = decrypt(alg, a, ot.Label{}, id, row[index], &data)
+			output = decrypt(alg, a, ot.Label{}, id, c, &data)
 			id++
 		}
 		wires[gate.Output] = output

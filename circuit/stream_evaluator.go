@@ -305,10 +305,12 @@ loop:
 				switch Operation(gop) {
 				case XOR, XNOR:
 					tableCount = 0
-				case AND, INV:
+				case INV:
+					tableCount = 1
+				case AND:
 					tableCount = 2
 				case OR:
-					tableCount = 4
+					tableCount = 3
 				}
 
 				for c := 0; c < tableCount; c++ {
@@ -319,7 +321,7 @@ loop:
 					garbled[c] = label
 				}
 
-				var a, b ot.Label
+				var a, b, c ot.Label
 
 				switch Operation(gop) {
 				case XOR, XNOR, AND, OR:
@@ -376,22 +378,33 @@ loop:
 
 				case OR:
 					index := idx(a, b)
-					if index >= tableCount {
-						return nil, nil,
-							fmt.Errorf("corrupted circuit: index %d >= %d",
-								index, tableCount)
+					if index > 0 {
+						// First row is zero and not transmitted.
+						index--
+						if index >= tableCount {
+							return nil, nil,
+								fmt.Errorf("corrupted circuit: index %d >= %d",
+									index, tableCount)
+						}
+						c = garbled[index]
 					}
-					output = decrypt(alg, a, b, id, garbled[index], &labelData)
+					output = decrypt(alg, a, b, id, c, &labelData)
 					id++
 
 				case INV:
 					index := idxUnary(a)
-					if index >= tableCount {
-						return nil, nil,
-							fmt.Errorf("corrupted circuit: index %d >= %d",
-								index, tableCount)
+					if index > 0 {
+						// First row is zero and not transmitted.
+						index--
+						if index >= tableCount {
+							return nil, nil,
+								fmt.Errorf("corrupted circuit: index %d >= %d",
+									index, tableCount)
+						}
+						c = garbled[index]
 					}
-					output = decrypt(alg, a, b, id, garbled[index], &labelData)
+
+					output = decrypt(alg, a, b, id, c, &labelData)
 					id++
 				}
 				streaming.Set(cTmp, cIndex, output)
