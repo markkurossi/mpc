@@ -9,8 +9,6 @@
 package ot
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
@@ -21,74 +19,6 @@ import (
 	"github.com/markkurossi/mpc/ot/mpint"
 	"github.com/markkurossi/mpc/pkcs1"
 )
-
-const (
-	// PRFBlockSize specifies the cipher block size for the PRF label
-	// generation algorithm.
-	PRFBlockSize = 16
-
-	// PRFBlockCount specifies the block count for the PRF label
-	// generation algorithm.
-	PRFBlockCount = 256
-)
-
-// LabelType specifies label generation algorithms.
-type LabelType int
-
-// Label generation algorithms.
-const (
-	LabelRandom = iota
-	LabelPRF
-	LabelZero
-)
-
-const (
-	labelGenerator = LabelPRF
-)
-
-var (
-	prfCounter uint64
-	prfKey     [16]byte
-	prfBuffer  [PRFBlockSize * PRFBlockCount]byte
-	prfBlock   int
-	prfCipher  cipher.Block
-)
-
-func prf() Label {
-
-	if prfBlock >= PRFBlockCount {
-		prfBlock = 0
-		prfCounter++
-
-		var buf [PRFBlockSize]byte
-		binary.BigEndian.PutUint64(buf[:], prfCounter)
-
-		for b := 0; b < PRFBlockCount; b++ {
-			for i := 0; i < PRFBlockSize; i++ {
-				prfBuffer[b*PRFBlockSize+i] ^= buf[i]
-			}
-		}
-		prfCipher.Encrypt(prfBuffer[:], prfBuffer[:])
-	}
-
-	var label Label
-	label.SetBytes(prfBuffer[prfBlock*PRFBlockSize:])
-	prfBlock++
-
-	return label
-}
-
-func init() {
-	rand.Read(prfKey[:])
-	rand.Read(prfBuffer[:])
-
-	var err error
-	prfCipher, err = aes.NewCipher(prfKey[:])
-	if err != nil {
-		panic(err)
-	}
-	prfBlock = PRFBlockCount
-}
 
 // RandomData creates size bytes of random data.
 func RandomData(size int) ([]byte, error) {
@@ -120,27 +50,14 @@ func (l Label) Equal(o Label) bool {
 
 // NewLabel creates a new random label.
 func NewLabel(rand io.Reader) (Label, error) {
-	switch labelGenerator {
-	case LabelRandom:
-		var buf LabelData
-		var label Label
+	var buf LabelData
+	var label Label
 
-		if _, err := rand.Read(buf[:]); err != nil {
-			return label, err
-		}
-		label.SetData(&buf)
-		return label, nil
-
-	case LabelPRF:
-		return prf(), nil
-
-	case LabelZero:
-		var l Label
-		return l, nil
-
-	default:
-		panic(fmt.Sprintf("Unknown label generator: %v", labelGenerator))
+	if _, err := rand.Read(buf[:]); err != nil {
+		return label, err
 	}
+	label.SetData(&buf)
+	return label, nil
 }
 
 // NewTweak creates a new label from the tweak value.
