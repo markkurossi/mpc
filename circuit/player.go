@@ -17,9 +17,6 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-// XXX check this
-var key [32]byte
-
 // Player runs the BMR protocol client on the P2P network.
 func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	[]*big.Int, error) {
@@ -30,6 +27,12 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	timing := NewTiming()
 	if verbose {
 		fmt.Printf(" - Garbling...\n")
+	}
+
+	var key [32]byte
+	_, err := rand.Read(key[:])
+	if err != nil {
+		return nil, err
 	}
 
 	garbled, err := circ.Garble(key[:])
