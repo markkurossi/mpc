@@ -68,7 +68,11 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
+	doc := flag.Bool("doc", false,
+		"generate documentation about argument files")
 	flag.Parse()
+
+	log.SetFlags(0)
 
 	verbose = *fVerbose
 	debug = *fDebug
@@ -98,6 +102,17 @@ func main() {
 	}
 	if *ssa && !*compile {
 		params.NoCircCompile = true
+	}
+
+	if *doc {
+		out := &HTMLDoc{
+			out: os.Stdout,
+		}
+		err := documentation(flag.Args(), out)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
 
 	if *stream {
