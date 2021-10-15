@@ -58,7 +58,6 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 		return p.pkg, nil
 	}
 	if token.Type == TSymImport {
-		imports := make(map[string]string)
 		_, err = p.needToken('(')
 		if err != nil {
 			return nil, err
@@ -87,7 +86,7 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 			if !ok {
 				return nil, p.errUnexpected(t, TConstant)
 			}
-			_, ok = imports[str]
+			_, ok = p.pkg.Imports[str]
 			if ok {
 				return nil, p.errf(t.From,
 					"package %s imported more than once", str)
@@ -98,9 +97,8 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 				alias = parts[len(parts)-1]
 			}
 
-			imports[alias] = str
+			p.pkg.Imports[alias] = str
 		}
-		p.pkg.Imports = imports
 	} else {
 		p.lexer.Unget(token)
 	}
