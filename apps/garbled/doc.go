@@ -195,7 +195,7 @@ func parseFile(name string) error {
 		p = &Package{}
 		packages[pkg.Name] = p
 	}
-	p.Annotations = pkg.Annotations
+	p.Annotations = append(p.Annotations, pkg.Annotations...)
 	p.Constants = append(p.Constants, pkg.Constants...)
 	p.Variables = append(p.Variables, pkg.Variables...)
 
@@ -215,6 +215,11 @@ func documentPackage(doc Documenter, pkg *Package) error {
 	if err != nil {
 		return err
 	}
+
+	sort.Slice(pkg.Functions, func(i, j int) bool {
+		return pkg.Functions[i].Name < pkg.Functions[j].Name
+	})
+
 	for _, f := range pkg.Functions {
 		fmt.Printf(`
 <div class="signature">func %s</div>
