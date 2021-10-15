@@ -11,7 +11,8 @@ import (
 	"crypto/sha256"
 )
 
-// SumSHA256 computes the HMAC-SHA256 for the data and key.
+// SumSHA256 computes the HMAC-SHA256 signature for the data using the
+// key.
 func SumSHA256(data, key []byte) [sha256.Size]byte {
 	if len(key) > sha256.BlockSize {
 		key = sha256.Sum256(key[:])

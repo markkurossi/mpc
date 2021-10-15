@@ -81,7 +81,7 @@ func (ti *TypeInfo) Equal(o *TypeInfo) bool {
 	}
 	switch ti.Type {
 	case TypeName:
-		return ti.TypeName == o.TypeName
+		return ti.Name.String() == o.Name.String()
 
 	case TypeArray:
 		return ti.ElementType.Equal(o.ElementType) &&

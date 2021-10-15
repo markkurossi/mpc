@@ -11,7 +11,8 @@ import (
 	"crypto/sha512"
 )
 
-// SumSHA512 computes the HMAC-SHA512 for the data and key.
+// SumSHA512 computes the HMAC-SHA512 signature for the data using the
+// key.
 func SumSHA512(data, key []byte) [sha512.Size]byte {
 	if len(key) > sha512.BlockSize {
 		key = sha512.Sum512(key[:])

@@ -220,6 +220,10 @@ func (i *Info) Instantiate(o Info) bool {
 		return false
 
 	case TArray:
+		if i.ElementType.Bits == 0 &&
+			!i.ElementType.Instantiate(*o.ElementType) {
+			return false
+		}
 		if i.ElementType.Type != o.ElementType.Type {
 			return false
 		}

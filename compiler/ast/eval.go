@@ -474,6 +474,9 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			// XXX check that v is assignment compatible with array.
 			values = append(values, v)
 		}
+		typeInfo.ArraySize = types.Size(len(values))
+		typeInfo.Bits = typeInfo.ArraySize * typeInfo.ElementType.Bits
+		typeInfo.MinBits = typeInfo.Bits
 		return gen.Constant(values, typeInfo), true, nil
 
 	default:

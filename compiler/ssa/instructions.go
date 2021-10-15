@@ -157,10 +157,8 @@ type Instr struct {
 // Check verifies that the instruction values are properly set. If any
 // unspecified values are found, the Check function panics.
 func (i Instr) Check() {
-	for idx, in := range i.In {
-		if !in.Check() {
-			panic(fmt.Sprintf("invalid input %d: %s (%#v)", idx, in, in))
-		}
+	for _, in := range i.In {
+		in.Check()
 	}
 }
 
@@ -634,8 +632,13 @@ var Undefined Value
 type ValueID uint32
 
 // Check tests that the value type is properly set.
-func (v Value) Check() bool {
-	return v.Type.Type != types.TUndefined && v.Type.Bits != 0
+func (v Value) Check() {
+	if v.Type.Type == types.TUndefined {
+		panic(fmt.Sprintf("v.Type == TUndefined: %v", v))
+	}
+	if v.Type.Bits == 0 {
+		panic(fmt.Sprintf("v.Type.Bits == 0: %v", v))
+	}
 }
 
 // ElementType returns the pointer element type of the value. For
