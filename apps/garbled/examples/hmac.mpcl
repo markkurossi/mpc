@@ -11,22 +11,19 @@ import (
 // "abc", "message": 859cc656e12c0ecd0afdd7e3d034c3ee81609fcac1b454c231211c7ac69895e8
 
 func main(g, e byte) []byte {
-	var key [65]byte
-	key[0] = 0x61
-	key[1] = 0x62
-	key[2] = 0x63
-	for i := 3; i < len(key); i++ {
-		key[i] = i
-	}
+	var key [3]byte
+	key[0] = 'a'
+	key[1] = 'b'
+	key[2] = 'c'
 
 	var msg [7]byte
-	msg[0] = 0x6d // m
-	msg[1] = 0x65 // e
-	msg[2] = 0x73 // s
-	msg[3] = 0x73 // s
-	msg[4] = 0x61 // a
-	msg[5] = 0x67 // g
-	msg[6] = 0x65 // e
+	msg[0] = 'm'
+	msg[1] = 'e'
+	msg[2] = 's'
+	msg[3] = 's'
+	msg[4] = 'a'
+	msg[5] = 'g'
+	msg[6] = 'e'
 
-	return hmac.SumSHA512(msg[:], key[:])
+	return hmac.SumSHA256(msg[:], key[:])
 }
