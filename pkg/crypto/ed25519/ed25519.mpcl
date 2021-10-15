@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2020-2021 Markku Rossi
 //
-// Ed25519 constants in MPCL. This file is derived from Go's
+// Ed25519 signature algorithm in MPCL. This file is derived from Go's
 // crypto/ed25519/internal/edwards25519 package. The original
 // copyright notice follows:
 //
@@ -10,6 +10,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package ed25519 implements the Ed25519 signature algorithm.
 package ed25519
 
 // This code is a port of the public domain, “ref10” implementation of ed25519
