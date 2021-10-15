@@ -19,6 +19,7 @@ import (
 type Package struct {
 	Name        string
 	Source      string
+	Annotations Annotations
 	Initialized bool
 	Imports     map[string]string
 	Bindings    *ssa.Bindings
@@ -29,13 +30,14 @@ type Package struct {
 }
 
 // NewPackage creates a new package.
-func NewPackage(name, source string) *Package {
+func NewPackage(name, source string, annotations Annotations) *Package {
 	return &Package{
-		Name:      name,
-		Source:    source,
-		Imports:   make(map[string]string),
-		Bindings:  new(ssa.Bindings),
-		Functions: make(map[string]*Func),
+		Name:        name,
+		Source:      source,
+		Annotations: annotations,
+		Imports:     make(map[string]string),
+		Bindings:    new(ssa.Bindings),
+		Functions:   make(map[string]*Func),
 	}
 }
 

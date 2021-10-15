@@ -36,12 +36,12 @@ func NewParser(source string, compiler *Compiler, logger *utils.Logger,
 
 // Parse parses a package.
 func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
-	name, err := p.parsePackage()
+	name, doc, err := p.parsePackage()
 	if err != nil {
 		return nil, err
 	}
 	if pkg == nil {
-		p.pkg = ast.NewPackage(name, p.lexer.Source())
+		p.pkg = ast.NewPackage(name, p.lexer.Source(), doc)
 	} else {
 		// This source file must be in the same package.
 		if name != pkg.Name {
@@ -170,17 +170,17 @@ func (p *Parser) sameLine(current utils.Point) bool {
 	return t.From.Line == current.Line
 }
 
-func (p *Parser) parsePackage() (string, error) {
+func (p *Parser) parsePackage() (string, ast.Annotations, error) {
 	t, err := p.needToken(TSymPackage)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	t, err = p.needToken(TIdentifier)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	parts := strings.Split(t.StrVal, "/")
-	return parts[len(parts)-1], nil
+	return parts[len(parts)-1], p.lexer.Annotations(t.From), nil
 }
 
 func (p *Parser) parseToplevel() error {

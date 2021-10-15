@@ -52,11 +52,22 @@ func (c *Compiler) CompileFile(file string) (*circuit.Circuit, ast.Annotations,
 	return c.compile(file, f)
 }
 
+// ParseFile parses the input file.
+func (c *Compiler) ParseFile(file string) (*ast.Package, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	logger := utils.NewLogger(os.Stdout)
+	return c.parse(file, f, logger, nil)
+}
+
 func (c *Compiler) compile(source string, in io.Reader) (
 	*circuit.Circuit, ast.Annotations, error) {
 
 	logger := utils.NewLogger(os.Stdout)
-	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source))
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source, nil))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,7 +105,7 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	inputFlag []string) (circuit.IO, []*big.Int, error) {
 
 	logger := utils.NewLogger(os.Stdout)
-	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source))
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source, nil))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,7 +178,7 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 	if ok {
 		return pkg, nil
 	}
-	pkg = ast.NewPackage(alias, source)
+	pkg = ast.NewPackage(alias, source, nil)
 
 	if c.params.Verbose {
 		fmt.Printf("looking for package %s (%s)\n", alias, name)

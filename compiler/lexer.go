@@ -13,7 +13,6 @@ import (
 	"math"
 	"math/big"
 	"strconv"
-	"strings"
 	"unicode"
 
 	"github.com/markkurossi/mpc/compiler/ast"
@@ -920,7 +919,6 @@ func (c Comment) Empty() bool {
 }
 
 func (l *Lexer) commentLine(line string, loc utils.Point) {
-	line = strings.TrimSpace(line)
 	if l.lastComment.Empty() || l.lastComment.End.Line+1 != loc.Line {
 		l.lastComment = Comment{
 			Start: loc,

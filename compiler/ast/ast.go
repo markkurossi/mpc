@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -71,6 +72,41 @@ type TypeInfo struct {
 	StructFields []StructField
 	AliasType    *TypeInfo
 	Methods      map[string]*Func
+}
+
+// Equal tests if the argument TypeInfo is equal to this TypeInfo.
+func (ti *TypeInfo) Equal(o *TypeInfo) bool {
+	if ti.Type != o.Type {
+		return false
+	}
+	switch ti.Type {
+	case TypeName:
+		return ti.TypeName == o.TypeName
+
+	case TypeArray:
+		return ti.ElementType.Equal(o.ElementType) &&
+			ti.ArrayLength == o.ArrayLength
+
+	case TypeSlice, TypePointer:
+		return ti.ElementType.Equal(o.ElementType)
+
+	case TypeStruct:
+		if len(ti.StructFields) != len(o.StructFields) {
+			return false
+		}
+		for idx, f := range ti.StructFields {
+			if !f.Type.Equal(o.StructFields[idx].Type) {
+				return false
+			}
+		}
+		return true
+
+	case TypeAlias:
+		return ti.AliasType.Equal(o.AliasType)
+
+	default:
+		panic("unsupported type")
+	}
 }
 
 // StructField contains AST structure field information.
@@ -372,6 +408,21 @@ type Annotations []string
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 	namedReturn bool, body List, end utils.Point,
 	annotations Annotations) *Func {
+
+	// Skip empty lines from the beginning and end of annotations.
+	for i := 0; i < len(annotations); i++ {
+		if len(strings.TrimSpace(annotations[i])) > 0 {
+			annotations = annotations[i:]
+			break
+		}
+	}
+	for i := len(annotations) - 1; i >= 0; i-- {
+		if len(strings.TrimSpace(annotations[i])) > 0 {
+			annotations = annotations[0 : i+1]
+			break
+		}
+	}
+
 	return &Func{
 		Point:       loc,
 		Name:        name,
@@ -385,11 +436,55 @@ func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 }
 
 func (ast *Func) String() string {
+	var str string
 	if ast.This != nil {
-		return fmt.Sprintf("func (%s %s) %s()",
+		str = fmt.Sprintf("func (%s %s) %s(",
 			ast.This.Name, ast.This.Type, ast.Name)
+	} else {
+		str = fmt.Sprintf("func %s(", ast.Name)
 	}
-	return fmt.Sprintf("func %s()", ast.Name)
+	for idx, arg := range ast.Args {
+		if idx > 0 {
+			str += ", "
+		}
+		if idx+1 < len(ast.Args) && arg.Type.Equal(ast.Args[idx+1].Type) {
+			str += arg.Name
+		} else {
+			str += fmt.Sprintf("%s %s", arg.Name, arg.Type)
+		}
+	}
+	str += ")"
+
+	if len(ast.Return) > 0 {
+		if ast.NamedReturn {
+			str += " ("
+			for idx, ret := range ast.Return {
+				if idx > 0 {
+					str += ", "
+				}
+				if idx+1 < len(ast.Return) &&
+					ret.Type.Equal(ast.Return[idx+1].Type) {
+					str += ret.Name
+				} else {
+					str += fmt.Sprintf("%s %s", ret.Name, ret.Type)
+				}
+			}
+			str += ")"
+		} else if len(ast.Return) > 1 {
+			str += " ("
+			for idx, ret := range ast.Return {
+				if idx > 0 {
+					str += ", "
+				}
+				str += fmt.Sprintf("%s", ret.Type)
+			}
+			str += ")"
+		} else {
+			str += fmt.Sprintf(" %s", ast.Return[0].Type)
+		}
+	}
+
+	return str
 }
 
 // ConstantDef implements an AST constant definition.

@@ -56,7 +56,8 @@ loop:
 		var cpuprof bool
 		base := 10
 
-		for _, ann := range annotations {
+		for _, annotation := range annotations {
+			ann := strings.TrimSpace(annotation)
 			if strings.HasPrefix(ann, "@heavy") && testing.Short() {
 				fmt.Printf("Skipping heavy test %s\n", file)
 				continue loop
