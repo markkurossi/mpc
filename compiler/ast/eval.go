@@ -305,6 +305,14 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, ok, err
 	}
 	switch val := expr.ConstValue.(type) {
+	case bool:
+		switch ast.Type {
+		case UnaryNot:
+			return gen.Constant(!val, types.Bool), true, nil
+		default:
+			return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+				"invalid unary expression: %s%T", ast.Type, val)
+		}
 	case int32:
 		switch ast.Type {
 		case UnaryMinus:
