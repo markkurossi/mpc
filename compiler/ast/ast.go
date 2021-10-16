@@ -600,10 +600,10 @@ const (
 	BinaryRshift
 	BinaryBand
 	BinaryBclear
-	BinaryPlus
-	BinaryMinus
 	BinaryBor
 	BinaryBxor
+	BinaryPlus
+	BinaryMinus
 	BinaryEq
 	BinaryNeq
 	BinaryLt
@@ -622,10 +622,10 @@ var binaryTypes = map[BinaryType]string{
 	BinaryRshift: ">>",
 	BinaryBand:   "&",
 	BinaryBclear: "&^",
-	BinaryPlus:   "+",
-	BinaryMinus:  "-",
 	BinaryBor:    "|",
 	BinaryBxor:   "^",
+	BinaryPlus:   "+",
+	BinaryMinus:  "-",
 	BinaryEq:     "==",
 	BinaryNeq:    "!=",
 	BinaryLt:     "<",

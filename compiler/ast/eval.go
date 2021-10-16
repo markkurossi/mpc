@@ -211,6 +211,12 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval>>rval, types.Int32), true, nil
 		case BinaryBand:
 			return gen.Constant(lval&rval, types.Int32), true, nil
+		case BinaryBclear:
+			return gen.Constant(lval&^rval, types.Int32), true, nil
+		case BinaryBor:
+			return gen.Constant(lval|rval, types.Int32), true, nil
+		case BinaryBxor:
+			return gen.Constant(lval^rval, types.Int32), true, nil
 
 		case BinaryPlus:
 			return gen.Constant(lval+rval, types.Int32), true, nil

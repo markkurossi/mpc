@@ -280,6 +280,7 @@ form assembly:
  - [ ] Compiler
    - [ ] Incremental compiler
      - [ ] Constant folding
+       - [ ] Implement arithmetics with `math.big` instead of int{32,64}
        - [ ] Implement using AST rewrite
        - [ ] binary expressions
        - [ ] if-blocks
