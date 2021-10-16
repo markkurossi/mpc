@@ -50,6 +50,12 @@ var builtins = []Builtin{
 		SSA:  copySSA,
 	},
 	{
+		Name: "floorPow2",
+		Type: BuiltinFunc,
+		SSA:  floorPow2SSA,
+		Eval: floorPow2Eval,
+	},
+	{
 		Name: "len",
 		Type: BuiltinFunc,
 		SSA:  lenSSA,
@@ -172,6 +178,38 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	gen.AddConstant(v)
 
 	return block, []ssa.Value{v}, nil
+}
+
+func floorPow2SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
+	return nil, nil, ctx.Errorf(loc, "floorPow2SSA not implemented")
+}
+
+func floorPow2Eval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (ssa.Value, bool, error) {
+
+	if len(args) != 1 {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"invalid amount of arguments in call to floorPow2")
+	}
+
+	constVal, _, err := args[0].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc, "%s", err)
+	}
+
+	val, err := constVal.ConstInt()
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"non-integer (%T) argument in %s: %s", constVal, args[0], err)
+	}
+
+	var i types.Size
+	for i = 1; i <= val; i <<= 1 {
+	}
+	i >>= 1
+
+	return gen.Constant(int32(i), types.Int32), true, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
