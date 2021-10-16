@@ -11,8 +11,8 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
-// Hamming creates a hamming distance circuit computing computing the
-// hamming distance between a and b and returning the distance in r.
+// Hamming creates a hamming distance circuit computing the hamming
+// distance between a and b and returning the distance in r.
 func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 	a, b = compiler.ZeroPad(a, b)
 
