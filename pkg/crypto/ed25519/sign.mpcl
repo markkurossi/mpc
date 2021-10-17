@@ -37,14 +37,9 @@ type PrivateKey [64]byte
 // XXX type PublicKey [PublicKeySize]byte
 type PublicKey [32]byte
 
-// Sign signs the message with privateKey and returns a signature.
-// XXX []byte return value type
-func Sign(privateKey PrivateKey, message []byte) [64]byte {
-	var signature [SignatureSize]byte
-	return sign(privateKey, message, signature)
-}
+// Sign signs the message with privateKey and returns the signature.
+func Sign(privateKey PrivateKey, message []byte) []byte {
 
-func sign(privateKey, message, signature []byte) []byte {
 	digest1 := sha512.Sum512(privateKey[0:32])
 
 	var expandedSecretKey [32]byte
@@ -79,6 +74,7 @@ func sign(privateKey, message, signature []byte) []byte {
 	edwards25519.ScMulAdd(&s, hramDigestReduced, expandedSecretKey,
 		messageDigestReduced)
 
+	var signature [SignatureSize]byte
 	signature = memcpy(signature, 0, encodedR, 0)
 	signature = memcpy(signature, 32, s, 0)
 
