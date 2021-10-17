@@ -193,7 +193,7 @@ func (p *Parser) parseToplevel() error {
 		// ConstDecl = 'const', ( ConstSpec | '(', { ConstSpec }, ')' );
 		// ConstSpec = IdentifierList, [ Type ], '=', ExpressionList;
 		// ExpressionList = Expression, { ',', Expression };
-		return p.parseGlobalVar(true)
+		return p.parseGlobalVar(true, p.lexer.Annotations(token.From))
 
 	case TSymVar:
 		// XXX not fully according to syntax:
@@ -201,7 +201,7 @@ func (p *Parser) parseToplevel() error {
 		// VarDecl = 'var', ( VarSpec | '(', { VarSpec }, ')' );
 		// VarSpec = IdentifierList, (   Type, [ '=', ExpressionList ]
 		//                             |         '=', ExpressionList   );
-		return p.parseGlobalVar(false)
+		return p.parseGlobalVar(false, p.lexer.Annotations(token.From))
 
 	case TSymType:
 		return p.parseTypeDecl()
@@ -305,14 +305,16 @@ func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
 	return fmt.Errorf("type %s.%s not found", p.pkg.Name, t.Name)
 }
 
-func (p *Parser) parseGlobalVar(isConst bool) error {
+func (p *Parser) parseGlobalVar(isConst bool,
+	annotations ast.Annotations) error {
+
 	token, err := p.lexer.Get()
 	if err != nil {
 		return err
 	}
 	switch token.Type {
 	case TIdentifier:
-		return p.parseGlobalVarDef(token, isConst)
+		return p.parseGlobalVarDef(token, isConst, annotations)
 
 	case '(':
 		for {
@@ -323,7 +325,8 @@ func (p *Parser) parseGlobalVar(isConst bool) error {
 			if t.Type == ')' {
 				return nil
 			}
-			err = p.parseGlobalVarDef(t, isConst)
+			err = p.parseGlobalVarDef(t, isConst,
+				p.lexer.Annotations(t.From))
 			if err != nil {
 				return err
 			}
@@ -334,7 +337,9 @@ func (p *Parser) parseGlobalVar(isConst bool) error {
 	}
 }
 
-func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
+func (p *Parser) parseGlobalVarDef(token *Token, isConst bool,
+	annotations ast.Annotations) error {
+
 	if token.Type != TIdentifier {
 		return p.errf(token.From, "unexpected token '%s'", token.Type)
 	}
@@ -373,17 +378,19 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool) error {
 
 	if isConst {
 		p.pkg.Constants = append(p.pkg.Constants, &ast.ConstantDef{
-			Point: token.From,
-			Name:  token.StrVal,
-			Type:  varType,
-			Init:  init,
+			Point:       token.From,
+			Name:        token.StrVal,
+			Type:        varType,
+			Init:        init,
+			Annotations: annotations,
 		})
 	} else {
 		p.pkg.Variables = append(p.pkg.Variables, &ast.VariableDef{
-			Point: token.From,
-			Names: []string{token.StrVal},
-			Type:  varType,
-			Init:  init,
+			Point:       token.From,
+			Names:       []string{token.StrVal},
+			Type:        varType,
+			Init:        init,
+			Annotations: annotations,
 		})
 	}
 

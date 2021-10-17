@@ -39,6 +39,9 @@ type Documenter interface {
 
 	// Function outputs function name.
 	Function(name string) error
+
+	// Empty outputs empty section content.
+	Empty(name string) error
 }
 
 // HTMLDoc implements HTML document output.
@@ -93,6 +96,13 @@ func (doc *HTMLDoc) Type(name string) error {
 // Function implements Documenter.Function.
 func (doc *HTMLDoc) Function(name string) error {
 	_, err := fmt.Fprintf(doc.out, `<span class="functionName">%s</span>`,
+		html.EscapeString(name))
+	return err
+}
+
+// Empty implements Documenter.Empty.
+func (doc *HTMLDoc) Empty(name string) error {
+	_, err := fmt.Fprintf(doc.out, `<div class="empty">%s</div>`,
 		html.EscapeString(name))
 	return err
 }
@@ -211,15 +221,38 @@ func documentPackage(doc Documenter, pkg *Package) error {
 	if err != nil {
 		return err
 	}
+	err = doc.H2("Constants")
+	if err != nil {
+		return err
+	}
+	sort.Slice(pkg.Constants, func(i, j int) bool {
+		return pkg.Constants[i].Name < pkg.Constants[j].Name
+	})
+	var hadConstants bool
+	for _, c := range pkg.Constants {
+		if !c.Exported() {
+			continue
+		}
+		hadConstants = true
+		fmt.Printf(`
+<div class="code">%s</div>
+`, html.EscapeString(c.String()))
+		err = annotations(doc, c.Annotations)
+		if err != nil {
+			return err
+		}
+	}
+	if !hadConstants {
+		doc.Empty("This section is empty.")
+	}
+
 	err = doc.H2("Functions")
 	if err != nil {
 		return err
 	}
-
 	sort.Slice(pkg.Functions, func(i, j int) bool {
 		return pkg.Functions[i].Name < pkg.Functions[j].Name
 	})
-
 	for _, f := range pkg.Functions {
 		fmt.Printf(`
 <div class="signature">func %s</div>

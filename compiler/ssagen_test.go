@@ -261,7 +261,7 @@ import (
 )
 
 func main(data, a uint512) uint256 {
-    return sha256.Block(data, sha256.Init)
+    return sha256.Block(data, sha256.init)
 }
 `,
 	},

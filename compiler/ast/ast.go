@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -490,9 +491,15 @@ func (ast *Func) String() string {
 // ConstantDef implements an AST constant definition.
 type ConstantDef struct {
 	utils.Point
-	Name string
-	Type *TypeInfo
-	Init AST
+	Name        string
+	Type        *TypeInfo
+	Init        AST
+	Annotations Annotations
+}
+
+// Exported describes if the constant is exported from the package.
+func (ast *ConstantDef) Exported() bool {
+	return unicode.IsUpper([]rune(ast.Name)[0])
 }
 
 func (ast *ConstantDef) String() string {
@@ -509,9 +516,10 @@ func (ast *ConstantDef) String() string {
 // VariableDef implements an AST variable definition.
 type VariableDef struct {
 	utils.Point
-	Names []string
-	Type  *TypeInfo
-	Init  AST
+	Names       []string
+	Type        *TypeInfo
+	Init        AST
+	Annotations Annotations
 }
 
 func (ast *VariableDef) String() string {

@@ -209,38 +209,6 @@ func MinMax(a, b int) (int, int) {
 }
 `,
 	},
-	// For raw sha256 without padding, the digest is as follow:
-	// da5698be17b9b46962335799779fbeca8ce5d491c0d26243bafef9ea1837a9d8
-	{
-		N1: 0,
-		N2: 0,
-		N3: -4972262154746484264,
-		Code: `
-package main
-import (
-    "crypto/sha256"
-)
-func main(a, b uint512) uint256 {
-    return sha256.Block(a, sha256.Init)
-}
-`,
-	},
-	// For raw sha512 without padding, the digest is as follow:
-	// 0xcf7881d5774acbe8533362e0fbc780700267639d87460eda3086cb40e85931b0717dc95288a023a396bab2c14ce0b5e06fc4fe04eae33e0b91f4d80cbd668bee
-	{
-		N1: 0,
-		N2: 0,
-		N3: -7929475494663779346,
-		Code: `
-package main
-import (
-    "crypto/sha512"
-)
-func main(a, b uint1024) uint512 {
-    return sha512.Block(a, sha512.Init)
-}
-`,
-	},
 }
 
 func TestFixed(t *testing.T) {

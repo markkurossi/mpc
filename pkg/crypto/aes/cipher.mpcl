@@ -1,12 +1,13 @@
 // -*- go -*-
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
 
 package aes
 
+// BlockSize defines the AES cipher block size in bytes.
 const BlockSize = 16
 
 func Block128(key uint128, block uint128) uint128 {

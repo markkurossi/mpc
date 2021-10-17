@@ -14,13 +14,12 @@ const (
 	// The blocksize of SHA256 and SHA224 in bytes.
 	BlockSize = 64
 
-	Chunk = 64
-	Init  = 0x6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19
+	init = 0x6a09e667bb67ae853c6ef372a54ff53a510e527f9b05688c1f83d9ab5be0cd19
 )
 
 // Sum256 returns the SHA256 checksum of the data.
 func Sum256(data []byte) [Size]byte {
-	var state uint256 = Init
+	var state uint256 = init
 	var block uint512
 	var hash [Size]byte
 
