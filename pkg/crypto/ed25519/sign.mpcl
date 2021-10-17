@@ -31,10 +31,12 @@ const (
 	SeedSize = 32
 )
 
-// XXX type PrivateKey [PrivateKeySize]byte
+// PrivateKey defines the Ed25519 private key.
+//   XXX type PrivateKey [PrivateKeySize]byte
 type PrivateKey [64]byte
 
-// XXX type PublicKey [PublicKeySize]byte
+// PublicKey defines the Ed25519 public key.
+//   XXX type PublicKey [PublicKeySize]byte
 type PublicKey [32]byte
 
 // Sign signs the message with privateKey and returns the signature.

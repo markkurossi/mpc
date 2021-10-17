@@ -204,7 +204,7 @@ func (p *Parser) parseToplevel() error {
 		return p.parseGlobalVar(false, p.lexer.Annotations(token.From))
 
 	case TSymType:
-		return p.parseTypeDecl()
+		return p.parseTypeDecl(p.lexer.Annotations(token.From))
 
 	case TSymFunc:
 		// FunctionDecl | MethodDecl
@@ -397,7 +397,7 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool,
 	return nil
 }
 
-func (p *Parser) parseTypeDecl() error {
+func (p *Parser) parseTypeDecl(annotations ast.Annotations) error {
 	name, err := p.needToken(TIdentifier)
 	if err != nil {
 		return err
@@ -459,6 +459,7 @@ func (p *Parser) parseTypeDecl() error {
 			Type:         ast.TypeStruct,
 			TypeName:     name.StrVal,
 			StructFields: fields,
+			Annotations:  annotations,
 		}
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
@@ -469,10 +470,11 @@ func (p *Parser) parseTypeDecl() error {
 			return err
 		}
 		typeInfo := &ast.TypeInfo{
-			Point:     ti.Point,
-			Type:      ast.TypeAlias,
-			TypeName:  name.StrVal,
-			AliasType: ti,
+			Point:       ti.Point,
+			Type:        ast.TypeAlias,
+			TypeName:    name.StrVal,
+			AliasType:   ti,
+			Annotations: annotations,
 		}
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
@@ -485,6 +487,7 @@ func (p *Parser) parseTypeDecl() error {
 			return err
 		}
 		typeInfo.TypeName = name.StrVal
+		typeInfo.Annotations = annotations
 		p.pkg.Types = append(p.pkg.Types, typeInfo)
 		return nil
 	}

@@ -73,6 +73,7 @@ type TypeInfo struct {
 	StructFields []StructField
 	AliasType    *TypeInfo
 	Methods      map[string]*Func
+	Annotations  Annotations
 }
 
 // Equal tests if the argument TypeInfo is equal to this TypeInfo.
@@ -504,6 +505,9 @@ func (ast *ConstantDef) Exported() bool {
 
 // IsExported describes if the name is exported from the package.
 func IsExported(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
 	return unicode.IsUpper([]rune(name)[0])
 }
 

@@ -208,6 +208,7 @@ func parseFile(name string) error {
 	p.Annotations = append(p.Annotations, pkg.Annotations...)
 	p.Constants = append(p.Constants, pkg.Constants...)
 	p.Variables = append(p.Variables, pkg.Variables...)
+	p.Types = append(p.Types, pkg.Types...)
 
 	for _, v := range pkg.Functions {
 		p.Functions = append(p.Functions, v)
@@ -291,6 +292,32 @@ func documentPackage(doc Documenter, pkg *Package) error {
 			return err
 		}
 	}
+
+	err = doc.H2("Types")
+	if err != nil {
+		return err
+	}
+	sort.Slice(pkg.Types, func(i, j int) bool {
+		return pkg.Types[i].TypeName < pkg.Types[j].TypeName
+	})
+	var hadTypes bool
+	for _, t := range pkg.Types {
+		if !ast.IsExported(t.TypeName) {
+			continue
+		}
+		hadTypes = true
+		fmt.Printf(`
+<div class="code">type %s %s</div>
+`, html.EscapeString(t.TypeName), html.EscapeString(t.String()))
+		err = annotations(doc, t.Annotations)
+		if err != nil {
+			return err
+		}
+	}
+	if !hadTypes {
+		doc.Empty("This section is empty.")
+	}
+
 	return nil
 }
 
@@ -352,4 +379,5 @@ type Package struct {
 	Constants   []*ast.ConstantDef
 	Variables   []*ast.VariableDef
 	Functions   []*ast.Func
+	Types       []*ast.TypeInfo
 }
