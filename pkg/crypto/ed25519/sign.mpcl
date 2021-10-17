@@ -12,6 +12,7 @@
 package ed25519
 
 import (
+	"crypto/ed25519/internal/edwards25519"
 	"crypto/sha512"
 )
 
@@ -58,9 +59,9 @@ func sign(privateKey, message, signature []byte) []byte {
 	messageDigest := sha512.Sum512(buf)
 
 	var messageDigestReduced [32]byte
-	ScReduce(&messageDigestReduced, messageDigest)
-	var R ExtendedGroupElement
-	GeScalarMultBase(&R, &messageDigestReduced)
+	edwards25519.ScReduce(&messageDigestReduced, messageDigest)
+	var R edwards25519.ExtendedGroupElement
+	edwards25519.GeScalarMultBase(&R, &messageDigestReduced)
 
 	var encodedR [32]byte
 	R.ToBytes(&encodedR)
@@ -72,10 +73,11 @@ func sign(privateKey, message, signature []byte) []byte {
 	hramDigest := sha512.Sum512(buf2)
 
 	var hramDigestReduced [32]byte
-	ScReduce(&hramDigestReduced, hramDigest)
+	edwards25519.ScReduce(&hramDigestReduced, hramDigest)
 
 	var s [32]byte
-	ScMulAdd(&s, hramDigestReduced, expandedSecretKey, messageDigestReduced)
+	edwards25519.ScMulAdd(&s, hramDigestReduced, expandedSecretKey,
+		messageDigestReduced)
 
 	signature = memcpy(signature, 0, encodedR, 0)
 	signature = memcpy(signature, 32, s, 0)

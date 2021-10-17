@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // Ed25519 constants in MPCL. This file is derived from Go's
 // crypto/ed25519/internal/edwards25519 package. The original
@@ -10,7 +10,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package ed25519
+package edwards25519
 
 // These values are from the public domain, “ref10” implementation of ed25519
 // from SUPERCOP.

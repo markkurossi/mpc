@@ -9,9 +9,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package ed25519 implements the Ed25519 signature algorithm.
 package ed25519
 
 import (
+	"crypto/ed25519/internal/edwards25519"
 	"crypto/sha512"
 )
 
@@ -23,10 +25,10 @@ func NewKeyFromSeed(seed [SeedSize]byte) (PublicKey, PrivateKey) {
 	digest[31] &= 127
 	digest[31] |= 64
 
-	var A ExtendedGroupElement
+	var A edwards25519.ExtendedGroupElement
 	var hBytes [32]byte
 	hBytes = memcpy(hBytes, 0, digest, 0)
-	GeScalarMultBase(&A, &hBytes)
+	edwards25519.GeScalarMultBase(&A, &hBytes)
 	var publicKeyBytes [32]byte
 	A.ToBytes(&publicKeyBytes)
 
