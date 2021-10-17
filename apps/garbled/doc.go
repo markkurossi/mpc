@@ -246,6 +246,31 @@ func documentPackage(doc Documenter, pkg *Package) error {
 		doc.Empty("This section is empty.")
 	}
 
+	err = doc.H2("Variables")
+	if err != nil {
+		return err
+	}
+	sort.Slice(pkg.Variables, func(i, j int) bool {
+		return pkg.Variables[i].Names[0] < pkg.Variables[j].Names[0]
+	})
+	var hadVariables bool
+	for _, v := range pkg.Variables {
+		if !ast.IsExported(v.Names[0]) {
+			continue
+		}
+		hadVariables = true
+		fmt.Printf(`
+<div class="code">%s</div>
+`, html.EscapeString(v.String()))
+		err = annotations(doc, v.Annotations)
+		if err != nil {
+			return err
+		}
+	}
+	if !hadVariables {
+		doc.Empty("This section is empty.")
+	}
+
 	err = doc.H2("Functions")
 	if err != nil {
 		return err

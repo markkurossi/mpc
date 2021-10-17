@@ -499,7 +499,12 @@ type ConstantDef struct {
 
 // Exported describes if the constant is exported from the package.
 func (ast *ConstantDef) Exported() bool {
-	return unicode.IsUpper([]rune(ast.Name)[0])
+	return IsExported(ast.Name)
+}
+
+// IsExported describes if the name is exported from the package.
+func IsExported(name string) bool {
+	return unicode.IsUpper([]rune(name)[0])
 }
 
 func (ast *ConstantDef) String() string {
@@ -523,7 +528,10 @@ type VariableDef struct {
 }
 
 func (ast *VariableDef) String() string {
-	result := fmt.Sprintf("var %v %s", ast.Names, ast.Type)
+	result := fmt.Sprintf("var %v", strings.Join(ast.Names, ", "))
+	if ast.Type != nil {
+		result += fmt.Sprintf(" %s", ast.Type)
+	}
 	if ast.Init != nil {
 		result += fmt.Sprintf(" = %s", ast.Init)
 	}
