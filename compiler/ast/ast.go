@@ -119,34 +119,69 @@ type StructField struct {
 }
 
 func (ti *TypeInfo) String() string {
+	return ti.format(false)
+}
+
+// Format print the type definition of the type info.
+func (ti *TypeInfo) Format() string {
+	return ti.format(true)
+}
+
+func (ti *TypeInfo) format(pp bool) string {
+	var str string
+
+	if pp {
+		str = fmt.Sprintf("type %s ", ti.TypeName)
+	}
+
 	switch ti.Type {
 	case TypeName:
-		return ti.Name.String()
+		return str + ti.Name.String()
 
 	case TypeArray:
-		return fmt.Sprintf("[%s]%s", ti.ArrayLength, ti.ElementType)
+		return fmt.Sprintf("%s[%s]%s", str, ti.ArrayLength, ti.ElementType)
 
 	case TypeSlice:
-		return fmt.Sprintf("[]%s", ti.ElementType)
+		return fmt.Sprintf("%s[]%s", str, ti.ElementType)
 
 	case TypeStruct:
-		name := fmt.Sprintf("struct %s {", ti.TypeName)
-		for idx, field := range ti.StructFields {
-			if idx > 0 {
-				name += ", "
+		str = fmt.Sprintf("%sstruct {", str)
+		if pp {
+			var width int
+			for _, field := range ti.StructFields {
+				if len(field.Name) > width {
+					width = len(field.Name)
+				}
 			}
-			name += fmt.Sprintf("%s %s", field.Name, field.Type.String())
+			for idx, field := range ti.StructFields {
+				if idx == 0 {
+					str += "\n"
+				}
+				str += "    "
+				str += field.Name
+				for i := len(field.Name); i < width; i++ {
+					str += " "
+				}
+				str += fmt.Sprintf(" %s\n", field.Type.String())
+			}
+		} else {
+			for idx, field := range ti.StructFields {
+				if idx > 0 {
+					str += ", "
+				}
+				str += fmt.Sprintf("%s %s", field.Name, field.Type.String())
+			}
 		}
-		return name + "}"
+		return str + "}"
 
 	case TypeAlias:
-		return fmt.Sprintf("%s=%s", ti.TypeName, ti.AliasType)
+		return fmt.Sprintf("%s%s=%s", str, ti.TypeName, ti.AliasType)
 
 	case TypePointer:
-		return fmt.Sprintf("*%s", ti.ElementType)
+		return fmt.Sprintf("%s*%s", str, ti.ElementType)
 
 	default:
-		return fmt.Sprintf("{TypeInfo %d}", ti.Type)
+		return fmt.Sprintf("%s{TypeInfo %d}", str, ti.Type)
 	}
 }
 

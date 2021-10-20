@@ -307,8 +307,8 @@ func documentPackage(doc Documenter, pkg *Package) error {
 		}
 		hadTypes = true
 		fmt.Printf(`
-<div class="code">type %s %s</div>
-`, html.EscapeString(t.TypeName), html.EscapeString(t.String()))
+<div class="code">%s</div>
+`, html.EscapeString(t.Format()))
 		err = annotations(doc, t.Annotations)
 		if err != nil {
 			return err
