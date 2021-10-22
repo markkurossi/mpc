@@ -77,7 +77,7 @@ func index(out io.Writer, pkgs []*Package) error {
 		return err
 	}
 
-	_, err = fmt.Fprintln(out, `
+	_, err = fmt.Fprintf(out, `
 <h1>Multi-Party Computation Language (MPCL)</h1>
 <h2>Packages</h2>
 `)
