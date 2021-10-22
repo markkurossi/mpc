@@ -78,7 +78,7 @@ func index(out io.Writer, pkgs []*Package) error {
 	}
 
 	_, err = fmt.Fprintf(out, `
-<h1>Multi-Party Computation Language (MPCL)</h1>
+<h1>MPCL API Documentation</h1>
 <h2>Packages</h2>
 `)
 	if err != nil {
@@ -86,6 +86,7 @@ func index(out io.Writer, pkgs []*Package) error {
 	}
 
 	for _, pkg := range pkgs {
+		first := pkg.Annotations.FirstSentence()
 		_, err := fmt.Fprintf(out, `<div class="index">
 <a href="%s">Package %s</a>
 </div>
@@ -93,6 +94,12 @@ func index(out io.Writer, pkgs []*Package) error {
 			fmt.Sprintf("pkg_%s.html", pkg.Name), pkg.Name)
 		if err != nil {
 			return err
+		}
+		if len(first) > 0 {
+			_, err = fmt.Fprintf(out, "<p>%s</p>\n", first)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

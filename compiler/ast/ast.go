@@ -441,6 +441,15 @@ type Func struct {
 // Annotations specify function annotations.
 type Annotations []string
 
+func (ann Annotations) FirstSentence() string {
+	str := strings.Join(ann, "\n")
+	idx := strings.IndexRune(str, '.')
+	if idx > 0 {
+		return str[:idx+1]
+	}
+	return ""
+}
+
 // NewFunc creates a new function definition.
 func NewFunc(loc utils.Point, name string, args []*Variable, ret []*Variable,
 	namedReturn bool, body List, end utils.Point,
