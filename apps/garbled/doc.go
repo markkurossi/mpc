@@ -23,8 +23,22 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-// Documenter implements document output.
+var (
+	_ Documenter = &HTMLDoc{}
+	_ Output     = &HTMLOutput{}
+)
+
+// Documenter implements document generator.
 type Documenter interface {
+	// New creates new output for the named document.
+	New(name string) (Output, error)
+}
+
+// Output implements document output
+type Output interface {
+	// Close closes the output.
+	Close() error
+
 	// H1 outputs level 1 heading.
 	H1(format string, a ...interface{}) error
 
@@ -34,6 +48,9 @@ type Documenter interface {
 	// Pre outputs pre-formatted lines.
 	Pre(lines []string) error
 
+	// P outputs paragraph lines.
+	P(lines []string) error
+
 	// Type outputs type name.
 	Type(name string) error
 
@@ -42,85 +59,47 @@ type Documenter interface {
 
 	// Empty outputs empty section content.
 	Empty(name string) error
+
+	// Code outputs program code.
+	Code(code string) error
+
+	// Signature outputs function signature.
+	Signature(code string) error
+
+	// Start starts a logical documentation section.
+	Start(section string) error
+
+	// End ends a logical documentation section.
+	End(section string) error
 }
 
-// HTMLDoc implements HTML document output.
+// HTMLDoc implements HTML document generator
 type HTMLDoc struct {
-	out io.Writer
+	dir string
 }
 
-// H1 implements Document.H1.
-func (doc *HTMLDoc) H1(format string, a ...interface{}) error {
-	text := fmt.Sprintf(format, a...)
-	_, err := fmt.Fprintf(doc.out, "<h1>%s</h1>\n", html.EscapeString(text))
-	return err
-}
-
-// H2 implements Document.H2.
-func (doc *HTMLDoc) H2(format string, a ...interface{}) error {
-	text := fmt.Sprintf(format, a...)
-	_, err := fmt.Fprintf(doc.out, "<h2>%s</h2>\n", html.EscapeString(text))
-	return err
-}
-
-// Pre implements Documenter.Pre.
-func (doc *HTMLDoc) Pre(lines []string) error {
-	for i := 0; i < len(lines); i++ {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[i:]
-			break
-		}
-	}
-	for i := len(lines) - 1; i >= 0; i-- {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[0 : i+1]
-			break
-		}
-	}
-	for _, l := range lines {
-		_, err := fmt.Fprintln(doc.out, html.EscapeString(l))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Type implements Documenter.Type.
-func (doc *HTMLDoc) Type(name string) error {
-	_, err := fmt.Fprintf(doc.out, `<span class="type">%s</span>`,
-		html.EscapeString(name))
-	return err
-}
-
-// Function implements Documenter.Function.
-func (doc *HTMLDoc) Function(name string) error {
-	_, err := fmt.Fprintf(doc.out, `<span class="functionName">%s</span>`,
-		html.EscapeString(name))
-	return err
-}
-
-// Empty implements Documenter.Empty.
-func (doc *HTMLDoc) Empty(name string) error {
-	_, err := fmt.Fprintf(doc.out, `<div class="empty">%s</div>`,
-		html.EscapeString(name))
-	return err
-}
-
-var packages = make(map[string]*Package)
-
-func documentation(files []string, doc Documenter) error {
-	err := parseInputs(files)
+// NewHTMLDoc creates a new HTML documenter. The HTML documentation is
+// created in the argument directory. The function will create the
+// directory if it does not exist.
+func NewHTMLDoc(dir string) (*HTMLDoc, error) {
+	err := os.MkdirAll(dir, 0755)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var names []string
-	for name := range packages {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	return &HTMLDoc{
+		dir: dir,
+	}, nil
+}
 
-	fmt.Print(`<!DOCTYPE html>
+// New implements Documenter.New.
+func (doc *HTMLDoc) New(name string) (Output, error) {
+	name = fmt.Sprintf("pkg_%s.html", name)
+	file := path.Join(doc.dir, name)
+	f, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+	_, err = fmt.Fprintf(f, `<!DOCTYPE html>
 <html>
   <head>
     <link rel="icon" href="favicon.png" />
@@ -141,20 +120,190 @@ func documentation(files []string, doc Documenter) error {
         </div>
         <div class="article-column">
 `)
-
-	for _, name := range names {
-		doc.H1("Package %s", name)
-		if err := documentPackage(doc, packages[name]); err != nil {
-			return err
-		}
+	if err != nil {
+		f.Close()
+		os.Remove(file)
+		return nil, err
 	}
-	fmt.Print(`
+
+	return &HTMLOutput{
+		out: f,
+	}, nil
+}
+
+// HTMLOutput implements HTML document output.
+type HTMLOutput struct {
+	out io.WriteCloser
+}
+
+// Close implements Output.Close.
+func (out *HTMLOutput) Close() error {
+	_, err := fmt.Fprint(out.out, `
         </div>
       </div>
     </div>
   </body>
 </html>
 `)
+	if err != nil {
+		return err
+	}
+	return out.out.Close()
+}
+
+// H1 implements Output.H1.
+func (out *HTMLOutput) H1(format string, a ...interface{}) error {
+	text := fmt.Sprintf(format, a...)
+	_, err := fmt.Fprintf(out.out, "<h1>%s</h1>\n", html.EscapeString(text))
+	return err
+}
+
+// H2 implements Output.H2.
+func (out *HTMLOutput) H2(format string, a ...interface{}) error {
+	text := fmt.Sprintf(format, a...)
+	_, err := fmt.Fprintf(out.out, "<h2>%s</h2>\n", html.EscapeString(text))
+	return err
+}
+
+// Pre implements Output.Pre.
+func (out *HTMLOutput) Pre(lines []string) error {
+	for i := 0; i < len(lines); i++ {
+		if len(strings.TrimSpace(lines[i])) > 0 {
+			lines = lines[i:]
+			break
+		}
+	}
+	for i := len(lines) - 1; i >= 0; i-- {
+		if len(strings.TrimSpace(lines[i])) > 0 {
+			lines = lines[0 : i+1]
+			break
+		}
+	}
+	_, err := fmt.Fprintf(out.out, "<pre>")
+	if err != nil {
+		return err
+	}
+	for _, l := range lines {
+		_, err := fmt.Fprintln(out.out, html.EscapeString(l))
+		if err != nil {
+			return err
+		}
+	}
+	_, err = fmt.Fprintln(out.out, "</pre>")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// P implements Output.P.
+func (out *HTMLOutput) P(lines []string) error {
+	for i := 0; i < len(lines); i++ {
+		if len(strings.TrimSpace(lines[i])) > 0 {
+			lines = lines[i:]
+			break
+		}
+	}
+	for i := len(lines) - 1; i >= 0; i-- {
+		if len(strings.TrimSpace(lines[i])) > 0 {
+			lines = lines[0 : i+1]
+			break
+		}
+	}
+	_, err := fmt.Fprintf(out.out, "<p>")
+	if err != nil {
+		return err
+	}
+	for _, l := range lines {
+		_, err := fmt.Fprintln(out.out, html.EscapeString(l))
+		if err != nil {
+			return err
+		}
+	}
+	_, err = fmt.Fprintln(out.out, "</p>")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Type implements Output.Type.
+func (out *HTMLOutput) Type(name string) error {
+	_, err := fmt.Fprintf(out.out, `<span class="type">%s</span>`,
+		html.EscapeString(name))
+	return err
+}
+
+// Function implements Output.Function.
+func (out *HTMLOutput) Function(name string) error {
+	_, err := fmt.Fprintf(out.out, `<span class="functionName">%s</span>`,
+		html.EscapeString(name))
+	return err
+}
+
+// Empty implements Output.Empty.
+func (out *HTMLOutput) Empty(name string) error {
+	_, err := fmt.Fprintf(out.out, `<div class="empty">%s</div>`,
+		html.EscapeString(name))
+	return err
+}
+
+// Code implements Output.Code.
+func (out *HTMLOutput) Code(code string) error {
+	_, err := fmt.Fprintf(out.out, `
+<div class="code">%s</div>
+`, html.EscapeString(code))
+	return err
+}
+
+// Signature implements Output.Signature.
+func (out *HTMLOutput) Signature(code string) error {
+	_, err := fmt.Fprintf(out.out, `
+<div class="signature">func %s</div>
+`,
+		html.EscapeString(code))
+
+	return err
+}
+
+// Start implements Output.Start.
+func (out *HTMLOutput) Start(section string) error {
+	_, err := fmt.Fprintf(out.out, `<div class="%s">`, section)
+	return err
+}
+
+// End implements Output.End.
+func (out *HTMLOutput) End(section string) error {
+	_, err := fmt.Fprintln(out.out, `</div>`)
+	return err
+}
+
+var packages = make(map[string]*Package)
+
+func documentation(files []string, doc Documenter) error {
+	err := parseInputs(files)
+	if err != nil {
+		return err
+	}
+	var names []string
+	for name := range packages {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		out, err := doc.New(name)
+		if err != nil {
+			return err
+		}
+		if err := documentPackage(out, name, packages[name]); err != nil {
+			out.Close()
+			return err
+		}
+		if err := out.Close(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -217,13 +366,15 @@ func parseFile(name string) error {
 	return nil
 }
 
-func documentPackage(doc Documenter, pkg *Package) error {
-	err := annotations(doc, pkg.Annotations)
+func documentPackage(out Output, name string, pkg *Package) error {
+	if err := out.H1("Package %s", name); err != nil {
+		return nil
+	}
+	err := annotations(out, pkg.Annotations)
 	if err != nil {
 		return err
 	}
-	err = doc.H2("Constants")
-	if err != nil {
+	if err := out.H2("Constants"); err != nil {
 		return err
 	}
 	sort.Slice(pkg.Constants, func(i, j int) bool {
@@ -235,19 +386,19 @@ func documentPackage(doc Documenter, pkg *Package) error {
 			continue
 		}
 		hadConstants = true
-		fmt.Printf(`
-<div class="code">%s</div>
-`, html.EscapeString(c.String()))
-		err = annotations(doc, c.Annotations)
+		if err := out.Code(c.String()); err != nil {
+			return err
+		}
+		err = annotations(out, c.Annotations)
 		if err != nil {
 			return err
 		}
 	}
 	if !hadConstants {
-		doc.Empty("This section is empty.")
+		out.Empty("This section is empty.")
 	}
 
-	err = doc.H2("Variables")
+	err = out.H2("Variables")
 	if err != nil {
 		return err
 	}
@@ -260,19 +411,19 @@ func documentPackage(doc Documenter, pkg *Package) error {
 			continue
 		}
 		hadVariables = true
-		fmt.Printf(`
-<div class="code">%s</div>
-`, html.EscapeString(v.String()))
-		err = annotations(doc, v.Annotations)
+		if err := out.Code(v.String()); err != nil {
+			return err
+		}
+		err = annotations(out, v.Annotations)
 		if err != nil {
 			return err
 		}
 	}
 	if !hadVariables {
-		doc.Empty("This section is empty.")
+		out.Empty("This section is empty.")
 	}
 
-	err = doc.H2("Functions")
+	err = out.H2("Functions")
 	if err != nil {
 		return err
 	}
@@ -280,20 +431,19 @@ func documentPackage(doc Documenter, pkg *Package) error {
 		return pkg.Functions[i].Name < pkg.Functions[j].Name
 	})
 	for _, f := range pkg.Functions {
-		fmt.Printf(`
-<div class="signature">func %s</div>
-`,
-			html.EscapeString(f.Name))
-		fmt.Printf(`
-<div class="code">%s</div>
-`, html.EscapeString(f.String()))
-		err = annotations(doc, f.Annotations)
+		if err := out.Signature(f.Name); err != nil {
+			return err
+		}
+		if err := out.Code(f.String()); err != nil {
+			return err
+		}
+		err = annotations(out, f.Annotations)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = doc.H2("Types")
+	err = out.H2("Types")
 	if err != nil {
 		return err
 	}
@@ -306,61 +456,63 @@ func documentPackage(doc Documenter, pkg *Package) error {
 			continue
 		}
 		hadTypes = true
-		fmt.Printf(`
-<div class="code">%s</div>
-`, html.EscapeString(t.Format()))
-		err = annotations(doc, t.Annotations)
+		if err := out.Code(t.Format()); err != nil {
+			return err
+		}
+		err = annotations(out, t.Annotations)
 		if err != nil {
 			return err
 		}
 	}
 	if !hadTypes {
-		doc.Empty("This section is empty.")
+		out.Empty("This section is empty.")
 	}
 
 	return nil
 }
 
-func annotations(doc Documenter, annotations ast.Annotations) error {
+func annotations(out Output, annotations ast.Annotations) error {
 	if len(annotations) == 0 {
 		return nil
 	}
 	prefixLen, _ := wsPrefix(annotations[0])
 	var inPre bool
-	var preLines []string
+	var lines []string
 
-	fmt.Println(`<div class="documentation">`)
+	if err := out.Start("documentation"); err != nil {
+		return err
+	}
 	for _, ann := range annotations {
 		plen, empty := wsPrefix(ann)
 		if plen > prefixLen {
 			if !inPre {
-				fmt.Printf("<pre>")
+				out.P(lines)
+				lines = nil
 				inPre = true
 			}
-			preLines = append(preLines, ann)
+			lines = append(lines, ann)
 		} else if empty {
 			if inPre {
-				preLines = append(preLines, ann)
+				lines = append(lines, ann)
 			} else {
-				fmt.Println("<p>")
+				out.P(lines)
+				lines = nil
 			}
 		} else {
 			if inPre {
-				doc.Pre(preLines)
-				preLines = nil
-				fmt.Println("</pre>")
+				out.Pre(lines)
+				lines = nil
 				inPre = false
 			}
-			fmt.Println(html.EscapeString(ann))
+			lines = append(lines, ann)
 		}
 	}
 	if inPre {
-		doc.Pre(preLines)
-		fmt.Println("</pre>")
+		out.Pre(lines)
+	} else {
+		out.P(lines)
 	}
-	fmt.Println(`</div>`)
-
-	return nil
+	return out.End("documentation")
 }
 
 func wsPrefix(str string) (int, bool) {
