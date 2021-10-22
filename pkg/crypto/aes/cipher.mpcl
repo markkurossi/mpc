@@ -5,6 +5,8 @@
 // All rights reserved.
 //
 
+// Package aes implements the Advanced Encryption Standard (AES)
+// block cipher operations.
 package aes
 
 // BlockSize defines the AES cipher block size in bytes.
