@@ -818,12 +818,12 @@ func (ast *BasicLit) String() string {
 // ConstantName returns the name of the constant value.
 func ConstantName(value interface{}) string {
 	switch val := value.(type) {
-	case int, int32, uint64:
-		return fmt.Sprintf("$%d", val)
+	case int, uint, int32, uint32, int64, uint64:
+		return fmt.Sprintf("%d", val)
 	case *big.Int:
-		return fmt.Sprintf("$%s", val)
+		return fmt.Sprintf("%s", val)
 	case bool:
-		return fmt.Sprintf("$%v", val)
+		return fmt.Sprintf("%v", val)
 	case string:
 		return fmt.Sprintf("%q", val)
 	default:

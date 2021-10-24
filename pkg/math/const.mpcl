@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,8 +8,12 @@
 package math
 
 const (
-	MaxUint8  = 0xff
+	// MaxUint8 is the maximum unsigned 8-bit integer value.
+	MaxUint8 = 0xff
+	// MaxUint16 is the maximum unsigned 16-bit integer value.
 	MaxUint16 = 0xffff
+	// MaxUint32 is the maximum unsigned 32-bit integer value.
 	MaxUint32 = 0xffffffff
+	// MaxUint64 is the maximum unsigned 64-bit integer value.
 	MaxUint64 = 0xffffffffffffffff
 )
