@@ -13,11 +13,6 @@ import (
 // "t":   e3b98a4da31a127d4bde6e43033f66ba274cab0eb7eb1c70ec41402bf6273dd8
 // "mt":  fe7f7ccc3fc17be1d0804567821a101836b66dd8eb03ed7604872285e013f771
 // "mtr": a39d3ae3da34f2b4c01193e62202d5de0db79f800a039624b0f950734782b863
-
 func main(g, e byte) []byte {
-	var data [3]byte
-	data[0] = 0x6d
-	data[1] = 0x74
-	data[2] = 0x72
-	return sha256.Sum256(data[:])
+	return sha256.Sum256([]byte("mtr"))
 }

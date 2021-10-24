@@ -189,12 +189,14 @@ func (lrv *LRValue) ConstValue() (ssa.Value, bool, error) {
 	case types.TUndefined:
 		return lrv.value, false, nil
 
-	case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
+	case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString,
+		types.TStruct, types.TArray:
 		return lrv.value, true, nil
 
 	default:
 		return ssa.Undefined, false, lrv.ctx.Errorf(lrv.ast,
-			"LRValue.ConstValue: %s not supported yet", lrv.value.Type)
+			"LRValue.ConstValue: %s not supported yet: %v",
+			lrv.value.Type, lrv.value)
 	}
 }
 

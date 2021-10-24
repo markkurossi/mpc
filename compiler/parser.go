@@ -1419,11 +1419,20 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		if err != nil {
 			return nil, err
 		}
-		_, err = p.needToken('{')
+		n, err := p.lexer.Get()
 		if err != nil {
 			return nil, err
 		}
-		return p.parseCompositeLit(typeInfo)
+		switch n.Type {
+		case '{':
+			return p.parseCompositeLit(typeInfo)
+
+		case '(':
+			return p.parseArrayCast(typeInfo)
+
+		default:
+			return nil, p.errf(n.From, "unexpected token '%s'", n.Type)
+		}
 
 	case '(': // '(' Expression ')'
 		expr, err := p.parseExpr(false)
@@ -1440,6 +1449,82 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 		return nil, p.errf(t.From,
 			"unexpected token '%s' while parsing expression", t)
 	}
+}
+
+func (p *Parser) parseArrayCast(typeInfo *ast.TypeInfo) (ast.AST, error) {
+	expr, err := p.parseExpr(false)
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.needToken(')')
+	if err != nil {
+		return nil, err
+	}
+	if typeInfo.ElementType.Type == ast.TypeName {
+		switch typeInfo.ElementType.Name.Name {
+		case "byte":
+			bytes, err := p.toByteArray(expr)
+			if err != nil {
+				return nil, err
+			}
+			var value []ast.KeyedElement
+			for _, b := range bytes {
+				value = append(value, ast.KeyedElement{
+					Element: &ast.BasicLit{
+						Point: expr.Location(),
+						Value: b,
+					},
+				})
+			}
+			return &ast.CompositeLit{
+				Type:  typeInfo,
+				Value: value,
+			}, nil
+
+		case "rune":
+			runes, err := p.toRuneArray(expr)
+			if err != nil {
+				return nil, err
+			}
+			var value []ast.KeyedElement
+			for _, r := range runes {
+				value = append(value, ast.KeyedElement{
+					Element: &ast.BasicLit{
+						Point: expr.Location(),
+						Value: r,
+					},
+				})
+			}
+			return &ast.CompositeLit{
+				Type:  typeInfo,
+				Value: value,
+			}, nil
+		}
+	}
+	return nil, p.errf(expr.Location(), "cannot convert %s to type %s",
+		expr, typeInfo)
+}
+
+func (p *Parser) toByteArray(expr ast.AST) ([]byte, error) {
+	switch val := expr.(type) {
+	case *ast.BasicLit:
+		switch v := val.Value.(type) {
+		case string:
+			return []byte(v), nil
+		}
+	}
+	return nil, p.errf(expr.Location(), "cannot convert %s to []byte", expr)
+}
+
+func (p *Parser) toRuneArray(expr ast.AST) ([]rune, error) {
+	switch val := expr.(type) {
+	case *ast.BasicLit:
+		switch v := val.Value.(type) {
+		case string:
+			return []rune(v), nil
+		}
+	}
+	return nil, p.errf(expr.Location(), "cannot convert %s to []rune", expr)
 }
 
 func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {

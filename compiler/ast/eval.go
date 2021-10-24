@@ -424,6 +424,14 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return gen.Constant(bytes[index], types.Int32), true, nil
 
+	case []interface{}:
+		if index < 0 || index >= len(val) {
+			return ssa.Undefined, false, ctx.Errorf(ast.Index,
+				"invalid array index %d (out of bounds for %d-element array)",
+				index, len(val))
+		}
+		return gen.Constant(val[index], types.Undefined), true, nil
+
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"Index.Eval: expr %T not implemented yet", val)

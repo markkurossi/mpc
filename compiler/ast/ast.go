@@ -441,6 +441,8 @@ type Func struct {
 // Annotations specify function annotations.
 type Annotations []string
 
+// FirstSentence returns the first sentence from the annotations or an
+// empty string it if annotations are empty.
 func (ann Annotations) FirstSentence() string {
 	str := strings.Join(ann, "\n")
 	idx := strings.IndexRune(str, '.')

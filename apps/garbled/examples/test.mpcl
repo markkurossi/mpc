@@ -2,11 +2,7 @@
 
 package main
 
-import (
-	"crypto/ed25519"
-)
-
-func main(a, b int32) int {
-	a = -a
-	return int64(a)
+func main(a, b int32) []rune {
+	ret := []rune("Hello, world!")
+	return ret
 }
