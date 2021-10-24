@@ -11,8 +11,8 @@ import (
 // n: 0xd60b2b09
 // e: 0x10001
 //
-// private: d, e
-// public:  n, e
+// private: d, n
+// public:  e, n
 
 // msg: 0x6d7472
 // cipher: 0x61f9ef88

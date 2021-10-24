@@ -11,13 +11,16 @@ import (
 // n: 0xd60b2b09
 // e: 0x10001
 //
-// private: d, e
-// public:  n, e
+// private: d, n
+// public:  e, n
 
 // msg: 0x6d7472
 // signature: 0x55a83b79
 
-type Size = uint128
+//  ./garbled -e -v -i 9 examples/rsasign.mpcl
+//  ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsasign.mpcl
+
+type Size = uint512
 
 type Garbler struct {
 	msg       Size

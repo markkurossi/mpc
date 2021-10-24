@@ -120,6 +120,9 @@ func parseInputs(files []string) error {
 			}
 			var files []string
 			for _, e := range entries {
+				if e.Name() == "internal" {
+					continue
+				}
 				files = append(files, path.Join(file, e.Name()))
 			}
 			err = parseInputs(files)
