@@ -6,6 +6,16 @@ import (
 	"crypto/aes"
 )
 
-func main(key, block uint128) uint128 {
-	return aes.Block128(key, block)
+func main(a, b int8) []byte {
+	var key [16]byte
+	for i := 0; i < len(key); i++ {
+		key[i] = i
+	}
+
+	var data [16]byte
+	for i := 0; i < len(data); i++ {
+		data[i] = i
+	}
+
+	return aes.Block128(key, data)
 }
