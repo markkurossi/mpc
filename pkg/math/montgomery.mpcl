@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -34,8 +34,9 @@ func reduce(m, rrm, t uint) uint {
 	return a
 }
 
-// ExpMontgomery computes b**e mod |m| (i.e. the sign of m is
-// ignored). The m must be bigger than 0 and not even number.
+// ExpMontgomery computes modular exponentiation b**e mod |m|
+// (i.e. the sign of m is ignored). The m must be bigger than 0 and
+// not even number.
 func ExpMontgomery(b, e, m uint) uint {
 	cType := make(uint, size(m)*2)
 

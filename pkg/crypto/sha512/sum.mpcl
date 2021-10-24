@@ -5,6 +5,8 @@
 // All rights reserved.
 //
 
+// Package sha512 implements the SHA-384, SHA-512, SHA-512/224, and
+// SHA-512/256 cryptographic hash functions.
 package sha512
 
 const (

@@ -5,6 +5,8 @@
 // All rights reserved.
 //
 
+// Package sha256 implements the he SHA-224 and SHA-256 cryptographic
+// hash functions.
 package sha256
 
 const (

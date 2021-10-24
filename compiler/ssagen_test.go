@@ -246,7 +246,7 @@ import (
 )
 
 func main(a, b uint64) uint64 {
-    return math.MaxUint64(a, b)
+    return math.MaxUint(a, b)
 }
 `,
 	},

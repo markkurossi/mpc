@@ -2,7 +2,10 @@
 
 package main
 
-func main(a, b int32) []rune {
-	ret := []rune("Hello, world!")
-	return ret
+import (
+	"math"
+)
+
+func main(a, b uint32) uint {
+	return math.MaxUint64
 }
