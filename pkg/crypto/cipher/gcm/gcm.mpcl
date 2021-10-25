@@ -1,0 +1,27 @@
+// -*- go -*-
+//
+// Copyright (c) 2021 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package gcm implements the Galois/Counter Mode of Operation (GCM)
+// for block ciphers.
+package gcm
+
+const r = 0b10000111
+
+func multGF2Pow128(x, y uint128) uint128 {
+	var z uint128 = 0
+
+	for i := 0; i < 128; i++ {
+		if (y>>i)&1 == 1 {
+			z ^= x
+		}
+		x <<= 1
+		if (x>>127)&1 == 1 {
+			x ^= r
+		}
+	}
+	return z
+}

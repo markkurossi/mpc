@@ -3,9 +3,25 @@
 package main
 
 import (
-	"math"
+	"crypto/cipher/cbc"
 )
 
-func main(a, b uint32) uint {
-	return math.MaxUint64
+// Case #1: Encrypting 16 bytes (1 block) using AES-CBC with 128-bit key
+// Key       : 0x06a9214036b8a15b512e03d534120006
+// IV        : 0x3dafba429d9eb430b422da802c9fac41
+// Plaintext : "Single block msg"
+// Ciphertext: 0xe353779c1079aeb82708942dbe77181a
+
+func main(a, b uint128) []byte {
+	key := []byte{
+		0x06, 0xa9, 0x21, 0x40, 0x36, 0xb8, 0xa1, 0x5b,
+		0x51, 0x2e, 0x03, 0xd5, 0x34, 0x12, 0x00, 0x06,
+	}
+	iv := []byte{
+		0x3d, 0xaf, 0xba, 0x42, 0x9d, 0x9e, 0xb4, 0x30,
+		0xb4, 0x22, 0xda, 0x80, 0x2c, 0x9f, 0xac, 0x41,
+	}
+	plain := []byte("Single block msg")
+
+	return cbc.AES128(key, iv, plain)
 }
