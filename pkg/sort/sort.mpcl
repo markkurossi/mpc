@@ -5,6 +5,7 @@
 // All rights reserved.
 //
 
+// Package sort implements array sorting functions.
 package sort
 
 // Reverse reverses the argument slice.
