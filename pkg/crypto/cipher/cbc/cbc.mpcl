@@ -33,11 +33,11 @@ func PadAES(data []byte) []byte {
 // key and iv is a random initialization vector. The data must be
 // padded to AES block size.
 //
-//   Case #1: Encrypting 16 bytes (1 block) using AES-CBC with 128-bit key
-//   Key       : 0x06a9214036b8a15b512e03d534120006
-//   IV        : 0x3dafba429d9eb430b422da802c9fac41
-//   Plaintext : "Single block msg"
-//   Ciphertext: 0xe353779c1079aeb82708942dbe77181a
+//   // Case #1: Encrypting 16 bytes (1 block) using AES-CBC with 128-bit key
+//   // Key       : 0x06a9214036b8a15b512e03d534120006
+//   // IV        : 0x3dafba429d9eb430b422da802c9fac41
+//   // Plaintext : "Single block msg"
+//   // Ciphertext: 0xe353779c1079aeb82708942dbe77181a
 //
 //   key := []byte{
 //      0x06, 0xa9, 0x21, 0x40, 0x36, 0xb8, 0xa1, 0x5b,
