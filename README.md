@@ -295,7 +295,7 @@ form assembly:
    - [ ] Circuit & garbling:
      - [ ] Oblivious transfer extensions
    - [ ] Misc:
-     - [ ] Circuit secret constructed from peer secrets
+     - [ ] Uninitialized variables produce unspecified values in stream mode
      - [ ] TLS for garbler-evaluator protocol
  - [ ] BMR multi-party protocol
  - [ ] Ed25519
