@@ -29,9 +29,9 @@ func PadAES(data []byte) []byte {
 	return padded
 }
 
-// AES128 encrypts the data in AES-CBC mode. The key specifies the AES
-// key and iv is a random initialization vector. The data must be
-// padded to AES block size.
+// EncryptAES128 encrypts the data in AES-CBC mode. The key specifies
+// the AES encryption key and iv is a random initialization
+// vector. The data must be padded to AES block size.
 //
 //   // Case #1: Encrypting 16 bytes (1 block) using AES-CBC with 128-bit key
 //   // Key       : 0x06a9214036b8a15b512e03d534120006
@@ -49,10 +49,10 @@ func PadAES(data []byte) []byte {
 //   }
 //   plain := []byte("Single block msg")
 //
-//   cipher := cbc.AES128(key, iv, plain)
+//   cipher := cbc.EncryptAES128(key, iv, plain)
 //   => e353779c1079aeb82708942dbe77181a
 //
-func AES128(key, iv [aes.BlockSize]byte, data []byte) []byte {
+func EncryptAES128(key, iv [aes.BlockSize]byte, data []byte) []byte {
 	var block [aes.BlockSize]byte
 	block = memcpy(block, 0, iv, 0)
 
