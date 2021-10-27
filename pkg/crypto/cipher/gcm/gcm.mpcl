@@ -9,19 +9,130 @@
 // for block ciphers.
 package gcm
 
-const r = 0b10000111
+import (
+	"crypto/aes"
+)
+
+// NonceSize specifies the nonce size in bytes.
+const NonceSize = 12
+
+// EncryptAES128 encrypts the plaintext in AES-GCM mode. The key
+// specifies the AES encryption key and nonce is an unique
+// initialization vector; the nonce must not be reused for the same
+// encryption key. The additionalData specifies additional data that
+// is authenticated but not encrypted. The input plaintext can be of
+// any length i.e. it don't have to be padded to cipher block size.
+func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
+	plaintext, additionalData []byte) []byte {
+
+	var counter [aes.BlockSize]byte
+
+	counter = memcpy(counter, 0, nonce, 0)
+	counter = incr(counter)
+
+	e0 := byteToUint128(aes.Block128(key, counter))
+
+	var block [aes.BlockSize]byte
+
+	// h = E(k, 0^128)
+	h := byteToUint128(aes.Block128(key, block))
+
+	// Auth data.
+	var x uint128 = 0
+	// XXX additionalData
+
+	var cipher [len(plaintext) + 16]byte
+	var cipherBlock [aes.BlockSize]byte
+
+	for i := 0; i < len(plaintext); i += aes.BlockSize {
+		counter = incr(counter)
+		block = aes.Block128(key, counter)
+		for j := 0; i+j < len(plaintext) && j < aes.BlockSize; j++ {
+			cipher[i+j] = plaintext[i+j] ^ block[j]
+			cipherBlock[j] = cipher[i+j]
+		}
+
+		// Auth data.
+		x ^= byteToUint128(cipherBlock)
+		x = multGF2Pow128(x, h)
+	}
+
+	// len(A) || len(C)
+	var l uint128 = 0
+	l |= uint128(0) << 64
+	l |= uint128(len(plaintext) * 8)
+
+	x ^= l
+	x = multGF2Pow128(x, h)
+	x ^= e0
+
+	tag := uint128ToByte(x)
+	for i := 0; i < 16; i++ {
+		cipher[len(plaintext)+i] = tag[i]
+	}
+
+	return cipher
+}
+
+func byteToUint128(x [16]byte) uint128 {
+	var r uint128
+
+	for i := 0; i < len(x); i++ {
+		r <<= 8
+		r |= uint128(x[i])
+	}
+	return r
+}
+
+func uint128ToByte(x uint128) [16]byte {
+	var r [16]byte
+
+	for i := 0; i < 16; i++ {
+		r[15-i] = x & 0xff
+		x >>= 8
+	}
+	return r
+}
+
+func incr(counter [aes.BlockSize]byte) [aes.BlockSize]byte {
+	var c uint32
+
+	for i := 0; i < 4; i++ {
+		c <<= 8
+		c |= uint32(counter[12+i])
+	}
+	c++
+	for i := 0; i < 4; i++ {
+		counter[15-i] = c & 0xff
+		c >>= 8
+	}
+	return counter
+}
 
 func multGF2Pow128(x, y uint128) uint128 {
 	var z uint128 = 0
 
-	for i := 0; i < 128; i++ {
+	r := uint128(0b11100001)
+
+	r <<= 120
+
+	for i := 127; i >= 0; i-- {
 		if (y>>i)&1 == 1 {
 			z ^= x
 		}
-		x <<= 1
-		if (x>>127)&1 == 1 {
+		if x&1 == 0 {
+			x >>= 1
+		} else {
+			x >>= 1
 			x ^= r
 		}
 	}
 	return z
+}
+
+func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
+	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
+		dst[dstOfs+i] = src[srcOfs+i]
+	}
+	return dst
 }
