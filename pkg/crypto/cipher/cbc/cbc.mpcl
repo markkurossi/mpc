@@ -52,14 +52,14 @@ func PadAES(data []byte) []byte {
 //   cipher := cbc.EncryptAES128(key, iv, plain)
 //   => e353779c1079aeb82708942dbe77181a
 //
-func EncryptAES128(key, iv [aes.BlockSize]byte, data []byte) []byte {
+func EncryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 	var block [aes.BlockSize]byte
 	block = memcpy(block, 0, iv, 0)
 
 	var plain [aes.BlockSize]byte
 	var cipher [len(data)]byte
 
-	for i := 0; i < len(cipher)/aes.BlockSize; i++ {
+	for i := 0; i < len(data)/aes.BlockSize; i++ {
 		plain = memcpy(plain, 0, data, i*aes.BlockSize)
 		for j := 0; j < aes.BlockSize; j++ {
 			plain[j] ^= block[j]
@@ -69,6 +69,26 @@ func EncryptAES128(key, iv [aes.BlockSize]byte, data []byte) []byte {
 	}
 
 	return cipher
+}
+
+func DecryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
+	var block [aes.BlockSize]byte
+
+	var cipher [aes.BlockSize]byte
+	var plain [len(data)]byte
+
+	for i := 0; i < len(data)/aes.BlockSize; i++ {
+		cipher = memcpy(cipher, 0, data, i*aes.BlockSize)
+		// XXX need aes.DecryptBlock128
+		block = aes.Block128(key, cipher)
+		for j := 0; j < aes.BlockSize; j++ {
+			block[j] ^= iv[j]
+		}
+		plain = memcpy(plain, i*aes.BlockSize, block, 0)
+		iv = memcpy(iv, 0, cipher, 0)
+	}
+
+	return plain
 }
 
 func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
