@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -20,6 +20,18 @@ const (
 var (
 	bo = binary.BigEndian
 )
+
+// MarshalFormat marshals circuit in the specified format.
+func (c *Circuit) MarshalFormat(out io.Writer, format string) error {
+	switch format {
+	case "mpclc":
+		return c.Marshal(out)
+	case "bristol":
+		return c.MarshalBristol(out)
+	default:
+		return fmt.Errorf("unsupported circuit format: %s", format)
+	}
+}
 
 // Marshal marshals circuit in the MPCL circuit format.
 func (c *Circuit) Marshal(out io.Writer) error {
@@ -102,7 +114,7 @@ func marshalString(out io.Writer, val string) error {
 }
 
 // MarshalBristol marshals the circuit in the Bristol format.
-func (c *Circuit) MarshalBristol(out io.Writer) {
+func (c *Circuit) MarshalBristol(out io.Writer) error {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
 	fmt.Fprintf(out, "%d", len(c.Inputs))
 	for _, input := range c.Inputs {
@@ -124,4 +136,6 @@ func (c *Circuit) MarshalBristol(out io.Writer) {
 		fmt.Fprintf(out, " %d", g.Output)
 		fmt.Fprintf(out, " %s\n", g.Op)
 	}
+
+	return nil
 }

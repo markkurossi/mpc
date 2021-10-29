@@ -135,6 +135,22 @@ func main() {
 	}
 
 	for _, arg := range flag.Args() {
+		if *compile {
+			params.CircOut, err = makeOutput(arg, *circFormat)
+			if err != nil {
+				fmt.Printf("Failed to create circuit file: %s\n", err)
+				return
+			}
+			params.CircFormat = *circFormat
+			if *dot {
+				params.CircDotOut, err = makeOutput(arg, "circ.dot")
+				if err != nil {
+					fmt.Printf("Failed to create circuit DOT file: %s\n",
+						err)
+					return
+				}
+			}
+		}
 		if strings.HasSuffix(arg, ".circ") ||
 			strings.HasSuffix(arg, ".bristol") ||
 			strings.HasSuffix(arg, ".mpclc") {
@@ -142,6 +158,16 @@ func main() {
 			if err != nil {
 				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
 				return
+			}
+			if params.CircOut != nil {
+				if params.Verbose {
+					fmt.Printf("Serializing circuit...\n")
+				}
+				err = circ.MarshalFormat(params.CircOut, params.CircFormat)
+				if err != nil {
+					fmt.Printf("Failed to save circuit: %s\n", err)
+					return
+				}
 			}
 		} else if strings.HasSuffix(arg, ".mpcl") {
 			if *ssa {
@@ -154,22 +180,6 @@ func main() {
 					params.SSADotOut, err = makeOutput(arg, "ssa.dot")
 					if err != nil {
 						fmt.Printf("Failed to create SSA DOT file: %s\n", err)
-						return
-					}
-				}
-			}
-			if *compile {
-				params.CircOut, err = makeOutput(arg, *circFormat)
-				if err != nil {
-					fmt.Printf("Failed to create circuit file: %s\n", err)
-					return
-				}
-				params.CircFormat = *circFormat
-				if *dot {
-					params.CircDotOut, err = makeOutput(arg, "circ.dot")
-					if err != nil {
-						fmt.Printf("Failed to create circuit DOT file: %s\n",
-							err)
 						return
 					}
 				}

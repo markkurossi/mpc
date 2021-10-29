@@ -54,16 +54,9 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 		if params.Verbose {
 			fmt.Printf("Serializing circuit...\n")
 		}
-		switch params.CircFormat {
-		case "mpclc":
-			if err := circ.Marshal(params.CircOut); err != nil {
-				return nil, err
-			}
-		case "bristol":
-			circ.MarshalBristol(params.CircOut)
-		default:
-			return nil, fmt.Errorf("unsupported circuit format: %s",
-				params.CircFormat)
+		err = circ.MarshalFormat(params.CircOut, params.CircFormat)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if params.CircDotOut != nil {
