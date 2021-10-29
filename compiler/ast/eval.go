@@ -59,35 +59,49 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	arrType := types.Info{
-		Type: types.TArray,
+		Type:      types.TArray,
+		ArraySize: types.Size(len(values)),
 	}
 
-	for idx, lv := range ast.LValues {
-		constVal := gen.Constant(values[idx], types.Undefined)
-		gen.AddConstant(constVal)
-		arrType.ElementType = &constVal.Type
+	if ast.Define {
+		for idx, lv := range ast.LValues {
+			constVal := gen.Constant(values[idx], types.Undefined)
+			gen.AddConstant(constVal)
+			arrType.ElementType = &constVal.Type
 
-		ref, ok := lv.(*VariableRef)
-		if !ok {
-			return ssa.Undefined, false,
-				ctx.Errorf(ast, "cannot assign to %s", lv)
+			ref, ok := lv.(*VariableRef)
+			if !ok {
+				return ssa.Undefined, false,
+					ctx.Errorf(ast, "cannot assign to %s", lv)
+			}
+			// XXX package.name below
+
+			lValue := gen.NewVal(ref.Name.Name, constVal.Type, ctx.Scope())
+			env.Set(lValue, &constVal)
 		}
-		// XXX package.name below
+	} else {
+		for idx, lv := range ast.LValues {
+			ref, ok := lv.(*VariableRef)
+			if !ok {
+				return ssa.Undefined, false,
+					ctx.Errorf(ast, "cannot assign to %s", lv)
+			}
+			// XXX package.name below
 
-		var lValue ssa.Value
-		if ast.Define {
-			lValue = gen.NewVal(ref.Name.Name, constVal.Type, ctx.Scope())
-		} else {
 			b, ok := env.Get(ref.Name.Name)
 			if !ok {
 				return ssa.Undefined, false,
 					ctx.Errorf(ast, "undefined variable '%s'", ref.Name)
 			}
-			lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
+			lValue := gen.NewVal(b.Name, b.Type, ctx.Scope())
+
+			constVal := gen.Constant(values[idx], b.Type)
+			gen.AddConstant(constVal)
+			arrType.ElementType = &constVal.Type
+
+			env.Set(lValue, &constVal)
 		}
-		env.Set(lValue, &constVal)
 	}
-	arrType.ArraySize = types.Size(len(values))
 
 	return gen.Constant(values, arrType), true, nil
 }
