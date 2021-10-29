@@ -66,5 +66,5 @@ func Sum512(data []byte) [Size]byte {
 
 // Block adds a new SHA-512 block to the state.
 func Block(block uint1024, state uint512) uint512 {
-	return native("sha512.circ", block, state)
+	return native("sha512.mpclc", block, state)
 }

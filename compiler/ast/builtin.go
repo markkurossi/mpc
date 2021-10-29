@@ -332,7 +332,8 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return block, []ssa.Value{v}, nil
 
 	default:
-		if strings.HasSuffix(name, ".circ") {
+		if strings.HasSuffix(name, ".circ") ||
+			strings.HasSuffix(name, ".mpclc") {
 			return nativeCircuit(name, block, ctx, gen, args, loc)
 		}
 		return nil, nil, ctx.Errorf(loc, "unknown native '%s'", name)
