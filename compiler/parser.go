@@ -352,7 +352,7 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool,
 	var init ast.AST
 
 	if t.Type == '=' {
-		init, err = p.parseExprUnary(false)
+		init, err = p.parseExpr(false)
 		if err != nil {
 			return err
 		}
@@ -367,7 +367,7 @@ func (p *Parser) parseGlobalVarDef(token *Token, isConst bool,
 			return nil
 		}
 		if t.Type == '=' {
-			init, err = p.parseExprUnary(false)
+			init, err = p.parseExpr(false)
 			if err != nil {
 				return err
 			}
@@ -1212,7 +1212,7 @@ primary:
 		switch t.Type {
 		case '.':
 			// Selector.
-			return nil, fmt.Errorf("selector not implemented yet")
+			return nil, p.errf(t.From, "selector not implemented yet")
 
 		case '[':
 			var expr1, expr2 ast.AST
