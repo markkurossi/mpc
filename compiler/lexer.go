@@ -657,7 +657,7 @@ func (l *Lexer) Get() (*Token, error) {
 			return token, nil
 
 		default:
-			if unicode.IsLetter(r) {
+			if unicode.IsLetter(r) || r == '_' {
 				symbol := string(r)
 				for {
 					r, _, err := l.ReadRune()
