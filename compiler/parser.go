@@ -1017,7 +1017,10 @@ func (p *Parser) parseExprLogicalOr(needLBrace bool) (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			if err != io.EOF {
+				return nil, err
+			}
+			return left, nil
 		}
 		if t.Type != TOr {
 			p.lexer.Unget(t)
@@ -1044,7 +1047,10 @@ func (p *Parser) parseExprLogicalAnd(needLBrace bool) (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			if err != io.EOF {
+				return nil, err
+			}
+			return left, nil
 		}
 		if t.Type != TAnd {
 			p.lexer.Unget(t)
@@ -1071,7 +1077,10 @@ func (p *Parser) parseExprComparative(needLBrace bool) (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			if err != io.EOF {
+				return nil, err
+			}
+			return left, nil
 		}
 		switch t.Type {
 		case TEq, TNeq, TLt, TLe, TGt, TGe:
@@ -1101,7 +1110,10 @@ func (p *Parser) parseExprAdditive(needLBrace bool) (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			if err != io.EOF {
+				return nil, err
+			}
+			return left, nil
 		}
 		switch t.Type {
 		case '+', '-', '|', '^':
@@ -1131,7 +1143,10 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 	for {
 		t, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
+			if err != io.EOF {
+				return nil, err
+			}
+			return left, nil
 		}
 		switch t.Type {
 		case '*', '/', '%', TLshift, TRshift, '&', TBitClear:
