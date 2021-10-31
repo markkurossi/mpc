@@ -781,6 +781,17 @@ func newModulo(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 	return true, circuits.NewDivider(cc, in[0], in[1], nil, out)
 }
 
+func newIndex(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+	out []*circuits.Wire) (bool, error) {
+	offset, err := instr.In[1].ConstInt()
+	if err != nil {
+		return false, fmt.Errorf("%s: unsupported offset type %T: %s",
+			instr.Op, instr.In[1], err)
+	}
+	return true, circuits.NewIndex(cc, int(instr.In[0].Type.ElementType.Bits),
+		in[0][offset:], in[2], out)
+}
+
 var circuitGenerators = map[Operand]NewCircuit{
 	Iadd:  newBinary(circuits.NewAdder),
 	Uadd:  newBinary(circuits.NewAdder),
@@ -792,6 +803,7 @@ var circuitGenerators = map[Operand]NewCircuit{
 	Udiv:  newDivider,
 	Imod:  newModulo,
 	Umod:  newModulo,
+	Index: newIndex,
 	Ilt:   newBinary(circuits.NewLtComparator),
 	Ult:   newBinary(circuits.NewLtComparator),
 	Ile:   newBinary(circuits.NewLeComparator),

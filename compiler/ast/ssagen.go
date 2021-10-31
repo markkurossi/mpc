@@ -1037,13 +1037,15 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	env := NewEnv(block)
 
 	// Init loop.
-	_, ok, err := ast.Init.Eval(env, ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, ctx.Errorf(ast.Init,
-			"init statement is not compile-time constant: %s", ast.Init)
+	if ast.Init != nil {
+		_, ok, err := ast.Init.Eval(env, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !ok {
+			return nil, nil, ctx.Errorf(ast.Init,
+				"init statement is not compile-time constant: %s", ast.Init)
+		}
 	}
 
 	// Expand body as long as condition is true.
@@ -1595,7 +1597,16 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if len(val) != 1 {
 		return nil, nil, ctx.Errorf(ast.Index, "invalid index")
 	}
-	index, err := val[0].ConstInt()
+	if val[0].Const {
+		return ast.constIndex(block, ctx, gen, expr, val[0])
+	}
+	return ast.index(block, ctx, gen, expr, val[0])
+}
+
+func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	expr, ival ssa.Value) (*ssa.Block, []ssa.Value, error) {
+
+	index, err := ival.ConstInt()
 	if err != nil {
 		return nil, nil, ctx.Errorf(ast.Index, "%s", err)
 	}
@@ -1660,6 +1671,38 @@ func (ast *Index) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	default:
 		return nil, nil, ctx.Errorf(ast,
 			"invalid operation: %s[%d] (type %s does not support indexing)",
+			ast.Expr, index, expr.Type)
+	}
+}
+
+func (ast *Index) index(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	expr, index ssa.Value) (*ssa.Block, []ssa.Value, error) {
+
+	var it types.Info
+	var ptrInfo ssa.PtrInfo
+	if expr.Type.Type == types.TPtr {
+		it = *expr.Type.ElementType
+		ptrInfo = *expr.PtrInfo
+		b, ok := ptrInfo.Bindings.Get(ptrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast.Index, "undefined: %s",
+				ptrInfo.Name)
+		}
+		expr = b.Value(block, gen)
+	} else {
+		it = expr.Type
+	}
+
+	switch it.Type {
+	case types.TArray:
+		offset := gen.Constant(int32(ptrInfo.Offset), types.Uint32)
+		t := gen.AnonVal(*it.ElementType)
+		block.AddInstr(ssa.NewIndexInstr(expr, offset, index, t))
+		return block, []ssa.Value{t}, nil
+
+	default:
+		return nil, nil, ctx.Errorf(ast,
+			"invalid operation: %s[%v] (type %s does not support non-cost indexing)",
 			ast.Expr, index, expr.Type)
 	}
 }

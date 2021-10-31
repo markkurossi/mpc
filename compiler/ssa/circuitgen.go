@@ -225,6 +225,22 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Index:
+			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			offset, err := instr.In[1].ConstInt()
+			if err != nil {
+				return fmt.Errorf("%s: unsupported offset type %T: %s",
+					instr.Op, instr.In[1], err)
+			}
+			err = circuits.NewIndex(cc, int(instr.In[0].Type.ElementType.Bits),
+				wires[0][offset:], wires[2], o)
+			if err != nil {
+				return err
+			}
+
 		case Ilt, Ult:
 			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
 			if err != nil {
