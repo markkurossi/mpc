@@ -379,14 +379,24 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	switch val := expr.ConstValue.(type) {
 	case int32:
-		if from >= 32 {
+		if to > 32 {
 			return ssa.Undefined, false, ctx.Errorf(ast.From,
-				"slice bounds out of range [%d:32]", from)
+				"slice bounds out of range [%d:32]", to)
 		}
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
 		return gen.Constant(int32(tmp), types.Int32), true, nil
+
+	case []interface{}:
+		if to == math.MaxInt32 {
+			to = len(val)
+		}
+		if to > len(val) {
+			return ssa.Undefined, false, ctx.Errorf(ast.From,
+				"slice bounds out of range [%d:%d]", to, len(val))
+		}
+		return gen.Constant(val[from:to], types.Undefined), true, nil
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
