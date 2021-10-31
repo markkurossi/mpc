@@ -46,6 +46,7 @@ const (
 	Rshift
 	Srshift
 	Slice
+	Index
 	Ilt
 	Ult
 	Flt
@@ -98,6 +99,7 @@ var operands = map[Operand]string{
 	Rshift:  "rshift",
 	Srshift: "srshift",
 	Slice:   "slice",
+	Index:   "index",
 	Ilt:     "ilt",
 	Ult:     "ult",
 	Flt:     "flt",
@@ -297,6 +299,15 @@ func NewSliceInstr(v, from, to, o Value) Instr {
 	return Instr{
 		Op:  Slice,
 		In:  []Value{v, from, to},
+		Out: &o,
+	}
+}
+
+// NewIndexInstr creates a new Index instruction.
+func NewIndexInstr(v, offset, index, o Value) Instr {
+	return Instr{
+		Op:  Index,
+		In:  []Value{v, offset, index},
 		Out: &o,
 	}
 }

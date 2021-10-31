@@ -34,9 +34,10 @@ func NewIndex(compiler *Compiler, size int, array, index, out []*Wire) error {
 
 	// Number of bits needed for indices.
 	var bits int
-	for bits = 1; bits < size; bits *= 2 {
+	for i := 1; i < n; i *= 2 {
+		bits++
 	}
-	fmt.Printf("selecting with %d bits\n", bits)
+	fmt.Printf("selecting with %d bits: size=%d, n=%d\n", bits, size, n)
 
 	if len(index) > bits {
 		index = index[0:bits]
