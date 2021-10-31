@@ -337,9 +337,11 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 	case []interface{}:
 		var length string
 		var name string
+		var elementType types.Info
 
 		if len(val) > 0 {
 			ev := gen.Constant(val[0], types.Undefined)
+			elementType = ev.Type
 			bits = ev.Type.Bits * types.Size(len(val))
 			name = ev.Type.String()
 			length = fmt.Sprintf("%d", len(val))
@@ -360,7 +362,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 				Type:        types.TArray,
 				Bits:        bits,
 				MinBits:     bits,
-				ElementType: ti.ElementType,
+				ElementType: &elementType,
 				ArraySize:   types.Size(len(val)),
 			}
 		} else {
