@@ -5,12 +5,7 @@
 // All rights reserved.
 //
 
-// Package aes implements the Advanced Encryption Standard (AES)
-// block cipher operations.
 package aes
-
-// BlockSize defines the AES cipher block size in bytes.
-const BlockSize = 16
 
 // Block128 encrypts one data block with 128 bit key.
 func Block128(key [16]byte, data [16]byte) [16]byte {

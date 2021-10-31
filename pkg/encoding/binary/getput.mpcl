@@ -1,0 +1,20 @@
+// -*- go -*-
+//
+// Copyright (c) 2021 Markku Rossi
+//
+// All rights reserved.
+//
+
+package binary
+
+func GetUint32(d []byte) uint32 {
+	return uint32(d[0])<<24 | uint32(d[1])<<16 | uint32(d[2])<<8 | uint32(d[3])
+}
+
+func PutUint32(d []byte, offset int, v uint32) []byte {
+	d[offset+0] = byte(v >> 24)
+	d[offset+1] = byte(v >> 16)
+	d[offset+2] = byte(v >> 8)
+	d[offset+3] = byte(v)
+	return d
+}

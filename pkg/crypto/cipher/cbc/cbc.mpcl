@@ -64,7 +64,8 @@ func EncryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 		for j := 0; j < aes.BlockSize; j++ {
 			plain[j] ^= block[j]
 		}
-		block = aes.Block128(key, plain)
+		//block = aes.Block128(key, plain)
+		block = aes.EncryptBlock128(key, plain)
 		cipher = memcpy(cipher, i*aes.BlockSize, block, 0)
 	}
 
