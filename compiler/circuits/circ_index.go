@@ -27,59 +27,69 @@ func NewIndex(compiler *Compiler, size int, array, index, out []*Wire) error {
 		}
 		return nil
 	}
-	selected := make([]*Wire, size)
-	for i := 0; i < size; i++ {
-		selected[i] = compiler.ZeroWire()
-	}
 
-	// Number of bits needed for indices.
-	var bits int
-	for i := 1; i < n; i *= 2 {
+	bits := 1
+	var length int
+
+	for length = 2; length < n; length *= 2 {
 		bits++
 	}
-	fmt.Printf("selecting with %d bits: size=%d, n=%d\n", bits, size, n)
 
-	if len(index) > bits {
-		index = index[0:bits]
+	return newIndex(compiler, bits-1, length, size, array, index, out)
+}
+
+func newIndex(compiler *Compiler, bit, length, size int,
+	array, index, out []*Wire) error {
+
+	// Default "not found" value.
+	def := make([]*Wire, size)
+	for i := 0; i < size; i++ {
+		def[i] = compiler.ZeroWire()
 	}
 
-	for n--; n >= 0; n-- {
-		// Compare index to n, result to cond
-		nWires := make([]*Wire, bits)
-		for i := 0; i < bits; i++ {
-			if n&(1<<i) == 0 {
-				nWires[i] = compiler.ZeroWire()
-			} else {
-				nWires[i] = compiler.OneWire()
-			}
-		}
-		nWires, index = compiler.ZeroPad(nWires, index)
+	n := len(array) / size
 
-		cond := make([]*Wire, 1)
-		cond[0] = NewWire()
-		err := NewEqComparator(compiler, nWires, index, cond)
-		if err != nil {
-			return err
-		}
+	if bit == 0 {
+		fVal := array[:size]
 
-		// MUX cond, array[n*size:(n+1)*size], selected
-
-		var result []*Wire
-		if n == 0 {
-			result = out
+		var tVal []*Wire
+		if n > 1 {
+			tVal = array[size : 2*size]
 		} else {
-			result = make([]*Wire, size)
-			for i := 0; i < size; i++ {
-				result[i] = NewWire()
-			}
+			tVal = def
 		}
-		err = NewMUX(compiler, cond, array[n*size:(n+1)*size], selected, result)
+		return NewMUX(compiler, index[0:1], tVal, fVal, out)
+	}
+
+	length /= 2
+
+	fVal := make([]*Wire, size)
+	for i := 0; i < size; i++ {
+		fVal[i] = NewWire()
+	}
+	fArray := array
+	if n > length {
+		fArray = fArray[:length*size]
+	}
+	err := newIndex(compiler, bit-1, length, size, fArray, index, fVal)
+	if err != nil {
+		return err
+	}
+
+	var tVal []*Wire
+	if n > length {
+		tVal = make([]*Wire, size)
+		for i := 0; i < size; i++ {
+			tVal[i] = NewWire()
+		}
+		err = newIndex(compiler, bit-1, length, size,
+			array[length*size:], index, tVal)
 		if err != nil {
 			return err
 		}
-
-		selected = result
+	} else {
+		tVal = def
 	}
 
-	return nil
+	return NewMUX(compiler, index[bit:bit+1], tVal, fVal, out)
 }
