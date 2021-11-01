@@ -80,8 +80,7 @@ func DecryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 
 	for i := 0; i < len(data)/aes.BlockSize; i++ {
 		cipher = memcpy(cipher, 0, data, i*aes.BlockSize)
-		// XXX need aes.DecryptBlock128
-		block = aes.Block128(key, cipher)
+		block = aes.DecryptBlock128(key, cipher)
 		for j := 0; j < aes.BlockSize; j++ {
 			block[j] ^= iv[j]
 		}

@@ -20,3 +20,12 @@ func EncryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
 
 	return encryptBlockGo(enc, dst, data)
 }
+
+func DecryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
+	var enc, dec [16 + 28]uint32
+	enc, dec = expandKeyGo(key, enc, dec)
+
+	var dst [BlockSize]byte
+
+	return decryptBlockGo(dec, dst, data)
+}
