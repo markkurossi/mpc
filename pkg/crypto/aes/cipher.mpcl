@@ -12,18 +12,22 @@ package aes
 // BlockSize defines the AES cipher block size in bytes.
 const BlockSize = 16
 
-func EncryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
+// EncryptBlock encrypts one data block with the key. The key must be
+// 16, 24, or 32 bytes long.
+func EncryptBlock(key []byte, data [BlockSize]byte) [BlockSize]byte {
 	enc := ExpandEncryptionKey(key)
 
 	var dst [BlockSize]byte
 
-	return EncryptBlock(enc, dst, data)
+	return EncryptBlockExpanded(enc, dst, data)
 }
 
-func DecryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
+// DecryptBlock decrypts one data block with the key. The key must be
+// 16, 24, or 32 bytes long.
+func DecryptBlock(key []byte, data [BlockSize]byte) [BlockSize]byte {
 	enc, dec := ExpandKey(key)
 
 	var dst [BlockSize]byte
 
-	return DecryptBlock(dec, dst, data)
+	return DecryptBlockExpanded(dec, dst, data)
 }
