@@ -43,7 +43,7 @@ import (
 )
 
 // Encrypt one block from src into dst, using the expanded key xk.
-func encryptBlockGo(xk []uint32, dst, src []byte) []byte {
+func EncryptBlock(xk []uint32, dst, src []byte) []byte {
 	// XXX _ = src[15] // early bounds check
 	s0 := binary.GetUint32(src[0:4])
 	s1 := binary.GetUint32(src[4:8])
@@ -91,7 +91,7 @@ func encryptBlockGo(xk []uint32, dst, src []byte) []byte {
 }
 
 // Decrypt one block from src into dst, using the expanded key xk.
-func decryptBlockGo(xk []uint32, dst, src []byte) []byte {
+func DecryptBlock(xk []uint32, dst, src []byte) []byte {
 	// XXX _ = src[15] // early bounds check
 	s0 := binary.GetUint32(src[0:4])
 	s1 := binary.GetUint32(src[4:8])
@@ -151,8 +151,9 @@ func rotw(w uint32) uint32 { return w<<8 | w>>24 }
 
 // Key expansion algorithm. See FIPS-197, Figure 11.
 // Their rcon[i] is our powx[i-1] << 24.
-func expandKeyGo(key []byte, enc, dec []uint32) ([]uint32, []uint32) {
-	// Encryption key setup.
+func ExpandEncryptionKey(key []byte) []uint32 {
+	var enc [len(key) + 28]uint32
+
 	var i int32
 	nk := len(key) / 4
 	for i = 0; i < nk; i++ {
@@ -169,7 +170,11 @@ func expandKeyGo(key []byte, enc, dec []uint32) ([]uint32, []uint32) {
 		enc[i] = enc[i-nk] ^ t
 	}
 
-	// return enc, dec
+	return enc
+}
+
+func DeriveDecryptionKey(enc []uint32) []uint32 {
+	var dec [len(enc)]uint32
 
 	// Derive decryption key from encryption key.
 	// Reverse the 4-word round key sets from enc to produce dec.
@@ -187,6 +192,13 @@ func expandKeyGo(key []byte, enc, dec []uint32) ([]uint32, []uint32) {
 			dec[i+j] = x
 		}
 	}
+
+	return dec
+}
+
+func ExpandKey(key []byte) ([]uint32, []uint32) {
+	enc := ExpandEncryptionKey(key)
+	dec := DeriveDecryptionKey(enc)
 
 	return enc, dec
 }

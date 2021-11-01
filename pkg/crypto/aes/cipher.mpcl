@@ -13,19 +13,17 @@ package aes
 const BlockSize = 16
 
 func EncryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
-	var enc, dec [16 + 28]uint32
-	enc, dec = expandKeyGo(key, enc, dec)
+	enc := ExpandEncryptionKey(key)
 
 	var dst [BlockSize]byte
 
-	return encryptBlockGo(enc, dst, data)
+	return EncryptBlock(enc, dst, data)
 }
 
 func DecryptBlock128(key [16]byte, data [BlockSize]byte) [BlockSize]byte {
-	var enc, dec [16 + 28]uint32
-	enc, dec = expandKeyGo(key, enc, dec)
+	enc, dec := ExpandKey(key)
 
 	var dst [BlockSize]byte
 
-	return decryptBlockGo(dec, dst, data)
+	return DecryptBlock(dec, dst, data)
 }
