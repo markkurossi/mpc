@@ -9,6 +9,7 @@ package circuits
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -61,6 +62,7 @@ func (c *Compiler) ZeroWire() *Wire {
 		c.zeroWire = NewWire()
 		c.AddGate(NewBinary(circuit.XOR, c.InputWires[0], c.InputWires[0],
 			c.zeroWire))
+		c.zeroWire.Value = Zero
 	}
 	return c.zeroWire
 }
@@ -71,6 +73,7 @@ func (c *Compiler) OneWire() *Wire {
 		c.oneWire = NewWire()
 		c.AddGate(NewBinary(circuit.XNOR, c.InputWires[0], c.InputWires[0],
 			c.oneWire))
+		c.oneWire.Value = One
 	}
 	return c.oneWire
 }
@@ -152,6 +155,95 @@ func (c *Compiler) NextWireID() uint32 {
 	ret := c.nextWireID
 	c.nextWireID++
 	return ret
+}
+
+// ConstPropagate propagates constant wire values in the circuit.
+func (c *Compiler) ConstPropagate() {
+	var stats circuit.Stats
+
+	start := time.Now()
+
+	for _, g := range c.Gates {
+		switch g.Op {
+		case circuit.XOR:
+			if (g.A.Value == Zero && g.B.Value == Zero) ||
+				(g.A.Value == One && g.B.Value == One) {
+				g.O.Value = Zero
+				stats[g.Op]++
+			} else if (g.A.Value == Zero && g.B.Value == One) ||
+				(g.A.Value == One && g.B.Value == Zero) {
+				g.O.Value = One
+				stats[g.Op]++
+			}
+
+		case circuit.XNOR:
+			if (g.A.Value == Zero && g.B.Value == Zero) ||
+				(g.A.Value == One && g.B.Value == One) {
+				g.O.Value = One
+				stats[g.Op]++
+			} else if (g.A.Value == Zero && g.B.Value == One) ||
+				(g.A.Value == One && g.B.Value == Zero) {
+				g.O.Value = Zero
+				stats[g.Op]++
+			}
+
+		case circuit.AND:
+			if g.A.Value == Zero || g.B.Value == Zero {
+				g.O.Value = Zero
+				stats[g.Op]++
+			} else if g.A.Value == One && g.B.Value == One {
+				g.O.Value = One
+				stats[g.Op]++
+			}
+
+		case circuit.OR:
+			if g.A.Value == One || g.B.Value == One {
+				g.O.Value = One
+				stats[g.Op]++
+			} else if g.A.Value == Zero && g.B.Value == Zero {
+				g.O.Value = Zero
+				stats[g.Op]++
+			}
+
+		case circuit.INV:
+			if g.A.Value == One {
+				g.O.Value = Zero
+				stats[g.Op]++
+			} else if g.A.Value == Zero {
+				g.O.Value = One
+				stats[g.Op]++
+			}
+		}
+
+		if g.A.Value == Zero {
+			g.A.RemoveOutput(g)
+			g.A = c.ZeroWire()
+			g.A.AddOutput(g)
+		} else if g.A.Value == One {
+			g.A.RemoveOutput(g)
+			g.A = c.OneWire()
+			g.A.AddOutput(g)
+		}
+		if g.B != nil {
+			if g.B.Value == Zero {
+				g.B.RemoveOutput(g)
+				g.B = c.ZeroWire()
+				g.B.AddOutput(g)
+			} else if g.B.Value == One {
+				g.B.RemoveOutput(g)
+				g.B = c.OneWire()
+				g.B.AddOutput(g)
+			}
+		}
+	}
+
+	elapsed := time.Since(start)
+
+	if c.Params.Verbose && stats.Count() > 0 {
+		fmt.Printf("ConstPropagate: %s: %d/%d (%.2f%%)\n",
+			elapsed, stats.Count(), len(c.Gates),
+			float64(stats.Count())/float64(len(c.Gates))*100)
+	}
 }
 
 // Prune removes all gates whose output wires are unused.
@@ -236,10 +328,32 @@ const (
 // Wire implements a wire connecting binary gates.
 type Wire struct {
 	Output     bool
+	Value      WireValue
 	ID         uint32
 	NumOutputs uint32
 	Input      *Gate
 	Outputs    []*Gate
+}
+
+// WireValue defines wire values.
+type WireValue uint8
+
+// Possible wire values.
+const (
+	Unknown WireValue = iota
+	Zero
+	One
+)
+
+func (v WireValue) String() string {
+	switch v {
+	case Zero:
+		return "0"
+	case One:
+		return "1"
+	default:
+		return "?"
+	}
 }
 
 // Assigned tests if the wire is assigned with an unique ID.

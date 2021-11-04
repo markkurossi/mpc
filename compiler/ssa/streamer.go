@@ -497,6 +497,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				if err != nil {
 					return nil, nil, err
 				}
+				cc.ConstPropagate()
 				pruned := cc.Prune()
 				if params.Verbose && circuit.StreamDebug {
 					fmt.Printf("%05d: - pruned %d gates\n",
