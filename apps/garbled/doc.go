@@ -235,6 +235,9 @@ func documentPackage(out Output, pkg *Package) error {
 		return pkg.Functions[i].Name < pkg.Functions[j].Name
 	})
 	for _, f := range pkg.Functions {
+		if !ast.IsExported(f.Name) {
+			continue
+		}
 		if err := out.Signature(f.Name); err != nil {
 			return err
 		}
