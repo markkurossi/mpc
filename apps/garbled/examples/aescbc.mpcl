@@ -19,7 +19,7 @@ import (
 //               101112131415161718191a1b1c1d1e1f
 // Ciphertext: 0xd296cd94c2cccf8a3a863028b5e1dc0a
 //               7586602d253cfff91b8266bea6d61ab1
-func main(a, b byte) []byte {
+func main(g, e [16]byte) []byte {
 	key := []byte{
 		0x06, 0xa9, 0x21, 0x40, 0x36, 0xb8, 0xa1, 0x5b,
 		0x51, 0x2e, 0x03, 0xd5, 0x34, 0x12, 0x00, 0x06,
@@ -46,5 +46,6 @@ func main(a, b byte) []byte {
 	}
 
 	//return cbc.EncryptAES128(key, iv, plain)
-	return cbc.EncryptAES128(key2, iv2, plain2)
+	//return cbc.EncryptAES128(key2, iv2, plain2)
+	return cbc.EncryptAES128(g, iv, e)
 }

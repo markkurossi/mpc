@@ -318,7 +318,7 @@ func (prog *Program) GC() {
 	elapsed := time.Since(start)
 
 	if prog.Params.Verbose {
-		fmt.Printf("Program.GC: %s\n", elapsed)
+		fmt.Printf(" - Program.GC: %s\n", elapsed)
 	}
 }
 

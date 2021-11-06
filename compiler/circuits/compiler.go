@@ -157,7 +157,9 @@ func (c *Compiler) NextWireID() uint32 {
 	return ret
 }
 
-// ConstPropagate propagates constant wire values in the circuit.
+// ConstPropagate propagates constant wire values in the circuit and
+// short circuits gates if their output does not depend on the gate's
+// logical operation.
 func (c *Compiler) ConstPropagate() {
 	var stats circuit.Stats
 
@@ -174,6 +176,14 @@ func (c *Compiler) ConstPropagate() {
 				(g.A.Value == One && g.B.Value == Zero) {
 				g.O.Value = One
 				stats[g.Op]++
+			} else if g.A.Value == Zero {
+				// O = B
+				stats[g.Op]++
+				g.ShortCircuit(g.B)
+			} else if g.B.Value == Zero {
+				// O = A
+				stats[g.Op]++
+				g.ShortCircuit(g.A)
 			}
 
 		case circuit.XNOR:
@@ -194,6 +204,14 @@ func (c *Compiler) ConstPropagate() {
 			} else if g.A.Value == One && g.B.Value == One {
 				g.O.Value = One
 				stats[g.Op]++
+			} else if g.A.Value == One {
+				// O = B
+				stats[g.Op]++
+				g.ShortCircuit(g.B)
+			} else if g.B.Value == One {
+				// O = A
+				stats[g.Op]++
+				g.ShortCircuit(g.A)
 			}
 
 		case circuit.OR:
@@ -203,6 +221,14 @@ func (c *Compiler) ConstPropagate() {
 			} else if g.A.Value == Zero && g.B.Value == Zero {
 				g.O.Value = Zero
 				stats[g.Op]++
+			} else if g.A.Value == Zero {
+				// O = B
+				stats[g.Op]++
+				g.ShortCircuit(g.B)
+			} else if g.B.Value == Zero {
+				// O = A
+				stats[g.Op]++
+				g.ShortCircuit(g.A)
 			}
 
 		case circuit.INV:
@@ -240,7 +266,7 @@ func (c *Compiler) ConstPropagate() {
 	elapsed := time.Since(start)
 
 	if c.Params.Verbose && stats.Count() > 0 {
-		fmt.Printf("ConstPropagate: %s: %d/%d (%.2f%%)\n",
+		fmt.Printf(" - ConstPropagate: %12s: %d/%d (%.2f%%)\n",
 			elapsed, stats.Count(), len(c.Gates),
 			float64(stats.Count())/float64(len(c.Gates))*100)
 	}
@@ -379,8 +405,8 @@ func MakeWires(bits types.Size) []*Wire {
 }
 
 func (w *Wire) String() string {
-	return fmt.Sprintf("Wire{%x, Input:%v, Outputs:%d, Output=%v}",
-		w.ID, w.Input, w.NumOutputs, w.Output)
+	return fmt.Sprintf("Wire{%x, Input:%s, Value:%s, Outputs:%v, Output=%v}",
+		w.ID, w.Input, w.Value, w.Outputs, w.Output)
 }
 
 // Assign assings wire ID.
