@@ -1094,12 +1094,48 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+func isPowerOf2(ast AST, env *Env, ctx *Codegen, gen *ssa.Generator) (
+	uint64, bool) {
+
+	v, ok, err := ast.Eval(env, ctx, gen)
+	if err != nil || !ok {
+		return 0, false
+	}
+	switch val := v.ConstValue.(type) {
+	case int32:
+		i := val
+		var count int
+		for i > 0 {
+			if i&1 == 1 {
+				count++
+			}
+			i >>= 1
+		}
+		return uint64(val), count <= 1
+
+	case uint64:
+		i := val
+		var count int
+		for i > 0 {
+			if i&1 == 1 {
+				count++
+			}
+			i >>= 1
+		}
+		return val, count <= 1
+
+	default:
+		return 0, false
+	}
+}
+
 // SSA implements the compiler.ast.AST.SSA for binary expressions.
 func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 
 	// Check constant folding.
-	constVal, ok, err := ast.Eval(NewEnv(block), ctx, gen)
+	env := NewEnv(block)
+	constVal, ok, err := ast.Eval(env, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1111,34 +1147,75 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		gen.AddConstant(constVal)
 		return block, []ssa.Value{constVal}, nil
 	}
+	lPow2, lConst := isPowerOf2(ast.Left, env, ctx, gen)
+	rPow2, rConst := isPowerOf2(ast.Right, env, ctx, gen)
+	if lConst || rConst {
+		switch ast.Op {
+		case BinaryMult:
+			// Multiplication is commutative.
+			if rConst {
+				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				return ast.constMult(l, rPow2, block, ctx, gen)
+			}
+			if lConst {
+				block, r, err := ast.value(ast.Right, block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				return ast.constMult(r, lPow2, block, ctx, gen)
+			}
 
-	block, lArr, err := ast.Left.SSA(block, ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
+		case BinaryPlus:
+			if rConst && rPow2 == 0 {
+				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				return block, []ssa.Value{l}, nil
+			}
+			if lConst && lPow2 == 0 {
+				block, r, err := ast.value(ast.Right, block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				return block, []ssa.Value{r}, nil
+			}
 
-	block, rArr, err := ast.Right.SSA(block, ctx, gen)
-	if err != nil {
-		return nil, nil, err
+		case BinaryMinus:
+			if rConst && rPow2 == 0 {
+				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				return block, []ssa.Value{l}, nil
+			}
+
+		case BinaryLshift, BinaryRshift:
+
+		default:
+			if false {
+				if lConst {
+					fmt.Printf(" - %v %s\n", lPow2, ast.Op)
+				}
+				if rConst {
+					fmt.Printf(" - %s %v\n", ast.Op, rPow2)
+				}
+			}
+		}
 	}
 
 	// Check that l and r are of same type.
-	if len(lArr) == 0 {
-		return nil, nil, ctx.Errorf(ast.Left, "%s used as value", ast.Left)
+	block, l, err := ast.value(ast.Left, block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
 	}
-	if len(lArr) > 1 {
-		return nil, nil, ctx.Errorf(ast.Left,
-			"multiple-value %s in single-value context", ast.Left)
+	block, r, err := ast.value(ast.Right, block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
 	}
-	if len(rArr) == 0 {
-		return nil, nil, ctx.Errorf(ast.Right, "%s used as value", ast.Right)
-	}
-	if len(rArr) > 1 {
-		return nil, nil, ctx.Errorf(ast.Right,
-			"multiple-value %s in single-value context", ast.Right)
-	}
-	l := lArr[0]
-	r := rArr[0]
 
 	// Resolve target type.
 	var resultType types.Info
@@ -1224,6 +1301,50 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 
+	block.AddInstr(instr)
+
+	return block, []ssa.Value{t}, nil
+}
+
+func (ast *Binary) value(val AST, block *ssa.Block, ctx *Codegen,
+	gen *ssa.Generator) (*ssa.Block, ssa.Value, error) {
+
+	block, arr, err := val.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, ssa.Value{}, err
+	}
+	if len(arr) == 0 {
+		return nil, ssa.Value{}, ctx.Errorf(val, "%s used as value", val)
+	}
+	if len(arr) > 1 {
+		return nil, ssa.Value{}, ctx.Errorf(val,
+			"multiple-value %s in single-value context", val)
+	}
+	return block, arr[0], nil
+}
+
+func (ast *Binary) constMult(v ssa.Value, c uint64, block *ssa.Block,
+	ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+
+	if c == 0 {
+		r := gen.Constant(c, v.Type)
+		gen.AddConstant(r)
+		return block, []ssa.Value{r}, nil
+	} else if c == 1 {
+		return block, []ssa.Value{v}, nil
+	}
+
+	var count int
+	for c > 1 {
+		count++
+		c >>= 1
+	}
+
+	shift := gen.Constant(int32(count), types.Int32)
+
+	t := gen.AnonVal(v.Type)
+	instr := ssa.NewLshiftInstr(v, shift, t)
 	block.AddInstr(instr)
 
 	return block, []ssa.Value{t}, nil

@@ -10,6 +10,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"os"
+	"sort"
 	"time"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -18,6 +20,7 @@ import (
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 	"github.com/markkurossi/mpc/types"
+	"github.com/markkurossi/tabulate"
 )
 
 // StreamCircuit streams the program circuit into the P2P connection.
@@ -195,6 +198,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	start := time.Now()
 	lastReport := start
+	var istats [GC + 1]circuit.Stats
 
 	var wires [][]*circuits.Wire
 	var iIDs, oIDs []circuit.Wire
@@ -448,7 +452,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			if params.Verbose && circuit.StreamDebug {
 				fmt.Printf("%05d: - circuit: %s\n", idx, instr.Circ)
 			}
-
+			istats[instr.Op].Add(instr.Circ.Stats)
 			err = prog.garble(conn, streaming, idx, instr.Circ, iIDs, oIDs)
 			if err != nil {
 				return nil, nil, err
@@ -515,6 +519,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				circ.Dump()
 				fmt.Printf("%05d: - circuit: %s\n", idx, circ)
 			}
+			istats[instr.Op].Add(circ.Stats)
 
 			// Collect input and output IDs
 			iIDs = iIDs[:0]
@@ -582,6 +587,42 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		prog.nextWireID, len(cache))
 	fmt.Printf("#gates=%d (%s) #w=%d\n", prog.stats.Count(), prog.stats,
 		prog.numWires)
+
+	if params.Diagnostics {
+		tab := tabulate.New(tabulate.Unicode)
+		tab.Header("Instr").SetAlign(tabulate.ML)
+		tab.Header("XOR").SetAlign(tabulate.MR)
+		tab.Header("XNOR").SetAlign(tabulate.MR)
+		tab.Header("AND").SetAlign(tabulate.MR)
+		tab.Header("OR").SetAlign(tabulate.MR)
+		tab.Header("INV").SetAlign(tabulate.MR)
+		tab.Header("!XOR").SetAlign(tabulate.MR)
+
+		indices := make([]int, len(istats))
+		for i := 0; i < len(istats); i++ {
+			indices[i] = i
+		}
+
+		sort.Slice(indices, func(i, j int) bool {
+			return istats[indices[i]].Cost() > istats[indices[j]].Cost()
+		})
+
+		for _, instr := range indices {
+			stats := istats[instr]
+			if stats.Count() > 0 {
+				row := tab.Row()
+				row.Column(fmt.Sprintf("%s", Operand(instr)))
+				row.Column(fmt.Sprintf("%d", stats[circuit.XOR]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.XNOR]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.AND]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.OR]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.INV]))
+				row.Column(fmt.Sprintf("%d",
+					stats[circuit.OR]+stats[circuit.AND]+stats[circuit.INV]))
+			}
+		}
+		tab.Print(os.Stdout)
+	}
 
 	return prog.Outputs, prog.Outputs.Split(result), nil
 }

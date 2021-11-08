@@ -45,6 +45,11 @@ func (stats Stats) Count() uint64 {
 	return result
 }
 
+// Cost computes the relative computational cost of the circuit.
+func (stats Stats) Cost() uint64 {
+	return (stats[AND]+stats[INV])*2 + stats[OR]*3
+}
+
 func (stats Stats) String() string {
 	var result string
 
@@ -282,7 +287,7 @@ func (c *Circuit) String() string {
 
 // Cost computes the relative computational cost of the circuit.
 func (c *Circuit) Cost() uint64 {
-	return (c.Stats[AND]+c.Stats[OR])*4 + c.Stats[INV]*2
+	return c.Stats.Cost()
 }
 
 // Dump prints a debug dump of the circuit.
