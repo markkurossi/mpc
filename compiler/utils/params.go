@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2021 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,9 +12,10 @@ import (
 
 // Params specify compiler parameters.
 type Params struct {
-	Verbose   bool
-	SSAOut    io.WriteCloser
-	SSADotOut io.WriteCloser
+	Verbose     bool
+	Diagnostics bool
+	SSAOut      io.WriteCloser
+	SSADotOut   io.WriteCloser
 
 	// MaxVarBits specifies the maximum variable width in bits.
 	MaxVarBits int

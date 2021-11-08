@@ -31,7 +31,6 @@ import (
 var (
 	port    = ":8080"
 	verbose = false
-	debug   = false
 )
 
 type input []string
@@ -63,7 +62,7 @@ func main() {
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
 	optimize := flag.Int("O", 1, "optimization level")
 	fVerbose := flag.Bool("v", false, "verbose output")
-	fDebug := flag.Bool("d", false, "debug output")
+	fDiagnostics := flag.Bool("d", false, "diagnostics output")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
@@ -75,7 +74,6 @@ func main() {
 	log.SetFlags(0)
 
 	verbose = *fVerbose
-	debug = *fDebug
 
 	var circ *circuit.Circuit
 	var err error
@@ -96,6 +94,7 @@ func main() {
 	defer params.Close()
 
 	params.Verbose = *fVerbose
+	params.Diagnostics = *fDiagnostics
 
 	if *optimize > 0 {
 		params.OptPruneGates = true
