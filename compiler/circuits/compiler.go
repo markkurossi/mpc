@@ -265,7 +265,7 @@ func (c *Compiler) ConstPropagate() {
 
 	elapsed := time.Since(start)
 
-	if c.Params.Verbose && stats.Count() > 0 {
+	if c.Params.Diagnostics && stats.Count() > 0 {
 		fmt.Printf(" - ConstPropagate: %12s: %d/%d (%.2f%%)\n",
 			elapsed, stats.Count(), len(c.Gates),
 			float64(stats.Count())/float64(len(c.Gates))*100)
