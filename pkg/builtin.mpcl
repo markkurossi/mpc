@@ -1,0 +1,22 @@
+// -*- go -*-
+//
+// Copyright (c) 2020-2021 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package builtin defines MPCL builtin functions and types. This
+// package is always imported and the functions and types can be used
+// in all programs.
+package builtin
+
+// byte is an alias for unsigned 8-bit integer numbers.
+type byte = uint8
+
+// intSize is a Size-bit signed integer number. The signed integer
+// numbers can be instantiated in any bit sizes.
+type intSize int
+
+// uintSize is a Size-bit unsigned integer number. The unsigned
+// integer numbers can be instantiated in any bit sizes.
+type uintSize uint

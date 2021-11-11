@@ -171,6 +171,8 @@ func parseFile(name string) error {
 }
 
 func documentPackage(out Output, pkg *Package) error {
+	builtin := pkg.Name == "builtin"
+
 	if err := out.H1("Package %s", pkg.Name); err != nil {
 		return nil
 	}
@@ -186,7 +188,7 @@ func documentPackage(out Output, pkg *Package) error {
 	})
 	var hadConstants bool
 	for _, c := range pkg.Constants {
-		if !c.Exported() {
+		if !builtin && !c.Exported() {
 			continue
 		}
 		hadConstants = true
@@ -211,7 +213,7 @@ func documentPackage(out Output, pkg *Package) error {
 	})
 	var hadVariables bool
 	for _, v := range pkg.Variables {
-		if !ast.IsExported(v.Names[0]) {
+		if !builtin && !ast.IsExported(v.Names[0]) {
 			continue
 		}
 		hadVariables = true
@@ -235,7 +237,7 @@ func documentPackage(out Output, pkg *Package) error {
 		return pkg.Functions[i].Name < pkg.Functions[j].Name
 	})
 	for _, f := range pkg.Functions {
-		if !ast.IsExported(f.Name) {
+		if !builtin && !ast.IsExported(f.Name) {
 			continue
 		}
 		if err := out.Signature(f.Name); err != nil {
@@ -259,7 +261,7 @@ func documentPackage(out Output, pkg *Package) error {
 	})
 	var hadTypes bool
 	for _, t := range pkg.Types {
-		if !ast.IsExported(t.TypeName) {
+		if !builtin && !ast.IsExported(t.TypeName) {
 			continue
 		}
 		hadTypes = true
