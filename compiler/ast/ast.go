@@ -175,7 +175,7 @@ func (ti *TypeInfo) format(pp bool) string {
 		return str + "}"
 
 	case TypeAlias:
-		return fmt.Sprintf("%s%s=%s", str, ti.TypeName, ti.AliasType)
+		return fmt.Sprintf("%s= %s", str, ti.AliasType)
 
 	case TypePointer:
 		return fmt.Sprintf("%s*%s", str, ti.ElementType)
