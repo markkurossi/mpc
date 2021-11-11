@@ -1636,21 +1636,24 @@ func (p *Parser) parseType() (*ast.TypeInfo, error) {
 		var name string
 		n, err := p.lexer.Get()
 		if err != nil {
-			return nil, err
-		}
-		if n.Type == '.' {
-			n, err = p.lexer.Get()
-			if err != nil {
+			if err != io.EOF {
 				return nil, err
 			}
-			if n.Type == TIdentifier {
-				name = n.StrVal
-				loc = n.From
+		} else {
+			if n.Type == '.' {
+				n, err = p.lexer.Get()
+				if err != nil {
+					return nil, err
+				}
+				if n.Type == TIdentifier {
+					name = n.StrVal
+					loc = n.From
+				} else {
+					p.lexer.Unget(n)
+				}
 			} else {
 				p.lexer.Unget(n)
 			}
-		} else {
-			p.lexer.Unget(n)
 		}
 		var pkg string
 		if len(name) > 0 {
