@@ -594,7 +594,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		prog.numWires)
 
 	if params.Diagnostics {
-		tab := tabulate.New(tabulate.Simple)
+		tab := tabulate.New(tabulate.CompactUnicode)
 		tab.Header("Instr").SetAlign(tabulate.ML)
 		tab.Header("Count").SetAlign(tabulate.MR)
 		tab.Header("XOR").SetAlign(tabulate.MR)
