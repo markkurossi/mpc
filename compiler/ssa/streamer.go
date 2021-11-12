@@ -198,7 +198,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	start := time.Now()
 	lastReport := start
-	var istats [GC + 1]circuit.Stats
+
+	istats := make(map[string]circuit.Stats)
 
 	var wires [][]*circuits.Wire
 	var iIDs, oIDs []circuit.Wire
@@ -452,7 +453,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			if params.Verbose && circuit.StreamDebug {
 				fmt.Printf("%05d: - circuit: %s\n", idx, instr.Circ)
 			}
-			istats[instr.Op].Add(instr.Circ.Stats)
+			if params.Diagnostics {
+				addStats(istats, instr, instr.Circ)
+			}
 			err = prog.garble(conn, streaming, idx, instr.Circ, iIDs, oIDs)
 			if err != nil {
 				return nil, nil, err
@@ -519,7 +522,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				circ.Dump()
 				fmt.Printf("%05d: - circuit: %s\n", idx, circ)
 			}
-			istats[instr.Op].Add(circ.Stats)
+			if params.Diagnostics {
+				addStats(istats, instr, circ)
+			}
 
 			// Collect input and output IDs
 			iIDs = iIDs[:0]
@@ -589,8 +594,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		prog.numWires)
 
 	if params.Diagnostics {
-		tab := tabulate.New(tabulate.Unicode)
+		tab := tabulate.New(tabulate.Simple)
 		tab.Header("Instr").SetAlign(tabulate.ML)
+		tab.Header("Count").SetAlign(tabulate.MR)
 		tab.Header("XOR").SetAlign(tabulate.MR)
 		tab.Header("XNOR").SetAlign(tabulate.MR)
 		tab.Header("AND").SetAlign(tabulate.MR)
@@ -598,20 +604,21 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		tab.Header("INV").SetAlign(tabulate.MR)
 		tab.Header("!XOR").SetAlign(tabulate.MR)
 
-		indices := make([]int, len(istats))
-		for i := 0; i < len(istats); i++ {
-			indices[i] = i
+		var keys []string
+		for k := range istats {
+			keys = append(keys, k)
 		}
 
-		sort.Slice(indices, func(i, j int) bool {
-			return istats[indices[i]].Cost() > istats[indices[j]].Cost()
+		sort.Slice(keys, func(i, j int) bool {
+			return istats[keys[i]].Cost() > istats[keys[j]].Cost()
 		})
 
-		for _, instr := range indices {
-			stats := istats[instr]
+		for _, key := range keys {
+			stats := istats[key]
 			if stats.Count() > 0 {
 				row := tab.Row()
-				row.Column(fmt.Sprintf("%s", Operand(instr)))
+				row.Column(key)
+				row.Column(fmt.Sprintf("%d", stats[circuit.Count]))
 				row.Column(fmt.Sprintf("%d", stats[circuit.XOR]))
 				row.Column(fmt.Sprintf("%d", stats[circuit.XNOR]))
 				row.Column(fmt.Sprintf("%d", stats[circuit.AND]))
@@ -625,6 +632,24 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	}
 
 	return prog.Outputs, prog.Outputs.Split(result), nil
+}
+
+func addStats(istats map[string]circuit.Stats, instr Instr,
+	circ *circuit.Circuit) {
+
+	var max types.Size
+	for _, in := range instr.In {
+		if in.Type.Bits > max {
+			max = in.Type.Bits
+		}
+	}
+	key := fmt.Sprintf("%s/%d", instr.Op, max)
+	stats, ok := istats[key]
+	if !ok {
+		stats = circuit.Stats{}
+	}
+	stats.Add(circ.Stats)
+	istats[key] = stats
 }
 
 func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,

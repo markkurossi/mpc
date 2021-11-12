@@ -24,22 +24,24 @@ const (
 	AND
 	OR
 	INV
+	Count
 )
 
 // Stats holds statistics about circuit operations.
-type Stats [INV + 1]uint64
+type Stats [Count + 1]uint64
 
 // Add adds the argument statistics to this statistics object.
 func (stats *Stats) Add(o Stats) {
-	for i := XOR; i <= INV; i++ {
+	for i := XOR; i < Count; i++ {
 		stats[i] += o[i]
 	}
+	stats[Count]++
 }
 
 // Count returns the number of gates in the statistics object.
 func (stats Stats) Count() uint64 {
 	var result uint64
-	for i := XOR; i <= INV; i++ {
+	for i := XOR; i < Count; i++ {
 		result += stats[i]
 	}
 	return result
@@ -53,7 +55,7 @@ func (stats Stats) Cost() uint64 {
 func (stats Stats) String() string {
 	var result string
 
-	for i := XOR; i <= INV; i++ {
+	for i := XOR; i < Count; i++ {
 		v := stats[i]
 		if len(result) > 0 {
 			result += " "
@@ -75,6 +77,8 @@ func (op Operation) String() string {
 		return "OR"
 	case INV:
 		return "INV"
+	case Count:
+		return "#"
 	default:
 		return fmt.Sprintf("{Operation %d}", op)
 	}
