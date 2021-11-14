@@ -11,10 +11,7 @@ package ast
 import (
 	"fmt"
 	"io"
-	"math"
 	"math/big"
-	"regexp"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -191,99 +188,57 @@ func (ti *TypeInfo) IsIdentifier() bool {
 	return ti.Type == TypeName && len(ti.Name.Package) == 0
 }
 
-var reSizedType = regexp.MustCompilePOSIX(
-	`^(uint|int|float|string)([[:digit:]]*)$`)
-
 // Resolve resolves the type information in the environment.
 func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
-	types.Info, error) {
+	result types.Info, err error) {
 
-	var result types.Info
 	if ti == nil {
-		return result, nil
+		return
 	}
 	switch ti.Type {
 	case TypeName:
-		matches := reSizedType.FindStringSubmatch(ti.Name.Name)
-		if matches != nil {
-			tt, ok := types.Types[matches[1]]
-			if ok {
-				var bits types.Size
-				if len(matches[2]) > 0 {
-					bits64, err := strconv.ParseUint(matches[2], 10, 64)
-					if err != nil {
-						return result, err
-					}
-					if bits64 > math.MaxInt32 {
-						bits = math.MaxInt32
-					} else {
-						bits = types.Size(bits64)
-					}
-				} else {
-					// Undefined size.
-					bits = 0
-				}
-				if bits > types.Size(gen.Params.MaxVarBits) {
-					return result, ctx.Errorf(ti, "bit size too large: %d > %d",
-						bits, gen.Params.MaxVarBits)
-				}
-				return types.Info{
-					Type: tt,
-					Bits: bits,
-				}, nil
-			}
+		result, err = types.Parse(ti.Name.Name)
+		if err == nil {
+			return
 		}
+		// Check dynamic types from the env.
+		var b ssa.Binding
+		var pkg *Package
+		var ok bool
 
-		switch ti.Name.Name {
-		case "bool":
-			return types.Bool, nil
-
-		case "byte":
-			return types.Byte, nil
-
-		case "rune":
-			return types.Rune, nil
-
-		default:
-			// Check dynamic types from the env.
-			var b ssa.Binding
-			var pkg *Package
-			var ok bool
-
-			if len(ti.Name.Package) == 0 {
-				// Plain indentifiers.
-				b, ok = env.Get(ti.Name.Name)
-				if !ok {
-					// Check dynamic types from the pkg.
-					b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
-				}
-			}
+		if len(ti.Name.Package) == 0 {
+			// Plain indentifiers.
+			b, ok = env.Get(ti.Name.Name)
 			if !ok {
-				// Qualified names and package-local names.
-				var pkgName string
-				if len(ti.Name.Package) > 0 {
-					pkgName = ti.Name.Package
-				} else if ti.Name.Defined != ctx.Package.Name {
-					pkgName = ti.Name.Defined
-				}
-
-				if len(pkgName) > 0 {
-					pkg, ok = ctx.Packages[pkgName]
-					if !ok {
-						return result, ctx.Errorf(ti, "unknown package: %s",
-							pkgName)
-					}
-					b, ok = pkg.Bindings.Get(ti.Name.Name)
-				}
+				// Check dynamic types from the pkg.
+				b, ok = ctx.Package.Bindings.Get(ti.Name.Name)
 			}
-			if ok {
-				val, ok := b.Bound.(*ssa.Value)
-				if ok && val.TypeRef {
-					return val.Type, nil
-				}
-			}
-			return result, ctx.Errorf(ti, "undefined name: %s", ti)
 		}
+		if !ok {
+			// Qualified names and package-local names.
+			var pkgName string
+			if len(ti.Name.Package) > 0 {
+				pkgName = ti.Name.Package
+			} else if ti.Name.Defined != ctx.Package.Name {
+				pkgName = ti.Name.Defined
+			}
+
+			if len(pkgName) > 0 {
+				pkg, ok = ctx.Packages[pkgName]
+				if !ok {
+					return result, ctx.Errorf(ti, "unknown package: %s",
+						pkgName)
+				}
+				b, ok = pkg.Bindings.Get(ti.Name.Name)
+			}
+		}
+		if ok {
+			val, ok := b.Bound.(*ssa.Value)
+			if ok && val.TypeRef {
+				return val.Type, nil
+			}
+		}
+		return result, ctx.Errorf(ti, "undefined name: %s", ti)
 
 	case TypeArray:
 		// Array length.

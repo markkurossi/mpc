@@ -16,7 +16,7 @@ import (
 
 var (
 	reArr   = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
-	reSized = regexp.MustCompilePOSIX(`^([[:^digit:]]+)([[:digit:]]+)$`)
+	reSized = regexp.MustCompilePOSIX(`^([[:^digit:]]+)([[:digit:]]*)$`)
 )
 
 // Parse parses type definition and returns its type information.
@@ -52,11 +52,14 @@ func Parse(val string) (info Info, err error) {
 		default:
 			return info, fmt.Errorf("unknown type: %s", val)
 		}
-		ival, err = strconv.ParseInt(m[2], 10, 32)
-		if err != nil {
-			return
+		var bits int64
+		if len(m[2]) > 0 {
+			bits, err = strconv.ParseInt(m[2], 10, 32)
+			if err != nil {
+				return
+			}
 		}
-		info.Bits = Size(ival)
+		info.Bits = Size(bits)
 		info.MinBits = info.Bits
 		return
 	}
