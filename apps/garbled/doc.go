@@ -11,6 +11,7 @@ package main
 import (
 	"os"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -18,11 +19,14 @@ import (
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/text"
 )
 
 var (
 	_ Documenter = &HTMLDoc{}
 	_ Output     = &HTMLOutput{}
+
+	reSized = regexp.MustCompilePOSIX(`^([[:^digit:]]+)([[:digit:]]*)$`)
 )
 
 // Documenter implements document generator.
@@ -40,31 +44,31 @@ type Output interface {
 	Close() error
 
 	// H1 outputs level 1 heading.
-	H1(format string, a ...interface{}) error
+	H1(text *text.Text) error
 
 	// H2 outputs level 2 heading.
-	H2(format string, a ...interface{}) error
+	H2(text *text.Text) error
 
 	// Pre outputs pre-formatted lines.
-	Pre(lines []string) error
+	Pre(lines []*text.Text) error
 
 	// P outputs paragraph lines.
-	P(lines []string) error
+	P(lines []*text.Text) error
 
 	// Type outputs type name.
-	Type(name string) error
+	Type(name *text.Text) error
 
 	// Function outputs function name.
-	Function(name string) error
+	Function(name *text.Text) error
 
 	// Empty outputs empty section content.
-	Empty(name string) error
+	Empty(name *text.Text) error
 
 	// Code outputs program code.
-	Code(code string) error
+	Code(code *text.Text) error
 
 	// Signature outputs function signature.
-	Signature(code string) error
+	Signature(code *text.Text) error
 
 	// Start starts a logical documentation section.
 	Start(section string) error
@@ -74,6 +78,7 @@ type Output interface {
 }
 
 var packages = make(map[string]*Package)
+var types = make(map[string]*Package)
 
 func documentation(files []string, doc Documenter) error {
 	err := parseInputs(files)
@@ -83,6 +88,11 @@ func documentation(files []string, doc Documenter) error {
 	var pkgs []*Package
 	for _, pkg := range packages {
 		pkgs = append(pkgs, pkg)
+
+		// Collect types.
+		for _, ti := range pkg.Types {
+			types[ti.TypeName] = pkg
+		}
 	}
 	sort.Slice(pkgs, func(i, j int) bool {
 		return pkgs[i].Name < pkgs[j].Name
@@ -173,14 +183,14 @@ func parseFile(name string) error {
 func documentPackage(out Output, pkg *Package) error {
 	builtin := pkg.Name == "builtin"
 
-	if err := out.H1("Package %s", pkg.Name); err != nil {
+	if err := out.H1(text.New().Plainf("Package %s", pkg.Name)); err != nil {
 		return nil
 	}
 	err := annotations(out, pkg.Annotations)
 	if err != nil {
 		return err
 	}
-	if err := out.H2("Constants"); err != nil {
+	if err := out.H2(text.New().Plain("Constants")); err != nil {
 		return err
 	}
 	sort.Slice(pkg.Constants, func(i, j int) bool {
@@ -192,7 +202,7 @@ func documentPackage(out Output, pkg *Package) error {
 			continue
 		}
 		hadConstants = true
-		if err := out.Code(c.String()); err != nil {
+		if err := out.Code(text.New().Plain(c.String())); err != nil {
 			return err
 		}
 		err = annotations(out, c.Annotations)
@@ -201,10 +211,10 @@ func documentPackage(out Output, pkg *Package) error {
 		}
 	}
 	if !hadConstants {
-		out.Empty("This section is empty.")
+		out.Empty(text.New().Plain("This section is empty."))
 	}
 
-	err = out.H2("Variables")
+	err = out.H2(text.New().Plain("Variables"))
 	if err != nil {
 		return err
 	}
@@ -217,7 +227,7 @@ func documentPackage(out Output, pkg *Package) error {
 			continue
 		}
 		hadVariables = true
-		if err := out.Code(v.String()); err != nil {
+		if err := out.Code(text.New().Plain(v.String())); err != nil {
 			return err
 		}
 		err = annotations(out, v.Annotations)
@@ -226,10 +236,10 @@ func documentPackage(out Output, pkg *Package) error {
 		}
 	}
 	if !hadVariables {
-		out.Empty("This section is empty.")
+		out.Empty(text.New().Plain("This section is empty."))
 	}
 
-	err = out.H2("Functions")
+	err = out.H2(text.New().Plain("Functions"))
 	if err != nil {
 		return err
 	}
@@ -240,10 +250,10 @@ func documentPackage(out Output, pkg *Package) error {
 		if !builtin && !ast.IsExported(f.Name) {
 			continue
 		}
-		if err := out.Signature(f.Name); err != nil {
+		if err := out.Signature(text.New().Plain(f.Name)); err != nil {
 			return err
 		}
-		if err := out.Code(f.String()); err != nil {
+		if err := out.Code(text.New().Plain(f.String())); err != nil {
 			return err
 		}
 		err = annotations(out, f.Annotations)
@@ -252,7 +262,7 @@ func documentPackage(out Output, pkg *Package) error {
 		}
 	}
 
-	err = out.H2("Types")
+	err = out.H2(text.New().Plain("Types"))
 	if err != nil {
 		return err
 	}
@@ -265,7 +275,7 @@ func documentPackage(out Output, pkg *Package) error {
 			continue
 		}
 		hadTypes = true
-		if err := out.Code(t.Format()); err != nil {
+		if err := out.Code(formatType(t, true)); err != nil {
 			return err
 		}
 		err = annotations(out, t.Annotations)
@@ -274,10 +284,80 @@ func documentPackage(out Output, pkg *Package) error {
 		}
 	}
 	if !hadTypes {
-		out.Empty("This section is empty.")
+		out.Empty(text.New().Plain("This section is empty."))
 	}
 
 	return nil
+}
+
+func formatType(ti *ast.TypeInfo, pp bool) *text.Text {
+	txt := text.New()
+
+	if pp {
+		txt.Plain("type ")
+
+		if strings.HasSuffix(ti.TypeName, "Size") {
+			txt.Plain(ti.TypeName[:len(ti.TypeName)-4]).Oblique("Size")
+		} else {
+			txt.Plain(ti.TypeName)
+		}
+		txt.Plain(" ")
+	}
+
+	switch ti.Type {
+	case ast.TypeName:
+		return txt.Plain(ti.Name.String())
+
+	case ast.TypeArray:
+		return txt.
+			Plainf("[%s]", ti.ArrayLength).
+			Append(formatType(ti.ElementType, false))
+
+	case ast.TypeSlice:
+		return txt.Plainf("[]").Append(formatType(ti.ElementType, false))
+
+	case ast.TypeStruct:
+		txt.Plain("struct {")
+
+		if pp {
+			var width int
+			for _, field := range ti.StructFields {
+				if len(field.Name) > width {
+					width = len(field.Name)
+				}
+			}
+			for idx, field := range ti.StructFields {
+				if idx == 0 {
+					txt.Plain("\n")
+				}
+				txt.Plain("    ")
+				txt.Plain(field.Name)
+				for i := len(field.Name); i < width; i++ {
+					txt.Plain(" ")
+				}
+				txt.Plain(" ").Append(formatType(field.Type, false)).Plain("\n")
+			}
+		} else {
+			for idx, field := range ti.StructFields {
+				if idx > 0 {
+					txt.Plain(", ")
+				}
+				txt.Plainf("%s ", field.Name).
+					Append(formatType(field.Type, false))
+			}
+
+		}
+		return txt.Plain("}")
+
+	case ast.TypeAlias:
+		return txt.Plain("= ").Append(formatType(ti.AliasType, false))
+
+	case ast.TypePointer:
+		return txt.Plain("*").Append(formatType(ti.ElementType, false))
+
+	default:
+		return txt.Plainf("{TypeInfo %d}", ti.Type)
+	}
 }
 
 func annotations(out Output, annotations ast.Annotations) error {
@@ -286,7 +366,7 @@ func annotations(out Output, annotations ast.Annotations) error {
 	}
 	prefixLen, _ := wsPrefix(annotations[0])
 	var inPre bool
-	var lines []string
+	var lines []*text.Text
 
 	if err := out.Start("documentation"); err != nil {
 		return err
@@ -299,10 +379,10 @@ func annotations(out Output, annotations ast.Annotations) error {
 				lines = nil
 				inPre = true
 			}
-			lines = append(lines, ann)
+			lines = append(lines, text.New().Plain(ann))
 		} else if empty {
 			if inPre {
-				lines = append(lines, ann)
+				lines = append(lines, text.New().Plain(ann))
 			} else {
 				out.P(lines)
 				lines = nil
@@ -313,7 +393,7 @@ func annotations(out Output, annotations ast.Annotations) error {
 				lines = nil
 				inPre = false
 			}
-			lines = append(lines, ann)
+			lines = append(lines, text.New().Plain(ann))
 		}
 	}
 	if inPre {

@@ -10,11 +10,12 @@ package main
 
 import (
 	"fmt"
-	"html"
 	"io"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/markkurossi/text"
 )
 
 // HTMLDoc implements HTML document generator
@@ -126,75 +127,58 @@ func (out *HTMLOutput) Close() error {
 }
 
 // H1 implements Output.H1.
-func (out *HTMLOutput) H1(format string, a ...interface{}) error {
-	text := fmt.Sprintf(format, a...)
-	_, err := fmt.Fprintf(out.out, "<h1>%s</h1>\n", html.EscapeString(text))
+func (out *HTMLOutput) H1(content *text.Text) error {
+	_, err := fmt.Fprintf(out.out, "<h1>%s</h1>\n\n", content.HTML())
 	return err
 }
 
 // H2 implements Output.H2.
-func (out *HTMLOutput) H2(format string, a ...interface{}) error {
-	text := fmt.Sprintf(format, a...)
-	_, err := fmt.Fprintf(out.out, "<h2>%s</h2>\n", html.EscapeString(text))
+func (out *HTMLOutput) H2(content *text.Text) error {
+	_, err := fmt.Fprintf(out.out, "<h2>%s</h2>\n\n", content.HTML())
 	return err
 }
 
 // Pre implements Output.Pre.
-func (out *HTMLOutput) Pre(lines []string) error {
-	for i := 0; i < len(lines); i++ {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[i:]
-			break
-		}
-	}
-	for i := len(lines) - 1; i >= 0; i-- {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[0 : i+1]
-			break
-		}
-	}
-	_, err := fmt.Fprintf(out.out, "<pre>")
-	if err != nil {
-		return err
-	}
-	for _, l := range lines {
-		_, err := fmt.Fprintln(out.out, html.EscapeString(l))
-		if err != nil {
-			return err
-		}
-	}
-	_, err = fmt.Fprintln(out.out, "</pre>")
-	if err != nil {
-		return err
-	}
-	return nil
+func (out *HTMLOutput) Pre(lines []*text.Text) error {
+	return out.lines(lines, "pre")
 }
 
 // P implements Output.P.
-func (out *HTMLOutput) P(lines []string) error {
-	for i := 0; i < len(lines); i++ {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[i:]
+func (out *HTMLOutput) P(lines []*text.Text) error {
+	return out.lines(lines, "p")
+}
+
+func (out *HTMLOutput) lines(lines []*text.Text, tag string) error {
+	var formatted []string
+	for _, line := range lines {
+		formatted = append(formatted, line.HTML())
+	}
+
+	// Trim leading empty lines.
+	for i := 0; i < len(formatted); i++ {
+		if len(strings.TrimSpace(formatted[i])) > 0 {
+			formatted = formatted[i:]
 			break
 		}
 	}
-	for i := len(lines) - 1; i >= 0; i-- {
-		if len(strings.TrimSpace(lines[i])) > 0 {
-			lines = lines[0 : i+1]
+	// Trim trailing empty lines.
+	for i := len(formatted) - 1; i >= 0; i-- {
+		if len(strings.TrimSpace(formatted[i])) > 0 {
+			formatted = formatted[0 : i+1]
 			break
 		}
 	}
-	_, err := fmt.Fprintf(out.out, "<p>")
+	_, err := fmt.Fprintf(out.out, "<%s>", tag)
 	if err != nil {
 		return err
 	}
-	for _, l := range lines {
-		_, err := fmt.Fprintln(out.out, html.EscapeString(l))
+	for _, l := range formatted {
+		_, err := fmt.Fprintln(out.out, l)
 		if err != nil {
 			return err
 		}
 	}
-	_, err = fmt.Fprintln(out.out, "</p>")
+	_, err = fmt.Fprintf(out.out, "</%s>\n", tag)
 	if err != nil {
 		return err
 	}
@@ -202,40 +186,39 @@ func (out *HTMLOutput) P(lines []string) error {
 }
 
 // Type implements Output.Type.
-func (out *HTMLOutput) Type(name string) error {
-	_, err := fmt.Fprintf(out.out, `<span class="type">%s</span>`,
-		html.EscapeString(name))
+func (out *HTMLOutput) Type(name *text.Text) error {
+	_, err := fmt.Fprintf(out.out, `<span class="type">%s</span>`, name.HTML())
 	return err
 }
 
 // Function implements Output.Function.
-func (out *HTMLOutput) Function(name string) error {
+func (out *HTMLOutput) Function(name *text.Text) error {
 	_, err := fmt.Fprintf(out.out, `<span class="functionName">%s</span>`,
-		html.EscapeString(name))
+		name.HTML())
 	return err
 }
 
 // Empty implements Output.Empty.
-func (out *HTMLOutput) Empty(name string) error {
-	_, err := fmt.Fprintf(out.out, `<div class="empty">%s</div>`,
-		html.EscapeString(name))
+func (out *HTMLOutput) Empty(name *text.Text) error {
+	_, err := fmt.Fprintf(out.out, `<div class="empty">%s</div>`, name.HTML())
 	return err
 }
 
 // Code implements Output.Code.
-func (out *HTMLOutput) Code(code string) error {
+func (out *HTMLOutput) Code(code *text.Text) error {
 	_, err := fmt.Fprintf(out.out, `
 <div class="code">%s</div>
-`, html.EscapeString(code))
+`,
+		code.HTML())
 	return err
 }
 
 // Signature implements Output.Signature.
-func (out *HTMLOutput) Signature(code string) error {
+func (out *HTMLOutput) Signature(code *text.Text) error {
 	_, err := fmt.Fprintf(out.out, `
 <div class="signature">func %s</div>
 `,
-		html.EscapeString(code))
+		code.HTML())
 
 	return err
 }
@@ -261,6 +244,7 @@ func header(out io.Writer) error {
     <meta name="viewport" content="width=device-width">
 
     <title>MPCL</title>
+    <link href="woff/stylesheet.css" rel="stylesheet" type="text/css">
     <link href="index.css" rel="stylesheet" type="text/css">
   </head>
   <body>

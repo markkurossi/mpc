@@ -1,5 +1,7 @@
 github.com/markkurossi/tabulate v0.0.0-20211112080948-67dabd3f2db2 h1:W1sDlLNyPgCiV/8smbTkU/4/jM7Eu24YZ03xWD2bPaQ=
 github.com/markkurossi/tabulate v0.0.0-20211112080948-67dabd3f2db2/go.mod h1:/FoKobNmYQOjMNUVir7PPXCD4jFTb1nmHAbqsPyKxRk=
+github.com/markkurossi/text v0.0.0-20211117155937-7e7b1390f7b0 h1:3MiC5MwJobBywpOfxWyQ88PJMVNFUCUbGHxEqtWy4KU=
+github.com/markkurossi/text v0.0.0-20211117155937-7e7b1390f7b0/go.mod h1:NdoMTINXTG7tKD94hd9UevVM9Jtc4o6giWNaoo+sOQ0=
 golang.org/x/text v0.3.5 h1:i6eZZ+zk0SOf0xgBpEpPD18qWcJda6q1sxt3S0kzyUQ=
 golang.org/x/text v0.3.5/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
