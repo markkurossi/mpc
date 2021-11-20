@@ -205,11 +205,15 @@ func (out *HTMLOutput) Empty(name *text.Text) error {
 }
 
 // Code implements Output.Code.
-func (out *HTMLOutput) Code(code *text.Text) error {
+func (out *HTMLOutput) Code(id string, code *text.Text) error {
+	var idLabel string
+	if len(id) > 0 {
+		idLabel = fmt.Sprintf("id=\"%s\" ", id)
+	}
 	_, err := fmt.Fprintf(out.out, `
-<div class="code">%s</div>
+<div %sclass="code">%s</div>
 `,
-		code.HTML())
+		idLabel, code.HTML())
 	return err
 }
 
@@ -233,6 +237,11 @@ func (out *HTMLOutput) Start(section string) error {
 func (out *HTMLOutput) End(section string) error {
 	_, err := fmt.Fprintln(out.out, `</div>`)
 	return err
+}
+
+// URL implements Output.URL.
+func (out *HTMLOutput) URL(container, id string) string {
+	return fmt.Sprintf("pkg_%s.html#%s", container, id)
 }
 
 func header(out io.Writer) error {

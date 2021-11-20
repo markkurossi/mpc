@@ -30,7 +30,7 @@ type uintSize uint
 // stringSize defines Size-bit long string.
 type stringSize string
 
-func copy(dst, src []Type) int {}
+func copy(dst, src []Type) int32 {}
 
 // The floorPow2 built-in function returns the power of 2 number that
 // is smaller than or equal to the argument value.
@@ -41,7 +41,7 @@ func floorPow2(v int) int {}
 //
 //   Array:  the number of elements in the array
 //   String: the number of bytes in the string
-func len(v Type) int {}
+func len(v Type) int32 {}
 
 // The native built-in function loads native circuit from the named
 // file. The circuit must be located in the same directory as the
@@ -54,4 +54,4 @@ func native(name string) []Type {}
 
 // The size built-in function returns the size of the argument value
 // in bits. The argument value can be of any type.
-func size(v Type) int {}
+func size(v Type) int32 {}
