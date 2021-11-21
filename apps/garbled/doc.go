@@ -370,8 +370,13 @@ func formatType(out Output, ti *ast.TypeInfo, pp bool) *text.Text {
 	switch ti.Type {
 	case ast.TypeName:
 		// XXX ti.Name.Defined
-		typeName := ti.Name.Name
-		info, err := types.Parse(typeName)
+		pkg, ok := typeDefs[ti.Name.Name]
+		if ok {
+			return txt.Link(out.URL(pkg.Name, ti.Name.Name),
+				text.New().Plain(ti.Name.String()))
+		}
+		var typeName string
+		info, err := types.Parse(ti.Name.Name)
 		if err == nil {
 			switch info.Type {
 			case types.TInt:
@@ -384,12 +389,12 @@ func formatType(out Output, ti *ast.TypeInfo, pp bool) *text.Text {
 				typeName = "stringSize"
 			}
 		}
-
-		pkg, ok := typeDefs[typeName]
-		if ok {
-			_ = pkg
-			return txt.Link(out.URL(pkg.Name, typeName),
-				text.New().Plain(ti.Name.String()))
+		if len(typeName) > 0 {
+			pkg, ok = typeDefs[typeName]
+			if ok {
+				return txt.Link(out.URL(pkg.Name, typeName),
+					text.New().Plain(ti.Name.String()))
+			}
 		}
 		return txt.Plain(ti.Name.String())
 
