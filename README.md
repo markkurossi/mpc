@@ -778,13 +778,13 @@ Optimized circuits from [pkg/math/](pkg/math/):
 | Implementation | XOR gates | AND gates | % of circ |
 |:---------------| ---------:|----------:|----------:|
 | add64.circ     |       313 |        63 |           |
-| sub64.circ     |       442 |        63 |           |
+| sub64.circ     |       313 |        63 |           |
 | mul64.circ     |      9707 |      4033 |           |
-| div64.circ     |     25328 |      4664 |           |
+| div64.circ     |     24817 |      4664 |           |
 | MPCL a+b       |       316 |        63 |       100 |
-| MPCL a-b       |       319 |        63 |       100 |
-| MPCL a*b       |      9304 |      4242 |     105.2 |
-| MPCL a/b       |     24833 |      8192 |     175.6 |
+| MPCL a-b       |       317 |        63 |       100 |
+| MPCL a*b       |      8294 |      4005 |      99.3 |
+| MPCL a/b       |     24581 |      8192 |     175.6 |
 
 # Develoment ideas
 

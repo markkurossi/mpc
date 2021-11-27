@@ -8,10 +8,13 @@ package circuit
 
 import (
 	"fmt"
+	"io"
 	"math/big"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/markkurossi/tabulate"
 )
 
 // Operation specifies gate function.
@@ -62,6 +65,8 @@ func (stats Stats) String() string {
 		}
 		result += fmt.Sprintf("%s=%d", i, v)
 	}
+	result += fmt.Sprintf(" xor=%d", stats[XOR]+stats[XNOR])
+	result += fmt.Sprintf(" !xor=%d", stats[AND]+stats[OR]+stats[INV])
 	return result
 }
 
@@ -287,6 +292,35 @@ type Circuit struct {
 
 func (c *Circuit) String() string {
 	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, c.Stats, c.NumWires)
+}
+
+// TabulateStats prints the circuit stats as a table to the specified
+// output Writer.
+func (c *Circuit) TabulateStats(out io.Writer) {
+	tab := tabulate.New(tabulate.UnicodeLight)
+	tab.Header("XOR").SetAlign(tabulate.MR)
+	tab.Header("XNOR").SetAlign(tabulate.MR)
+	tab.Header("AND").SetAlign(tabulate.MR)
+	tab.Header("OR").SetAlign(tabulate.MR)
+	tab.Header("INV").SetAlign(tabulate.MR)
+	tab.Header("Gates").SetAlign(tabulate.MR)
+	tab.Header("XOR").SetAlign(tabulate.MR)
+	tab.Header("!XOR").SetAlign(tabulate.MR)
+	tab.Header("Wires").SetAlign(tabulate.MR)
+
+	row := tab.Row()
+
+	var sumGates uint64
+	for op := XOR; op < Count; op++ {
+		row.Column(fmt.Sprintf("%v", c.Stats[op]))
+		sumGates += c.Stats[op]
+	}
+	row.Column(fmt.Sprintf("%v", sumGates))
+	row.Column(fmt.Sprintf("%v", c.Stats[XOR]+c.Stats[XNOR]))
+	row.Column(fmt.Sprintf("%v", c.Stats[AND]+c.Stats[OR]+c.Stats[INV]))
+	row.Column(fmt.Sprintf("%v", c.NumWires))
+
+	tab.Print(out)
 }
 
 // Cost computes the relative computational cost of the circuit.
