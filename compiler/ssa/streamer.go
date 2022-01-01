@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -517,6 +517,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				if params.Verbose && circuit.StreamDebug {
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
+				circ.AssignLevels()
 			}
 			if false {
 				circ.Dump()
@@ -594,7 +595,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		prog.numWires)
 
 	if params.Diagnostics {
-		tab := tabulate.New(tabulate.CompactUnicode)
+		tab := tabulate.New(tabulate.CompactUnicodeLight)
 		tab.Header("Instr").SetAlign(tabulate.ML)
 		tab.Header("Count").SetAlign(tabulate.MR)
 		tab.Header("XOR").SetAlign(tabulate.MR)
@@ -603,6 +604,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		tab.Header("OR").SetAlign(tabulate.MR)
 		tab.Header("INV").SetAlign(tabulate.MR)
 		tab.Header("!XOR").SetAlign(tabulate.MR)
+		tab.Header("L").SetAlign(tabulate.MR)
+		tab.Header("W").SetAlign(tabulate.MR)
 
 		var keys []string
 		for k := range istats {
@@ -626,6 +629,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 				row.Column(fmt.Sprintf("%d", stats[circuit.INV]))
 				row.Column(fmt.Sprintf("%d",
 					stats[circuit.OR]+stats[circuit.AND]+stats[circuit.INV]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.NumLevels]))
+				row.Column(fmt.Sprintf("%d", stats[circuit.MaxWidth]))
 			}
 		}
 		tab.Print(os.Stdout)

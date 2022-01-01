@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -69,6 +69,7 @@ func main() {
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	doc := flag.String("doc", "",
 		"generate documentation about argument files")
+	analyze := flag.Bool("analyze", false, "analyze circuits")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -102,6 +103,7 @@ func main() {
 	if *ssa && !*compile {
 		params.NoCircCompile = true
 	}
+	params.CircAnalyze = *analyze
 
 	if len(*doc) > 0 {
 		doc, err := NewHTMLDoc(*doc)
@@ -194,8 +196,15 @@ func main() {
 		}
 	}
 
-	if verbose && circ != nil {
-		fmt.Printf("Circuit: %v\n", circ)
+	if circ != nil {
+		circ.AssignLevels()
+
+		if params.CircAnalyze {
+			circ.Analyze()
+		}
+		if verbose {
+			fmt.Printf("Circuit: %v\n", circ)
+		}
 	}
 
 	if *ssa || *compile || *stream {

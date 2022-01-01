@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -28,10 +28,12 @@ const (
 	OR
 	INV
 	Count
+	NumLevels
+	MaxWidth
 )
 
 // Stats holds statistics about circuit operations.
-type Stats [Count + 1]uint64
+type Stats [MaxWidth + 1]uint64
 
 // Add adds the argument statistics to this statistics object.
 func (stats *Stats) Add(o Stats) {
@@ -39,6 +41,12 @@ func (stats *Stats) Add(o Stats) {
 		stats[i] += o[i]
 	}
 	stats[Count]++
+
+	for i := NumLevels; i <= MaxWidth; i++ {
+		if o[i] > stats[i] {
+			stats[i] = o[i]
+		}
+	}
 }
 
 // Count returns the number of gates in the statistics object.
@@ -67,6 +75,8 @@ func (stats Stats) String() string {
 	}
 	result += fmt.Sprintf(" xor=%d", stats[XOR]+stats[XNOR])
 	result += fmt.Sprintf(" !xor=%d", stats[AND]+stats[OR]+stats[INV])
+	result += fmt.Sprintf(" levels=%d", stats[NumLevels])
+	result += fmt.Sprintf(" width=%d", stats[MaxWidth])
 	return result
 }
 
@@ -336,12 +346,59 @@ func (c *Circuit) Dump() {
 	}
 }
 
+// AssignLevels assigns levels for gates. The level desribes how many
+// steps away the gate is from input wires.
+func (c *Circuit) AssignLevels() {
+	levels := make([]Level, c.NumWires)
+	countByLevel := make([]uint32, c.NumWires)
+
+	var max Level
+
+	for _, gate := range c.Gates {
+		level := levels[gate.Input0]
+		if gate.Op != INV {
+			l1 := levels[gate.Input1]
+			if l1 > level {
+				level = l1
+			}
+		}
+		gate.Level = level
+		countByLevel[level]++
+
+		level++
+
+		levels[gate.Output] = level
+		if level > max {
+			max = level
+		}
+	}
+	c.Stats[NumLevels] = uint64(max)
+
+	var maxWidth uint32
+	for _, count := range countByLevel {
+		if count > maxWidth {
+			maxWidth = count
+		}
+	}
+	if false {
+		for i := 0; i < int(max); i++ {
+			fmt.Printf("%v,%v\n", i, countByLevel[i])
+		}
+	}
+
+	c.Stats[MaxWidth] = uint64(maxWidth)
+}
+
+// Level defines gate's distance from input wires.
+type Level uint32
+
 // Gate specifies a boolean gate.
 type Gate struct {
 	Input0 Wire
 	Input1 Wire
 	Output Wire
 	Op     Operation
+	Level  Level
 }
 
 func (g Gate) String() string {

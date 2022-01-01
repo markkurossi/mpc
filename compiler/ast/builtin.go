@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -367,6 +367,8 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 				idx, arg.Type, io.Size)
 		}
 	}
+
+	circ.AssignLevels()
 
 	if ctx.Verbose {
 		fmt.Printf(" - native %s: %v\n", name, circ)
