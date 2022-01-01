@@ -182,10 +182,10 @@ converted) to be or correct type.
 | bool    | 1             | no     |
 | uint    | unspecified   | no     |
 | int     | unspecified   | yes    |
-| uintN   | N    	  | no     |
-| intN    | N    	  | yes    |
-| floatN  | N    	  | yes    |
-| stringN | N    	  | no     |
+| uintN   | N             | no     |
+| intN    | N             | yes    |
+| floatN  | N             | yes    |
+| stringN | N             | no     |
 
 The unsized `uint` and `int` types can be used as function arguments
 and return values. Their sizes are resolved during compilation
