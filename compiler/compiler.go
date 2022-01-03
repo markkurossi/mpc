@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -24,6 +24,13 @@ import (
 type Compiler struct {
 	params   *utils.Params
 	packages map[string]*ast.Package
+	pkgPath  string
+}
+
+type pkgPath struct {
+	precond string
+	env     string
+	prefix  string
 }
 
 // New creates a new compiler instance.
@@ -155,21 +162,67 @@ func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
 	return pkg, nil
 }
 
-type packagePath struct {
-	precond string
-	env     string
-	prefix  string
+func (c *Compiler) resolvePkgPath() error {
+	if len(c.pkgPath) != 0 {
+		return nil
+	}
+
+	for _, pkgPath := range pkgPaths {
+		// Check path precondition.
+		if len(pkgPath.precond) > 0 {
+			_, ok := os.LookupEnv(pkgPath.precond)
+			if !ok {
+				continue
+			}
+		}
+		dir := path.Join(os.Getenv(pkgPath.env), pkgPath.prefix)
+		df, err := os.Open(dir)
+		if err != nil {
+			continue
+		}
+		defer df.Close()
+		fi, err := df.Stat()
+		if err != nil {
+			return err
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("pkg root is not directory: %s", dir)
+		}
+		c.pkgPath = dir
+		break
+	}
+	if len(c.pkgPath) == 0 {
+		fmt.Printf("could not resolve pkg root directory, tried:\n")
+		for _, pkgPath := range pkgPaths {
+			if len(pkgPath.precond) > 0 {
+				fmt.Printf(" - $(%s):\n", pkgPath.precond)
+			} else {
+				fmt.Printf(" - *:\n")
+			}
+			fmt.Printf("   - $(%s)/%s\n", pkgPath.env, pkgPath.prefix)
+		}
+		return fmt.Errorf("could not find pkg root directory")
+	}
+	if c.params.Verbose {
+		fmt.Printf("found PkgRoot from '%s'\n", c.pkgPath)
+	}
+	return nil
 }
 
-var packagePaths = []packagePath{
+var pkgPaths = []*pkgPath{
 	{
-		env:    "HOME",
-		prefix: "go/src/github.com/markkurossi/mpc/pkg",
+		precond: "MPCLDIR",
+		env:     "MPCLDIR",
+		prefix:  "pkg",
 	},
 	{
 		precond: "GITHUB_WORKFLOW",
 		env:     "GITHUB_WORKSPACE",
 		prefix:  "pkg",
+	},
+	{
+		env:    "HOME",
+		prefix: "go/src/github.com/markkurossi/mpc/pkg",
 	},
 }
 
@@ -180,31 +233,21 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 	}
 	pkg = ast.NewPackage(alias, source, nil)
 
+	err := c.resolvePkgPath()
+	if err != nil {
+		return nil, err
+	}
+
 	if c.params.Verbose {
 		fmt.Printf("looking for package %s (%s)\n", alias, name)
 	}
 
-	var dir string
-	var df *os.File
-	var err error
-	for _, pkgPath := range packagePaths {
-		// Check path precondition.
-		if len(pkgPath.precond) > 0 {
-			_, ok := os.LookupEnv(pkgPath.precond)
-			if !ok {
-				continue
-			}
-		}
-		dir = path.Join(os.Getenv(pkgPath.env), pkgPath.prefix, name)
-		df, err = os.Open(dir)
-		if err == nil {
-			defer df.Close()
-			break
-		}
-	}
-	if df == nil {
+	dir := path.Join(c.pkgPath, name)
+	df, err := os.Open(dir)
+	if err != nil {
 		return nil, fmt.Errorf("package %s not found", name)
 	}
+	defer df.Close()
 
 	files, err := df.Readdirnames(-1)
 	if err != nil {
@@ -224,7 +267,7 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 		fp := path.Join(dir, mpcl)
 
 		if c.params.Verbose {
-			fmt.Printf(" - parsing %v\n", fp)
+			fmt.Printf(" - parsing @%v\n", fp[len(c.pkgPath):])
 		}
 
 		f, err := os.Open(fp)
