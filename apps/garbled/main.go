@@ -68,7 +68,7 @@ func main() {
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	doc := flag.String("doc", "",
-		"generate documentation about argument files")
+		"generate documentation about argument files to the argument directory")
 	analyze := flag.Bool("analyze", false, "analyze circuits")
 	flag.Parse()
 

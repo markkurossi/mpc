@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -246,7 +246,7 @@ func (out *HTMLOutput) URL(container, id string) string {
 
 func header(out io.Writer) error {
 	_, err := fmt.Fprintf(out, `<!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <link rel="icon" href="favicon.png" />
     <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
