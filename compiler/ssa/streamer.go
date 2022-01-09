@@ -733,7 +733,7 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 					Size: 1,
 				},
 			},
-			Gates: []circuit.Gate{
+			Gates: []*circuit.Gate{
 				{
 					Input0: 0,
 					Input1: 0,
@@ -779,7 +779,7 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 					Size: 1,
 				},
 			},
-			Gates: []circuit.Gate{
+			Gates: []*circuit.Gate{
 				{
 					Input0: 0,
 					Input1: 0,

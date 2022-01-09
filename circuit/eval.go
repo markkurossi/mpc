@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -26,7 +26,7 @@ func (c *Circuit) Eval(key []byte, wires []ot.Label,
 	var id uint32
 
 	for i := 0; i < len(c.Gates); i++ {
-		gate := &c.Gates[i]
+		gate := c.Gates[i]
 
 		var a, b, c ot.Label
 

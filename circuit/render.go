@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2020 Markku Rossi
+// Copyright (c) 2019-2020, 2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,13 +15,13 @@ import (
 type Placement struct {
 	Col int
 	Row float64
-	G   Gate
+	G   *Gate
 }
 
 // Render creates a 2D rendering of the circuit.
 func (c *Circuit) Render() {
-	from := make(map[int]Gate)
-	to := make(map[int]Gate)
+	from := make(map[int]*Gate)
+	to := make(map[int]*Gate)
 
 	placements := make(map[uint32]*Placement)
 

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -100,7 +100,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 		}
 	}
 
-	gates := make([]Gate, header.NumGates)
+	gates := make([]*Gate, header.NumGates)
 	var stats Stats
 	var gate int
 	for gate = 0; ; gate++ {
@@ -140,7 +140,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			if err := wiresSeen.Set(Wire(bin.Output)); err != nil {
 				return nil, err
 			}
-			gates[gate] = Gate{
+			gates[gate] = &Gate{
 				Input0: Wire(bin.Input0),
 				Input1: Wire(bin.Input1),
 				Output: Wire(bin.Output),
@@ -166,7 +166,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			if err := wiresSeen.Set(Wire(unary.Output)); err != nil {
 				return nil, err
 			}
-			gates[gate] = Gate{
+			gates[gate] = &Gate{
 				Input0: Wire(unary.Input0),
 				Output: Wire(unary.Output),
 				Op:     Operation(op),
@@ -345,7 +345,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		})
 	}
 
-	gates := make([]Gate, numGates)
+	gates := make([]*Gate, numGates)
 	var stats Stats
 	var gate int
 	for gate = 0; ; gate++ {
@@ -444,7 +444,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 			input1 = inputs[1]
 		}
 
-		gates[gate] = Gate{
+		gates[gate] = &Gate{
 			Input0: inputs[0],
 			Input1: input1,
 			Output: outputs[0],

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -148,12 +148,29 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 
 	stream.initCircuit(c, in, out)
 
+	const pDebug = false
+	var level Level
+	var batchStart int
+	for i := 0; i < len(c.Gates); i++ {
+		if c.Gates[i].Level == level {
+			continue
+		}
+		if pDebug {
+			fmt.Printf(" - batch %d: %d\n", level, i-batchStart)
+		}
+		batchStart = i
+		level = c.Gates[i].Level
+	}
+	if pDebug {
+		fmt.Printf(" + batch %d: %d\n", level, len(c.Gates)-batchStart)
+	}
+
 	// Garble gates.
 	var data ot.LabelData
 	var id uint32
 	var table [4]ot.Label
 	for i := 0; i < len(c.Gates); i++ {
-		gate := &c.Gates[i]
+		gate := c.Gates[i]
 		err := stream.conn.NeedSpace(512)
 		if err != nil {
 			return err

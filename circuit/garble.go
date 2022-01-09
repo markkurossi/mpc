@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -180,7 +180,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 	var data ot.LabelData
 	var id uint32
 	for i := 0; i < len(c.Gates); i++ {
-		gate := &c.Gates[i]
+		gate := c.Gates[i]
 		data, err := gate.garble(wires, alg, r, &id, &data)
 		if err != nil {
 			return nil, err
