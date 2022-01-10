@@ -566,8 +566,27 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 	if cTmp {
 		op |= 0b00100000
 	}
-	if aIndex <= 0xffff && bIndex <= 0xffff && cIndex <= 0xffff {
-		op |= 0b00010000
+	if aIndex <= 0xff && bIndex <= 0xff && cIndex <= 0xff {
+		buf[*bufpos] = op
+		*bufpos = *bufpos + 1
+
+		switch wireCount {
+		case 3:
+			buf[*bufpos+0] = uint8(aIndex)
+			buf[*bufpos+1] = uint8(bIndex)
+			buf[*bufpos+2] = uint8(cIndex)
+			*bufpos = *bufpos + 3
+
+		case 2:
+			buf[*bufpos+0] = uint8(aIndex)
+			buf[*bufpos+1] = uint8(cIndex)
+			*bufpos = *bufpos + 2
+
+		default:
+			panic(fmt.Sprintf("invalid wire count: %d", wireCount))
+		}
+	} else if aIndex <= 0xffff && bIndex <= 0xffff && cIndex <= 0xffff {
+		op |= 0b00001000
 		buf[*bufpos] = op
 		*bufpos = *bufpos + 1
 
@@ -586,7 +605,28 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 		default:
 			panic(fmt.Sprintf("invalid wire count: %d", wireCount))
 		}
+	} else if aIndex <= 0xffffff && bIndex <= 0xffffff && cIndex <= 0xffffff {
+		op |= 0b00010000
+		buf[*bufpos] = op
+		*bufpos = *bufpos + 1
+
+		switch wireCount {
+		case 3:
+			putUint24(buf[*bufpos+0:], uint32(aIndex))
+			putUint24(buf[*bufpos+3:], uint32(bIndex))
+			putUint24(buf[*bufpos+6:], uint32(cIndex))
+			*bufpos = *bufpos + 9
+
+		case 2:
+			putUint24(buf[*bufpos+0:], uint32(aIndex))
+			putUint24(buf[*bufpos+3:], uint32(cIndex))
+			*bufpos = *bufpos + 6
+
+		default:
+			panic(fmt.Sprintf("invalid wire count: %d", wireCount))
+		}
 	} else {
+		op |= 0b00011000
 		buf[*bufpos] = op
 		*bufpos = *bufpos + 1
 
@@ -614,4 +654,10 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 	}
 
 	return nil
+}
+
+func putUint24(buf []byte, val uint32) {
+	buf[0] = byte((val >> 16) & 0xff)
+	buf[1] = byte((val >> 8) & 0xff)
+	buf[2] = byte((val >> 0) & 0xff)
 }

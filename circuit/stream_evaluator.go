@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -263,13 +263,18 @@ loop:
 					cTmp = true
 				}
 				var recvWire func() (int, error)
-				if gop&0b00010000 != 0 {
+				switch (gop >> 3) & 0b11 {
+				case 0:
+					recvWire = conn.ReceiveUint8
+				case 1:
 					recvWire = conn.ReceiveUint16
-				} else {
+				case 2:
+					recvWire = conn.ReceiveUint24
+				case 3:
 					recvWire = conn.ReceiveUint32
 				}
 
-				gop &^= 0b11110000
+				gop &^= 0b11111000
 
 				var aIndex, bIndex, cIndex int
 				var tableCount int

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -211,6 +211,18 @@ func (c *Conn) ReceiveByte() (byte, error) {
 	return val, nil
 }
 
+// ReceiveUint8 receives an uint8 value.
+func (c *Conn) ReceiveUint8() (int, error) {
+	if c.ReadStart+1 > c.ReadEnd {
+		if err := c.Fill(1); err != nil {
+			return 0, err
+		}
+	}
+	val := c.ReadBuf[c.ReadStart]
+	c.ReadStart++
+	return int(val), nil
+}
+
 // ReceiveUint16 receives an uint16 value.
 func (c *Conn) ReceiveUint16() (int, error) {
 	if c.ReadStart+2 > c.ReadEnd {
@@ -222,6 +234,23 @@ func (c *Conn) ReceiveUint16() (int, error) {
 	val <<= 8
 	val |= uint32(c.ReadBuf[c.ReadStart+1])
 	c.ReadStart += 2
+
+	return int(val), nil
+}
+
+// ReceiveUint24 receives an uint24 value.
+func (c *Conn) ReceiveUint24() (int, error) {
+	if c.ReadStart+3 > c.ReadEnd {
+		if err := c.Fill(3); err != nil {
+			return 0, err
+		}
+	}
+	val := uint32(c.ReadBuf[c.ReadStart+0])
+	val <<= 8
+	val |= uint32(c.ReadBuf[c.ReadStart+1])
+	val <<= 8
+	val |= uint32(c.ReadBuf[c.ReadStart+2])
+	c.ReadStart += 3
 
 	return int(val), nil
 }
