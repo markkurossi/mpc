@@ -11,9 +11,12 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"os"
+	"sync"
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/tabulate"
 )
 
 const (
@@ -34,6 +37,31 @@ type Streaming struct {
 	out      []Wire
 	firstTmp Wire
 	firstOut Wire
+	sizes    [Count]sizes
+	ch       chan batch
+
+	turnSeq uint64
+	turnM   sync.Mutex
+	turnC   *sync.Cond
+}
+
+type sizes struct {
+	bytes uint64
+	count uint64
+	min   int
+	max   int
+}
+
+type batch struct {
+	seq   uint64
+	id    uint32
+	circ  *Circuit
+	start int
+	end   int
+}
+
+func (b batch) String() string {
+	return fmt.Sprintf("b%d: %d", b.id, b.end-b.start)
 }
 
 // NewStreaming creates a new streaming garbled circuit garbler.
@@ -56,7 +84,9 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 		key:  key,
 		alg:  alg,
 		r:    r,
+		ch:   make(chan batch),
 	}
+	stream.turnC = sync.NewCond(&stream.turnM)
 
 	stream.ensureWires(inputs)
 
@@ -67,6 +97,11 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 			return nil, err
 		}
 		stream.wires[inputs[i]] = w
+	}
+
+	// Start garblers.
+	for i := 0; i < 1; i++ {
+		go stream.garbler()
 	}
 
 	return stream, nil
@@ -142,32 +177,23 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 // Garble garbles the circuit and streams the garbled tables into the
 // stream.
 func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
-	if StreamDebug {
-		fmt.Printf(" - Streaming.Garble: in=%v, out=%v\n", in, out)
-	}
-
 	stream.initCircuit(c, in, out)
 
-	const pDebug = false
-	var level Level
-	var batchStart int
-	for i := 0; i < len(c.Gates); i++ {
-		if c.Gates[i].Level == level {
-			continue
-		}
-		if pDebug {
-			fmt.Printf(" - batch %d: %d\n", level, i-batchStart)
-		}
-		batchStart = i
-		level = c.Gates[i].Level
-	}
-	if pDebug {
-		fmt.Printf(" + batch %d: %d\n", level, len(c.Gates)-batchStart)
+	return stream.garbleSerial(c, in, out)
+}
+
+func (stream *Streaming) garbleSerial(c *Circuit, in, out []Wire) error {
+	if StreamDebug {
+		fmt.Printf(" - Streaming.garbleSerial: in=%v, out=%v\n", in, out)
 	}
 
 	// Garble gates.
-	var data ot.LabelData
+
+	const measure = true
+	var measureStart int
 	var id uint32
+
+	var data ot.LabelData
 	var table [4]ot.Label
 	for i := 0; i < len(c.Gates); i++ {
 		gate := c.Gates[i]
@@ -175,13 +201,162 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 		if err != nil {
 			return err
 		}
+		measureStart = stream.conn.WritePos
 		err = stream.garbleGate(gate, &id, table[:], &data,
 			stream.conn.WriteBuf, &stream.conn.WritePos)
 		if err != nil {
 			return err
 		}
+		if measure {
+			stream.measure(gate.Op, stream.conn.WritePos-measureStart)
+		}
 	}
 	return nil
+}
+
+func (stream *Streaming) garbleParallel(c *Circuit, in, out []Wire) error {
+	if StreamDebug {
+		fmt.Printf(" - Streaming.garbleParallel: in=%v, out=%v\n", in, out)
+	}
+
+	const pDebug = false
+
+	var level Level
+	var batchID uint32
+	var batchStart int
+	var batchSize int
+	var seq uint64
+	var id uint32
+
+	stream.turnSeq = seq
+
+	for i := 0; i < len(c.Gates); i++ {
+		if c.Gates[i].Level != level {
+			batch := batch{
+				seq:   seq,
+				id:    batchID,
+				circ:  c,
+				start: batchStart,
+				end:   i,
+			}
+			seq++
+
+			if pDebug {
+				fmt.Printf(" - level %d: %s\n", level, batch)
+			}
+			stream.ch <- batch
+			stream.waitTurn(seq)
+
+			batchID = id
+			batchStart = i
+			batchSize = 0
+			level = c.Gates[i].Level
+		}
+
+		bSize, idSize := c.Gates[i].GarbleMeasure()
+		id += uint32(idSize)
+		batchSize += bSize
+	}
+	batch := batch{
+		seq:   seq,
+		id:    batchID,
+		circ:  c,
+		start: batchStart,
+		end:   len(c.Gates),
+	}
+	seq++
+	if pDebug {
+		fmt.Printf(" + level %d: %s\n", level, batch)
+	}
+	stream.ch <- batch
+	stream.waitTurn(seq)
+
+	return nil
+}
+
+func (stream *Streaming) garbler() {
+	var data ot.LabelData
+	var table [4]ot.Label
+
+	for batch := range stream.ch {
+		id := batch.id
+		stream.waitTurn(batch.seq)
+
+		for i := batch.start; i < batch.end; i++ {
+			gate := batch.circ.Gates[i]
+			err := stream.conn.NeedSpace(512)
+			if err != nil {
+				panic(err)
+			}
+			err = stream.garbleGate(gate, &id, table[:], &data,
+				stream.conn.WriteBuf, &stream.conn.WritePos)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		stream.nextTurn(batch.seq)
+	}
+}
+
+func (stream *Streaming) waitTurn(seq uint64) {
+	stream.turnM.Lock()
+	for stream.turnSeq != seq {
+		stream.turnC.Wait()
+	}
+	stream.turnM.Unlock()
+}
+
+func (stream *Streaming) nextTurn(seq uint64) {
+	stream.turnM.Lock()
+	if stream.turnSeq != seq {
+		panic(fmt.Sprintf("corrupted sequence: %d != %d", stream.turnSeq, seq))
+	}
+	stream.turnSeq++
+	stream.turnM.Unlock()
+	stream.turnC.Broadcast()
+}
+
+func (stream *Streaming) measure(op Operation, size int) {
+	if stream.sizes[op].min == 0 || size < stream.sizes[op].min {
+		stream.sizes[op].min = size
+	}
+	if size > stream.sizes[op].max {
+		stream.sizes[op].max = size
+	}
+	stream.sizes[op].bytes += uint64(size)
+	stream.sizes[op].count++
+}
+
+// PrintMeasures prints the streaming garbler measurements.
+func (stream *Streaming) PrintMeasures() {
+	tab := tabulate.New(tabulate.UnicodeLight)
+	tab.Header("Op")
+	tab.Header("Bytes").SetAlign(tabulate.MR)
+	tab.Header("Count").SetAlign(tabulate.MR)
+	tab.Header("Avg").SetAlign(tabulate.MR)
+	tab.Header("Min").SetAlign(tabulate.MR)
+	tab.Header("Max").SetAlign(tabulate.MR)
+
+	var rows int
+
+	for op := XOR; op < Count; op++ {
+		s := stream.sizes[op]
+		if s.count == 0 {
+			continue
+		}
+		rows++
+		row := tab.Row()
+		row.Column(op.String())
+		row.Column(fmt.Sprintf("%v", s.bytes))
+		row.Column(fmt.Sprintf("%v", s.count))
+		row.Column(fmt.Sprintf("%v", s.bytes/s.count))
+		row.Column(fmt.Sprintf("%v", s.min))
+		row.Column(fmt.Sprintf("%v", s.max))
+	}
+	if rows > 0 {
+		tab.Print(os.Stdout)
+	}
 }
 
 // GarbleGate garbles the gate and streams it to the stream.

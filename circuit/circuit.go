@@ -94,6 +94,10 @@ func (op Operation) String() string {
 		return "INV"
 	case Count:
 		return "#"
+	case NumLevels:
+		return "#levels"
+	case MaxWidth:
+		return "MaxWidth"
 	default:
 		return fmt.Sprintf("{Operation %d}", op)
 	}
@@ -403,6 +407,29 @@ type Gate struct {
 
 func (g Gate) String() string {
 	return fmt.Sprintf("%v %v %v", g.Inputs(), g.Op, g.Output)
+}
+
+// GarbleMeasure measures the garbled size of the gate and the number
+// of garbling IDs required.
+func (g Gate) GarbleMeasure() (size, ids int) {
+	switch g.Op {
+	case XOR:
+		size = 13
+	case XNOR:
+		size = 13
+	case AND:
+		size = 45
+		ids = 2
+	case OR:
+		size = 61
+		ids = 1
+	case INV:
+		size = 25
+		ids = 1
+	default:
+		panic(fmt.Sprintf("invalid Gate type: %s", g.Op))
+	}
+	return
 }
 
 // Inputs returns gate input wires.

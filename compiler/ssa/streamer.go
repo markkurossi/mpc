@@ -634,6 +634,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 			}
 		}
 		tab.Print(os.Stdout)
+
+		streaming.PrintMeasures()
 	}
 
 	return prog.Outputs, prog.Outputs.Split(result), nil
