@@ -11,6 +11,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 
@@ -37,9 +38,10 @@ type Streaming struct {
 	out      []Wire
 	firstTmp Wire
 	firstOut Wire
-	sizes    [Count]sizes
-	ch       chan batch
 
+	sizes [Count]sizes
+
+	ch      chan batch
 	turnSeq uint64
 	turnM   sync.Mutex
 	turnC   *sync.Cond
@@ -53,9 +55,9 @@ type sizes struct {
 }
 
 type batch struct {
+	circ  *Circuit
 	seq   uint64
 	id    uint32
-	circ  *Circuit
 	start int
 	end   int
 }
@@ -100,7 +102,7 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 	}
 
 	// Start garblers.
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 4; i++ {
 		go stream.garbler()
 	}
 
@@ -179,6 +181,9 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
 	stream.initCircuit(c, in, out)
 
+	if true {
+		return stream.garbleParallel(c, in, out)
+	}
 	return stream.garbleSerial(c, in, out)
 }
 
@@ -214,85 +219,137 @@ func (stream *Streaming) garbleSerial(c *Circuit, in, out []Wire) error {
 	return nil
 }
 
+var (
+	minLevel    uint32 = math.MaxUint32
+	maxLevel    uint32
+	sumLevels   uint64
+	countLevels uint64
+)
+
 func (stream *Streaming) garbleParallel(c *Circuit, in, out []Wire) error {
 	if StreamDebug {
 		fmt.Printf(" - Streaming.garbleParallel: in=%v, out=%v\n", in, out)
 	}
 
-	const pDebug = false
-
-	var level Level
 	var batchID uint32
 	var batchStart int
-	var batchSize int
 	var seq uint64
 	var id uint32
 
 	stream.turnSeq = seq
 
-	for i := 0; i < len(c.Gates); i++ {
-		if c.Gates[i].Level != level {
-			batch := batch{
-				seq:   seq,
-				id:    batchID,
-				circ:  c,
-				start: batchStart,
-				end:   i,
-			}
-			seq++
+	if c.Levels == nil {
+		c.AssignLevels()
+	}
 
-			if pDebug {
-				fmt.Printf(" - level %d: %s\n", level, batch)
-			}
-			stream.ch <- batch
-			stream.waitTurn(seq)
+	const batchCount = 256
 
-			batchID = id
-			batchStart = i
-			batchSize = 0
-			level = c.Gates[i].Level
+	for _, width := range c.Levels {
+		w := uint32(width)
+		if w < minLevel {
+			minLevel = w
 		}
+		if w > maxLevel {
+			maxLevel = w
+		}
+		sumLevels += uint64(width)
+		countLevels++
 
-		bSize, idSize := c.Gates[i].GarbleMeasure()
-		id += uint32(idSize)
-		batchSize += bSize
+		if width < batchCount*2 {
+			var data ot.LabelData
+			var table [4]ot.Label
+
+			for i := 0; i < width; i++ {
+				gate := c.Gates[batchStart+i]
+				err := stream.conn.NeedSpace(512)
+				if err != nil {
+					return err
+				}
+				err = stream.garbleGate(gate, &id, table[:], &data,
+					stream.conn.WriteBuf, &stream.conn.WritePos)
+				if err != nil {
+					return err
+				}
+			}
+			stream.nextTurnL(seq)
+
+			seq++
+			batchID = id
+			batchStart += width
+		} else {
+			var batchSize int
+			var count int
+
+			levelStart := batchStart
+
+			for i := 0; i < width; i++ {
+				bSize, idSize := c.Gates[levelStart+i].GarbleMeasure()
+				id += uint32(idSize)
+				batchSize += bSize
+
+				count++
+				if count >= batchCount {
+					stream.garbleBatch(c, seq, batchID, batchStart,
+						batchStart+count, batchSize)
+					seq++
+					batchID = id
+					batchStart += count
+					batchSize = 0
+					count = 0
+				}
+			}
+			if count > 0 {
+				stream.garbleBatch(c, seq, batchID, batchStart,
+					batchStart+count, batchSize)
+				seq++
+				batchID = id
+				batchStart += count
+			}
+
+			stream.waitTurn(seq)
+		}
 	}
-	batch := batch{
-		seq:   seq,
-		id:    batchID,
-		circ:  c,
-		start: batchStart,
-		end:   len(c.Gates),
-	}
-	seq++
-	if pDebug {
-		fmt.Printf(" + level %d: %s\n", level, batch)
-	}
-	stream.ch <- batch
-	stream.waitTurn(seq)
 
 	return nil
+}
+
+func (stream *Streaming) garbleBatch(c *Circuit, seq uint64, id uint32,
+	start, end, size int) {
+
+	batch := batch{
+		circ:  c,
+		seq:   seq,
+		id:    id,
+		start: start,
+		end:   end,
+	}
+
+	stream.ch <- batch
 }
 
 func (stream *Streaming) garbler() {
 	var data ot.LabelData
 	var table [4]ot.Label
 
+	buf := make([]byte, 8192*4)
+	var bufpos int
+
 	for batch := range stream.ch {
 		id := batch.id
+		bufpos = 0
+
 		stream.waitTurn(batch.seq)
 
 		for i := batch.start; i < batch.end; i++ {
 			gate := batch.circ.Gates[i]
-			err := stream.conn.NeedSpace(512)
+			err := stream.garbleGate(gate, &id, table[:], &data, buf, &bufpos)
 			if err != nil {
 				panic(err)
 			}
-			err = stream.garbleGate(gate, &id, table[:], &data,
-				stream.conn.WriteBuf, &stream.conn.WritePos)
-			if err != nil {
-				panic(err)
-			}
+		}
+		_, err := stream.conn.Write(buf[:bufpos])
+		if err != nil {
+			panic(err)
 		}
 
 		stream.nextTurn(batch.seq)
@@ -309,12 +366,16 @@ func (stream *Streaming) waitTurn(seq uint64) {
 
 func (stream *Streaming) nextTurn(seq uint64) {
 	stream.turnM.Lock()
+	stream.nextTurnL(seq)
+	stream.turnM.Unlock()
+	stream.turnC.Broadcast()
+}
+
+func (stream *Streaming) nextTurnL(seq uint64) {
 	if stream.turnSeq != seq {
 		panic(fmt.Sprintf("corrupted sequence: %d != %d", stream.turnSeq, seq))
 	}
 	stream.turnSeq++
-	stream.turnM.Unlock()
-	stream.turnC.Broadcast()
 }
 
 func (stream *Streaming) measure(op Operation, size int) {
@@ -357,6 +418,9 @@ func (stream *Streaming) PrintMeasures() {
 	if rows > 0 {
 		tab.Print(os.Stdout)
 	}
+
+	fmt.Printf("Levels: min=%v, max=%v, avg=%v\n",
+		minLevel, maxLevel, float64(sumLevels)/float64(countLevels))
 }
 
 // GarbleGate garbles the gate and streams it to the stream.
