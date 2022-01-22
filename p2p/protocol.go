@@ -91,6 +91,16 @@ func (c *Conn) Flush() error {
 	return nil
 }
 
+func (c *Conn) Write(p []byte) (n int, err error) {
+	err = c.Flush()
+	if err != nil {
+		return
+	}
+	n, err = c.writer.Write(p)
+	c.Stats.Sent += uint64(n)
+	return
+}
+
 // Fill fills the input buffer from the connection. Any unused data in
 // the buffer is moved to the beginning of the buffer.
 func (c *Conn) Fill(n int) error {
