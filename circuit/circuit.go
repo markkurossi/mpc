@@ -301,6 +301,7 @@ type Circuit struct {
 	Inputs   IO
 	Outputs  IO
 	Gates    []*Gate
+	Levels   []int
 	Stats    Stats
 }
 
@@ -354,7 +355,7 @@ func (c *Circuit) Dump() {
 // steps away the gate is from input wires.
 func (c *Circuit) AssignLevels() {
 	levels := make([]Level, c.NumWires)
-	countByLevel := make([]uint32, c.NumWires)
+	countByLevel := make([]int, c.NumWires)
 
 	var max Level
 
@@ -376,10 +377,11 @@ func (c *Circuit) AssignLevels() {
 			max = level
 		}
 	}
+	c.Levels = countByLevel[:max+1]
 	c.Stats[NumLevels] = uint64(max)
 
-	var maxWidth uint32
-	for _, count := range countByLevel {
+	var maxWidth int
+	for _, count := range c.Levels {
 		if count > maxWidth {
 			maxWidth = count
 		}
