@@ -409,7 +409,7 @@ func (w *Wire) String() string {
 		w.ID, w.Input, w.Value, w.Outputs, w.Output)
 }
 
-// Assign assings wire ID.
+// Assign assigns wire ID.
 func (w *Wire) Assign(c *Compiler) {
 	if w.Output {
 		return
