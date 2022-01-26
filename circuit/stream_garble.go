@@ -41,10 +41,12 @@ type Streaming struct {
 
 	sizes [Count]sizes
 
-	ch      chan batch
-	turnSeq uint64
-	turnM   sync.Mutex
-	turnC   *sync.Cond
+	ch            chan *batch
+	batchProducer *batch
+	batchFL       *batch
+	turnSeq       uint64
+	turnM         sync.Mutex
+	turnC         *sync.Cond
 }
 
 type sizes struct {
@@ -55,6 +57,7 @@ type sizes struct {
 }
 
 type batch struct {
+	next  *batch
 	circ  *Circuit
 	seq   uint64
 	id    uint32
@@ -86,7 +89,7 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 		key:  key,
 		alg:  alg,
 		r:    r,
-		ch:   make(chan batch),
+		ch:   make(chan *batch),
 	}
 	stream.turnC = sync.NewCond(&stream.turnM)
 
@@ -316,15 +319,29 @@ func (stream *Streaming) garbleParallel(c *Circuit, in, out []Wire) error {
 func (stream *Streaming) garbleBatch(c *Circuit, seq uint64, id uint32,
 	start, end, size int) {
 
-	batch := batch{
-		circ:  c,
-		seq:   seq,
-		id:    id,
-		start: start,
-		end:   end,
+	var b *batch
+
+	if stream.batchProducer == nil {
+		stream.turnM.Lock()
+		stream.batchProducer = stream.batchFL
+		stream.batchFL = nil
+		stream.turnM.Unlock()
+	}
+	if stream.batchProducer == nil {
+		b = new(batch)
+	} else {
+		b = stream.batchProducer
+		stream.batchProducer = b.next
+		b.next = nil
 	}
 
-	stream.ch <- batch
+	b.circ = c
+	b.seq = seq
+	b.id = id
+	b.start = start
+	b.end = end
+
+	stream.ch <- b
 }
 
 func (stream *Streaming) garbler() {
@@ -352,7 +369,7 @@ func (stream *Streaming) garbler() {
 			panic(err)
 		}
 
-		stream.nextTurn(batch.seq)
+		stream.nextTurn(batch)
 	}
 }
 
@@ -364,9 +381,13 @@ func (stream *Streaming) waitTurn(seq uint64) {
 	stream.turnM.Unlock()
 }
 
-func (stream *Streaming) nextTurn(seq uint64) {
+func (stream *Streaming) nextTurn(b *batch) {
 	stream.turnM.Lock()
-	stream.nextTurnL(seq)
+	stream.nextTurnL(b.seq)
+
+	b.next = stream.batchFL
+	stream.batchFL = b
+
 	stream.turnM.Unlock()
 	stream.turnC.Broadcast()
 }
