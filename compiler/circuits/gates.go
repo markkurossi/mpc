@@ -111,7 +111,7 @@ func (g *Gate) Compile(c *Compiler) {
 		return
 	}
 	g.Compiled = true
-	c.compiled = append(c.compiled, &circuit.Gate{
+	c.compiled = append(c.compiled, circuit.Gate{
 		Input0: circuit.Wire(g.A.ID),
 		Input1: circuit.Wire(g.B.ID),
 		Output: circuit.Wire(g.O.ID),

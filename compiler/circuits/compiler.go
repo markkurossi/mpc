@@ -32,7 +32,7 @@ type Compiler struct {
 	nextWireID      uint32
 	pending         []*Gate
 	assigned        []*Gate
-	compiled        []*circuit.Gate
+	compiled        []circuit.Gate
 	wiresX          map[string][]*Wire
 	zeroWire        *Wire
 	oneWire         *Wire
@@ -303,7 +303,7 @@ func (c *Compiler) Compile() *circuit.Circuit {
 	if len(c.compiled) != 0 {
 		panic("Compile: compiled set")
 	}
-	c.compiled = make([]*circuit.Gate, 0, len(c.Gates))
+	c.compiled = make([]circuit.Gate, 0, len(c.Gates))
 
 	for _, w := range c.InputWires {
 		w.Assign(c)

@@ -300,7 +300,7 @@ type Circuit struct {
 	NumWires int
 	Inputs   IO
 	Outputs  IO
-	Gates    []*Gate
+	Gates    []Gate
 	Levels   []int
 	Stats    Stats
 }

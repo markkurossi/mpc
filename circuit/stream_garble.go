@@ -201,7 +201,7 @@ func (stream *Streaming) garbleSerial(c *Circuit, in, out []Wire) error {
 	var data ot.LabelData
 	var table [4]ot.Label
 	for i := 0; i < len(c.Gates); i++ {
-		gate := c.Gates[i]
+		gate := &c.Gates[i]
 		err := stream.conn.NeedSpace(512)
 		if err != nil {
 			return err
@@ -260,7 +260,7 @@ func (stream *Streaming) garbleParallel(c *Circuit, in, out []Wire) error {
 			var table [4]ot.Label
 
 			for i := 0; i < width; i++ {
-				gate := c.Gates[batchStart+i]
+				gate := &c.Gates[batchStart+i]
 				err := stream.conn.NeedSpace(512)
 				if err != nil {
 					return err
@@ -341,7 +341,7 @@ func (stream *Streaming) garbler() {
 		stream.waitTurn(batch.seq)
 
 		for i := batch.start; i < batch.end; i++ {
-			gate := batch.circ.Gates[i]
+			gate := &batch.circ.Gates[i]
 			err := stream.garbleGate(gate, &id, table[:], &data, buf, &bufpos)
 			if err != nil {
 				panic(err)

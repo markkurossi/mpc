@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,8 +14,8 @@ import (
 func (c *Circuit) Analyze() {
 	fmt.Printf("analyzing circuit %v\n", c)
 
-	from := make([][]*Gate, c.NumWires)
-	to := make([][]*Gate, c.NumWires)
+	from := make([][]Gate, c.NumWires)
+	to := make([][]Gate, c.NumWires)
 
 	// Collect wire inputs and outputs.
 	for _, g := range c.Gates {

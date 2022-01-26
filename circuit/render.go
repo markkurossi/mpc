@@ -28,12 +28,12 @@ func (c *Circuit) Render() {
 	// Create wire mappings.
 	for idx, g := range c.Gates {
 		placements[uint32(idx)] = &Placement{
-			G: g,
+			G: &g,
 		}
 		for _, w := range g.Inputs() {
-			to[w.ID()] = g
+			to[w.ID()] = &g
 		}
-		from[g.Output.ID()] = g
+		from[g.Output.ID()] = &g
 	}
 
 	// Assign columns
