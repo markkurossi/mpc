@@ -1,7 +1,7 @@
 //
 // label_test.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,6 +11,30 @@ package ot
 import (
 	"testing"
 )
+
+func BenchmarkLabelMul2(b *testing.B) {
+	var l Label
+
+	for i := 0; i < b.N; i++ {
+		l.Mul2()
+	}
+}
+
+func BenchmarkLabelMul4(b *testing.B) {
+	var l Label
+
+	for i := 0; i < b.N; i++ {
+		l.Mul4()
+	}
+}
+
+func BenchmarkLabelXor(b *testing.B) {
+	var l0, l1 Label
+
+	for i := 0; i < b.N; i++ {
+		l0.Xor(l1)
+	}
+}
 
 func TestLabel(t *testing.T) {
 	label := &Label{
