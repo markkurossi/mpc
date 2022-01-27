@@ -85,9 +85,8 @@ func TestMerge(t *testing.T) {
 	merged := a.Merge(Value{
 		Name: "c",
 	}, b)
-	if len(merged.Values) != 2 {
-		t.Errorf("Bindings.Merge failed: #values: %d != %d",
-			len(merged.Values), 2)
+	if merged.Count() != 2 {
+		t.Errorf("Bindings.Merge failed: #values: %d != %d", merged.Count(), 2)
 	}
 
 	bound, ok := merged.Get("b")

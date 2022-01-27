@@ -22,6 +22,12 @@ type Bindings struct {
 	Values []Binding
 }
 
+// Count returns the number of variable bindings the Bindings
+// contains.
+func (bindings *Bindings) Count() int {
+	return len(bindings.Values)
+}
+
 // Set adds a new binding for the value.
 func (bindings *Bindings) Set(v Value, val *Value) {
 	for idx, b := range bindings.Values {
