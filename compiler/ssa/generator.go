@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -23,7 +23,7 @@ const (
 type Generator struct {
 	Params    *utils.Params
 	versions  map[string]Value
-	blockID   int
+	blockID   BlockID
 	constants map[string]ConstantInst
 	nextValID ValueID
 }
@@ -153,7 +153,7 @@ func fmtKey(name string, scope Scope) string {
 // Block creates a new basic block.
 func (gen *Generator) Block() *Block {
 	block := &Block{
-		ID:       fmt.Sprintf("l%d", gen.blockID),
+		ID:       gen.blockID,
 		Bindings: new(Bindings),
 	}
 	gen.blockID++

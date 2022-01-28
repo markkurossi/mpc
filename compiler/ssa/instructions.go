@@ -585,7 +585,7 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 	}
 	if i.Label != nil {
 		result += " "
-		result += i.Label.ID
+		result += i.Label.String()
 	}
 	if i.Circ != nil {
 		result += fmt.Sprintf(" {G=%d, W=%d}", i.Circ.NumGates, i.Circ.NumWires)

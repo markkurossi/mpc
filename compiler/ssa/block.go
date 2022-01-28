@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -16,7 +16,7 @@ import (
 
 // Block implements a basic block.
 type Block struct {
-	ID         string
+	ID         BlockID
 	Name       string
 	From       []*Block
 	Next       *Block
@@ -28,8 +28,15 @@ type Block struct {
 	Processed  bool
 }
 
+// BlockID defines unique block IDs.
+type BlockID int
+
+func (id BlockID) String() string {
+	return fmt.Sprintf("l%d", id)
+}
+
 func (b *Block) String() string {
-	return b.ID
+	return b.ID.String()
 }
 
 // Equals tests if the argument block is equal to this basic block.
@@ -41,7 +48,7 @@ func (b *Block) Equals(o *Block) bool {
 func (b *Block) SetNext(o *Block) {
 	if b.Next != nil && b.Next.ID != o.ID {
 		panic(fmt.Sprintf("%s.Next already set to %s, now setting to %s",
-			b.ID, b.Next.ID, o.ID))
+			b, b.Next, o))
 	}
 	b.Next = o
 	o.addFrom(b)
@@ -52,7 +59,7 @@ func (b *Block) SetNext(o *Block) {
 func (b *Block) SetBranch(o *Block) {
 	if b.Branch != nil && b.Branch.ID != o.ID {
 		panic(fmt.Sprintf("%s.Branch already set to %s, now setting to %s",
-			b.ID, b.Next.ID, o.ID))
+			b, b.Next, o))
 	}
 	b.Branch = o
 	o.addFrom(b)
@@ -74,7 +81,7 @@ func (b *Block) AddInstr(instr Instr) {
 }
 
 type returnBindingKey struct {
-	BlockID string
+	BlockID BlockID
 	Name    string
 }
 
@@ -182,11 +189,11 @@ func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
 
 // Serialize serializes the basic block's instructions.
 func (b *Block) Serialize() []Step {
-	seen := make(map[string]bool)
+	seen := make(map[BlockID]bool)
 	return b.serialize(nil, seen)
 }
 
-func (b *Block) serialize(code []Step, seen map[string]bool) []Step {
+func (b *Block) serialize(code []Step, seen map[BlockID]bool) []Step {
 	if seen[b.ID] {
 		return code
 	}
@@ -221,7 +228,7 @@ func (b *Block) serialize(code []Step, seen map[string]bool) []Step {
 }
 
 // DotNodes creates graphviz dot description of this basic block.
-func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
+func (b *Block) DotNodes(out io.Writer, seen map[BlockID]bool) {
 	if seen[b.ID] {
 		return
 	}
@@ -244,7 +251,7 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 		}
 	}
 
-	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b.ID,
+	fmt.Fprintf(out, "  %s [label=\"%s\"]\n", b,
 		strings.ReplaceAll(label, `"`, `\"`))
 
 	if b.Next != nil {
@@ -257,18 +264,18 @@ func (b *Block) DotNodes(out io.Writer, seen map[string]bool) {
 
 // DotLinks creates graphviz dot description of the links to and from
 // this basic block.
-func (b *Block) DotLinks(out io.Writer, seen map[string]bool) {
+func (b *Block) DotLinks(out io.Writer, seen map[BlockID]bool) {
 	if seen[b.ID] {
 		return
 	}
 	seen[b.ID] = true
 	if b.Next != nil {
 		fmt.Fprintf(out, "  %s -> %s [label=\"%s\"];\n",
-			b.ID, b.Next.ID, b.Next.ID)
+			b, b.Next, b.Next)
 	}
 	if b.Branch != nil {
 		fmt.Fprintf(out, "  %s -> %s [label=\"%s\"];\n",
-			b.ID, b.Branch.ID, b.Branch.ID)
+			b, b.Branch, b.Branch)
 	}
 
 	if b.Next != nil {
@@ -289,7 +296,7 @@ func Dot(out io.Writer, block *Block) {
 		fontname, fontsize)
 	fmt.Fprintf(out, "  edge [fontname=\"%s\" fontsize=\"%d\"]\n",
 		fontname, fontsize)
-	block.DotNodes(out, make(map[string]bool))
-	block.DotLinks(out, make(map[string]bool))
+	block.DotNodes(out, make(map[BlockID]bool))
+	block.DotLinks(out, make(map[BlockID]bool))
 	fmt.Fprintln(out, "}")
 }
