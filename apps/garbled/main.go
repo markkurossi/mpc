@@ -298,7 +298,9 @@ func memProfile(file string) {
 		log.Fatal("could not create memory profile: ", err)
 	}
 	defer f.Close()
-	runtime.GC()
+	if false {
+		runtime.GC()
+	}
 	if err := pprof.WriteHeapProfile(f); err != nil {
 		log.Fatal("could not write memory profile: ", err)
 	}
