@@ -116,3 +116,69 @@ func constInt(i int) *Value {
 		ConstValue: i,
 	}
 }
+
+func makeBindings(count int) *Bindings {
+	b := new(Bindings)
+
+	for i := 0; i < count; i++ {
+		b.Set(Value{
+			Name: fmt.Sprintf("a%d", i),
+			Type: types.Int32,
+		}, constInt(i))
+	}
+
+	return b
+}
+
+func BenchmarkSet(b *testing.B) {
+	bindings := makeBindings(20)
+
+	for i := 0; i < b.N; i++ {
+		bindings.Set(Value{
+			Name: "b",
+			Type: types.Int32,
+		}, constInt(i))
+	}
+}
+
+func BenchmarkGet(b *testing.B) {
+	bindings := makeBindings(20)
+
+	for i := 0; i < b.N; i++ {
+		_, ok := bindings.Get("b")
+		if ok {
+			b.Errorf("non-existing item found")
+		}
+	}
+}
+
+func BenchmarkClone(b *testing.B) {
+	bindings := makeBindings(20)
+
+	for i := 0; i < b.N; i++ {
+		_ = bindings.Clone()
+	}
+}
+
+func BenchmarkCloneModify(b *testing.B) {
+	bindings := makeBindings(20)
+
+	for i := 0; i < b.N; i++ {
+		n := bindings.Clone()
+		n.Set(Value{
+			Name: "a",
+			Type: types.Int32,
+		}, constInt(i))
+	}
+}
+
+func BenchmarkMerge(b *testing.B) {
+	t := makeBindings(20)
+	f := makeBindings(20)
+
+	for i := 0; i < b.N; i++ {
+		_ = t.Merge(Value{
+			Name: "c",
+		}, f)
+	}
+}

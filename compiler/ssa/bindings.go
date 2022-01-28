@@ -19,6 +19,7 @@ var (
 
 // Bindings defines value bindings.
 type Bindings struct {
+	shared bool
 	Values []Binding
 }
 
@@ -28,8 +29,27 @@ func (bindings *Bindings) Count() int {
 	return len(bindings.Values)
 }
 
+// Clone makes a copy of the bindings.
+func (bindings Bindings) Clone() *Bindings {
+	result := &Bindings{
+		shared: true,
+		Values: bindings.Values,
+	}
+	bindings.shared = true
+
+	return result
+}
+
 // Set adds a new binding for the value.
 func (bindings *Bindings) Set(v Value, val *Value) {
+	if bindings.shared {
+		// Make our own copy of the values.
+		v := make([]Binding, len(bindings.Values))
+		copy(v, bindings.Values)
+		bindings.Values = v
+		bindings.shared = false
+	}
+
 	for idx, b := range bindings.Values {
 		if b.Name == v.Name && b.Scope == v.Scope {
 			b.Type = v.Type
@@ -72,36 +92,32 @@ func (bindings Bindings) Get(name string) (ret Binding, ok bool) {
 	return ret, true
 }
 
-// Clone makes a copy of the bindings.
-func (bindings Bindings) Clone() *Bindings {
-	result := &Bindings{
-		Values: make([]Binding, len(bindings.Values)),
+func contains(values []Binding, name string) bool {
+	for _, v := range values {
+		if v.Name == name {
+			return true
+		}
 	}
-	copy(result.Values, bindings.Values)
-	return result
+	return false
 }
 
 // Merge merges the argument false-branch bindings into this bindings
 // instance that represents the true-branch values.
 func (bindings Bindings) Merge(cond Value, falseBindings *Bindings) *Bindings {
-	names := make(map[string]bool)
-
-	for _, b := range bindings.Values {
-		names[b.Name] = true
-	}
-	for _, b := range falseBindings.Values {
-		names[b.Name] = true
-	}
-
 	var result []Binding
-	for name := range names {
-		bTrue, ok1 := bindings.Get(name)
-		bFalse, ok2 := falseBindings.Get(name)
-		if !ok1 && !ok2 {
+	for _, b := range bindings.Values {
+		name := b.Name
+		if contains(result, name) {
 			continue
-		} else if !ok1 {
+		}
+
+		bTrue, okTrue := bindings.Get(name)
+		bFalse, okFalse := falseBindings.Get(name)
+		if !okTrue && !okFalse {
+			continue
+		} else if !okTrue {
 			result = append(result, bFalse)
-		} else if !ok2 {
+		} else if !okFalse {
 			result = append(result, bTrue)
 		} else {
 			if bTrue.Bound.Equal(bFalse.Bound) {
