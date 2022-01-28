@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,6 +11,7 @@ package ast
 import (
 	"fmt"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
@@ -25,6 +26,7 @@ type Codegen struct {
 	Packages map[string]*Package
 	Stack    []Compilation
 	Types    map[types.ID]*TypeInfo
+	Native   map[string]*circuit.Circuit
 }
 
 // NewCodegen creates a new compilation.
@@ -37,6 +39,7 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 		Package:  pkg,
 		Packages: packages,
 		Types:    make(map[types.ID]*TypeInfo),
+		Native:   make(map[string]*circuit.Circuit),
 	}
 }
 

@@ -346,9 +346,16 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	dir := path.Dir(loc.Source)
 	fp := path.Join(dir, name)
-	circ, err := circuit.Parse(fp)
-	if err != nil {
-		return nil, nil, ctx.Errorf(loc, "failed to parse circuit: %s", err)
+
+	var err error
+
+	circ, ok := ctx.Native[fp]
+	if !ok {
+		circ, err = circuit.Parse(fp)
+		if err != nil {
+			return nil, nil, ctx.Errorf(loc, "failed to parse circuit: %s", err)
+		}
+		ctx.Native[fp] = circ
 	}
 
 	if len(circ.Inputs) < len(args) {
