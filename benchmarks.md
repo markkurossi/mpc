@@ -419,6 +419,24 @@ Max permanent wires: 53768930, cached circuits: 26
 #gates=844095703 (XOR=542214087 XNOR=29105707 AND=272261909 OR=494216 INV=19784) #w=868102769
 ```
 
+Compiler optimizations:
+
+```
+┌─────────────┬─────────────────┬────────┬───────┐
+│ Op          │            Time │      % │  Xfer │
+├─────────────┼─────────────────┼────────┼───────┤
+│ Compile     │    2.257813981s │  2.57% │       │
+│ Init        │      1.681455ms │  0.00% │    0B │
+│ OT Init     │    281.670059ms │  0.32% │  16kB │
+│ Peer Inputs │    4.026191293s │  4.58% │ 667kB │
+│ Garble      │ 1m21.278656046s │ 92.52% │  15GB │
+│ Result      │      1.402231ms │  0.00% │   8kB │
+│ Total       │ 1m27.847415065s │        │  15GB │
+└─────────────┴─────────────────┴────────┴───────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830082709 (XOR=533261481 XNOR=28815787 AND=267491441 OR=494216 INV=19784 xor=562077268 !xor=268005441 levels=10548 width=1796) #w=853799279
+```
+
 
 ## RSA signature computation
 
