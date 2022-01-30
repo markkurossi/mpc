@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -49,7 +49,7 @@ func (t *Timing) Print(xfer string) {
 		return
 	}
 
-	tab := tabulate.New(tabulate.Unicode)
+	tab := tabulate.New(tabulate.UnicodeLight)
 	tab.Header("Op").SetAlign(tabulate.ML)
 	tab.Header("Time").SetAlign(tabulate.MR)
 	tab.Header("%").SetAlign(tabulate.MR)
