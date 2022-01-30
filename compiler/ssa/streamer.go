@@ -25,9 +25,7 @@ import (
 
 // StreamCircuit streams the program circuit into the P2P connection.
 func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
-	inputs *big.Int) (circuit.IO, []*big.Int, error) {
-
-	timing := circuit.NewTiming()
+	inputs *big.Int, timing *circuit.Timing) (circuit.IO, []*big.Int, error) {
 
 	var key [32]byte
 	_, err := rand.Read(key[:])
@@ -546,6 +544,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 	}
 
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Garble", []string{circuit.FileSize(xfer.Sum()).String()})
+
 	result := new(big.Int)
 
 	op, err := conn.ReceiveUint32()
@@ -583,7 +585,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
-	timing.Sample("Eval", []string{circuit.FileSize(xfer.Sum()).String()})
+	timing.Sample("Result", []string{circuit.FileSize(xfer.Sum()).String()})
 
 	if params.Verbose {
 		timing.Print(circuit.FileSize(conn.Stats.Sum()).String())

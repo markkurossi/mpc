@@ -111,6 +111,8 @@ func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
 func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	inputFlag []string) (circuit.IO, []*big.Int, error) {
 
+	timing := circuit.NewTiming()
+
 	logger := utils.NewLogger(os.Stdout)
 	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source, nil))
 	if err != nil {
@@ -123,6 +125,8 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	if err != nil {
 		return nil, nil, err
 	}
+
+	timing.Sample("Compile", nil)
 
 	if len(program.Inputs) != 2 {
 		return nil, nil,
@@ -139,7 +143,7 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	fmt.Printf(" - Out: %s\n", program.Outputs)
 	fmt.Printf(" -  In: %s\n", inputFlag)
 
-	return program.StreamCircuit(conn, c.params, input)
+	return program.StreamCircuit(conn, c.params, input, timing)
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
