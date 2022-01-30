@@ -38,39 +38,39 @@ func BenchmarkLabelXor(b *testing.B) {
 
 func TestLabel(t *testing.T) {
 	label := &Label{
-		d0: 0xffffffffffffffff,
-		d1: 0xffffffffffffffff,
+		D0: 0xffffffffffffffff,
+		D1: 0xffffffffffffffff,
 	}
 
 	label.SetS(true)
-	if label.d0 != 0xffffffffffffffff {
+	if label.D0 != 0xffffffffffffffff {
 		t.Fatal("Failed to set S-bit")
 	}
 
 	label.SetS(false)
-	if label.d0 != 0x7fffffffffffffff {
-		t.Fatalf("Failed to clear S-bit: %x", label.d0)
+	if label.D0 != 0x7fffffffffffffff {
+		t.Fatalf("Failed to clear S-bit: %x", label.D0)
 	}
 
 	label = &Label{
-		d1: 0xffffffffffffffff,
+		D1: 0xffffffffffffffff,
 	}
 	label.Mul2()
-	if label.d0 != 0x1 {
-		t.Fatalf("Mul2 d0 failed")
+	if label.D0 != 0x1 {
+		t.Fatalf("Mul2 D0 failed")
 	}
-	if label.d1 != 0xfffffffffffffffe {
-		t.Fatalf("Mul2 d1 failed: %x", label.d1)
+	if label.D1 != 0xfffffffffffffffe {
+		t.Fatalf("Mul2 D1 failed: %x", label.D1)
 	}
 
 	label = &Label{
-		d1: 0xffffffffffffffff,
+		D1: 0xffffffffffffffff,
 	}
 	label.Mul4()
-	if label.d0 != 0x3 {
-		t.Fatalf("Mul4 d0 failed")
+	if label.D0 != 0x3 {
+		t.Fatalf("Mul4 D0 failed")
 	}
-	if label.d1 != 0xfffffffffffffffc {
-		t.Fatalf("Mul4 d1 failed")
+	if label.D1 != 0xfffffffffffffffc {
+		t.Fatalf("Mul4 D1 failed")
 	}
 }
