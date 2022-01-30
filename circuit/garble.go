@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/markkurossi/mpc/ot"
@@ -85,7 +86,7 @@ func makeK(a, b ot.Label, t uint32) ot.Label {
 }
 
 // Hash function for half gates: Hπ(x, i) to be π(K) ⊕ K where K = 2x ⊕ i
-func encryptHalf(alg cipher.Block, x ot.Label, i uint32,
+func encryptHalfReference(alg cipher.Block, x ot.Label, i uint32,
 	data *ot.LabelData) ot.Label {
 
 	k := makeKHalf(x, i)
@@ -97,6 +98,42 @@ func encryptHalf(alg cipher.Block, x ot.Label, i uint32,
 	pi.SetData(data)
 
 	pi.Xor(k)
+
+	return pi
+}
+
+// Optimized version of encryptHalfReference. Label operations are
+// inlined below, producing about 11% performance improvements.
+func encryptHalf(alg cipher.Block, x ot.Label, i uint32,
+	data *ot.LabelData) ot.Label {
+
+	// k := makeKHalf(x, i) {
+	k := x
+	//   k.Mul2()
+	k.D0 <<= 1
+	k.D0 |= (k.D1 >> 63)
+	k.D1 <<= 1
+	//   k.Xor(ot.NewTweak(i))
+	k.D1 ^= uint64(i)
+	// }
+
+	// k.GetData(data) {
+	binary.BigEndian.PutUint64(data[0:8], k.D0)
+	binary.BigEndian.PutUint64(data[8:16], k.D1)
+	// }
+
+	alg.Encrypt(data[:], data[:])
+
+	var pi ot.Label
+	// pi.SetData(data) {
+	pi.D0 = binary.BigEndian.Uint64((*data)[0:8])
+	pi.D1 = binary.BigEndian.Uint64((*data)[8:16])
+	// }
+
+	// pi.Xor(k) {
+	pi.D0 ^= k.D0
+	pi.D1 ^= k.D1
+	// }
 
 	return pi
 }
