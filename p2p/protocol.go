@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,21 +13,24 @@ import (
 )
 
 const (
-	writeBufSize = 512 * 1024
+	numBuffers   = 3
+	writeBufSize = 64 * 1024
 	readBufSize  = 1024 * 1024
 )
 
 // Conn implements a protocol connection.
 type Conn struct {
-	closer    io.Closer
+	conn      io.ReadWriter
 	WriteBuf  []byte
 	WritePos  int
-	writer    io.ReadWriter
 	ReadBuf   []byte
 	ReadStart int
 	ReadEnd   int
-	reader    io.ReadWriter
 	Stats     IOStats
+
+	fromWriter chan []byte
+	toWriter   chan []byte
+	writerErr  error
 }
 
 // IOStats implements I/O statistics.
@@ -60,15 +63,34 @@ func (stats IOStats) Sum() uint64 {
 
 // NewConn creates a new connection around the argument connection.
 func NewConn(conn io.ReadWriter) *Conn {
-	closer, _ := conn.(io.Closer)
-
-	return &Conn{
-		closer:   closer,
-		WriteBuf: make([]byte, writeBufSize),
-		ReadBuf:  make([]byte, readBufSize),
-		writer:   conn,
-		reader:   conn,
+	c := &Conn{
+		conn:       conn,
+		ReadBuf:    make([]byte, readBufSize),
+		fromWriter: make(chan []byte, numBuffers),
+		toWriter:   make(chan []byte, numBuffers),
 	}
+
+	go c.writer()
+
+	c.WriteBuf = <-c.fromWriter
+
+	return c
+}
+
+func (c *Conn) writer() {
+	for i := 0; i < numBuffers; i++ {
+		c.fromWriter <- make([]byte, writeBufSize)
+	}
+
+	for buf := range c.toWriter {
+		n, err := c.conn.Write(buf)
+		c.Stats.Sent += uint64(n)
+		if err != nil {
+			c.writerErr = err
+		}
+		c.fromWriter <- buf[0:cap(buf)]
+	}
+	close(c.fromWriter)
 }
 
 // NeedSpace ensures the write buffer has space for count bytes. The
@@ -83,10 +105,15 @@ func (c *Conn) NeedSpace(count int) error {
 // Flush flushed any pending data in the connection.
 func (c *Conn) Flush() error {
 	if c.WritePos > 0 {
-		n, err := c.writer.Write(c.WriteBuf[0:c.WritePos])
-		c.Stats.Sent += uint64(n)
+		c.toWriter <- c.WriteBuf[0:c.WritePos]
+
+		next := <-c.fromWriter
+		if c.writerErr != nil {
+			return c.writerErr
+		}
+
+		c.WriteBuf = next
 		c.WritePos = 0
-		return err
 	}
 	return nil
 }
@@ -103,7 +130,7 @@ func (c *Conn) Fill(n int) error {
 		c.ReadEnd = 0
 	}
 	for c.ReadStart+n > c.ReadEnd {
-		got, err := c.reader.Read(c.ReadBuf[c.ReadEnd:])
+		got, err := c.conn.Read(c.ReadBuf[c.ReadEnd:])
 		if err != nil {
 			return err
 		}
@@ -118,8 +145,16 @@ func (c *Conn) Close() error {
 	if err := c.Flush(); err != nil {
 		return err
 	}
-	if c.closer != nil {
-		return c.closer.Close()
+	// Wait that flush completes.
+	close(c.toWriter)
+	for range <-c.fromWriter {
+	}
+	if c.writerErr != nil {
+		return c.writerErr
+	}
+	closer, ok := c.conn.(io.Closer)
+	if ok {
+		return closer.Close()
 	}
 	return nil
 }
