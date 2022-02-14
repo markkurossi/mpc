@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -140,7 +140,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if false { // XXX
+	if false { // XXX Peephole liveness analysis is broken.
 		err = program.Peephole()
 		if err != nil {
 			return nil, nil, err
