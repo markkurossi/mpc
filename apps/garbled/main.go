@@ -68,7 +68,7 @@ func main() {
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	doc := flag.String("doc", "",
-		"generate documentation about argument files to the argument directory")
+		"generate documentation about files to the argument directory")
 	analyze := flag.Bool("analyze", false, "analyze circuits")
 	flag.Parse()
 
@@ -106,6 +106,10 @@ func main() {
 	params.CircAnalyze = *analyze
 
 	if len(*doc) > 0 {
+		if len(flag.Args()) == 0 {
+			fmt.Printf("no files specified\n")
+			os.Exit(1)
+		}
 		doc, err := NewHTMLDoc(*doc)
 		if err != nil {
 			log.Fatal(err)

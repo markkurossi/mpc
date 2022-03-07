@@ -57,7 +57,7 @@ func (doc *HTMLDoc) New(name string) (Output, error) {
 
 // Index implements Documenter.Index.
 func (doc *HTMLDoc) Index(pkgs []*Package) error {
-	file := path.Join(doc.dir, "index.html")
+	file := path.Join(doc.dir, "apidoc.html")
 	f, err := os.Create(file)
 	if err != nil {
 		return err
@@ -262,7 +262,7 @@ func header(out io.Writer) error {
         <div class="left-column">
           <div style="text-align: center; display: inline-block;
                       padding: 10px;">
-            <img src="logo.png" width="64" align="middle"><br>MPCL
+            <img src="mpcl.png" width="64" align="middle"><br>MPCL
           </div>
         </div>
         <div class="article-column">
