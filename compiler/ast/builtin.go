@@ -358,7 +358,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 		ctx.Native[fp] = circ
 	}
 
-	if len(circ.Inputs) < len(args) {
+	if len(circ.Inputs) > len(args) {
 		return nil, nil, ctx.Errorf(loc,
 			"not enought argument in call to native")
 	} else if len(circ.Inputs) < len(args) {
