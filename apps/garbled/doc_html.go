@@ -264,6 +264,10 @@ func header(out io.Writer) error {
                       padding: 10px;">
             <img src="mpcl.png" width="64" align="middle"><br>MPCL
           </div>
+          <ul>
+            <li><a href="index.html">MPCL Documentation</a>
+            <li><a href="https://github.com/markkurossi/mpc">GitHub</a>
+          </ul>
         </div>
         <div class="article-column">
 `)
