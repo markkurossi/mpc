@@ -3,9 +3,10 @@
 Multi-Party Computation Language is a high-level programming language
 that implements secure two-party computation with [Garbled
 circuit](https://en.wikipedia.org/wiki/Garbled_circuit) protocol. The
-language is heavily inspired by the [Go](https://golang.org)
-programming language. However, it is not using the Go's compiler or
-any other related componets.
+[Go](https://golang.org) programming language highly inspires the
+MCPL. Therefore, it is easy to use existing Go functions and programs
+in MPCL with minor modifications. However, the goal is not to make
+MPCL fully compatible with Go.
 
 ## Basic Application Invocation
 
