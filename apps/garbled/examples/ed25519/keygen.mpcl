@@ -1,6 +1,6 @@
 // -*- go -*-
 
-// This example implements Ed25519 signature computation. Both parties
+// This example implements Ed25519 key generation. Both parties
 // provide 3 random arguments:
 //  - Seed  [32]byte
 //  - Split [64]byte
