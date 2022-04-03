@@ -1,10 +1,10 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
-// Ed25519 signature algorithm in MPCL. This file is derived from Go's
-// crypto/ed25519/internal/edwards25519 package. The original
-// copyright notice follows:
+// Ed25519 signature algorithm in MPCL. This file is derived from the
+// crypto/ed25519/internal/edwards25519 package of Go 1.16.9. The
+// original copyright notice is as follows:
 //
 // Copyright 2016 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -247,7 +247,6 @@ func FeIsNonZero(f *FieldElement) int32 {
 	for i := 0; i < len(s); i++ {
 		x |= s[i]
 	}
-
 	x |= x >> 4
 	x |= x >> 2
 	x |= x >> 1
@@ -740,7 +739,7 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 	FeOne(&p.Z)
 	FeSquare(&u, &p.Y)
 	FeMul(&v, &u, &d)
-	FeSub(&u, &u, &p.Z) // y = y^2-1
+	FeSub(&u, &u, &p.Z) // u = y^2-1
 	FeAdd(&v, &v, &p.Z) // v = dy^2+1
 
 	FeSquare(&v3, &v)
