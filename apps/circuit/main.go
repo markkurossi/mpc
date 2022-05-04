@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -17,18 +17,12 @@ import (
 )
 
 func main() {
-	render := flag.Bool("r", false, "Render circuit")
 	flag.Parse()
 
 	for _, file := range flag.Args() {
 		c, err := circuit.Parse(file)
 		if err != nil {
 			log.Fatal(err)
-		}
-
-		if *render {
-			c.Render()
-			continue
 		}
 
 		fmt.Printf("digraph circuit\n{\n")
