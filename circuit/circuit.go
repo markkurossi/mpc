@@ -354,7 +354,7 @@ func (c *Circuit) AssignLevels() {
 
 	var max Level
 
-	for _, gate := range c.Gates {
+	for idx, gate := range c.Gates {
 		level := levels[gate.Input0]
 		if gate.Op != INV {
 			l1 := levels[gate.Input1]
@@ -362,7 +362,7 @@ func (c *Circuit) AssignLevels() {
 				level = l1
 			}
 		}
-		gate.Level = level
+		c.Gates[idx].Level = level
 		countByLevel[level]++
 
 		level++
