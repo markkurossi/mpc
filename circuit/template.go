@@ -17,10 +17,14 @@ var reVar = regexp.MustCompilePOSIX(`{(.?){([^\}]+)}}`)
 
 type Template struct {
 	parts     []*part
-	FloatCvt  func(v float64) interface{}
-	IntCvt    func(v int) interface{}
-	StringCvt func(v string) interface{}
+	FloatCvt  FloatCvt
+	IntCvt    IntCvt
+	StringCvt StringCvt
 }
+
+type FloatCvt func(v float64) float64
+type IntCvt func(v int) float64
+type StringCvt func(v string) string
 
 const (
 	partFloat = iota
@@ -50,9 +54,9 @@ func (p part) String() string {
 
 func NewTemplate(input string) *Template {
 	t := &Template{
-		FloatCvt:  func(v float64) interface{} { return v },
-		IntCvt:    func(v int) interface{} { return v },
-		StringCvt: func(v string) interface{} { return v },
+		FloatCvt:  func(v float64) float64 { return v },
+		IntCvt:    func(v int) float64 { return float64(v) },
+		StringCvt: func(v string) string { return v },
 	}
 	matches := reVar.FindAllStringSubmatchIndex(input, -1)
 	if matches == nil {

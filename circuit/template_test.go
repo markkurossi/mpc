@@ -46,7 +46,7 @@ var tmplXOR = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
 
 func TestTemplate(t *testing.T) {
 	tmpl := NewTemplate(tmplXOR)
-	tmpl.IntCvt = func(v int) interface{} {
+	tmpl.IntCvt = func(v int) float64 {
 		return float64(v) * 25 / 100
 	}
 	fmt.Printf("=> %v\n", tmpl.Expand())

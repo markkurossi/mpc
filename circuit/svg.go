@@ -12,15 +12,36 @@ import (
 )
 
 const (
-	gateWidth  = 25
-	gateHeight = 25
+	gateWidth  = 32
+	gateHeight = 32
+	gatePadX   = 16
+	gatePadY   = 32
 )
+
+type tile struct {
+	gate *Gate
+	idx  int
+	x    float64
+	y    float64
+}
+
+type point struct {
+	x, y float64
+}
+
+type wire struct {
+	from point
+	to   point
+}
 
 func (c *Circuit) Svg(out io.Writer) {
 	c.AssignLevels()
 
 	width := c.Stats[MaxWidth]
 	height := c.Stats[NumLevels]
+	count := len(c.Gates)
+
+	// Compute level widths.
 
 	widths := make([]uint64, height)
 
@@ -35,31 +56,62 @@ func (c *Circuit) Svg(out io.Writer) {
 		widths[y]++
 	}
 
+	// Assing tiles.
+
+	tiles := make([]*tile, count)
+
+	x = 0
+	y = -1
+	lastLevel = 0
+	var leftPad int
+
+	for idx, g := range c.Gates {
+		if idx == 0 || g.Level != lastLevel {
+			lastLevel = g.Level
+			y++
+			x = 0
+
+			leftPad = int(float64(width-widths[y]) / 2 * (gateWidth + gatePadX))
+		}
+		tiles[idx] = &tile{
+			gate: &c.Gates[idx],
+			idx:  idx,
+			x:    float64(leftPad + x*(gateWidth+gatePadX)),
+			y:    float64(y * (gateHeight + gatePadY)),
+		}
+		x++
+	}
+
+	// Render circuit.
+
+	wireStarts := make([]point, c.NumWires)
+
 	fmt.Fprintf(out,
 		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">
   <g fill="none" stroke="#000" stroke-width=".5">
 `,
-		width*gateWidth, height*gateHeight)
+		width*(gateWidth+gatePadX), height*(gateHeight+gatePadY))
 
-	x = int((width - widths[0]) / 2)
-	y = 0
-	lastLevel = 0
+	var wires []wire
 
-	for _, g := range c.Gates {
-		if g.Level != lastLevel {
-			lastLevel = g.Level
-			y++
-			x = int((width - widths[y]) / 2)
-		}
-		g.Svg(out, x*gateWidth, y*gateHeight)
-		x++
+	for _, tile := range tiles {
+		wires = append(wires, tile.gate.Svg(out, tile.x, tile.y, wireStarts)...)
+	}
+
+	for _, w := range wires {
+		fmt.Fprintf(out, `<path d="M %v %v C %v %v %v %v %v %v" />
+`,
+			w.from.x, w.from.y,
+			w.from.x, w.from.y+10,
+			w.to.x, w.to.y-10,
+			w.to.x, w.to.y)
 	}
 
 	fmt.Fprintln(out, "  </g>\n</svg>")
 }
 
-func (g *Gate) Svg(out io.Writer, x, y int) {
-	fmt.Fprintf(out, `<g transform="translate(%d %d)">
+func (g *Gate) Svg(out io.Writer, x, y float64, wireStarts []point) []wire {
+	fmt.Fprintf(out, `<g transform="translate(%v %v)">
 `,
 		x, y)
 
@@ -69,6 +121,36 @@ func (g *Gate) Svg(out io.Writer, x, y int) {
 	}
 	out.Write([]byte(tmpl.Expand()))
 	fmt.Fprintln(out, "</g>")
+
+	wireStarts[g.Output] = point{
+		x: x + gateWidth/2,
+		y: y + gateHeight,
+	}
+
+	var wires []wire
+
+	switch g.Op {
+	case XOR, XNOR, AND, OR:
+		wires = append(wires, wire{
+			from: wireStarts[g.Input1],
+			to: point{
+				x: x + intCvt(65),
+				y: y,
+			},
+		})
+		fallthrough
+
+	case INV:
+		wires = append(wires, wire{
+			from: wireStarts[g.Input0],
+			to: point{
+				x: x + intCvt(35),
+				y: y,
+			},
+		})
+	}
+
+	return wires
 }
 
 func scale(in int) float64 {
@@ -80,6 +162,9 @@ func path(out io.Writer) {
 }
 
 var templates [Count + 1]*Template
+
+var intCvt IntCvt
+var floatCvt FloatCvt
 
 func init() {
 	templates[XOR] = NewTemplate(`<path
@@ -214,10 +299,10 @@ func init() {
 	templates[Count] = NewTemplate(`<path
         d="M {{25}} {{25}} h {{50}} v{{50}} h {{-50}} z" />`)
 
-	floatCvt := func(v float64) interface{} {
+	floatCvt = func(v float64) float64 {
 		return v * gateWidth / 100
 	}
-	intCvt := func(v int) interface{} {
+	intCvt = func(v int) float64 {
 		return float64(v) * gateWidth / 100
 	}
 	for op := XOR; op < Count+1; op++ {
