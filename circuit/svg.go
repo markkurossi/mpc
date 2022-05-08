@@ -181,22 +181,44 @@ func (g *Gate) svg(out io.Writer, x, y float64, ctx *svgCtx) []*wire {
 
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		wire := &wire{
-			from: ctx.wireStarts[g.Input1],
+		x0 := x + intCvt(35)
+		x1 := x + intCvt(65)
+
+		f0 := ctx.wireStarts[g.Input0]
+		f1 := ctx.wireStarts[g.Input1]
+
+		w0 := &wire{
+			from: f0,
 			to: point{
-				x: x + intCvt(65),
+				x: x0,
 				y: y,
 			},
 		}
-		ctx.setWireType(g.Input1, wire)
-		wires = append(wires, wire)
-		fallthrough
+		w1 := &wire{
+			from: f1,
+			to: point{
+				x: x1,
+				y: y,
+			},
+		}
+		ctx.setWireType(g.Input0, w0)
+		ctx.setWireType(g.Input1, w1)
+
+		// The input pin order does not matter in the
+		// visualization. Swap input pins if input wires would cross
+		// each other.
+		if f0.x > f1.x {
+			w0.to, w1.to = w1.to, w0.to
+		}
+
+		wires = append(wires, w0)
+		wires = append(wires, w1)
 
 	case INV:
 		wire := &wire{
 			from: ctx.wireStarts[g.Input0],
 			to: point{
-				x: x + intCvt(35),
+				x: x + intCvt(50),
 				y: y,
 			},
 		}
