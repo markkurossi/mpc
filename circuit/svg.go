@@ -12,6 +12,11 @@ import (
 )
 
 const (
+	ioWidth  = 32
+	ioHeight = 32
+	ioPadX   = 16
+	ioPadY   = 32
+
 	gateWidth  = 32
 	gateHeight = 32
 	gatePadX   = 16
@@ -85,13 +90,58 @@ func (ctx *svgCtx) setWireType(input Wire, w *wire) {
 func (c *Circuit) Svg(out io.Writer) {
 	c.AssignLevels()
 
-	width := c.Stats[MaxWidth]
-	height := c.Stats[NumLevels]
+	cols := c.Stats[MaxWidth]
+	rows := c.Stats[NumLevels]
 	count := len(c.Gates)
+
+	fmt.Printf("")
+
+	// Header.
+
+	ctx := &svgCtx{
+		wireStarts: make([]point, c.NumWires),
+		zero:       InvalidWire,
+		one:        InvalidWire,
+	}
+
+	iw := uint64(c.Inputs.Size() * (ioWidth + ioPadX))
+	ow := uint64(c.Outputs.Size() * (ioWidth + ioPadX))
+
+	width := cols * (gateWidth + gatePadX)
+
+	if iw > width {
+		width = iw
+	}
+	if ow > width {
+		width = ow
+	}
+
+	fmt.Fprintf(out,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">
+  <style><![CDATA[
+  text {
+    font: 10px Verdana, Helvetica, Arial, sans-serif;
+  }
+  ]]></style>
+  <g fill="none" stroke="#000" stroke-width=".5">
+`,
+		width, rows*(gateHeight+gatePadY)+2*(ioHeight+gatePadY))
+
+	// Input wires.
+	leftPad := int((width - iw) / 2)
+	for i := 0; i < c.Inputs.Size(); i++ {
+		p := point{
+			x: float64(leftPad + i*(ioWidth+ioPadX)),
+			y: ioHeight,
+		}
+		ctx.wireStarts[i] = p
+
+		staticInput(out, p.x, p.y, fmt.Sprintf("i%v", i))
+	}
 
 	// Compute level widths.
 
-	widths := make([]uint64, height)
+	widths := make([]uint64, rows)
 
 	var lastLevel Level
 	var x, y int
@@ -111,7 +161,6 @@ func (c *Circuit) Svg(out io.Writer) {
 	x = 0
 	y = -1
 	lastLevel = 0
-	var leftPad int
 
 	for idx, g := range c.Gates {
 		if idx == 0 || g.Level != lastLevel {
@@ -119,38 +168,39 @@ func (c *Circuit) Svg(out io.Writer) {
 			y++
 			x = 0
 
-			leftPad = int(float64(width-widths[y]) / 2 * (gateWidth + gatePadX))
+			leftPad = int((width - widths[y]*(gateWidth+gatePadX)) / 2)
 		}
 		tiles[idx] = &tile{
 			gate: &c.Gates[idx],
 			idx:  idx,
 			x:    float64(leftPad + x*(gateWidth+gatePadX)),
-			y:    float64(y * (gateHeight + gatePadY)),
+			y:    float64(ioHeight + gatePadY + y*(gateHeight+gatePadY)),
 		}
 		x++
 	}
 
 	// Render circuit.
 
-	ctx := &svgCtx{
-		wireStarts: make([]point, c.NumWires),
-	}
-
-	fmt.Fprintf(out,
-		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">
-  <style><![CDATA[
-  text {
-    font: 10px Verdana, Helvetica, Arial, sans-serif;
-  }
-  ]]></style>
-  <g fill="none" stroke="#000" stroke-width=".5">
-`,
-		width*(gateWidth+gatePadX), height*(gateHeight+gatePadY))
-
 	var wires []*wire
 
 	for _, tile := range tiles {
 		wires = append(wires, tile.gate.svg(out, tile.x, tile.y, ctx)...)
+	}
+
+	// Output wires.
+	y++
+	leftPad = int((width - ow) / 2)
+	numOutputs := c.Outputs.Size()
+	for i := 0; i < numOutputs; i++ {
+		p := point{
+			x: float64(leftPad + i*(ioWidth+ioPadX)),
+			y: float64(ioHeight + gatePadY + y*(gateHeight+gatePadY)),
+		}
+		staticOutput(out, p.x, p.y, fmt.Sprintf("o%v", i))
+		wires = append(wires, &wire{
+			from: ctx.wireStarts[c.NumWires-numOutputs+i],
+			to:   p,
+		})
 	}
 
 	for _, w := range wires {
@@ -231,25 +281,34 @@ func (g *Gate) svg(out io.Writer, x, y float64, ctx *svgCtx) []*wire {
 	case XOR:
 		if g.Input0 == g.Input1 {
 			ctx.zero = g.Output
-			g.staticOutput(out, x, y, "0")
+			staticOutput(out, x+gateWidth/2, y+gateHeight, "0")
 		}
 
 	case XNOR:
 		if g.Input0 == g.Input1 {
+			fmt.Printf("*** one!\n")
 			ctx.one = g.Output
-			g.staticOutput(out, x, y, "1")
+			staticOutput(out, x+gateWidth/2, y+gateHeight, "1")
 		}
 	}
 
 	return wires
 }
 
-func (g *Gate) staticOutput(out io.Writer, x, y float64, label string) {
+func staticInput(out io.Writer, x, y float64, label string) {
 	fmt.Fprintf(out, `    <g fill="#000">
       <text x="%v" y="%v" text-anchor="middle">%v</text>
     </g>
 `,
-		x+gateWidth/2, y+gateHeight+10, label)
+		x, y-2, label)
+}
+
+func staticOutput(out io.Writer, x, y float64, label string) {
+	fmt.Fprintf(out, `    <g fill="#000">
+      <text x="%v" y="%v" text-anchor="middle">%v</text>
+    </g>
+`,
+		x, y+10, label)
 }
 
 func scale(in int) float64 {

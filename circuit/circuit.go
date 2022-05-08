@@ -9,6 +9,7 @@ package circuit
 import (
 	"fmt"
 	"io"
+	"math"
 	"math/big"
 	"regexp"
 	"strconv"
@@ -419,6 +420,8 @@ func (g Gate) Inputs() []Wire {
 
 // Wire specifies a wire ID.
 type Wire uint32
+
+const InvalidWire Wire = math.MaxUint32
 
 // ID returns the wire ID as integer.
 func (w Wire) ID() int {
