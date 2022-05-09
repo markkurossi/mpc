@@ -9,6 +9,7 @@ package circuit
 import (
 	"fmt"
 	"io"
+	"sort"
 )
 
 const (
@@ -20,12 +21,12 @@ const (
 	gateWidth  = 32
 	gateHeight = 32
 	gatePadX   = 16
-	gatePadY   = 32
+	gatePadY   = 64
 )
 
 type tile struct {
 	gate *Gate
-	idx  int
+	avg  float64
 	x    float64
 	y    float64
 }
@@ -87,12 +88,32 @@ func (ctx *svgCtx) setWireType(input Wire, w *wire) {
 	}
 }
 
+func (ctx *svgCtx) tileAvgInputX(t *tile) {
+	var count float64
+	switch t.gate.Op {
+	case XOR, XNOR, AND, OR:
+		if t.gate.Input1 != ctx.zero && t.gate.Input1 != ctx.one {
+			count++
+			t.avg += ctx.wireStarts[t.gate.Input1].x
+		}
+		fallthrough
+
+	case INV:
+		if count == 0 ||
+			(t.gate.Input0 != ctx.zero && t.gate.Input0 != ctx.one) {
+			count++
+			t.avg += ctx.wireStarts[t.gate.Input0].x
+		}
+	}
+	t.avg /= count
+	t.avg -= (gateWidth) / 2
+}
+
 func (c *Circuit) Svg(out io.Writer) {
 	c.AssignLevels()
 
 	cols := c.Stats[MaxWidth]
 	rows := c.Stats[NumLevels]
-	count := len(c.Gates)
 
 	fmt.Printf("")
 
@@ -120,7 +141,7 @@ func (c *Circuit) Svg(out io.Writer) {
 		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">
   <style><![CDATA[
   text {
-    font: 10px Verdana, Helvetica, Arial, sans-serif;
+    font: 10px Courier, monospace;
   }
   ]]></style>
   <g fill="none" stroke="#000" stroke-width=".5">
@@ -154,9 +175,10 @@ func (c *Circuit) Svg(out io.Writer) {
 		widths[y]++
 	}
 
-	// Assing tiles.
+	// Render circuit.
 
-	tiles := make([]*tile, count)
+	var tiles []*tile
+	var wires []*wire
 
 	x = 0
 	y = -1
@@ -164,28 +186,30 @@ func (c *Circuit) Svg(out io.Writer) {
 
 	for idx, g := range c.Gates {
 		if idx == 0 || g.Level != lastLevel {
+			wires = append(wires, renderRow(out, int(width),
+				float64(ioHeight+gatePadY+y*(gateHeight+gatePadY)), tiles,
+				ctx)...)
+			tiles = nil
+
 			lastLevel = g.Level
 			y++
 			x = 0
 
 			leftPad = int((width - widths[y]*(gateWidth+gatePadX)) / 2)
 		}
-		tiles[idx] = &tile{
+		tiles = append(tiles, &tile{
 			gate: &c.Gates[idx],
-			idx:  idx,
-			x:    float64(leftPad + x*(gateWidth+gatePadX)),
-			y:    float64(ioHeight + gatePadY + y*(gateHeight+gatePadY)),
-		}
+			// x:    float64(leftPad + x*(gateWidth+gatePadX)),
+			// y:    float64(ioHeight + gatePadY + y*(gateHeight+gatePadY)),
+		})
 		x++
 	}
+	wires = append(wires, renderRow(out, int(width),
+		float64(ioHeight+gatePadY+y*(gateHeight+gatePadY)), tiles, ctx)...)
 
-	// Render circuit.
-
-	var wires []*wire
-
-	for _, tile := range tiles {
-		wires = append(wires, tile.gate.svg(out, tile.x, tile.y, ctx)...)
-	}
+	// for _, tile := range tiles {
+	// 	wires = append(wires, tile.gate.svg(out, tile.x, tile.y, ctx)...)
+	// }
 
 	// Output wires.
 	y++
@@ -208,6 +232,46 @@ func (c *Circuit) Svg(out io.Writer) {
 	}
 
 	fmt.Fprintln(out, "  </g>\n</svg>")
+}
+
+func renderRow(out io.Writer, width int, y float64, tiles []*tile,
+	ctx *svgCtx) []*wire {
+
+	var wires []*wire
+
+	for _, t := range tiles {
+		ctx.tileAvgInputX(t)
+	}
+	sort.Slice(tiles, func(i, j int) bool {
+		return tiles[i].avg < tiles[j].avg
+	})
+
+	// Assign x based on input average and push tiles right.
+	var next float64
+	for _, t := range tiles {
+		if next <= t.avg {
+			t.x = t.avg
+		} else {
+			t.x = next
+		}
+		next = t.x + gateWidth + gatePadX
+	}
+
+	// Starting from the right end, shift tiles left until they are on
+	// screen and not overlapping.
+	next = float64(width) - gateWidth - gatePadX
+	for i := len(tiles) - 1; i >= 0; i-- {
+		if tiles[i].x > next {
+			tiles[i].x = next
+		}
+		next -= gateWidth + gatePadX
+	}
+
+	for _, t := range tiles {
+		wires = append(wires, t.gate.svg(out, t.x, y, ctx)...)
+	}
+
+	return wires
 }
 
 func (g *Gate) svg(out io.Writer, x, y float64, ctx *svgCtx) []*wire {
