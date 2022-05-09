@@ -125,8 +125,8 @@ func (c *Circuit) Svg(out io.Writer) {
 		one:        InvalidWire,
 	}
 
-	iw := uint64(c.Inputs.Size() * (ioWidth + ioPadX))
-	ow := uint64(c.Outputs.Size() * (ioWidth + ioPadX))
+	iw := uint64(ioPadX + c.Inputs.Size()*(ioWidth+ioPadX))
+	ow := uint64(ioPadX + c.Outputs.Size()*(ioWidth+ioPadX))
 
 	width := cols * (gateWidth + gatePadX)
 
@@ -149,7 +149,7 @@ func (c *Circuit) Svg(out io.Writer) {
 		width, rows*(gateHeight+gatePadY)+2*(ioHeight+gatePadY))
 
 	// Input wires.
-	leftPad := int((width - iw) / 2)
+	leftPad := ioPadX + int((width-iw)/2)
 	for i := 0; i < c.Inputs.Size(); i++ {
 		p := point{
 			x: float64(leftPad + i*(ioWidth+ioPadX)),
@@ -207,8 +207,18 @@ func (c *Circuit) Svg(out io.Writer) {
 
 	// Output wires.
 	y++
-	leftPad = int((width - ow) / 2)
 	numOutputs := c.Outputs.Size()
+
+	var oAvg float64
+	for i := 0; i < numOutputs; i++ {
+		oAvg += ctx.wireStarts[c.NumWires-numOutputs+i].x
+	}
+	oAvg /= float64(numOutputs)
+
+	oWidth := float64((numOutputs-1)*(ioWidth+ioPadX) + ioWidth)
+
+	leftPad = int(oAvg-oWidth/2) + ioWidth/2
+
 	for i := 0; i < numOutputs; i++ {
 		p := point{
 			x: float64(leftPad + i*(ioWidth+ioPadX)),
