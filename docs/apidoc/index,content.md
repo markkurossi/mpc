@@ -92,5 +92,8 @@ The garbled application takes the following command line arguemnts:
 `-stream`
 : streaming mode.
 
+`-svg`
+: generate SVG output.
+
 `-v`
 : enabled verbose output.
