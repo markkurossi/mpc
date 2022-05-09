@@ -54,7 +54,7 @@ func (w *wire) svg(out io.Writer) {
 
 	switch w.t {
 	case wireTypeNormal:
-		fmt.Fprintf(out, `<path d="M %v %v C %v %v %v %v %v %v" />
+		fmt.Fprintf(out, `    <path d="M %v %v C %v %v %v %v %v %v" />
 `,
 			w.from.x, w.from.y,
 			w.from.x, w.from.y+10,
@@ -199,17 +199,11 @@ func (c *Circuit) Svg(out io.Writer) {
 		}
 		tiles = append(tiles, &tile{
 			gate: &c.Gates[idx],
-			// x:    float64(leftPad + x*(gateWidth+gatePadX)),
-			// y:    float64(ioHeight + gatePadY + y*(gateHeight+gatePadY)),
 		})
 		x++
 	}
 	wires = append(wires, renderRow(out, int(width),
 		float64(ioHeight+gatePadY+y*(gateHeight+gatePadY)), tiles, ctx)...)
-
-	// for _, tile := range tiles {
-	// 	wires = append(wires, tile.gate.svg(out, tile.x, tile.y, ctx)...)
-	// }
 
 	// Output wires.
 	y++
@@ -389,133 +383,98 @@ var intCvt IntCvt
 var floatCvt FloatCvt
 
 func init() {
-	templates[XOR] = NewTemplate(`      <path
-          d="M {{25}} {{20}}
-             c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
-      <path
-          d="M {{25}} {{25}}
-             c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
-
-      <path
-          d="M {{75}} {{25}}
-             v {{25}}
-             s 0 {{10}} {{-25}} {{25}}" />
-      <path
-          d="M {{25}} {{25}}
-             v {{25}}
-             s 0 {{10}} {{25}} {{25}}" />
-
-      <!-- Wires -->
-      <path
-          d="M {{35}} 0
-             v {{25}}
-             z" />
-      <path
-          d="M {{65}} 0
-             v {{25}}
-             z" />
-      <path
-          d="M {{50}} {{75}}
-             v {{25}}
-             z" />
+	templates[XOR] = NewTemplate(`      <path d="M {{25}} {{20}}
+               c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
+      <path d="M {{25}} {{25}}
+               c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
+      <path d="M {{75}} {{25}}
+               v {{25}}
+               s 0 {{10}} {{-25}} {{25}}" />
+      <path d="M {{25}} {{25}}
+               v {{25}}
+               s 0 {{10}} {{25}} {{25}}" />
+      <path d="M {{35}} 0
+               v {{25}}
+               z" />
+      <path d="M {{65}} 0
+               v {{25}}
+               z" />
+      <path d="M {{50}} {{75}}
+               v {{25}}
+               z" />
 `)
-	templates[XNOR] = NewTemplate(`    <path
-          d="M {{25}} {{20}}
-             c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
-    <path
-          d="M {{25}} {{25}}
-             c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
-
-    <path
-          d="M {{75}} {{25}}
-             v {{25}}
-             s 0 {{10}} {{-25}} {{25}}" />
-    <path
-          d="M {{25}} {{25}}
-             v {{25}}
-             s 0 {{10}} {{25}} {{25}}" />
-
-    <circle
-            cx="{{50}}"
-            cy="{{80}}"
-            r="{{5}}" />
-
-    <path
-          d="M {{35}} 0
-             v {{25}}
-             z" />
-    <path
-          d="M {{65}} 0
-             v {{25}}
-             z" />
-    <path
-          d="M {{50}} {{85}}
-             v {{15}}
-             z" />
+	templates[XNOR] = NewTemplate(`      <path d="M {{25}} {{20}}
+               c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
+      <path d="M {{25}} {{25}}
+               c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
+      <path d="M {{75}} {{25}}
+               v {{25}}
+               s 0 {{10}} {{-25}} {{25}}" />
+      <path d="M {{25}} {{25}}
+               v {{25}}
+               s 0 {{10}} {{25}} {{25}}" />
+      <circle cx="{{50}}" cy="{{80}}" r="{{5}}" />
+      <path d="M {{35}} 0
+               v {{25}}
+               z" />
+      <path d="M {{65}} 0
+               v {{25}}
+               z" />
+      <path d="M {{50}} {{85}}
+               v {{15}}
+               z" />
 `)
 
-	templates[AND] = NewTemplate(`    <path
-          d="M {{25}} {{25}}
-             h {{50}}
-             v {{25}}
-             a {{25}} {{25}} 0 1 1 {{-50}} 0
-             v {{-25}}
-             z" />
-    <path d="M {{35}} 0
-             v {{25}}
-             z" />
-    <path d="M {{65}} 0
-             v {{25}}
-             z" />
-    <path d="M {{50}} {{75}}
-             v {{25}}
-             z" />
+	templates[AND] = NewTemplate(`      <path d="M {{25}} {{25}}
+               h {{50}}
+               v {{25}}
+               a {{25}} {{25}} 0 1 1 {{-50}} 0
+               v {{-25}}
+               z" />
+      <path d="M {{35}} 0
+               v {{25}}
+               z" />
+      <path d="M {{65}} 0
+               v {{25}}
+               z" />
+      <path d="M {{50}} {{75}}
+               v {{25}}
+               z" />
 `)
 
-	templates[OR] = NewTemplate(`    <path
-          d="M {{25}} {{20}}
-             c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
-
-    <path
-          d="M {{75}} {{20}}
-             v {{30}}
-             s 0 {{10}} {{-25}} {{25}}" />
-    <path
-          d="M {{25}} {{20}}
-             v {{30}}
-             s 0 {{10}} {{25}} {{25}}" />
-
-    <path
-          d="M {{35}} 0
-             v {{25}}
-             z" />
-    <path
-          d="M {{65}} 0
-             v {{25}}
-             z" />
-    <path
-          d="M {{50}} {{75}}
-             v {{25}}
-             z" />
+	templates[OR] = NewTemplate(`    <path d="M {{25}} {{20}}
+               c {{10}} {{10}} {{40}} {{10}} {{50}} 0" />
+      <path d="M {{75}} {{20}}
+               v {{30}}
+               s 0 {{10}} {{-25}} {{25}}" />
+      <path d="M {{25}} {{20}}
+               v {{30}}
+               s 0 {{10}} {{25}} {{25}}" />
+      <path d="M {{35}} 0
+               v {{25}}
+              z" />
+      <path d="M {{65}} 0
+               v {{25}}
+               z" />
+      <path d="M {{50}} {{75}}
+               v {{25}}
+               z" />
 `)
 
-	templates[INV] = NewTemplate(`
-    <path d="M {{25}} {{25}}
-             h {{50}}
-             l {{-25}} {{43}}
-             z" />
-    <circle cx="{{50}}"
-            cy="{{73.5}}"
-            r="{{5}}" />
-    <path d="M {{35}} 0
-             v {{25}}
-             z" />
-    <path d="M {{65}} 0
-             v {{25}}
-             z" />
-    <path d="M {{50}} {{79}}
-             v {{21}}
-             z" />
+	templates[INV] = NewTemplate(`      <path d="M {{25}} {{25}}
+               h {{50}}
+               l {{-25}} {{43}}
+               z" />
+      <circle cx="{{50}}" cy="{{73.5}}" r="{{5}}" />
+      <path d="M {{35}} 0
+               v {{25}}
+               z" />
+      <path d="M {{65}} 0
+               v {{25}}
+               z" />
+      <path d="M {{50}} {{79}}
+               v {{21}}
+               z" />
 `)
 
 	templates[Count] = NewTemplate(`<path
