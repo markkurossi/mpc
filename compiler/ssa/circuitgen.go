@@ -63,6 +63,9 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 	if params.CircDotOut != nil {
 		circ.Dot(params.CircDotOut)
 	}
+	if params.CircSvgOut != nil {
+		circ.Svg(params.CircSvgOut)
+	}
 
 	return circ, nil
 }

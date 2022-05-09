@@ -60,6 +60,7 @@ func main() {
 		"circuit format: mpclc, bristol")
 	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
+	svg := flag.Bool("svg", false, "create SVG output")
 	optimize := flag.Int("O", 1, "optimization level")
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDiagnostics := flag.Bool("d", false, "diagnostics output")
@@ -150,8 +151,14 @@ func main() {
 			if *dot {
 				params.CircDotOut, err = makeOutput(arg, "circ.dot")
 				if err != nil {
-					fmt.Printf("Failed to create circuit DOT file: %s\n",
-						err)
+					fmt.Printf("Failed to create circuit DOT file: %s\n", err)
+					return
+				}
+			}
+			if *svg {
+				params.CircSvgOut, err = makeOutput(arg, "circ.svg")
+				if err != nil {
+					fmt.Printf("Failed to crate circuit SVG file: %s\n", err)
 					return
 				}
 			}

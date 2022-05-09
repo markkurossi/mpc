@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -26,6 +26,7 @@ type Params struct {
 	NoCircCompile bool
 	CircOut       io.WriteCloser
 	CircDotOut    io.WriteCloser
+	CircSvgOut    io.WriteCloser
 	CircFormat    string
 	CircAnalyze   bool
 
@@ -60,5 +61,9 @@ func (p *Params) Close() {
 	if p.CircDotOut != nil {
 		p.CircDotOut.Close()
 		p.CircDotOut = nil
+	}
+	if p.CircSvgOut != nil {
+		p.CircSvgOut.Close()
+		p.CircSvgOut = nil
 	}
 }
