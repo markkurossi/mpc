@@ -94,15 +94,15 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	var elementType types.Info
 
 	switch dst.Type.Type {
-	case types.TArray:
-		baseName = dst.Name
-		baseType = dst.Type
-		baseScope = dst.Scope
-		baseBindings = block.Bindings
-
-		dstOffset = 0
-		elementType = *dst.Type.ElementType
-		base = dst
+	// case types.TArray:
+	// 	baseName = dst.Name
+	// 	baseType = dst.Type
+	// 	baseScope = dst.Scope
+	// 	baseBindings = block.Bindings
+	//
+	// 	dstOffset = 0
+	// 	elementType = *dst.Type.ElementType
+	// 	base = dst
 
 	case types.TPtr:
 		elementType = *dst.Type.ElementType
