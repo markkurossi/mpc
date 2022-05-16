@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -365,6 +365,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"no new variables on left side of :=")
 				}
 				lValue = gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
+				if rv.Type.Type == types.TPtr {
+					lValue.PtrInfo = rv.PtrInfo
+				}
 			} else {
 				if !ok {
 					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
@@ -963,6 +966,9 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				result[idx].Type, typeInfo)
 		}
 		v := gen.NewVal(r.Name, typeInfo, ctx.Scope())
+		if result[idx].Type.Type == types.TPtr {
+			v.PtrInfo = result[idx].PtrInfo
+		}
 
 		// The native() returns undefined values.
 		if result[idx].Type.Type == types.TUndefined {
