@@ -109,6 +109,7 @@ func (ctx *svgCtx) tileAvgInputX(t *tile) {
 	t.avg -= (gateWidth) / 2
 }
 
+// Svg creates SVG output of the circuit.
 func (c *Circuit) Svg(out io.Writer) {
 	c.AssignLevels()
 
@@ -194,8 +195,6 @@ func (c *Circuit) Svg(out io.Writer) {
 			lastLevel = g.Level
 			y++
 			x = 0
-
-			leftPad = int((width - widths[y]*(gateWidth+gatePadX)) / 2)
 		}
 		tiles = append(tiles, &tile{
 			gate: &c.Gates[idx],
