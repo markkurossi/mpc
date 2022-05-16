@@ -2,19 +2,30 @@
 
 package main
 
-func bar(val *int32) int {
-	*val = int32(42)
-	return 7
-}
+// func add(arr []int32, inc int32) []int32 {
+// 	result := make([]int32, len(arr))
+// 	copy(result, arr)
+//
+// 	for i := 0; i < len(arr); i++ {
+// 		result[i] += inc
+// 	}
+// 	return result
+// }
 
 // @Test 0 0 = 49
 // @Test 1 2 = 52
-func main(a, b int32) int {
-	var c int32
+func main(a, b int32) []int32 {
+	//arr := make([]int32, 10)
+	//for i := 0; i < 10; i++ {
+	//arr[i] = a
+	//}
 
-	sum := a + b
+	result := make([]int32, 10)
 
-	sum += bar(&c)
+	//var result [10]int32
+	//copy(result, arr)
 
-	return sum + c
+	return result
+
+	//return add(arr, b)
 }
