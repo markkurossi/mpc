@@ -567,28 +567,9 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		typeInfo.ArraySize = length
 		typeInfo.Bits = typeInfo.ElementType.Bits * length
 		typeInfo.MinBits = typeInfo.Bits
+		v := gen.AnonVal(typeInfo)
 
-		// Allocate array from heap.
-		array := gen.NewVal(ctx.HeapVar(), typeInfo, 0)
-		ctx.Package.Bindings.Set(array, nil)
-
-		// Return pointer to array.
-		ptr := gen.AnonVal(types.Info{
-			Type:        types.TPtr,
-			Bits:        array.Type.Bits,
-			MinBits:     array.Type.Bits,
-			ElementType: &array.Type,
-		})
-		ptr.PtrInfo = &ssa.PtrInfo{
-			Name:          array.Name,
-			Bindings:      ctx.Package.Bindings,
-			Scope:         array.Scope,
-			ContainerType: array.Type,
-		}
-
-		fmt.Printf("*** make: => %v\n", ptr)
-
-		return ptr, true, nil
+		return v, true, nil
 	}
 
 	typeInfo.Bits = length
