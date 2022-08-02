@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -34,6 +34,7 @@ type Compiler struct {
 	assigned        []*Gate
 	compiled        []circuit.Gate
 	wiresX          map[string][]*Wire
+	invI0Wire       *Wire
 	zeroWire        *Wire
 	oneWire         *Wire
 }
@@ -56,11 +57,20 @@ func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 	}, nil
 }
 
+// InvI0Wire returns a wire holding value INV(input[0]).
+func (c *Compiler) InvI0Wire() *Wire {
+	if c.invI0Wire == nil {
+		c.invI0Wire = NewWire()
+		c.AddGate(NewINV(c.InputWires[0], c.invI0Wire))
+	}
+	return c.invI0Wire
+}
+
 // ZeroWire returns a wire holding value 0.
 func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
 		c.zeroWire = NewWire()
-		c.AddGate(NewBinary(circuit.XOR, c.InputWires[0], c.InputWires[0],
+		c.AddGate(NewBinary(circuit.AND, c.InputWires[0], c.InvI0Wire(),
 			c.zeroWire))
 		c.zeroWire.Value = Zero
 	}
@@ -71,7 +81,7 @@ func (c *Compiler) ZeroWire() *Wire {
 func (c *Compiler) OneWire() *Wire {
 	if c.oneWire == nil {
 		c.oneWire = NewWire()
-		c.AddGate(NewBinary(circuit.XNOR, c.InputWires[0], c.InputWires[0],
+		c.AddGate(NewBinary(circuit.OR, c.InputWires[0], c.InvI0Wire(),
 			c.oneWire))
 		c.oneWire.Value = One
 	}
