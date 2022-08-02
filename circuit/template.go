@@ -15,6 +15,7 @@ import (
 
 var reVar = regexp.MustCompilePOSIX(`{(.?){([^\}]+)}}`)
 
+// Template defines an expandable template.
 type Template struct {
 	parts     []*part
 	FloatCvt  FloatCvt
@@ -22,8 +23,13 @@ type Template struct {
 	StringCvt StringCvt
 }
 
+// FloatCvt converts a float64 value to float64 value.
 type FloatCvt func(v float64) float64
+
+// IntCvt converts an integer value to float64 value.
 type IntCvt func(v int) float64
+
+// StringCvt converts a string value to string value.
 type StringCvt func(v string) string
 
 const (
@@ -52,6 +58,8 @@ func (p part) String() string {
 	}
 }
 
+// NewTemplate parses the input string and returns the parsed
+// Template.
 func NewTemplate(input string) *Template {
 	t := &Template{
 		FloatCvt:  func(v float64) float64 { return v },
@@ -113,6 +121,7 @@ func NewTemplate(input string) *Template {
 	return t
 }
 
+// Expand expands the template.
 func (t *Template) Expand() string {
 	var b strings.Builder
 

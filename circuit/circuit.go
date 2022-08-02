@@ -421,6 +421,7 @@ func (g Gate) Inputs() []Wire {
 // Wire specifies a wire ID.
 type Wire uint32
 
+// InvalidWire defines a invalid wire ID.
 const InvalidWire Wire = math.MaxUint32
 
 // ID returns the wire ID as integer.
