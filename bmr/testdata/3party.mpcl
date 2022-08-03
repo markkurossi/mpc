@@ -1,0 +1,7 @@
+// -*- go -*-
+
+package main
+
+func main(a, b, e uint1) uint {
+	return a & b & e
+}
