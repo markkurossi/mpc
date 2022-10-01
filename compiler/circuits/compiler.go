@@ -276,7 +276,49 @@ func (c *Compiler) ConstPropagate() {
 	elapsed := time.Since(start)
 
 	if c.Params.Diagnostics && stats.Count() > 0 {
-		fmt.Printf(" - ConstPropagate: %12s: %d/%d (%.2f%%)\n",
+		fmt.Printf(" - ConstPropagate:      %12s: %d/%d (%.2f%%)\n",
+			elapsed, stats.Count(), len(c.Gates),
+			float64(stats.Count())/float64(len(c.Gates))*100)
+	}
+}
+
+// ShortCircuitXORZero short circuits input to output where input is
+// XOR'ed to zero.
+func (c *Compiler) ShortCircuitXORZero() {
+	var stats circuit.Stats
+
+	start := time.Now()
+
+	for _, g := range c.Gates {
+		if g.Op != circuit.XOR {
+			continue
+		}
+		if g.A.Value == Zero && !g.B.IsInput() &&
+			len(g.B.Input.O.Outputs) == 1 {
+
+			g.B.Input.ResetOutput(g.O)
+
+			// Disconnect gate's output wire.
+			g.O = NewWire()
+
+			stats[g.Op]++
+		}
+		if g.B.Value == Zero && !g.A.IsInput() &&
+			len(g.A.Input.O.Outputs) == 1 {
+
+			g.A.Input.ResetOutput(g.O)
+
+			// Disconnect gate's output wire.
+			g.O = NewWire()
+
+			stats[g.Op]++
+		}
+	}
+
+	elapsed := time.Since(start)
+
+	if c.Params.Diagnostics && stats.Count() > 0 || true {
+		fmt.Printf(" - ShortCircuitXORZero: %12s: %d/%d (%.2f%%)\n",
 			elapsed, stats.Count(), len(c.Gates),
 			float64(stats.Count())/float64(len(c.Gates))*100)
 	}
@@ -417,6 +459,11 @@ func MakeWires(bits types.Size) []*Wire {
 func (w *Wire) String() string {
 	return fmt.Sprintf("Wire{%x, Input:%s, Value:%s, Outputs:%v, Output=%v}",
 		w.ID, w.Input, w.Value, w.Outputs, w.Output)
+}
+
+// IsInput tests if the wire is an input wire.
+func (w *Wire) IsInput() bool {
+	return w.Input == nil
 }
 
 // Assign assings wire ID.

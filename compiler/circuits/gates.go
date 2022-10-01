@@ -91,6 +91,11 @@ func (g *Gate) ShortCircuit(o *Wire) {
 	g.O.Outputs = nil
 }
 
+// ResetOutput resets the gate's output with the wire o.
+func (g *Gate) ResetOutput(o *Wire) {
+	g.O = o
+}
+
 // ReplaceInput replaces gate's input wire from with wire to. The
 // function panics if from is not gate's input wire.
 func (g *Gate) ReplaceInput(from, to *Wire) {
