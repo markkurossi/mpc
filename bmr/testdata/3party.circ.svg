@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="160" height="480">
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="384">
   <style><![CDATA[
   text {
     font: 10px Courier, monospace;
@@ -14,20 +14,7 @@
     <g fill="#000">
       <text x="112" y="30" text-anchor="middle">i2</text>
     </g>
-    <g transform="translate(0 96)">
-      <path d="M 8 8
-               h 16
-               l -8 13.76
-               z" />
-      <circle cx="16" cy="23.52" r="1.6" />
-      <path d="M 16 0
-               v 8
-               z" />
-      <path d="M 16 25.28
-               v 6.72
-               z" />
-    </g>
-    <g transform="translate(48 96)">
+    <g transform="translate(24 96)">
       <path d="M 8 8
                h 16
                v 8
@@ -44,51 +31,13 @@
                v 8
                z" />
     </g>
-    <g transform="translate(0 192)">
+    <g transform="translate(60 192)">
       <path d="M 8 8
                h 16
                v 8
                a 8 8 0 1 1 -16 0
                v -8
                z" />
-      <path d="M 11.2 0
-               v 8
-               z" />
-      <path d="M 20.8 0
-               v 8
-               z" />
-      <path d="M 16 24
-               v 8
-               z" />
-    </g>
-    <g transform="translate(72 192)">
-      <path d="M 8 8
-               h 16
-               v 8
-               a 8 8 0 1 1 -16 0
-               v -8
-               z" />
-      <path d="M 11.2 0
-               v 8
-               z" />
-      <path d="M 20.8 0
-               v 8
-               z" />
-      <path d="M 16 24
-               v 8
-               z" />
-    </g>
-    <g transform="translate(36 288)">
-      <path d="M 8 6.4
-               c 3.2 3.2 12.8 3.2 16 0" />
-      <path d="M 8 8
-               c 3.2 3.2 12.8 3.2 16 0" />
-      <path d="M 24 8
-               v 8
-               s 0 3.2 -8 8" />
-      <path d="M 8 8
-               v 8
-               s 0 3.2 8 8" />
       <path d="M 11.2 0
                v 8
                z" />
@@ -100,17 +49,12 @@
                z" />
     </g>
     <g fill="#000">
-      <text x="52" y="394" text-anchor="middle">o0</text>
+      <text x="76" y="298" text-anchor="middle">o0</text>
     </g>
-    <path d="M 16 32 C 16 42 16 86 16 96" />
-    <path d="M 16 32 C 16 42 59.2 86 59.2 96" />
-    <path d="M 64 32 C 64 42 68.8 86 68.8 96" />
-    <path d="M 16 32 C 16 42 11.2 182 11.2 192" />
-    <path d="M 16 128 C 16 138 20.8 182 20.8 192" />
-    <path d="M 64 128 C 64 138 83.2 182 83.2 192" />
-    <path d="M 112 32 C 112 42 92.8 182 92.8 192" />
-    <path d="M 88 224 C 88 234 56.8 278 56.8 288" />
-    <path d="M 16 224 C 16 234 47.2 278 47.2 288" />
-    <path d="M 52 320 C 52 330 52 374 52 384" />
+    <path d="M 16 32 C 16 42 35.2 86 35.2 96" />
+    <path d="M 64 32 C 64 42 44.8 86 44.8 96" />
+    <path d="M 40 128 C 40 138 71.2 182 71.2 192" />
+    <path d="M 112 32 C 112 42 80.8 182 80.8 192" />
+    <path d="M 76 224 C 76 234 76 278 76 288" />
   </g>
 </svg>
