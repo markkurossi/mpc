@@ -490,13 +490,13 @@ Parallel garbling/write:
 
 Optimized circuits from [pkg/math/](pkg/math/):
 
-| Implementation | XOR gates | AND gates | % of circ |
-|:---------------| ---------:|----------:|----------:|
-| add64.circ     |       313 |        63 |           |
-| sub64.circ     |       313 |        63 |           |
-| mul64.circ     |      9707 |      4033 |           |
-| div64.circ     |     24817 |      4664 |           |
-| MPCL a+b       |       251 |        63 |      83.5 |
-| MPCL a-b       |       252 |        65 |      72.2 |
-| MPCL a*b       |      8261 |      4007 |      89.7 |
-| MPCL a/b       |     24515 |      8194 |     100.1 |
+| Implementation | XOR gates | XOR % | !XOR gates | !XOR % |
+|:---------------|----------:|------:|-----------:|-------:|
+| add64.circ     |       313 |       |         63 |        |
+| sub64.circ     |       313 |       |        126 |        |
+| mul64.circ     |      9642 |       |       4033 |        |
+| div64.circ     |     24817 |       |       5109 |        |
+| MPCL a+b       |       251 |  80.2 |         63 |  100.0 |
+| MPCL a-b       |       252 |  80.5 |         65 |   51.6 |
+| MPCL a*b       |      8261 |  85.7 |       4007 |   99.4 |
+| MPCL a/b       |     24515 |  98.8 |       8194 |  160.4 |
