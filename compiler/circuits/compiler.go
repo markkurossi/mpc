@@ -317,7 +317,7 @@ func (c *Compiler) ShortCircuitXORZero() {
 
 	elapsed := time.Since(start)
 
-	if c.Params.Diagnostics && stats.Count() > 0 || true {
+	if c.Params.Diagnostics && stats.Count() > 0 {
 		fmt.Printf(" - ShortCircuitXORZero: %12s: %d/%d (%.2f%%)\n",
 			elapsed, stats.Count(), len(c.Gates),
 			float64(stats.Count())/float64(len(c.Gates))*100)
