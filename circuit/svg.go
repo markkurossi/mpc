@@ -54,12 +54,22 @@ func (w *wire) svg(out io.Writer) {
 
 	switch w.t {
 	case wireTypeNormal:
-		fmt.Fprintf(out, `    <path d="M %v %v C %v %v %v %v %v %v" />
+		midY := w.from.y + (w.to.y-w.from.y)/2 - 5
+		fmt.Fprintf(out, `    <path d="M %v %v
+	         v %v
+	         C %v %v %v %v %v %v
+	         v %v" />
 `,
 			w.from.x, w.from.y,
-			w.from.x, w.from.y+10,
-			w.to.x, w.to.y-10,
-			w.to.x, w.to.y)
+
+			midY-w.from.y,
+
+			w.from.x, midY+10,
+			w.to.x, midY,
+			w.to.x, midY+10,
+
+			w.to.y-midY-10,
+		)
 
 	case wireTypeZero:
 		label = "0"
