@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -39,6 +39,14 @@ func (s Seen) Set(index Wire) error {
 	}
 	s[index] = true
 	return nil
+}
+
+// IsFilename tests if the argument file is a potential circuit
+// filename.
+func IsFilename(file string) bool {
+	return strings.HasSuffix(file, ".circ") ||
+		strings.HasSuffix(file, ".bristol") ||
+		strings.HasSuffix(file, ".mpclc")
 }
 
 // Parse parses the circuit file.

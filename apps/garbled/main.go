@@ -70,7 +70,7 @@ func main() {
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
 	doc := flag.String("doc", "",
 		"generate documentation about files to the argument directory")
-	analyze := flag.Bool("analyze", false, "analyze circuits")
+	objdump := flag.Bool("objdump", false, "print information about objects")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -104,7 +104,16 @@ func main() {
 	if *ssa && !*compile {
 		params.NoCircCompile = true
 	}
-	params.CircAnalyze = *analyze
+	if *objdump {
+		if len(flag.Args()) == 0 {
+			fmt.Printf("no files specified\n")
+			os.Exit(1)
+		}
+		if err := dumpObjects(flag.Args()); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	if len(*doc) > 0 {
 		if len(flag.Args()) == 0 {
@@ -163,9 +172,7 @@ func main() {
 				}
 			}
 		}
-		if strings.HasSuffix(arg, ".circ") ||
-			strings.HasSuffix(arg, ".bristol") ||
-			strings.HasSuffix(arg, ".mpclc") {
+		if circuit.IsFilename(arg) {
 			circ, err = circuit.Parse(arg)
 			if err != nil {
 				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
@@ -209,10 +216,6 @@ func main() {
 
 	if circ != nil {
 		circ.AssignLevels()
-
-		if params.CircAnalyze {
-			circ.Analyze()
-		}
 		if verbose {
 			fmt.Printf("Circuit: %v\n", circ)
 		}

@@ -9,7 +9,6 @@ package ast
 import (
 	"fmt"
 	"path"
-	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
@@ -332,8 +331,7 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return block, []ssa.Value{v}, nil
 
 	default:
-		if strings.HasSuffix(name, ".circ") ||
-			strings.HasSuffix(name, ".mpclc") {
+		if circuit.IsFilename(name) {
 			return nativeCircuit(name, block, ctx, gen, args, loc)
 		}
 		return nil, nil, ctx.Errorf(loc, "unknown native '%s'", name)

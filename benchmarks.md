@@ -496,7 +496,7 @@ Optimized circuits from [pkg/math/](pkg/math/):
 | sub64.circ     |       313 |        63 |           |
 | mul64.circ     |      9707 |      4033 |           |
 | div64.circ     |     24817 |      4664 |           |
-| MPCL a+b       |       316 |        63 |       100 |
-| MPCL a-b       |       317 |        63 |       100 |
-| MPCL a*b       |      8294 |      4005 |      99.3 |
-| MPCL a/b       |     24581 |      8192 |     175.6 |
+| MPCL a+b       |       251 |        63 |      83.5 |
+| MPCL a-b       |       252 |        65 |      72.2 |
+| MPCL a*b       |      8261 |      4007 |      89.7 |
+| MPCL a/b       |     24515 |      8194 |     100.1 |

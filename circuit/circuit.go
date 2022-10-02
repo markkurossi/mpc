@@ -319,8 +319,13 @@ func (c *Circuit) TabulateStats(out io.Writer) {
 	tab.Header("!XOR").SetAlign(tabulate.MR)
 	tab.Header("Wires").SetAlign(tabulate.MR)
 
-	row := tab.Row()
+	c.TabulateRow(tab.Row())
+	tab.Print(out)
+}
 
+// TabulateRow tabulates circuit statistics to the argument tabulation
+// row.
+func (c *Circuit) TabulateRow(row *tabulate.Row) {
 	var sumGates uint64
 	for op := XOR; op < Count; op++ {
 		row.Column(fmt.Sprintf("%v", c.Stats[op]))
@@ -330,8 +335,6 @@ func (c *Circuit) TabulateStats(out io.Writer) {
 	row.Column(fmt.Sprintf("%v", c.Stats[XOR]+c.Stats[XNOR]))
 	row.Column(fmt.Sprintf("%v", c.Stats[AND]+c.Stats[OR]+c.Stats[INV]))
 	row.Column(fmt.Sprintf("%v", c.NumWires))
-
-	tab.Print(out)
 }
 
 // Cost computes the relative computational cost of the circuit.
