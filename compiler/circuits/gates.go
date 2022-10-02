@@ -1,7 +1,7 @@
 //
 // gates.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -40,15 +40,37 @@ func NewBinary(op circuit.Operation, a, b, o *Wire) *Gate {
 	return gate
 }
 
+// NewINV creates a new INV gate.
+func NewINV(i, o *Wire) *Gate {
+	gate := &Gate{
+		Op: circuit.INV,
+		A:  i,
+		O:  o,
+	}
+	i.AddOutput(gate)
+	o.SetInput(gate)
+
+	return gate
+}
+
 func (g *Gate) String() string {
 	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID, g.B.ID, g.O.ID)
 }
 
 // Visit adds gate to the list of pending gates to be compiled.
 func (g *Gate) Visit(c *Compiler) {
-	if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
-		g.Visited = true
-		c.pending = append(c.pending, g)
+	switch g.Op {
+	case circuit.INV:
+		if !g.Dead && !g.Visited && g.A.Assigned() {
+			g.Visited = true
+			c.pending = append(c.pending, g)
+		}
+
+	default:
+		if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
+			g.Visited = true
+			c.pending = append(c.pending, g)
+		}
 	}
 }
 
@@ -67,6 +89,11 @@ func (g *Gate) ShortCircuit(o *Wire) {
 	// Disconnect gate's output wire.
 	g.O.NumOutputs = 0
 	g.O.Outputs = nil
+}
+
+// ResetOutput resets the gate's output with the wire o.
+func (g *Gate) ResetOutput(o *Wire) {
+	g.O = o
 }
 
 // ReplaceInput replaces gate's input wire from with wire to. The
@@ -92,8 +119,14 @@ func (g *Gate) Prune() bool {
 		return false
 	}
 	g.Dead = true
-	g.A.RemoveOutput(g)
-	g.B.RemoveOutput(g)
+	switch g.Op {
+	case circuit.XOR, circuit.XNOR, circuit.AND, circuit.OR:
+		g.B.RemoveOutput(g)
+		fallthrough
+
+	case circuit.INV:
+		g.A.RemoveOutput(g)
+	}
 	return true
 }
 
@@ -111,10 +144,20 @@ func (g *Gate) Compile(c *Compiler) {
 		return
 	}
 	g.Compiled = true
-	c.compiled = append(c.compiled, circuit.Gate{
-		Input0: circuit.Wire(g.A.ID),
-		Input1: circuit.Wire(g.B.ID),
-		Output: circuit.Wire(g.O.ID),
-		Op:     g.Op,
-	})
+	switch g.Op {
+	case circuit.INV:
+		c.compiled = append(c.compiled, circuit.Gate{
+			Input0: circuit.Wire(g.A.ID),
+			Output: circuit.Wire(g.O.ID),
+			Op:     g.Op,
+		})
+
+	default:
+		c.compiled = append(c.compiled, circuit.Gate{
+			Input0: circuit.Wire(g.A.ID),
+			Input1: circuit.Wire(g.B.ID),
+			Output: circuit.Wire(g.O.ID),
+			Op:     g.Op,
+		})
+	}
 }

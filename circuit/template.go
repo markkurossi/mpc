@@ -58,7 +58,8 @@ func (p part) String() string {
 	}
 }
 
-// NewTemplate parses the input data and returns a Template instance.
+// NewTemplate parses the input string and returns the parsed
+// Template.
 func NewTemplate(input string) *Template {
 	t := &Template{
 		FloatCvt:  func(v float64) float64 { return v },

@@ -27,6 +27,7 @@ type Codegen struct {
 	Stack    []Compilation
 	Types    map[types.ID]*TypeInfo
 	Native   map[string]*circuit.Circuit
+	HeapID   int
 }
 
 // NewCodegen creates a new compilation.
@@ -397,6 +398,13 @@ func (ctx *Codegen) Return() *ssa.Block {
 // Caller returns the caller block of the current compilation.
 func (ctx *Codegen) Caller() *ssa.Block {
 	return ctx.Stack[len(ctx.Stack)-1].Caller
+}
+
+// HeapVar returns the name of the next global heap variable.
+func (ctx *Codegen) HeapVar() string {
+	name := fmt.Sprintf("$heap%v", ctx.HeapID)
+	ctx.HeapID++
+	return name
 }
 
 // Compilation contains information about a compilation

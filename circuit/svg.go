@@ -54,12 +54,22 @@ func (w *wire) svg(out io.Writer) {
 
 	switch w.t {
 	case wireTypeNormal:
-		fmt.Fprintf(out, `    <path d="M %v %v C %v %v %v %v %v %v" />
+		midY := w.from.y + (w.to.y-w.from.y)/2 - 5
+		fmt.Fprintf(out, `    <path d="M %v %v
+	         v %v
+	         C %v %v %v %v %v %v
+	         v %v" />
 `,
 			w.from.x, w.from.y,
-			w.from.x, w.from.y+10,
-			w.to.x, w.to.y-10,
-			w.to.x, w.to.y)
+
+			midY-w.from.y,
+
+			w.from.x, midY+10,
+			w.to.x, midY,
+			w.to.x, midY+10,
+
+			w.to.y-midY-10,
+		)
 
 	case wireTypeZero:
 		label = "0"
@@ -109,7 +119,7 @@ func (ctx *svgCtx) tileAvgInputX(t *tile) {
 	t.avg -= (gateWidth) / 2
 }
 
-// Svg creates SVG output of the circuit.
+// Svg creates an SVG output of the circuit.
 func (c *Circuit) Svg(out io.Writer) {
 	c.AssignLevels()
 
@@ -475,10 +485,7 @@ func init() {
                l {{-25}} {{43}}
                z" />
       <circle cx="{{50}}" cy="{{73.5}}" r="{{5}}" />
-      <path d="M {{35}} 0
-               v {{25}}
-               z" />
-      <path d="M {{65}} 0
+      <path d="M {{50}} 0
                v {{25}}
                z" />
       <path d="M {{50}} {{79}}

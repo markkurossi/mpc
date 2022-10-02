@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="384">
+  <style><![CDATA[
+  text {
+    font: 10px Courier, monospace;
+  }
+  ]]></style>
+  <g fill="none" stroke="#000" stroke-width=".5">
+    <g fill="#000">
+      <text x="16" y="30" text-anchor="middle">i0</text>
+    </g>
+    <g fill="#000">
+      <text x="64" y="30" text-anchor="middle">i1</text>
+    </g>
+    <g fill="#000">
+      <text x="112" y="30" text-anchor="middle">i2</text>
+    </g>
+    <g transform="translate(24 96)">
+      <path d="M 8 8
+               h 16
+               v 8
+               a 8 8 0 1 1 -16 0
+               v -8
+               z" />
+      <path d="M 11.2 0
+               v 8
+               z" />
+      <path d="M 20.8 0
+               v 8
+               z" />
+      <path d="M 16 24
+               v 8
+               z" />
+    </g>
+    <g transform="translate(60 192)">
+      <path d="M 8 8
+               h 16
+               v 8
+               a 8 8 0 1 1 -16 0
+               v -8
+               z" />
+      <path d="M 11.2 0
+               v 8
+               z" />
+      <path d="M 20.8 0
+               v 8
+               z" />
+      <path d="M 16 24
+               v 8
+               z" />
+    </g>
+    <g fill="#000">
+      <text x="76" y="298" text-anchor="middle">o0</text>
+    </g>
+    <path d="M 16 32
+	         v 27
+	         C 16 69 35.2 59 35.2 69
+	         v 27" />
+    <path d="M 64 32
+	         v 27
+	         C 64 69 44.8 59 44.8 69
+	         v 27" />
+    <path d="M 40 128
+	         v 27
+	         C 40 165 71.2 155 71.2 165
+	         v 27" />
+    <path d="M 112 32
+	         v 75
+	         C 112 117 80.8 107 80.8 117
+	         v 75" />
+    <path d="M 76 224
+	         v 27
+	         C 76 261 76 251 76 261
+	         v 27" />
+  </g>
+</svg>
