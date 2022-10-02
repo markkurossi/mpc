@@ -28,7 +28,6 @@ type Params struct {
 	CircDotOut    io.WriteCloser
 	CircSvgOut    io.WriteCloser
 	CircFormat    string
-	CircAnalyze   bool
 
 	CircMultArrayTreshold int
 
