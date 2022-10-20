@@ -12,8 +12,30 @@ import (
 	"github.com/markkurossi/mpc/ot"
 )
 
-// Fx implements secure multiplication so that c⊕d = a⋅b.
-func Fx(a, b uint) (c, d uint, err error) {
+// F implements Fgc computation.
+type F struct {
+	p1OT *ot.Sender
+	p2OT *ot.Receiver
+}
+
+// NewF creates a new Fgc with oblivious-transfer with keyBits bits.
+func NewF(keyBits int) (*F, error) {
+	p1OT, err := ot.NewSender(keyBits)
+	if err != nil {
+		return nil, err
+	}
+	p2OT, err := ot.NewReceiver(p1OT.PublicKey())
+	if err != nil {
+		return nil, err
+	}
+	return &F{
+		p1OT: p1OT,
+		p2OT: p2OT,
+	}, nil
+}
+
+// X implements secure multiplication so that c⊕d = a⋅b.
+func (f *F) X(a, b uint) (c, d uint, err error) {
 	// P1 chooses a random r e {0, 1}
 	var buf [1]byte
 	_, err = rand.Read(buf[:])
@@ -26,24 +48,14 @@ func Fx(a, b uint) (c, d uint, err error) {
 	x0 := r
 	x1 := r ^ a
 
-	var p1OT *ot.Sender
-	p1OT, err = ot.NewSender(2048)
-	if err != nil {
-		return
-	}
 	var p1Xfer *ot.SenderXfer
-	p1Xfer, err = p1OT.NewTransfer([]byte{byte(x0)}, []byte{byte(x1)})
+	p1Xfer, err = f.p1OT.NewTransfer([]byte{byte(x0)}, []byte{byte(x1)})
 	if err != nil {
 		return
 	}
 
-	var p2OT *ot.Receiver
-	p2OT, err = ot.NewReceiver(p1OT.PublicKey())
-	if err != nil {
-		return
-	}
 	var p2Xfer *ot.ReceiverXfer
-	p2Xfer, err = p2OT.NewTransfer(b)
+	p2Xfer, err = f.p2OT.NewTransfer(b)
 	if err != nil {
 		return
 	}
