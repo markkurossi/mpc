@@ -1,7 +1,7 @@
 //
 // encryption_block.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2022 Markku Rossi
 //
 // All rights reserved.
 //
@@ -45,7 +45,7 @@ var (
 // padding. A block type BT, a padding string PS, and the data D shall
 // be formatted into an octet string EB, the encryption block.
 //
-//            EB = 00 || BT || PS || 00 || D .           (1)
+//	EB = 00 || BT || PS || 00 || D .           (1)
 func NewEncryptionBlock(bt EncryptionBlockType, blockLen int, data []byte) (
 	[]byte, error) {
 
