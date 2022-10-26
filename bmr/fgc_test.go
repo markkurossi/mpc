@@ -32,3 +32,50 @@ func TestFx(t *testing.T) {
 		}
 	}
 }
+
+func TestFxn(t *testing.T) {
+	f, err := NewF(2048)
+	if err != nil {
+		t.Fatalf("NewF faield: %v", err)
+	}
+
+	s, err := NewLabel()
+	if err != nil {
+		t.Fatalf("NewLabel failed: %s", err)
+	}
+
+	testFxn(t, f, s, 0)
+	testFxn(t, f, s, 1)
+}
+
+func testFxn(t *testing.T, f *F, s Label, bit uint) {
+
+	cArr, dArr, err := f.XK(s[:], bit)
+	if err != nil {
+		t.Fatalf("Fxk(%v, %v) failed: %v", s, 0, err)
+	}
+	if len(cArr) != 1 {
+		t.Fatalf("Postcondition failed: len(c) = %v != 1", len(cArr))
+	}
+	var c uint
+	if cArr[0] != 0 {
+		c = 1
+	}
+
+	d, err := NewLabelFromData(dArr)
+	if err != nil {
+		t.Fatalf("Postcondition failed: NewLabelFromData(%v): %v", dArr, err)
+	}
+
+	fmt.Printf("%v⊕%v=", d, c)
+	d.BitXor(c)
+	fmt.Printf("%v\n", d)
+
+	fmt.Printf("%v⋅%v=", s, bit)
+	s.Mult(bit)
+	fmt.Printf("%v\n", s)
+
+	if !d.Equal(s) {
+		t.Errorf("c⊕d=%v != s⋅b=%v", d, s)
+	}
+}
