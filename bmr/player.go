@@ -19,6 +19,10 @@ const (
 	k = 32
 )
 
+var (
+	_ Peer = &Player{}
+)
+
 // Player implements a multi-party player.
 type Player struct {
 	id         int
@@ -31,6 +35,7 @@ type Player struct {
 
 // Peer is an interface to other multi-party players.
 type Peer interface {
+	FgcFromPeer() error
 }
 
 // NewPlayer creates a new multi-party player.
@@ -60,6 +65,10 @@ func (p *Player) SetCircuit(c *circuit.Circuit) error {
 // AddPeer adds a peer.
 func (p *Player) AddPeer(peer Peer) {
 	p.peers = append(p.peers, peer)
+}
+
+func (p *Player) FgcFromPeer() error {
+	return nil
 }
 
 // offlinePhase implements the BMR Offline Phase (BMR Figure 2 - Page 6).
@@ -148,6 +157,29 @@ func (p *Player) offlinePhase() error {
 	}
 
 	fmt.Printf("lambda: %v\n", p.lambda.Text(2))
+
+	// Step 4: each party P^i calls Fgc with inputs R^i, and λ^i_w,
+	// k^i_w,0, K^i_w,1 for every wire w.
+	for i := 0; i < len(wires); i++ {
+		err = p.fgc(i, &wires[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *Player) fgc(i int, wire *Wire) error {
+	lambda := p.lambda.Bit(i)
+	fmt.Printf("P^%v.Fgc: i=%v, wire=%v, lambda=%v\n", p.id, i, wire, lambda)
+
+	for _, peer := range p.peers {
+		err := peer.FgcFromPeer()
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
