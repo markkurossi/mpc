@@ -7,4 +7,4 @@ require (
 	github.com/markkurossi/text v0.0.0-20211120112602-ba19517ff5d4
 )
 
-require golang.org/x/text v0.3.5 // indirect
+require golang.org/x/text v0.6.0 // indirect
