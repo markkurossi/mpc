@@ -17,7 +17,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"hash"
 	"math/big"
 )
@@ -64,7 +63,6 @@ func (s *COSender) NewTransfer(m0, m1 []byte) (*COSenderXfer, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("a=%v\n", a)
 
 	// A = G->mul_gen(a)
 	//
@@ -78,20 +76,13 @@ func (s *COSender) NewTransfer(m0, m1 []byte) (*COSenderXfer, error) {
 	//  => gen*n + q*m => r=gen*n
 
 	Ax, Ay := curveParams.ScalarBaseMult(a.Bytes())
-	fmt.Printf("A=%v\n  %v\n", Ax, Ay)
-
 	Aax, Aay := curveParams.ScalarMult(Ax, Ay, a.Bytes())
-	fmt.Printf("Aa=%v\n   %v\n", Aax, Aay)
 
 	// BN_usub(point->y, group->field, point->y)
 	// => result = group->field - point->y
 
 	AaInvx := big.NewInt(0).Set(Aax)
 	AaInvy := big.NewInt(0).Sub(curveParams.P, Aay)
-	fmt.Printf("Aa'=%v\n    %v\n", AaInvx, AaInvy)
-
-	x, y := curveParams.Add(Aax, Aay, AaInvx, AaInvy)
-	fmt.Printf("Aa+AaInv=%v\n         %v\n", x, y)
 
 	return &COSenderXfer{
 		sender: s,
@@ -135,8 +126,6 @@ func (s *COSenderXfer) ReceiveB(x, y []byte) error {
 
 	s.e0 = xor(s.kdf(bx, by, 0), s.m0)
 	s.e1 = xor(s.kdf(bax, bay, 0), s.m1)
-
-	fmt.Printf("e0=%x, e1=%x\n", s.e0, s.e1)
 
 	return nil
 }
