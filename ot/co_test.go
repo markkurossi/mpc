@@ -19,15 +19,8 @@ func TestCO(t *testing.T) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender, err := NewCOSender()
-	if err != nil {
-		t.Fatalf("NewCOSender: %v", err)
-	}
-
-	receiver, err := NewCOReceiver(sender.CurveParams())
-	if err != nil {
-		t.Fatalf("NewCOReceiver: %v", err)
-	}
+	sender := NewCOSender()
+	receiver := NewCOReceiver(sender.Curve())
 
 	var l0Buf, l1Buf LabelData
 	l0Data := l0.Bytes(&l0Buf)
@@ -41,18 +34,10 @@ func TestCO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("COReceiver.NewTransfer: %v", err)
 	}
-	err = rXfer.ReceiveA(sXfer.A())
-	if err != nil {
-		t.Fatalf("rXfer.ReceiveA: %v", err)
-	}
-	err = sXfer.ReceiveB(rXfer.B())
-	if err != nil {
-		t.Fatalf("sXfer.ReceiveB: %v", err)
-	}
-	result, err := rXfer.ReceiveE(sXfer.E())
-	if err != nil {
-		t.Fatalf("rXfer.ReceiveE: %v", err)
-	}
+	rXfer.ReceiveA(sXfer.A())
+	sXfer.ReceiveB(rXfer.B())
+	result := rXfer.ReceiveE(sXfer.E())
+
 	fmt.Printf("data0:  %x\n", l0Data)
 	fmt.Printf("data1:  %x\n", l1Data)
 	fmt.Printf("result: %x\n", result)
@@ -62,15 +47,8 @@ func BenchmarkCO(b *testing.B) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender, err := NewCOSender()
-	if err != nil {
-		b.Fatalf("NewCOSender: %v", err)
-	}
-
-	receiver, err := NewCOReceiver(sender.CurveParams())
-	if err != nil {
-		b.Fatalf("NewCOReceiver: %v", err)
-	}
+	sender := NewCOSender()
+	receiver := NewCOReceiver(sender.Curve())
 
 	b.ResetTimer()
 
@@ -88,18 +66,10 @@ func BenchmarkCO(b *testing.B) {
 		if err != nil {
 			b.Fatalf("COReceiver.NewTransfer: %v", err)
 		}
-		err = rXfer.ReceiveA(sXfer.A())
-		if err != nil {
-			b.Fatalf("rXfer.ReceiveA: %v", err)
-		}
-		err = sXfer.ReceiveB(rXfer.B())
-		if err != nil {
-			b.Fatalf("sXfer.ReceiveB: %v", err)
-		}
-		result, err := rXfer.ReceiveE(sXfer.E())
-		if err != nil {
-			b.Fatalf("rXfer.ReceiveE: %v", err)
-		}
+		rXfer.ReceiveA(sXfer.A())
+		sXfer.ReceiveB(rXfer.B())
+		result := rXfer.ReceiveE(sXfer.E())
+
 		var ret int
 		if bit == 0 {
 			ret = bytes.Compare(l0Data[:], result)
