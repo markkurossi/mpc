@@ -30,17 +30,7 @@ type COSender struct {
 	curve elliptic.Curve
 }
 
-// NewCOSender creates a new CO OT sender. The Sender implements the
-// following flow:
-//
-//	Sender				   Receiver
-//	  |						 |
-//	  |------- send A ------>|
-//	  |						 |
-//	  |<----- receive B -----|
-//	  |						 |
-//	  |-------send e{0,1}--->|
-//	  |						 |
+// NewCOSender creates a new CO OT sender.
 func NewCOSender() *COSender {
 	return &COSender{
 		curve: elliptic.P256(),
