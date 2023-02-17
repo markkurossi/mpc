@@ -279,12 +279,10 @@ func (co *CO) Send(wires []Wire) error {
 	// A = G^a
 	Ax, Ay := co.curve.ScalarBaseMult(aBytes)
 
-	err = co.io.SendData(Ax.Bytes())
-	if err != nil {
+	if err := co.io.SendData(Ax.Bytes()); err != nil {
 		return err
 	}
-	err = co.io.SendData(Ay.Bytes())
-	if err != nil {
+	if err := co.io.SendData(Ay.Bytes()); err != nil {
 		return err
 	}
 
@@ -298,17 +296,14 @@ func (co *CO) Send(wires []Wire) error {
 	AaInvy := big.NewInt(0).Sub(curveParams.P, Aay)
 
 	for i := 0; i < len(wires); i++ {
-		data, err := co.io.ReceiveData()
+		Bx, err := ReceiveBigInt(co.io)
 		if err != nil {
 			return err
 		}
-		Bx := big.NewInt(0).SetBytes(data)
-
-		data, err = co.io.ReceiveData()
+		By, err := ReceiveBigInt(co.io)
 		if err != nil {
 			return err
 		}
-		By := big.NewInt(0).SetBytes(data)
 
 		Bx, By = co.curve.ScalarMult(Bx, By, aBytes)
 		Bax, Bay := co.curve.Add(Bx, By, AaInvx, AaInvy)
@@ -317,14 +312,12 @@ func (co *CO) Send(wires []Wire) error {
 
 		wires[i].L0.GetData(&labelData)
 		e0 := xor(kdf(co.hash, Bx, By, uint64(i), co.digest[:]), labelData[:])
-		err = co.io.SendData(e0)
-		if err != nil {
+		if err := co.io.SendData(e0); err != nil {
 			return err
 		}
 		wires[i].L1.GetData(&labelData)
 		e1 := xor(kdf(co.hash, Bax, Bay, uint64(i), co.digest[:]), labelData[:])
-		err = co.io.SendData(e1)
-		if err != nil {
+		if err := co.io.SendData(e1); err != nil {
 			return err
 		}
 	}
@@ -334,20 +327,16 @@ func (co *CO) Send(wires []Wire) error {
 // Receive receives the wire labels with OT based on the flag values.
 func (co *CO) Receive(flags []bool) ([]Label, error) {
 	curveParams := co.curve.Params()
-
 	result := make([]Label, len(flags))
 
-	data, err := co.io.ReceiveData()
+	Ax, err := ReceiveBigInt(co.io)
 	if err != nil {
 		return nil, err
 	}
-	Ax := big.NewInt(0).SetBytes(data)
-
-	data, err = co.io.ReceiveData()
+	Ay, err := ReceiveBigInt(co.io)
 	if err != nil {
 		return nil, err
 	}
-	Ay := big.NewInt(0).SetBytes(data)
 
 	for i := 0; i < len(flags); i++ {
 		// b <= Zp
@@ -361,28 +350,27 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 		if flags[i] {
 			Bx, By = co.curve.Add(Bx, By, Ax, Ay)
 		}
-		err = co.io.SendData(Bx.Bytes())
-		if err != nil {
+		if err := co.io.SendData(Bx.Bytes()); err != nil {
 			return nil, err
 		}
-		err = co.io.SendData(By.Bytes())
-		if err != nil {
+		if err := co.io.SendData(By.Bytes()); err != nil {
 			return nil, err
 		}
 
 		Asx, Asy := co.curve.ScalarMult(Ax, Ay, bBytes)
 
-		// Receive E
-
+		// Receive E. Please, be careful when editing the code below
+		// since the co.digest will be used as data after kdf()
+		// call. Also, data received from co.io can be overridden by
+		// the next call so we do the xor() as soon as we received the
+		// data.
 		data := kdf(co.hash, Asx, Asy, uint64(i), co.digest[:])
-
 		var e []byte
 		if flags[i] {
 			_, err = co.io.ReceiveData()
 			if err != nil {
 				return nil, err
 			}
-
 			e, err := co.io.ReceiveData()
 			if err != nil {
 				return nil, err
@@ -394,7 +382,6 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 				return nil, err
 			}
 			data = xor(data, e)
-
 			_, err := co.io.ReceiveData()
 			if err != nil {
 				return nil, err

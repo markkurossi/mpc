@@ -7,6 +7,10 @@
 
 package ot
 
+import (
+	"math/big"
+)
+
 // IO defines an I/O interface to communicate between peers.
 type IO interface {
 	// SendData sends binary data.
@@ -23,4 +27,13 @@ type IO interface {
 
 	// ReceiveUint32 receives an uint32 value.
 	ReceiveUint32() (int, error)
+}
+
+// ReceiveBigInt receives a bit.Int from the connection.
+func ReceiveBigInt(io IO) (*big.Int, error) {
+	data, err := io.ReceiveData()
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(0).SetBytes(data), nil
 }

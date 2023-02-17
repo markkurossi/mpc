@@ -174,6 +174,22 @@ func BenchmarkOTCO1(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 1, b)
 }
 
+func XBenchmarkOTCO2(b *testing.B) {
+	benchmarkOT(NewCO(), NewCO(), 2, b)
+}
+
+func XBenchmarkOTCO4(b *testing.B) {
+	benchmarkOT(NewCO(), NewCO(), 4, b)
+}
+
+func BenchmarkOTCO8(b *testing.B) {
+	benchmarkOT(NewCO(), NewCO(), 8, b)
+}
+
+func BenchmarkOTCO16(b *testing.B) {
+	benchmarkOT(NewCO(), NewCO(), 16, b)
+}
+
 func BenchmarkOTCO32(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 32, b)
 }
@@ -182,6 +198,6 @@ func BenchmarkOTCO64(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 64, b)
 }
 
-func BenchmarkOTCO128(b *testing.B) {
+func XBenchmarkOTCO128(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 128, b)
 }
