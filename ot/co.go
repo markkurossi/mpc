@@ -115,8 +115,8 @@ func (s *COSenderXfer) ReceiveB(x, y []byte) {
 	bx, by = s.curve.ScalarMult(bx, by, s.a.Bytes())
 	bax, bay := s.curve.Add(bx, by, s.AaInvx, s.AaInvy)
 
-	s.e0 = xor(kdf(s.hash, bx, by, 0), s.m0)
-	s.e1 = xor(kdf(s.hash, bax, bay, 0), s.m1)
+	s.e0 = xor(kdf(s.hash, bx, by, 0, nil), s.m0)
+	s.e1 = xor(kdf(s.hash, bax, bay, 0, nil), s.m1)
 }
 
 // E returns sender's encrypted messages.
@@ -193,7 +193,7 @@ func (r *COReceiverXfer) B() (x, y []byte) {
 func (r *COReceiverXfer) ReceiveE(e0, e1 []byte) []byte {
 	var result []byte
 
-	data := kdf(r.hash, r.Asx, r.Asy, 0)
+	data := kdf(r.hash, r.Asx, r.Asy, 0, nil)
 
 	if r.bit != 0 {
 		result = xor(data, e1)
@@ -203,7 +203,7 @@ func (r *COReceiverXfer) ReceiveE(e0, e1 []byte) []byte {
 	return result
 }
 
-func kdf(hash hash.Hash, x, y *big.Int, id uint64) []byte {
+func kdf(hash hash.Hash, x, y *big.Int, id uint64, digest []byte) []byte {
 	hash.Reset()
 	hash.Write(x.Bytes())
 	hash.Write(y.Bytes())
@@ -212,8 +212,7 @@ func kdf(hash hash.Hash, x, y *big.Int, id uint64) []byte {
 	bo.PutUint64(tmp[:], id)
 	hash.Write(tmp[:])
 
-	// XXX specify argument slice to receive digest.
-	return hash.Sum(nil)
+	return hash.Sum(digest)
 }
 
 func xor(a, b []byte) []byte {
@@ -229,16 +228,18 @@ func xor(a, b []byte) []byte {
 
 // CO implements CO OT as the OT interface.
 type CO struct {
-	curve elliptic.Curve
-	hash  hash.Hash
-	io    IO
+	curve  elliptic.Curve
+	hash   hash.Hash
+	digest []byte
+	io     IO
 }
 
 // NewCO creates a new CO OT implementing the OT interface.
 func NewCO() *CO {
 	return &CO{
-		curve: elliptic.P256(),
-		hash:  sha256.New(),
+		curve:  elliptic.P256(),
+		hash:   sha256.New(),
+		digest: make([]byte, sha256.Size),
 	}
 }
 
@@ -315,13 +316,13 @@ func (co *CO) Send(wires []Wire) error {
 		var labelData LabelData
 
 		wires[i].L0.GetData(&labelData)
-		e0 := xor(kdf(co.hash, Bx, By, uint64(i)), labelData[:])
+		e0 := xor(kdf(co.hash, Bx, By, uint64(i), co.digest[:]), labelData[:])
 		err = co.io.SendData(e0)
 		if err != nil {
 			return err
 		}
 		wires[i].L1.GetData(&labelData)
-		e1 := xor(kdf(co.hash, Bax, Bay, uint64(i)), labelData[:])
+		e1 := xor(kdf(co.hash, Bax, Bay, uint64(i), co.digest[:]), labelData[:])
 		err = co.io.SendData(e1)
 		if err != nil {
 			return err
@@ -373,7 +374,7 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 
 		// Receive E
 
-		data := kdf(co.hash, Asx, Asy, uint64(i))
+		data := kdf(co.hash, Asx, Asy, uint64(i), co.digest[:])
 
 		var e []byte
 		if flags[i] {
@@ -399,9 +400,7 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 				return nil, err
 			}
 		}
-		var labelData LabelData
-		copy(labelData[:], data)
-		result[i].SetData(&labelData)
+		result[i].SetBytes(data)
 	}
 
 	return result, nil
