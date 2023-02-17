@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,10 @@ import (
 	"io"
 
 	"github.com/markkurossi/mpc/ot"
+)
+
+var (
+	_ ot.IO = &Conn{}
 )
 
 const (

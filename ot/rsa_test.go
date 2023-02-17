@@ -1,7 +1,7 @@
 //
 // rsa_test.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -66,14 +66,14 @@ func benchmark(b *testing.B, keySize int) {
 	}
 }
 
-func BenchmarkOT512(b *testing.B) {
+func BenchmarkRSA512(b *testing.B) {
 	benchmark(b, 512)
 }
 
-func BenchmarkOT1024(b *testing.B) {
+func BenchmarkRSA1024(b *testing.B) {
 	benchmark(b, 1024)
 }
 
-func BenchmarkOT2048(b *testing.B) {
+func BenchmarkRSA2048(b *testing.B) {
 	benchmark(b, 2048)
 }

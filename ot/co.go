@@ -15,12 +15,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"math/big"
 )
 
 var (
-	bo = binary.BigEndian
+	bo    = binary.BigEndian
+	_  OT = &CO{}
 )
 
 // COSender implements CO OT sender.
@@ -223,4 +225,184 @@ func xor(a, b []byte) []byte {
 		a[i] ^= b[i]
 	}
 	return a[:l]
+}
+
+// CO implements CO OT as the OT interface.
+type CO struct {
+	curve elliptic.Curve
+	hash  hash.Hash
+	io    IO
+}
+
+// NewCO creates a new CO OT implementing the OT interface.
+func NewCO() *CO {
+	return &CO{
+		curve: elliptic.P256(),
+		hash:  sha256.New(),
+	}
+}
+
+// InitSender initializes the OT sender.
+func (co *CO) InitSender(io IO) error {
+	co.io = io
+
+	return io.SendData([]byte(co.curve.Params().Name))
+}
+
+// InitReceiver initializes the OT receiver.
+func (co *CO) InitReceiver(io IO) error {
+	co.io = io
+
+	name, err := io.ReceiveData()
+	if err != nil {
+		return err
+	}
+	if string(name) != co.curve.Params().Name {
+		return fmt.Errorf("invalid curve %s, expected %s",
+			string(name), co.curve.Params().Name)
+	}
+	return nil
+}
+
+// Send sends the wire labels with OT.
+func (co *CO) Send(wires []Wire) error {
+	curveParams := co.curve.Params()
+
+	// a <- Zp
+	a, err := rand.Int(rand.Reader, curveParams.N)
+	if err != nil {
+		return err
+	}
+	aBytes := a.Bytes()
+
+	// A = G^a
+	Ax, Ay := co.curve.ScalarBaseMult(aBytes)
+
+	err = co.io.SendData(Ax.Bytes())
+	if err != nil {
+		return err
+	}
+	err = co.io.SendData(Ay.Bytes())
+	if err != nil {
+		return err
+	}
+
+	// Aa = A^a
+	Aax, Aay := co.curve.ScalarMult(Ax, Ay, aBytes)
+
+	// a:    {x,y}
+	// a^-1: {x,-y}
+	// AaInv = {Aax, -Aay}
+	AaInvx := big.NewInt(0).Set(Aax)
+	AaInvy := big.NewInt(0).Sub(curveParams.P, Aay)
+
+	for i := 0; i < len(wires); i++ {
+		data, err := co.io.ReceiveData()
+		if err != nil {
+			return err
+		}
+		Bx := big.NewInt(0).SetBytes(data)
+
+		data, err = co.io.ReceiveData()
+		if err != nil {
+			return err
+		}
+		By := big.NewInt(0).SetBytes(data)
+
+		Bx, By = co.curve.ScalarMult(Bx, By, aBytes)
+		Bax, Bay := co.curve.Add(Bx, By, AaInvx, AaInvy)
+
+		var labelData LabelData
+
+		wires[i].L0.GetData(&labelData)
+		e0 := xor(kdf(co.hash, Bx, By, uint64(i)), labelData[:])
+		err = co.io.SendData(e0)
+		if err != nil {
+			return err
+		}
+		wires[i].L1.GetData(&labelData)
+		e1 := xor(kdf(co.hash, Bax, Bay, uint64(i)), labelData[:])
+		err = co.io.SendData(e1)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Receive receives the wire labels with OT based on the flag values.
+func (co *CO) Receive(flags []bool) ([]Label, error) {
+	curveParams := co.curve.Params()
+
+	result := make([]Label, len(flags))
+
+	data, err := co.io.ReceiveData()
+	if err != nil {
+		return nil, err
+	}
+	Ax := big.NewInt(0).SetBytes(data)
+
+	data, err = co.io.ReceiveData()
+	if err != nil {
+		return nil, err
+	}
+	Ay := big.NewInt(0).SetBytes(data)
+
+	for i := 0; i < len(flags); i++ {
+		// b <= Zp
+		b, err := rand.Int(rand.Reader, curveParams.N)
+		if err != nil {
+			return nil, err
+		}
+		bBytes := b.Bytes()
+
+		Bx, By := co.curve.ScalarBaseMult(bBytes)
+		if flags[i] {
+			Bx, By = co.curve.Add(Bx, By, Ax, Ay)
+		}
+		err = co.io.SendData(Bx.Bytes())
+		if err != nil {
+			return nil, err
+		}
+		err = co.io.SendData(By.Bytes())
+		if err != nil {
+			return nil, err
+		}
+
+		Asx, Asy := co.curve.ScalarMult(Ax, Ay, bBytes)
+
+		// Receive E
+
+		data := kdf(co.hash, Asx, Asy, uint64(i))
+
+		var e []byte
+		if flags[i] {
+			_, err = co.io.ReceiveData()
+			if err != nil {
+				return nil, err
+			}
+
+			e, err := co.io.ReceiveData()
+			if err != nil {
+				return nil, err
+			}
+			data = xor(data, e)
+		} else {
+			e, err = co.io.ReceiveData()
+			if err != nil {
+				return nil, err
+			}
+			data = xor(data, e)
+
+			_, err := co.io.ReceiveData()
+			if err != nil {
+				return nil, err
+			}
+		}
+		var labelData LabelData
+		copy(labelData[:], data)
+		result[i].SetData(&labelData)
+	}
+
+	return result, nil
 }

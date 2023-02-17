@@ -11,7 +11,6 @@ package ot
 import (
 	"bytes"
 	"crypto/rand"
-	"fmt"
 	"testing"
 )
 
@@ -30,7 +29,9 @@ func TestCO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("COSender.NewTransfer: %v", err)
 	}
-	rXfer, err := receiver.NewTransfer(1)
+	var bit uint = 1
+
+	rXfer, err := receiver.NewTransfer(bit)
 	if err != nil {
 		t.Fatalf("COReceiver.NewTransfer: %v", err)
 	}
@@ -38,9 +39,15 @@ func TestCO(t *testing.T) {
 	sXfer.ReceiveB(rXfer.B())
 	result := rXfer.ReceiveE(sXfer.E())
 
-	fmt.Printf("data0:  %x\n", l0Data)
-	fmt.Printf("data1:  %x\n", l1Data)
-	fmt.Printf("result: %x\n", result)
+	var ret int
+	if bit == 0 {
+		ret = bytes.Compare(result, l0Data[:])
+	} else {
+		ret = bytes.Compare(result, l1Data[:])
+	}
+	if ret != 0 {
+		t.Errorf("Verify failed")
+	}
 }
 
 func BenchmarkCO(b *testing.B) {
@@ -60,7 +67,7 @@ func BenchmarkCO(b *testing.B) {
 		if err != nil {
 			b.Fatalf("COSender.NewTransfer: %v", err)
 		}
-		var bit uint = 1
+		bit := uint(i % 2)
 
 		rXfer, err := receiver.NewTransfer(bit)
 		if err != nil {
