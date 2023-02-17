@@ -39,19 +39,21 @@ func testOT(sender, receiver OT, t *testing.T) {
 		flags[i] = i%2 == 0
 	}
 
-	pipe := NewPipe()
+	pipe, rPipe := NewPipe()
 
-	go func() {
+	go func(pipe *Pipe) {
 		err := receiver.InitReceiver(pipe)
 		if err != nil {
-			done <- err
 			pipe.Close()
+			pipe.Drain()
+			done <- err
 			return
 		}
 		labels, err := receiver.Receive(flags)
 		if err != nil {
-			done <- err
 			pipe.Close()
+			pipe.Drain()
+			done <- err
 			return
 		}
 		for i := 0; i < len(flags); i++ {
@@ -64,14 +66,15 @@ func testOT(sender, receiver OT, t *testing.T) {
 			if !labels[i].Equal(expected) {
 				err := fmt.Errorf("label %d mismatch %v %v,%v", i,
 					labels[i], wires[i].L0, wires[i].L1)
-				done <- err
 				pipe.Close()
+				pipe.Drain()
+				done <- err
 				return
 			}
 		}
 
 		done <- nil
-	}()
+	}(rPipe)
 
 	err := sender.InitSender(pipe)
 	if err != nil {
@@ -115,11 +118,11 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 		flags[i] = i%2 == 0
 	}
 
-	pipe := NewPipe()
+	pipe, rPipe := NewPipe()
 
 	b.ResetTimer()
 
-	go func() {
+	go func(pipe *Pipe) {
 		for i := 0; i < b.N; i++ {
 			err := receiver.InitReceiver(pipe)
 			if err != nil {
@@ -151,7 +154,7 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 		}
 
 		done <- nil
-	}()
+	}(rPipe)
 
 	for i := 0; i < b.N; i++ {
 		err := sender.InitSender(pipe)

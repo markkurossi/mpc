@@ -29,6 +29,20 @@ type IO interface {
 	ReceiveUint32() (int, error)
 }
 
+// SendString sends a string value.
+func SendString(io IO, str string) error {
+	return io.SendData([]byte(str))
+}
+
+// ReceiveString receives a string value.
+func ReceiveString(io IO) (string, error) {
+	data, err := io.ReceiveData()
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
 // ReceiveBigInt receives a bit.Int from the connection.
 func ReceiveBigInt(io IO) (*big.Int, error) {
 	data, err := io.ReceiveData()

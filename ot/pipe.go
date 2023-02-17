@@ -25,14 +25,21 @@ type Pipe struct {
 }
 
 // NewPipe creates a new in-memory pipe.
-func NewPipe() *Pipe {
-	r, w := io.Pipe()
+func NewPipe() (*Pipe, *Pipe) {
+	ar, aw := io.Pipe()
+	br, bw := io.Pipe()
+
 	return &Pipe{
-		rBuf: make([]byte, 64*1024),
-		wBuf: make([]byte, 64*1024),
-		r:    r,
-		w:    w,
-	}
+			rBuf: make([]byte, 64*1024),
+			wBuf: make([]byte, 64*1024),
+			r:    ar,
+			w:    bw,
+		}, &Pipe{
+			rBuf: make([]byte, 64*1024),
+			wBuf: make([]byte, 64*1024),
+			r:    br,
+			w:    aw,
+		}
 }
 
 // SendData sends binary data.
@@ -57,6 +64,12 @@ func (p *Pipe) SendUint32(val int) error {
 // Flush flushed any pending data in the connection.
 func (p *Pipe) Flush() error {
 	return nil
+}
+
+// Drain consumes all input from the pipe.
+func (p *Pipe) Drain() error {
+	_, err := io.Copy(io.Discard, p.r)
+	return err
 }
 
 // Close closes the pipe.

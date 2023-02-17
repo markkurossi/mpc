@@ -246,21 +246,20 @@ func NewCO() *CO {
 // InitSender initializes the OT sender.
 func (co *CO) InitSender(io IO) error {
 	co.io = io
-
-	return io.SendData([]byte(co.curve.Params().Name))
+	return SendString(io, co.curve.Params().Name)
 }
 
 // InitReceiver initializes the OT receiver.
 func (co *CO) InitReceiver(io IO) error {
 	co.io = io
 
-	name, err := io.ReceiveData()
+	name, err := ReceiveString(io)
 	if err != nil {
 		return err
 	}
-	if string(name) != co.curve.Params().Name {
+	if name != co.curve.Params().Name {
 		return fmt.Errorf("invalid curve %s, expected %s",
-			string(name), co.curve.Params().Name)
+			name, co.curve.Params().Name)
 	}
 	return nil
 }

@@ -19,10 +19,10 @@ func TestPipe(t *testing.T) {
 	testData := []byte("Hello, world!")
 	testInt := 42
 
-	pipe := NewPipe()
+	pipe, rPipe := NewPipe()
 	done := make(chan error)
 
-	go func() {
+	go func(pipe *Pipe) {
 		data, err := pipe.ReceiveData()
 		if err != nil {
 			done <- err
@@ -51,7 +51,7 @@ func TestPipe(t *testing.T) {
 			done <- fmt.Errorf("expected EOF")
 		}
 		done <- nil
-	}()
+	}(rPipe)
 
 	err := pipe.SendData(testData)
 	if err != nil {
