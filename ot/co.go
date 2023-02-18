@@ -236,7 +236,10 @@ func NewCO() *CO {
 // InitSender initializes the OT sender.
 func (co *CO) InitSender(io IO) error {
 	co.io = io
-	return SendString(io, co.curve.Params().Name)
+	if err := SendString(io, co.curve.Params().Name); err != nil {
+		return err
+	}
+	return io.Flush()
 }
 
 // InitReceiver initializes the OT receiver.
@@ -274,6 +277,9 @@ func (co *CO) Send(wires []Wire) error {
 	if err := co.io.SendData(Ay.Bytes()); err != nil {
 		return err
 	}
+	if err := co.io.Flush(); err != nil {
+		return err
+	}
 
 	// Aa = A^a
 	Aax, Aay := co.curve.ScalarMult(Ax, Ay, aBytes)
@@ -309,6 +315,9 @@ func (co *CO) Send(wires []Wire) error {
 		if err := co.io.SendData(e1); err != nil {
 			return err
 		}
+		if err := co.io.Flush(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -342,6 +351,9 @@ func (co *CO) Receive(flags []bool, result []Label) error {
 			return err
 		}
 		if err := co.io.SendData(By.Bytes()); err != nil {
+			return err
+		}
+		if err := co.io.Flush(); err != nil {
 			return err
 		}
 
