@@ -15,7 +15,7 @@ import (
 )
 
 func testOT(sender, receiver OT, t *testing.T) {
-	const size int = 1024
+	const size int = 64
 
 	wires := make([]Wire, size)
 	flags := make([]bool, size)
@@ -68,7 +68,6 @@ func testOT(sender, receiver OT, t *testing.T) {
 				err := fmt.Errorf("label %d mismatch %v %v,%v", i,
 					labels[i], wires[i].L0, wires[i].L1)
 				pipe.Close()
-				pipe.Drain()
 				done <- err
 				return
 			}
@@ -94,6 +93,10 @@ func testOT(sender, receiver OT, t *testing.T) {
 
 func TestOTCO(t *testing.T) {
 	testOT(NewCO(), NewCO(), t)
+}
+
+func TestOTRSA(t *testing.T) {
+	testOT(NewRSA(2048), NewRSA(2048), t)
 }
 
 func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
@@ -205,4 +208,15 @@ func BenchmarkOTCO64(b *testing.B) {
 
 func XBenchmarkOTCO128(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 128, b)
+}
+
+func benchmarkOTRSA(keySize, batchSize int, b *testing.B) {
+	benchmarkOT(NewRSA(keySize), NewRSA(keySize), batchSize, b)
+}
+
+func BenchmarkOTRSA2048_1(b *testing.B) {
+	benchmarkOTRSA(2048, 1, b)
+}
+func BenchmarkOTRSA2048_8(b *testing.B) {
+	benchmarkOTRSA(2048, 8, b)
 }
