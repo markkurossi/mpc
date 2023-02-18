@@ -125,16 +125,14 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 
 	pipe, rPipe := NewPipe()
 
-	b.ResetTimer()
-
 	go func(pipe *Pipe) {
+		err := receiver.InitReceiver(pipe)
+		if err != nil {
+			done <- err
+			pipe.Close()
+			return
+		}
 		for i := 0; i < b.N; i++ {
-			err := receiver.InitReceiver(pipe)
-			if err != nil {
-				done <- err
-				pipe.Close()
-				return
-			}
 			err = receiver.Receive(flags, labels)
 			if err != nil {
 				done <- err
@@ -161,62 +159,57 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 		done <- nil
 	}(rPipe)
 
+	err := sender.InitSender(pipe)
+	if err != nil {
+		b.Fatalf("InitSender: %v", err)
+	}
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
-		err := sender.InitSender(pipe)
-		if err != nil {
-			b.Fatalf("InitSender: %v", err)
-		}
 		err = sender.Send(wires)
 		if err != nil {
 			b.Fatalf("Send: %v", err)
 		}
 	}
 
-	err := <-done
+	err = <-done
 	if err != nil {
 		b.Errorf("receiver failed: %v", err)
 	}
 }
 
-func BenchmarkOTCO1(b *testing.B) {
+func BenchmarkOTCO_1(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 1, b)
 }
 
-func XBenchmarkOTCO2(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 2, b)
-}
-
-func XBenchmarkOTCO4(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 4, b)
-}
-
-func BenchmarkOTCO8(b *testing.B) {
+func BenchmarkOTCO_8(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 8, b)
 }
 
-func BenchmarkOTCO16(b *testing.B) {
+func BenchmarkOTCO_16(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 16, b)
 }
 
-func BenchmarkOTCO32(b *testing.B) {
+func BenchmarkOTCO_32(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 32, b)
 }
 
-func BenchmarkOTCO64(b *testing.B) {
+func BenchmarkOTCO_64(b *testing.B) {
 	benchmarkOT(NewCO(), NewCO(), 64, b)
-}
-
-func XBenchmarkOTCO128(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 128, b)
 }
 
 func benchmarkOTRSA(keySize, batchSize int, b *testing.B) {
 	benchmarkOT(NewRSA(keySize), NewRSA(keySize), batchSize, b)
 }
 
-func BenchmarkOTRSA2048_1(b *testing.B) {
+func BenchmarkOTRSA_2048_1(b *testing.B) {
 	benchmarkOTRSA(2048, 1, b)
 }
-func BenchmarkOTRSA2048_8(b *testing.B) {
+
+func BenchmarkOTRSA_2048_8(b *testing.B) {
 	benchmarkOTRSA(2048, 8, b)
+}
+
+func BenchmarkOTRSA_2048_64(b *testing.B) {
+	benchmarkOTRSA(2048, 64, b)
 }
