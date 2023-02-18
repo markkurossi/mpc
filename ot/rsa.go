@@ -353,19 +353,25 @@ func (r *RSA) Receive(flags []bool, result []Label) error {
 			return err
 		}
 		// Receive random messages.
-		x0, err := ReceiveBigInt(r.io)
-		if err != nil {
-			return err
-		}
-		x1, err := ReceiveBigInt(r.io)
-		if err != nil {
-			return err
-		}
 		var xb *big.Int
 		if flags[i] {
-			xb = x1
+			_, err = r.io.ReceiveData()
+			if err != nil {
+				return err
+			}
+			xb, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
 		} else {
-			xb = x0
+			xb, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
+			_, err = r.io.ReceiveData()
+			if err != nil {
+				return err
+			}
 		}
 
 		// Create and send V.
@@ -379,20 +385,27 @@ func (r *RSA) Receive(flags []bool, result []Label) error {
 		}
 
 		// Receive transfer messages.
-		m0p, err := ReceiveBigInt(r.io)
-		if err != nil {
-			return err
-		}
-		m1p, err := ReceiveBigInt(r.io)
-		if err != nil {
-			return err
-		}
 		var mbp *big.Int
 		if flags[i] {
-			mbp = m1p
+			_, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
+			mbp, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
 		} else {
-			mbp = m0p
+			mbp, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
+			_, err = ReceiveBigInt(r.io)
+			if err != nil {
+				return err
+			}
 		}
+
 		mbBytes := make([]byte, r.messageSize())
 		mbIntBytes := mpint.Sub(mbp, k).Bytes()
 		ofs := len(mbBytes) - len(mbIntBytes)
