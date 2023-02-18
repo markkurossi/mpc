@@ -19,6 +19,7 @@ func testOT(sender, receiver OT, t *testing.T) {
 
 	wires := make([]Wire, size)
 	flags := make([]bool, size)
+	labels := make([]Label, size)
 
 	done := make(chan error)
 
@@ -49,7 +50,7 @@ func testOT(sender, receiver OT, t *testing.T) {
 			done <- err
 			return
 		}
-		labels, err := receiver.Receive(flags)
+		err = receiver.Receive(flags, labels)
 		if err != nil {
 			pipe.Close()
 			pipe.Drain()
@@ -98,6 +99,7 @@ func TestOTCO(t *testing.T) {
 func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 	wires := make([]Wire, batchSize)
 	flags := make([]bool, batchSize)
+	labels := make([]Label, batchSize)
 
 	done := make(chan error)
 
@@ -130,7 +132,7 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 				pipe.Close()
 				return
 			}
-			labels, err := receiver.Receive(flags)
+			err = receiver.Receive(flags, labels)
 			if err != nil {
 				done <- err
 				pipe.Close()

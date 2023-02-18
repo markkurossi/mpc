@@ -314,24 +314,23 @@ func (co *CO) Send(wires []Wire) error {
 }
 
 // Receive receives the wire labels with OT based on the flag values.
-func (co *CO) Receive(flags []bool) ([]Label, error) {
+func (co *CO) Receive(flags []bool, result []Label) error {
 	curveParams := co.curve.Params()
-	result := make([]Label, len(flags))
 
 	Ax, err := ReceiveBigInt(co.io)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	Ay, err := ReceiveBigInt(co.io)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	for i := 0; i < len(flags); i++ {
 		// b <= Zp
 		b, err := rand.Int(rand.Reader, curveParams.N)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		bBytes := b.Bytes()
 
@@ -340,10 +339,10 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 			Bx, By = co.curve.Add(Bx, By, Ax, Ay)
 		}
 		if err := co.io.SendData(Bx.Bytes()); err != nil {
-			return nil, err
+			return err
 		}
 		if err := co.io.SendData(By.Bytes()); err != nil {
-			return nil, err
+			return err
 		}
 
 		Asx, Asy := co.curve.ScalarMult(Ax, Ay, bBytes)
@@ -358,26 +357,26 @@ func (co *CO) Receive(flags []bool) ([]Label, error) {
 		if flags[i] {
 			_, err = co.io.ReceiveData()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			e, err := co.io.ReceiveData()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			data = xor(data, e)
 		} else {
 			e, err = co.io.ReceiveData()
 			if err != nil {
-				return nil, err
+				return err
 			}
 			data = xor(data, e)
 			_, err := co.io.ReceiveData()
 			if err != nil {
-				return nil, err
+				return err
 			}
 		}
 		result[i].SetBytes(data)
 	}
 
-	return result, nil
+	return nil
 }

@@ -19,5 +19,5 @@ type OT interface {
 	Send(wires []Wire) error
 
 	// Receive receives the wire labels with OT based on the flag values.
-	Receive(flags []bool) ([]Label, error)
+	Receive(flags []bool, result []Label) error
 }
