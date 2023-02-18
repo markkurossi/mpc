@@ -1,7 +1,7 @@
 //
 // evaluator.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -105,18 +105,16 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	if verbose {
 		fmt.Printf(" - Querying our inputs...\n")
 	}
-	var w int
 	for i := 0; i < circ.Inputs[1].Size; i++ {
 		if err := conn.SendUint32(OpOT); err != nil {
 			return nil, err
 		}
-		n, err := conn.Receive(receiver, uint(circ.Inputs[0].Size+w),
+		n, err := conn.Receive(receiver, uint(circ.Inputs[0].Size+i),
 			inputs.Bit(i))
 		if err != nil {
 			return nil, err
 		}
-		wires[Wire(circ.Inputs[0].Size+w)].SetBytes(n)
-		w++
+		wires[Wire(circ.Inputs[0].Size+i)].SetBytes(n)
 	}
 	xfer := conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
