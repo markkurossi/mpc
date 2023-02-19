@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -24,8 +24,9 @@ import (
 )
 
 // StreamCircuit streams the program circuit into the P2P connection.
-func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
-	inputs *big.Int, timing *circuit.Timing) (circuit.IO, []*big.Int, error) {
+func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
+	params *utils.Params, inputs *big.Int, timing *circuit.Timing) (
+	circuit.IO, []*big.Int, error) {
 
 	var key [32]byte
 	_, err := rand.Read(key[:])
@@ -105,71 +106,20 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 	timing.Sample("Init", []string{circuit.FileSize(ioStats.Sum()).String()})
 
 	// Init oblivious transfer.
-	sender, err := ot.NewSender(2048)
+	err = oti.InitSender(conn)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	// Send our public key.
-	pub := sender.PublicKey()
-	data := pub.N.Bytes()
-	if err := conn.SendData(data); err != nil {
-		return nil, nil, err
-	}
-	if err := conn.SendUint32(pub.E); err != nil {
-		return nil, nil, err
-	}
-	conn.Flush()
-
 	xfer := conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
 	timing.Sample("OT Init", []string{circuit.FileSize(xfer.Sum()).String()})
 
 	// Peer OTs its inputs.
-	for i := 0; i < prog.Inputs[1].Size; i++ {
-		bit, err := conn.ReceiveUint32()
-		if err != nil {
-			return nil, nil, err
-		}
-		wire := streaming.GetInput(circuit.Wire(bit))
-
-		var m0Buf, m1Buf ot.LabelData
-		m0Data := wire.L0.Bytes(&m0Buf)
-		m1Data := wire.L1.Bytes(&m1Buf)
-
-		xfer, err := sender.NewTransfer(m0Data, m1Data)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		x0, x1 := xfer.RandomMessages()
-		if err := conn.SendData(x0); err != nil {
-			return nil, nil, err
-		}
-		if err := conn.SendData(x1); err != nil {
-			return nil, nil, err
-		}
-		conn.Flush()
-
-		v, err := conn.ReceiveData()
-		if err != nil {
-			return nil, nil, err
-		}
-		xfer.ReceiveV(v)
-
-		m0p, m1p, err := xfer.Messages()
-		if err != nil {
-			return nil, nil, err
-		}
-		if err := conn.SendData(m0p); err != nil {
-			return nil, nil, err
-		}
-		if err := conn.SendData(m1p); err != nil {
-			return nil, nil, err
-		}
-		conn.Flush()
+	err = oti.Send(streaming.GetInputs(prog.Inputs[0].Size,
+		prog.Inputs[1].Size))
+	if err != nil {
+		return nil, nil, err
 	}
-
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
 	timing.Sample("Peer Inputs",
@@ -577,7 +527,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, params *utils.Params,
 		}
 		result.SetBit(result, i, bit)
 	}
-	data = result.Bytes()
+	data := result.Bytes()
 	if err := conn.SendData(data); err != nil {
 		return nil, nil, err
 	}

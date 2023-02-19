@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,6 +14,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -125,13 +126,13 @@ func TestArithmetics(t *testing.T) {
 				gerr := make(chan error)
 
 				go func() {
-					_, err := circuit.Garbler(p2p.NewConn(gio), circ,
-						gInput, false)
+					_, err := circuit.Garbler(p2p.NewConn(gio), ot.NewCO(),
+						circ, gInput, false)
 					gerr <- err
 				}()
 
-				result, err := circuit.Evaluator(p2p.NewConn(eio), circ,
-					eInput, false)
+				result, err := circuit.Evaluator(p2p.NewConn(eio),
+					ot.NewCO(), circ, eInput, false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}
@@ -178,11 +179,13 @@ func BenchmarkMult(b *testing.B) {
 	gerr := make(chan error)
 
 	go func() {
-		_, err := circuit.Garbler(p2p.NewConn(gio), circ, gInput, false)
+		_, err := circuit.Garbler(p2p.NewConn(gio), ot.NewCO(), circ, gInput,
+			false)
 		gerr <- err
 	}()
 
-	_, err = circuit.Evaluator(p2p.NewConn(eio), circ, eInput, false)
+	_, err = circuit.Evaluator(p2p.NewConn(eio), ot.NewCO(), circ, eInput,
+		false)
 	if err != nil {
 		b.Fatalf("Evaluator failed: %s\n", err)
 	}

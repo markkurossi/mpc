@@ -9,7 +9,6 @@
 package circuit
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"math/big"
 
@@ -22,8 +21,8 @@ var (
 )
 
 // Evaluator runs the evaluator on the P2P network.
-func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
-	[]*big.Int, error) {
+func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
+	verbose bool) ([]*big.Int, error) {
 
 	timing := NewTiming()
 
@@ -82,19 +81,7 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 
 	// Init oblivious transfer.
-	pubN, err := conn.ReceiveData()
-	if err != nil {
-		return nil, err
-	}
-	pubE, err := conn.ReceiveUint32()
-	if err != nil {
-		return nil, err
-	}
-	pub := &rsa.PublicKey{
-		N: big.NewInt(0).SetBytes(pubN),
-		E: pubE,
-	}
-	receiver, err := ot.NewReceiver(pub)
+	err = oti.InitReceiver(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -105,16 +92,26 @@ func Evaluator(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	if verbose {
 		fmt.Printf(" - Querying our inputs...\n")
 	}
+	if err := conn.SendUint32(OpOT); err != nil {
+		return nil, err
+	}
+	// Wire offset.
+	if err := conn.SendUint32(circ.Inputs[0].Size); err != nil {
+		return nil, err
+	}
+	// Wire count.
+	if err := conn.SendUint32(circ.Inputs[1].Size); err != nil {
+		return nil, err
+	}
+	conn.Flush()
+	flags := make([]bool, circ.Inputs[1].Size)
 	for i := 0; i < circ.Inputs[1].Size; i++ {
-		if err := conn.SendUint32(OpOT); err != nil {
-			return nil, err
+		if inputs.Bit(i) == 1 {
+			flags[i] = true
 		}
-		n, err := conn.Receive(receiver, uint(circ.Inputs[0].Size+i),
-			inputs.Bit(i))
-		if err != nil {
-			return nil, err
-		}
-		wires[Wire(circ.Inputs[0].Size+i)].SetBytes(n)
+	}
+	if err := oti.Receive(flags, wires[circ.Inputs[0].Size:]); err != nil {
+		return nil, err
 	}
 	xfer := conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats

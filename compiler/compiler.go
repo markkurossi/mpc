@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -17,6 +17,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -97,7 +98,7 @@ func (c *Compiler) compile(source string, in io.Reader) (
 
 // StreamFile compiles the input program and uses the streaming mode
 // to garble and stream the circuit to the evaluator node.
-func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
+func (c *Compiler) StreamFile(conn *p2p.Conn, oti ot.OT, file string,
 	input []string) (circuit.IO, []*big.Int, error) {
 
 	f, err := os.Open(file)
@@ -105,11 +106,11 @@ func (c *Compiler) StreamFile(conn *p2p.Conn, file string,
 		return nil, nil, err
 	}
 	defer f.Close()
-	return c.stream(conn, file, f, input)
+	return c.stream(conn, oti, file, f, input)
 }
 
-func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
-	inputFlag []string) (circuit.IO, []*big.Int, error) {
+func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
+	in io.Reader, inputFlag []string) (circuit.IO, []*big.Int, error) {
 
 	timing := circuit.NewTiming()
 
@@ -143,7 +144,7 @@ func (c *Compiler) stream(conn *p2p.Conn, source string, in io.Reader,
 	fmt.Printf(" - Out: %s\n", program.Outputs)
 	fmt.Printf(" -  In: %s\n", inputFlag)
 
-	return program.StreamCircuit(conn, c.params, input, timing)
+	return program.StreamCircuit(conn, oti, c.params, input, timing)
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,

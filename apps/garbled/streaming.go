@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,10 +15,11 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
-func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
+func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -33,7 +34,8 @@ func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
 		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
 		conn := p2p.NewConn(nc)
-		outputs, result, err := circuit.StreamEvaluator(conn, input, verbose)
+		outputs, result, err := circuit.StreamEvaluator(conn, oti, input,
+			verbose)
 		conn.Close()
 
 		if err != nil && err != io.EOF {
@@ -47,7 +49,9 @@ func streamEvaluatorMode(params *utils.Params, input input, once bool) error {
 	}
 }
 
-func streamGarblerMode(params *utils.Params, input input, args []string) error {
+func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
+	args []string) error {
+
 	if len(args) != 1 || !strings.HasSuffix(args[0], ".mpcl") {
 		return fmt.Errorf("streaming mode takes single MPCL file")
 	}
@@ -59,7 +63,7 @@ func streamGarblerMode(params *utils.Params, input input, args []string) error {
 	defer conn.Close()
 
 	outputs, result, err := compiler.New(params).StreamFile(
-		conn, args[0], input)
+		conn, oti, args[0], input)
 	if err != nil {
 		return err
 	}

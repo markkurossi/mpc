@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,7 +9,6 @@ package circuit
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rsa"
 	"fmt"
 	"math/big"
 	"time"
@@ -47,6 +46,11 @@ func (stream *StreamEval) Get(tmp bool, w int) ot.Label {
 	return stream.wires[w]
 }
 
+// GetInputs gets the specified input wire range.
+func (stream *StreamEval) GetInputs(offset, count int) []ot.Label {
+	return stream.wires[offset : offset+count]
+}
+
 // Set sets the value of the wire.
 func (stream *StreamEval) Set(tmp bool, w int, label ot.Label) {
 	if tmp {
@@ -75,8 +79,8 @@ func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
 }
 
 // StreamEvaluator runs the stream evaluator on the connection.
-func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
-	IO, []*big.Int, error) {
+func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
+	verbose bool) (IO, []*big.Int, error) {
 
 	timing := NewTiming()
 
@@ -147,23 +151,10 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	}
 
 	// Init oblivious transfer.
-	pubN, err := conn.ReceiveData()
+	err = oti.InitReceiver(conn)
 	if err != nil {
 		return nil, nil, err
 	}
-	pubE, err := conn.ReceiveUint32()
-	if err != nil {
-		return nil, nil, err
-	}
-	pub := &rsa.PublicKey{
-		N: big.NewInt(0).SetBytes(pubN),
-		E: pubE,
-	}
-	receiver, err := ot.NewReceiver(pub)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	ioStats := conn.Stats
 	timing.Sample("Init", []string{FileSize(ioStats.Sum()).String()})
 
@@ -171,14 +162,15 @@ func StreamEvaluator(conn *p2p.Conn, inputFlag []string, verbose bool) (
 	if verbose {
 		fmt.Printf(" - Querying our inputs...\n")
 	}
-	for w := 0; w < in2.Size; w++ {
-		n, err := conn.Receive(receiver, uint(in1.Size+w), inputs.Bit(w))
-		if err != nil {
-			return nil, nil, err
+	flags := make([]bool, in2.Size)
+	for i := 0; i < in2.Size; i++ {
+		if inputs.Bit(i) == 1 {
+			flags[i] = true
 		}
-		var label ot.Label
-		label.SetBytes(n)
-		streaming.Set(false, in1.Size+w, label)
+	}
+	inputLabels := streaming.GetInputs(in1.Size, in2.Size)
+	if err := oti.Receive(flags, inputLabels); err != nil {
+		return nil, nil, err
 	}
 	xfer := conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats

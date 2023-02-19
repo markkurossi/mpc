@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2021, 2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -108,6 +108,11 @@ func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
 // GetInput gets the value of the input wire.
 func (stream *Streaming) GetInput(w Wire) ot.Wire {
 	return stream.wires[w]
+}
+
+// GetInputs gets the specified input wire range.
+func (stream *Streaming) GetInputs(offset, count int) []ot.Wire {
+	return stream.wires[offset : offset+count]
 }
 
 // Get gets the value of the wire.

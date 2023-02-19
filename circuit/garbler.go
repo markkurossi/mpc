@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,8 +44,8 @@ func (s FileSize) String() string {
 }
 
 // Garbler runs the garbler on the P2P network.
-func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
-	[]*big.Int, error) {
+func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
+	verbose bool) ([]*big.Int, error) {
 
 	timing := NewTiming()
 	if verbose {
@@ -120,22 +120,10 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 
 	// Init oblivious transfer.
-	sender, err := ot.NewSender(2048)
+	err = oti.InitSender(conn)
 	if err != nil {
 		return nil, err
 	}
-
-	// Send our public key.
-	pub := sender.PublicKey()
-	data := pub.N.Bytes()
-	if err := conn.SendData(data); err != nil {
-		return nil, err
-	}
-	if err := conn.SendUint32(pub.E); err != nil {
-		return nil, err
-	}
-	conn.Flush()
-
 	ioStats = conn.Stats.Sub(ioStats)
 	timing.Sample("OT Init", []string{FileSize(ioStats.Sum()).String()})
 
@@ -161,52 +149,24 @@ func Garbler(conn *p2p.Conn, circ *Circuit, inputs *big.Int, verbose bool) (
 
 		switch op {
 		case OpOT:
-			bit, err := conn.ReceiveUint32()
+			offset, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, err
 			}
-			if !allowedOTs[bit] {
-				return nil, fmt.Errorf("peer can't OT wire %d", bit)
-			}
-			allowedOTs[bit] = false
-
-			wire := garbled.Wires[bit]
-
-			var m0Buf, m1Buf ot.LabelData
-			m0Data := wire.L0.Bytes(&m0Buf)
-			m1Data := wire.L1.Bytes(&m1Buf)
-
-			xfer, err := sender.NewTransfer(m0Data, m1Data)
+			count, err := conn.ReceiveUint32()
 			if err != nil {
 				return nil, err
 			}
-
-			x0, x1 := xfer.RandomMessages()
-			if err := conn.SendData(x0); err != nil {
-				return nil, err
+			for i := 0; i < count; i++ {
+				if !allowedOTs[offset+i] {
+					return nil, fmt.Errorf("peer can't OT wire %d", offset+i)
+				}
+				allowedOTs[offset+i] = false
 			}
-			if err := conn.SendData(x1); err != nil {
-				return nil, err
-			}
-			conn.Flush()
-
-			v, err := conn.ReceiveData()
+			err = oti.Send(garbled.Wires[offset : offset+count])
 			if err != nil {
 				return nil, err
 			}
-			xfer.ReceiveV(v)
-
-			m0p, m1p, err := xfer.Messages()
-			if err != nil {
-				return nil, err
-			}
-			if err := conn.SendData(m0p); err != nil {
-				return nil, err
-			}
-			if err := conn.SendData(m1p); err != nil {
-				return nil, err
-			}
-			conn.Flush()
 			lastOT = time.Now()
 
 		case OpResult:

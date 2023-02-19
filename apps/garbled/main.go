@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -25,6 +25,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -130,11 +131,14 @@ func main() {
 		return
 	}
 
+	//oti := ot.NewRSA(2048)
+	oti := ot.NewCO()
+
 	if *stream {
 		if *evaluator {
-			err = streamEvaluatorMode(params, inputFlag, len(*cpuprofile) > 0)
+			err = streamEvaluatorMode(oti, inputFlag, len(*cpuprofile) > 0)
 		} else {
-			err = streamGarblerMode(params, inputFlag, flag.Args())
+			err = streamGarblerMode(params, oti, inputFlag, flag.Args())
 		}
 		memProfile(*memprofile)
 		if err != nil {
@@ -289,14 +293,14 @@ func main() {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
-		err = evaluatorMode(circ, input, len(*cpuprofile) > 0)
+		err = evaluatorMode(oti, circ, input, len(*cpuprofile) > 0)
 	} else {
 		input, err = circ.Inputs[0].Parse(inputFlag)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 			os.Exit(1)
 		}
-		err = garblerMode(circ, input)
+		err = garblerMode(oti, circ, input)
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -321,7 +325,8 @@ func memProfile(file string) {
 	}
 }
 
-func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
+func evaluatorMode(oti ot.OT, circ *circuit.Circuit, input *big.Int,
+	once bool) error {
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -336,7 +341,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
 		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
 		conn := p2p.NewConn(nc)
-		result, err := circuit.Evaluator(conn, circ, input, verbose)
+		result, err := circuit.Evaluator(conn, oti, circ, input, verbose)
 		conn.Close()
 
 		if err != nil && err != io.EOF {
@@ -350,7 +355,7 @@ func evaluatorMode(circ *circuit.Circuit, input *big.Int, once bool) error {
 	}
 }
 
-func garblerMode(circ *circuit.Circuit, input *big.Int) error {
+func garblerMode(oti ot.OT, circ *circuit.Circuit, input *big.Int) error {
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
@@ -358,7 +363,7 @@ func garblerMode(circ *circuit.Circuit, input *big.Int) error {
 	conn := p2p.NewConn(nc)
 	defer conn.Close()
 
-	result, err := circuit.Garbler(conn, circ, input, verbose)
+	result, err := circuit.Garbler(conn, oti, circ, input, verbose)
 	if err != nil {
 		return err
 	}
