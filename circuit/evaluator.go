@@ -92,9 +92,6 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if verbose {
 		fmt.Printf(" - Querying our inputs...\n")
 	}
-	if err := conn.SendUint32(OpOT); err != nil {
-		return nil, err
-	}
 	// Wire offset.
 	if err := conn.SendUint32(circ.Inputs[0].Size); err != nil {
 		return nil, err

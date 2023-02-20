@@ -20,8 +20,7 @@ import (
 
 // Protocol operation codes.
 const (
-	OpOT = iota
-	OpResult
+	OpResult = iota
 	OpCircuit
 	OpReturn
 )
@@ -128,15 +127,27 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	ioStats = conn.Stats
 	timing.Sample("OT Init", []string{FileSize(xfer.Sum()).String()})
 
-	// Init wires the peer is allowed to OT.
-	allowedOTs := make(map[int]bool)
-	for bit := 0; bit < circ.Inputs[1].Size; bit++ {
-		allowedOTs[circ.Inputs[0].Size+bit] = true
+	// Peer OTs its inputs.
+	offset, err := conn.ReceiveUint32()
+	if err != nil {
+		return nil, err
 	}
+	count, err := conn.ReceiveUint32()
+	if err != nil {
+		return nil, err
+	}
+	if offset != circ.Inputs[0].Size || count != circ.Inputs[1].Size {
+		return nil, fmt.Errorf("peer can't OT wires [%d...%d[",
+			offset, offset+count)
+	}
+	err = oti.Send(garbled.Wires[offset : offset+count])
+	if err != nil {
+		return nil, err
+	}
+	lastOT := time.Now()
 
 	// Process messages.
 
-	lastOT := time.Now()
 	done := false
 	result := big.NewInt(0)
 
@@ -149,27 +160,6 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 		}
 
 		switch op {
-		case OpOT:
-			offset, err := conn.ReceiveUint32()
-			if err != nil {
-				return nil, err
-			}
-			count, err := conn.ReceiveUint32()
-			if err != nil {
-				return nil, err
-			}
-			for i := 0; i < count; i++ {
-				if !allowedOTs[offset+i] {
-					return nil, fmt.Errorf("peer can't OT wire %d", offset+i)
-				}
-				allowedOTs[offset+i] = false
-			}
-			err = oti.Send(garbled.Wires[offset : offset+count])
-			if err != nil {
-				return nil, err
-			}
-			lastOT = time.Now()
-
 		case OpResult:
 			for i := 0; i < circ.Outputs.Size(); i++ {
 				err := conn.ReceiveLabel(&label, &labelData)
