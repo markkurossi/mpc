@@ -55,8 +55,6 @@ func (t *Timing) Print(sent, received uint64) {
 	tab.Header("%").SetAlign(tabulate.MR)
 	tab.Header("Xfer").SetAlign(tabulate.MR)
 
-	const arrow string = "\u21A6"
-
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
 		row := tab.Row()
@@ -73,7 +71,7 @@ func (t *Timing) Print(sent, received uint64) {
 
 		for _, sub := range sample.Samples {
 			row := tab.Row()
-			row.Column(arrow + sub.Label).SetFormat(tabulate.FmtItalic)
+			row.Column("\u2570\u2574" + sub.Label).SetFormat(tabulate.FmtItalic)
 
 			var d time.Duration
 			if sub.Abs > 0 {
@@ -97,7 +95,7 @@ func (t *Timing) Print(sent, received uint64) {
 	row.Column(FileSize(sent + received).String()).SetFormat(tabulate.FmtBold)
 
 	row = tab.Row()
-	row.Column(arrow + "Sent").SetFormat(tabulate.FmtItalic)
+	row.Column("\u251C\u2574Sent").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column(
 		fmt.Sprintf("%.2f%%", float64(sent)/float64(sent+received)*100)).
@@ -105,7 +103,7 @@ func (t *Timing) Print(sent, received uint64) {
 	row.Column(FileSize(sent).String()).SetFormat(tabulate.FmtItalic)
 
 	row = tab.Row()
-	row.Column(arrow + "Recvd").SetFormat(tabulate.FmtItalic)
+	row.Column("\u2570\u2574Rcvd").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column(
 		fmt.Sprintf("%.2f%%", float64(received)/float64(sent+received)*100)).
