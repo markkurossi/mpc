@@ -72,6 +72,7 @@ func main() {
 	doc := flag.String("doc", "",
 		"generate documentation about files to the argument directory")
 	objdump := flag.Bool("objdump", false, "print information about objects")
+	testIO := flag.Int64("test-io", 0, "test I/O performance")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -127,6 +128,20 @@ func main() {
 		}
 		if err := documentation(flag.Args(), doc); err != nil {
 			log.Fatal(err)
+		}
+		return
+	}
+	if *testIO > 0 {
+		if *evaluator {
+			err := evaluatorTestIO(*testIO, len(*cpuprofile) > 0)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			err := garblerTestIO(*testIO)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 		return
 	}
