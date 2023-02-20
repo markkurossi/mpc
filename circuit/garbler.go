@@ -17,13 +17,6 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-// Protocol operation codes.
-const (
-	OpResult = iota
-	OpCircuit
-	OpReturn
-)
-
 // FileSize specifies a file (or data transfer) size in bytes.
 type FileSize uint64
 

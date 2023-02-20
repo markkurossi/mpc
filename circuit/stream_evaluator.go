@@ -17,6 +17,13 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// Protocol operation codes.
+const (
+	OpResult = iota
+	OpCircuit
+	OpReturn
+)
+
 // StreamEval is a streaming garbled circuit evaluator.
 type StreamEval struct {
 	key   []byte
