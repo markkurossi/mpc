@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -215,7 +215,10 @@ func (peer *Peer) init() error {
 		<-finished
 		return err
 	}
-	peer.conn.Flush()
+	if err := peer.conn.Flush(); err != nil {
+		<-finished
+		return err
+	}
 
 	return <-finished
 }

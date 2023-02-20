@@ -192,7 +192,9 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 			if err := conn.SendData(data); err != nil {
 				return nil, err
 			}
-			conn.Flush()
+			if err := conn.Flush(); err != nil {
+				return nil, err
+			}
 			done = true
 		}
 	}

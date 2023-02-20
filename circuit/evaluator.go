@@ -103,7 +103,9 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err := conn.SendUint32(circ.Inputs[1].Size); err != nil {
 		return nil, err
 	}
-	conn.Flush()
+	if err := conn.Flush(); err != nil {
+		return nil, err
+	}
 	flags := make([]bool, circ.Inputs[1].Size)
 	for i := 0; i < circ.Inputs[1].Size; i++ {
 		if inputs.Bit(i) == 1 {
@@ -143,7 +145,9 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 			return nil, err
 		}
 	}
-	conn.Flush()
+	if err := conn.Flush(); err != nil {
+		return nil, err
+	}
 
 	result, err := conn.ReceiveData()
 	if err != nil {

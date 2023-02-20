@@ -427,7 +427,9 @@ loop:
 					return nil, nil, err
 				}
 			}
-			conn.Flush()
+			if err := conn.Flush(); err != nil {
+				return nil, nil, err
+			}
 
 			result, err := conn.ReceiveData()
 			if err != nil {

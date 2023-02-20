@@ -365,7 +365,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			if circuit.StreamDebug {
 				fmt.Printf("return=%v\n", returnIDs)
 			}
-			conn.Flush()
+			if err := conn.Flush(); err != nil {
+				return nil, nil, err
+			}
 
 		case Circ:
 			// Collect input and output IDs
@@ -531,7 +533,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	if err := conn.SendData(data); err != nil {
 		return nil, nil, err
 	}
-	conn.Flush()
+	if err := conn.Flush(); err != nil {
+		return nil, nil, err
+	}
 
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats

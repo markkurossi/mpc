@@ -331,7 +331,9 @@ func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {
 	if err := c.SendUint32(int(wire)); err != nil {
 		return nil, err
 	}
-	c.Flush()
+	if err := c.Flush(); err != nil {
+		return nil, err
+	}
 
 	xfer, err := receiver.NewTransfer(bit)
 	if err != nil {
@@ -355,7 +357,9 @@ func (c *Conn) Receive(receiver *ot.Receiver, wire, bit uint) ([]byte, error) {
 	if err := c.SendData(v); err != nil {
 		return nil, err
 	}
-	c.Flush()
+	if err := c.Flush(); err != nil {
+		return nil, err
+	}
 
 	m0p, err := c.ReceiveData()
 	if err != nil {
