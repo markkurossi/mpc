@@ -290,17 +290,22 @@ func (co *CO) Send(wires []Wire) error {
 	AaInvx := big.NewInt(0).Set(Aax)
 	AaInvy := big.NewInt(0).Sub(curveParams.P, Aay)
 
-	for i := 0; i < len(wires); i++ {
-		Bx, err := ReceiveBigInt(co.io)
-		if err != nil {
-			return err
-		}
-		By, err := ReceiveBigInt(co.io)
-		if err != nil {
-			return err
-		}
+	BxRaw := big.NewInt(0)
+	ByRaw := big.NewInt(0)
 
-		Bx, By = co.curve.ScalarMult(Bx, By, aBytes)
+	for i := 0; i < len(wires); i++ {
+		data, err := co.io.ReceiveData()
+		if err != nil {
+			return err
+		}
+		BxRaw.SetBytes(data)
+		data, err = co.io.ReceiveData()
+		if err != nil {
+			return err
+		}
+		ByRaw.SetBytes(data)
+
+		Bx, By := co.curve.ScalarMult(BxRaw, ByRaw, aBytes)
 		Bax, Bay := co.curve.Add(Bx, By, AaInvx, AaInvy)
 
 		var labelData LabelData
