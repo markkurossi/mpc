@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
@@ -144,55 +143,52 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	lastOT := time.Now()
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("OT", []string{FileSize(xfer.Sum()).String()})
+	if verbose {
+		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
+	}
 
-	// Process messages.
+	// Resolve result values.
 
-	done := false
 	result := big.NewInt(0)
-
 	var label ot.Label
 
-	for !done {
-		op, err := conn.ReceiveUint32()
+	for i := 0; i < circ.Outputs.Size(); i++ {
+		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, err
 		}
-
-		switch op {
-		case OpResult:
-			for i := 0; i < circ.Outputs.Size(); i++ {
-				err := conn.ReceiveLabel(&label, &labelData)
-				if err != nil {
-					return nil, err
-				}
-				wire := garbled.Wires[circ.NumWires-circ.Outputs.Size()+i]
-
-				var bit uint
-				if label.Equal(wire.L0) {
-					bit = 0
-				} else if label.Equal(wire.L1) {
-					bit = 1
-				} else {
-					return nil, fmt.Errorf("unknown label %s for result %d",
-						label, i)
-				}
-				result = big.NewInt(0).SetBit(result, i, bit)
+		if i == 0 {
+			timing.Sample("Eval", nil)
+			if verbose {
+				timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 			}
-			data := result.Bytes()
-			if err := conn.SendData(data); err != nil {
-				return nil, err
-			}
-			if err := conn.Flush(); err != nil {
-				return nil, err
-			}
-			done = true
 		}
+		wire := garbled.Wires[circ.NumWires-circ.Outputs.Size()+i]
+
+		var bit uint
+		if label.Equal(wire.L0) {
+			bit = 0
+		} else if label.Equal(wire.L1) {
+			bit = 1
+		} else {
+			return nil, fmt.Errorf("unknown label %s for result %d", label, i)
+		}
+		result = big.NewInt(0).SetBit(result, i, bit)
 	}
+	data := result.Bytes()
+	if err := conn.SendData(data); err != nil {
+		return nil, err
+	}
+	if err := conn.Flush(); err != nil {
+		return nil, err
+	}
+
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
-	timing.Sample("Eval", []string{FileSize(xfer.Sum()).String()}).
-		SubSample("OT", lastOT)
+	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
 	if verbose {
 		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 	}

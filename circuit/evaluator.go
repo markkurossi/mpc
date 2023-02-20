@@ -126,16 +126,13 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	}
 	timing.Sample("Eval", nil)
 
+	// Resolve result values.
+
 	var labels []ot.Label
 
 	for i := 0; i < circ.Outputs.Size(); i++ {
 		r := wires[Wire(circ.NumWires-circ.Outputs.Size()+i)]
 		labels = append(labels, r)
-	}
-
-	// Resolve result values.
-	if err := conn.SendUint32(OpResult); err != nil {
-		return nil, err
 	}
 	for _, l := range labels {
 		if err := conn.SendLabel(l, &labelData); err != nil {
