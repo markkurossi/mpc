@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,7 +44,7 @@ func (t *Timing) Sample(label string, cols []string) *Sample {
 }
 
 // Print prints profiling report to standard output.
-func (t *Timing) Print(xfer string) {
+func (t *Timing) Print(sent, received uint64) {
 	if len(t.Samples) == 0 {
 		return
 	}
@@ -54,6 +54,8 @@ func (t *Timing) Print(xfer string) {
 	tab.Header("Time").SetAlign(tabulate.MR)
 	tab.Header("%").SetAlign(tabulate.MR)
 	tab.Header("Xfer").SetAlign(tabulate.MR)
+
+	const arrow string = "\u21A6"
 
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
@@ -71,7 +73,7 @@ func (t *Timing) Print(xfer string) {
 
 		for _, sub := range sample.Samples {
 			row := tab.Row()
-			row.Column(sub.Label).SetFormat(tabulate.FmtItalic)
+			row.Column(arrow + sub.Label).SetFormat(tabulate.FmtItalic)
 
 			var d time.Duration
 			if sub.Abs > 0 {
@@ -92,7 +94,23 @@ func (t *Timing) Print(xfer string) {
 	row.Column(t.Samples[len(t.Samples)-1].End.Sub(t.Start).String()).
 		SetFormat(tabulate.FmtBold)
 	row.Column("").SetFormat(tabulate.FmtBold)
-	row.Column(xfer).SetFormat(tabulate.FmtBold)
+	row.Column(FileSize(sent + received).String()).SetFormat(tabulate.FmtBold)
+
+	row = tab.Row()
+	row.Column(arrow + "Sent").SetFormat(tabulate.FmtItalic)
+	row.Column("")
+	row.Column(
+		fmt.Sprintf("%.2f%%", float64(sent)/float64(sent+received)*100)).
+		SetFormat(tabulate.FmtItalic)
+	row.Column(FileSize(sent).String()).SetFormat(tabulate.FmtItalic)
+
+	row = tab.Row()
+	row.Column(arrow + "Recvd").SetFormat(tabulate.FmtItalic)
+	row.Column("")
+	row.Column(
+		fmt.Sprintf("%.2f%%", float64(received)/float64(sent+received)*100)).
+		SetFormat(tabulate.FmtItalic)
+	row.Column(FileSize(received).String()).SetFormat(tabulate.FmtItalic)
 
 	tab.Print(os.Stdout)
 }

@@ -124,8 +124,9 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	ioStats = conn.Stats.Sub(ioStats)
-	timing.Sample("OT Init", []string{FileSize(ioStats.Sum()).String()})
+	xfer := conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("OT Init", []string{FileSize(xfer.Sum()).String()})
 
 	// Init wires the peer is allowed to OT.
 	allowedOTs := make(map[int]bool)
@@ -198,11 +199,12 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 			done = true
 		}
 	}
-	ioStats = conn.Stats.Sub(ioStats)
-	timing.Sample("Eval", []string{FileSize(ioStats.Sum()).String()}).
+	xfer = conn.Stats.Sub(ioStats)
+	ioStats = conn.Stats
+	timing.Sample("Eval", []string{FileSize(xfer.Sum()).String()}).
 		SubSample("OT", lastOT)
 	if verbose {
-		timing.Print(FileSize(conn.Stats.Sum()).String())
+		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 	}
 
 	return circ.Outputs.Split(result), nil

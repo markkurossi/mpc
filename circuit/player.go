@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -363,7 +363,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	ioStats = nw.Stats().Sub(ioStats)
 	timing.Sample("Result", []string{FileSize(ioStats.Sum()).String()})
 	if verbose {
-		timing.Print(FileSize(nw.Stats().Sum()).String())
+		timing.Print(nw.Stats().Sent, nw.Stats().Recvd)
 	}
 
 	fmt.Printf("player not implemented yet\n")

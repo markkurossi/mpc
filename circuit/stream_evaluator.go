@@ -448,7 +448,7 @@ loop:
 	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
 
 	if verbose {
-		timing.Print(FileSize(conn.Stats.Sum()).String())
+		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 	}
 
 	return outputs, outputs.Split(rawResult), nil

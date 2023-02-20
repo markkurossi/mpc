@@ -542,7 +542,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	timing.Sample("Result", []string{circuit.FileSize(xfer.Sum()).String()})
 
 	if params.Verbose {
-		timing.Print(circuit.FileSize(conn.Stats.Sum()).String())
+		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 	}
 
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",

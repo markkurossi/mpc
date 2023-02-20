@@ -159,7 +159,7 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	ioStats = conn.Stats
 	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
 	if verbose {
-		timing.Print(FileSize(conn.Stats.Sum()).String())
+		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
 	}
 
 	return circ.Outputs.Split(raw), nil
