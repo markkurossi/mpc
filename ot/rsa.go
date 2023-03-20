@@ -14,8 +14,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/markkurossi/crypto/pkcs1"
 	"github.com/markkurossi/mpc/ot/mpint"
-	"github.com/markkurossi/mpc/pkcs1"
 )
 
 // RandomData creates size bytes of random data.
