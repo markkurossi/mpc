@@ -139,9 +139,6 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	xfer = conn.Stats.Sub(ioStats)
 	ioStats = conn.Stats
 	timing.Sample("OT", []string{FileSize(xfer.Sum()).String()})
-	if verbose {
-		timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
-	}
 
 	// Resolve result values.
 
@@ -155,9 +152,6 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 		}
 		if i == 0 {
 			timing.Sample("Eval", nil)
-			if verbose {
-				timing.Print(conn.Stats.Sent, conn.Stats.Recvd)
-			}
 		}
 		wire := garbled.Wires[circ.NumWires-circ.Outputs.Size()+i]
 
