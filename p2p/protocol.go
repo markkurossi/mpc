@@ -44,6 +44,7 @@ type IOStats struct {
 	Recvd *atomic.Uint64
 }
 
+// NewIOStats creates a new I/O statistics object.
 func NewIOStats() IOStats {
 	return IOStats{
 		Sent:  new(atomic.Uint64),
