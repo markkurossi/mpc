@@ -8,6 +8,7 @@ package p2p
 
 import (
 	"io"
+	"sync/atomic"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -39,30 +40,49 @@ type Conn struct {
 
 // IOStats implements I/O statistics.
 type IOStats struct {
-	Sent  uint64
-	Recvd uint64
+	Sent  *atomic.Uint64
+	Recvd *atomic.Uint64
+}
+
+func NewIOStats() IOStats {
+	return IOStats{
+		Sent:  new(atomic.Uint64),
+		Recvd: new(atomic.Uint64),
+	}
 }
 
 // Add adds the argument stats to this IOStats and returns the sum.
 func (stats IOStats) Add(o IOStats) IOStats {
+	sent := new(atomic.Uint64)
+	sent.Store(stats.Sent.Load() + o.Sent.Load())
+
+	recvd := new(atomic.Uint64)
+	recvd.Store(stats.Recvd.Load() + o.Recvd.Load())
+
 	return IOStats{
-		Sent:  stats.Sent + o.Sent,
-		Recvd: stats.Recvd + o.Recvd,
+		Sent:  sent,
+		Recvd: recvd,
 	}
 }
 
 // Sub subtracts the argument stats from this IOStats and returns the
 // difference.
 func (stats IOStats) Sub(o IOStats) IOStats {
+	sent := new(atomic.Uint64)
+	sent.Store(stats.Sent.Load() - o.Sent.Load())
+
+	recvd := new(atomic.Uint64)
+	recvd.Store(stats.Recvd.Load() - o.Recvd.Load())
+
 	return IOStats{
-		Sent:  stats.Sent - o.Sent,
-		Recvd: stats.Recvd - o.Recvd,
+		Sent:  sent,
+		Recvd: recvd,
 	}
 }
 
 // Sum returns sum of sent and received bytes.
 func (stats IOStats) Sum() uint64 {
-	return stats.Sent + stats.Recvd
+	return stats.Sent.Load() + stats.Recvd.Load()
 }
 
 // NewConn creates a new connection around the argument connection.
@@ -72,6 +92,7 @@ func NewConn(conn io.ReadWriter) *Conn {
 		ReadBuf:    make([]byte, readBufSize),
 		fromWriter: make(chan []byte, numBuffers),
 		toWriter:   make(chan []byte, numBuffers),
+		Stats:      NewIOStats(),
 	}
 
 	go c.writer()
@@ -88,7 +109,7 @@ func (c *Conn) writer() {
 
 	for buf := range c.toWriter {
 		n, err := c.conn.Write(buf)
-		c.Stats.Sent += uint64(n)
+		c.Stats.Sent.Add(uint64(n))
 		if err != nil {
 			c.writerErr = err
 		}
@@ -138,7 +159,7 @@ func (c *Conn) Fill(n int) error {
 		if err != nil {
 			return err
 		}
-		c.Stats.Recvd += uint64(got)
+		c.Stats.Recvd.Add(uint64(got))
 		c.ReadEnd += got
 	}
 	return nil

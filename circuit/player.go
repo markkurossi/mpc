@@ -363,7 +363,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	ioStats = nw.Stats().Sub(ioStats)
 	timing.Sample("Result", []string{FileSize(ioStats.Sum()).String()})
 	if verbose {
-		timing.Print(nw.Stats().Sent, nw.Stats().Recvd)
+		timing.Print(nw.Stats().Sent.Load(), nw.Stats().Recvd.Load())
 	}
 
 	fmt.Printf("player not implemented yet\n")
