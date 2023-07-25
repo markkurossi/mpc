@@ -53,7 +53,7 @@ makeK(__m128i a, __m128i b, uint32_t t)
   return _mm_xor_si128(k, tweak);
 }
 
-__m128i
+static inline __m128i
 garble(cipher *cipher, __m128i a, __m128i b, __m128i c, uint32_t t)
 {
   __m128i k;
