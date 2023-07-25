@@ -325,7 +325,13 @@ func (co *CO) Send(wires []Wire) error {
 	BxRaw := big.NewInt(0)
 	ByRaw := big.NewInt(0)
 
-	for i := 0; i < len(wires); i++ {
+	wiresCnt := len(wires)
+	Bxs := make([]*big.Int, wiresCnt)
+	Bys := make([]*big.Int, wiresCnt)
+	Baxs := make([]*big.Int, wiresCnt)
+	Bays := make([]*big.Int, wiresCnt)
+
+	for i := 0; i < wiresCnt; i++ {
 		data, err := co.io.ReceiveData()
 		if err != nil {
 			return err
@@ -340,7 +346,19 @@ func (co *CO) Send(wires []Wire) error {
 		Bx, By := co.curve.ScalarMult(BxRaw, ByRaw, aBytes)
 		Bax, Bay := co.curve.Add(Bx, By, AaInvx, AaInvy)
 
+		Bxs[i] = Bx
+		Bys[i] = By
+		Baxs[i] = Bax
+		Bays[i] = Bay
+	}
+
+	for i := 0; i < wiresCnt; i++ {
 		var labelData LabelData
+
+		Bx := Bxs[i]
+		By := Bys[i]
+		Bax := Baxs[i]
+		Bay := Bays[i]
 
 		wires[i].L0.GetData(&labelData)
 		e0 := xor(kdf(co.hash, Bx, By, uint64(i), co.digest[:]), labelData[:])
@@ -352,10 +370,12 @@ func (co *CO) Send(wires []Wire) error {
 		if err := co.io.SendData(e1); err != nil {
 			return err
 		}
-		if err := co.io.Flush(); err != nil {
-			return err
-		}
 	}
+
+	if err := co.io.Flush(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -372,7 +392,10 @@ func (co *CO) Receive(flags []bool, result []Label) error {
 		return err
 	}
 
-	for i := 0; i < len(flags); i++ {
+	flagsCnt := len(flags)
+	BsBytes := make([][]byte, flagsCnt)
+
+	for i := 0; i < flagsCnt; i++ {
 		// b <= Zp
 		b, err := rand.Int(rand.Reader, curveParams.N)
 		if err != nil {
@@ -390,10 +413,16 @@ func (co *CO) Receive(flags []bool, result []Label) error {
 		if err := co.io.SendData(By.Bytes()); err != nil {
 			return err
 		}
-		if err := co.io.Flush(); err != nil {
-			return err
-		}
 
+		BsBytes[i] = bBytes
+	}
+
+	if err := co.io.Flush(); err != nil {
+		return err
+	}
+
+	for i := 0; i < flagsCnt; i++ {
+		bBytes := BsBytes[i]
 		Asx, Asy := co.curve.ScalarMult(Ax, Ay, bBytes)
 
 		// Receive E. Please, be careful when editing the code below
