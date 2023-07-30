@@ -1,7 +1,7 @@
 //
 // label_test.go
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -72,5 +72,21 @@ func TestLabel(t *testing.T) {
 	}
 	if label.D1 != 0xfffffffffffffffc {
 		t.Fatalf("Mul4 D1 failed")
+	}
+
+	val := uint64(0x5555555555555555)
+	label = &Label{
+		D0: val,
+		D1: val << 1,
+	}
+	label.Xor(Label{
+		D0: 0xffffffffffffffff,
+		D1: 0xffffffffffffffff,
+	})
+	if label.D0 != val<<1 {
+		t.Errorf("Xor failed: D0=%x, expected=%x", label.D0, val<<1)
+	}
+	if label.D1 != val {
+		t.Errorf("Xor failed: D1=%x, expected=%x", label.D1, val)
 	}
 }
