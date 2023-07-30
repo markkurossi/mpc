@@ -17,34 +17,6 @@ import (
 	"testing"
 )
 
-func BenchmarkLabelX(b *testing.B) {
-	var key [32]byte
-
-	cipher, err := aes.NewCipher(key[:])
-	if err != nil {
-		b.Fatalf("Failed to create cipher: %s", err)
-	}
-
-	al, err := NewLabelX(rand.Reader)
-	if err != nil {
-		b.Fatalf("Failed to create label: %s", err)
-	}
-	bl, err := NewLabelX(rand.Reader)
-	if err != nil {
-		b.Fatalf("Failed to create label: %s", err)
-	}
-	cl, err := NewLabelX(rand.Reader)
-	if err != nil {
-		b.Fatalf("Failed to create label: %s", err)
-	}
-
-	b.ResetTimer()
-	var buf [16]byte
-	for i := 0; i < b.N; i++ {
-		encryptX(cipher, al, bl, cl, uint32(i), &buf)
-	}
-}
-
 type LabelX struct {
 	d0 uint64
 	d1 uint64
@@ -90,6 +62,25 @@ func (l *LabelX) Mul4() {
 	l.d1 <<= 2
 }
 
+func TestLabelXor(t *testing.T) {
+	val := uint64(0b0101010101010101010101010101010101010101010101010101010101010101)
+	a := LabelX{
+		d0: val,
+		d1: val << 1,
+	}
+	b := LabelX{
+		d0: 0xffffffffffffffff,
+		d1: 0xffffffffffffffff,
+	}
+	a.Xor(b)
+	if a.d0 != val<<1 {
+		t.Errorf("Xor: unexpected d0=%x, epected %x", a.d0, val<<1)
+	}
+	if a.d1 != val {
+		t.Errorf("Xor: unexpected d1=%x, epected %x", a.d1, val)
+	}
+}
+
 func NewTweakX(tweak uint32) LabelX {
 	return LabelX{
 		d1: uint64(tweak),
@@ -122,4 +113,32 @@ func makeKX(a, b LabelX, t uint32) LabelX {
 	a.Xor(NewTweakX(t))
 
 	return a
+}
+
+func BenchmarkLabelX(b *testing.B) {
+	var key [32]byte
+
+	cipher, err := aes.NewCipher(key[:])
+	if err != nil {
+		b.Fatalf("Failed to create cipher: %s", err)
+	}
+
+	al, err := NewLabelX(rand.Reader)
+	if err != nil {
+		b.Fatalf("Failed to create label: %s", err)
+	}
+	bl, err := NewLabelX(rand.Reader)
+	if err != nil {
+		b.Fatalf("Failed to create label: %s", err)
+	}
+	cl, err := NewLabelX(rand.Reader)
+	if err != nil {
+		b.Fatalf("Failed to create label: %s", err)
+	}
+
+	b.ResetTimer()
+	var buf [16]byte
+	for i := 0; i < b.N; i++ {
+		encryptX(cipher, al, bl, cl, uint32(i), &buf)
+	}
 }
