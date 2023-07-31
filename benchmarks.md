@@ -483,9 +483,7 @@ CO OT:
 │ Result      │       338.085µs │  0.00% │ 55kB │
 │ Total       │ 1m17.852519512s │        │ 15GB │
 └─────────────┴─────────────────┴────────┴──────┘
-Max permanent wires: 53913890, cached circuits: 25
-#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562
-INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796)
+Max permanent wires: 53913890, cached circuits: 25 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796)
 #w=853882864
 ```
 
