@@ -69,3 +69,23 @@ func BenchmarkEnc(b *testing.B) {
 		encrypt(cipher, al, bl, cl, uint32(i), &data)
 	}
 }
+
+func BenchmarkEncHalf(b *testing.B) {
+	var key [32]byte
+
+	cipher, err := aes.NewCipher(key[:])
+	if err != nil {
+		b.Fatalf("Failed to create cipher: %s", err)
+	}
+
+	xl, err := ot.NewLabel(rand.Reader)
+	if err != nil {
+		b.Fatalf("Failed to create label: %s", err)
+	}
+
+	b.ResetTimer()
+	var data ot.LabelData
+	for i := 0; i < b.N; i++ {
+		encryptHalf(cipher, xl, uint32(i), &data)
+	}
+}

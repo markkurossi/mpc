@@ -483,8 +483,30 @@ CO OT:
 │ Result      │       338.085µs │  0.00% │ 55kB │
 │ Total       │ 1m17.852519512s │        │ 15GB │
 └─────────────┴─────────────────┴────────┴──────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562
+INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796)
+#w=853882864
 ```
 
+Theoretical minimum single-threaded garbling time:
+
+```
+AND:    267575026 * 6 * 24.28 = 38980329787.68 ns
+OR:     496562    * 4 * 28.59 =    56786830.32 ns
+INV:    103369    * 2 * 28.59 =     5910639.42 ns
+                                =================
+                                39043027257.42 ns
+                                         39.04 s
+```
+
+The gate garbling speeds are measured with the `circuit/enc_test.go`:
+
+```
+cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
+BenchmarkEnc-8                    	35426180	        28.59 ns/op
+BenchmarkEncHalf-8                	48652969	        24.28 ns/op
+```
 
 ## RSA signature computation
 
