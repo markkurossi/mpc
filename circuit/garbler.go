@@ -104,8 +104,8 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 			return nil, err
 		}
 	}
-	ioStats := conn.Stats
-	timing.Sample("Xfer", []string{FileSize(ioStats.Sum()).String()})
+	ioStats := conn.Stats.Sum()
+	timing.Sample("Xfer", []string{FileSize(ioStats).String()})
 	if verbose {
 		fmt.Printf(" - Processing messages...\n")
 	}
@@ -115,9 +115,9 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	xfer := conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("OT Init", []string{FileSize(xfer.Sum()).String()})
+	xfer := conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("OT Init", []string{FileSize(xfer).String()})
 
 	// Peer OTs its inputs.
 	offset, err := conn.ReceiveUint32()
@@ -136,9 +136,9 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("OT", []string{FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("OT", []string{FileSize(xfer).String()})
 
 	// Resolve result values.
 
@@ -173,11 +173,11 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 		return nil, err
 	}
 
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Result", []string{FileSize(xfer).String()})
 	if verbose {
-		timing.Print(conn.Stats.Sent.Load(), conn.Stats.Recvd.Load())
+		timing.Print(conn.Stats)
 	}
 
 	return circ.Outputs.Split(result), nil

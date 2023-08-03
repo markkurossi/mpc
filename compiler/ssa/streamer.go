@@ -102,17 +102,17 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		}
 	}
 
-	ioStats := conn.Stats
-	timing.Sample("Init", []string{circuit.FileSize(ioStats.Sum()).String()})
+	ioStats := conn.Stats.Sum()
+	timing.Sample("Init", []string{circuit.FileSize(ioStats).String()})
 
 	// Init oblivious transfer.
 	err = oti.InitSender(conn)
 	if err != nil {
 		return nil, nil, err
 	}
-	xfer := conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("OT Init", []string{circuit.FileSize(xfer.Sum()).String()})
+	xfer := conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("OT Init", []string{circuit.FileSize(xfer).String()})
 
 	// Peer OTs its inputs.
 	err = oti.Send(streaming.GetInputs(prog.Inputs[0].Size,
@@ -120,10 +120,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	if err != nil {
 		return nil, nil, err
 	}
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Peer Inputs",
-		[]string{circuit.FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Peer Inputs", []string{circuit.FileSize(xfer).String()})
 
 	zero, err := prog.ZeroWire(conn, streaming)
 	if err != nil {
@@ -496,9 +495,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		}
 	}
 
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Garble", []string{circuit.FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Garble", []string{circuit.FileSize(xfer).String()})
 
 	result := new(big.Int)
 
@@ -537,12 +536,12 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		return nil, nil, err
 	}
 
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Result", []string{circuit.FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Result", []string{circuit.FileSize(xfer).String()})
 
 	if params.Verbose {
-		timing.Print(conn.Stats.Sent.Load(), conn.Stats.Recvd.Load())
+		timing.Print(conn.Stats)
 	}
 
 	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",

@@ -162,8 +162,8 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	if err != nil {
 		return nil, nil, err
 	}
-	ioStats := conn.Stats
-	timing.Sample("Init", []string{FileSize(ioStats.Sum()).String()})
+	ioStats := conn.Stats.Sum()
+	timing.Sample("Init", []string{FileSize(ioStats).String()})
 
 	// Query our inputs.
 	if verbose {
@@ -179,9 +179,9 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	if err := oti.Receive(flags, inputLabels); err != nil {
 		return nil, nil, err
 	}
-	xfer := conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Inputs", []string{FileSize(xfer.Sum()).String()})
+	xfer := conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Inputs", []string{FileSize(xfer).String()})
 
 	ws := func(i int, tmp bool) string {
 		if tmp {
@@ -410,9 +410,9 @@ loop:
 			}
 
 		case OpReturn:
-			xfer := conn.Stats.Sub(ioStats)
-			ioStats = conn.Stats
-			timing.Sample("Eval", []string{FileSize(xfer.Sum()).String()})
+			xfer := conn.Stats.Sum() - ioStats
+			ioStats = conn.Stats.Sum()
+			timing.Sample("Eval", []string{FileSize(xfer).String()})
 
 			var labels []ot.Label
 			for i := 0; i < outputs.Size(); i++ {
@@ -450,12 +450,12 @@ loop:
 		}
 	}
 
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Result", []string{FileSize(xfer).String()})
 
 	if verbose {
-		timing.Print(conn.Stats.Sent.Load(), conn.Stats.Recvd.Load())
+		timing.Print(conn.Stats)
 	}
 
 	return outputs, outputs.Split(rawResult), nil

@@ -116,8 +116,8 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 
 	fmt.Printf("Luv: %s\n", luv.Text(2))
 
-	ioStats := nw.Stats()
-	timing.Sample("Fgc Step 1", []string{FileSize(ioStats.Sum()).String()})
+	ioStats := nw.Stats().Sum()
+	timing.Sample("Fgc Step 1", []string{FileSize(ioStats).String()})
 
 	// Step 2: generate XOR shares of Luvw
 	if verbose {
@@ -271,8 +271,9 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 		}
 	}
 
-	ioStats = nw.Stats().Sub(ioStats)
-	timing.Sample("Fgc Step 3", []string{FileSize(ioStats.Sum()).String()})
+	xfer := nw.Stats().Sum() - ioStats
+	ioStats = nw.Stats().Sum()
+	timing.Sample("Fgc Step 3", []string{FileSize(xfer).String()})
 
 	// Step 4: generate final secrets
 	if verbose {
@@ -360,10 +361,11 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 		}
 	}
 
-	ioStats = nw.Stats().Sub(ioStats)
-	timing.Sample("Result", []string{FileSize(ioStats.Sum()).String()})
+	xfer = nw.Stats().Sum() - ioStats
+	ioStats = nw.Stats().Sum()
+	timing.Sample("Result", []string{FileSize(xfer).String()})
 	if verbose {
-		timing.Print(nw.Stats().Sent.Load(), nw.Stats().Recvd.Load())
+		timing.Print(nw.Stats())
 	}
 
 	fmt.Printf("player not implemented yet\n")

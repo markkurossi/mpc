@@ -40,15 +40,17 @@ type Conn struct {
 
 // IOStats implements I/O statistics.
 type IOStats struct {
-	Sent  *atomic.Uint64
-	Recvd *atomic.Uint64
+	Sent    *atomic.Uint64
+	Recvd   *atomic.Uint64
+	Flushed *atomic.Uint64
 }
 
 // NewIOStats creates a new I/O statistics object.
 func NewIOStats() IOStats {
 	return IOStats{
-		Sent:  new(atomic.Uint64),
-		Recvd: new(atomic.Uint64),
+		Sent:    new(atomic.Uint64),
+		Recvd:   new(atomic.Uint64),
+		Flushed: new(atomic.Uint64),
 	}
 }
 
@@ -60,24 +62,13 @@ func (stats IOStats) Add(o IOStats) IOStats {
 	recvd := new(atomic.Uint64)
 	recvd.Store(stats.Recvd.Load() + o.Recvd.Load())
 
-	return IOStats{
-		Sent:  sent,
-		Recvd: recvd,
-	}
-}
-
-// Sub subtracts the argument stats from this IOStats and returns the
-// difference.
-func (stats IOStats) Sub(o IOStats) IOStats {
-	sent := new(atomic.Uint64)
-	sent.Store(stats.Sent.Load() - o.Sent.Load())
-
-	recvd := new(atomic.Uint64)
-	recvd.Store(stats.Recvd.Load() - o.Recvd.Load())
+	flushed := new(atomic.Uint64)
+	flushed.Store(stats.Flushed.Load() + o.Flushed.Load())
 
 	return IOStats{
-		Sent:  sent,
-		Recvd: recvd,
+		Sent:    sent,
+		Recvd:   recvd,
+		Flushed: flushed,
 	}
 }
 
@@ -109,8 +100,7 @@ func (c *Conn) writer() {
 	}
 
 	for buf := range c.toWriter {
-		n, err := c.conn.Write(buf)
-		c.Stats.Sent.Add(uint64(n))
+		_, err := c.conn.Write(buf)
 		if err != nil {
 			c.writerErr = err
 		}
@@ -131,6 +121,7 @@ func (c *Conn) NeedSpace(count int) error {
 // Flush flushed any pending data in the connection.
 func (c *Conn) Flush() error {
 	if c.WritePos > 0 {
+		c.Stats.Sent.Add(uint64(c.WritePos))
 		c.toWriter <- c.WriteBuf[0:c.WritePos]
 
 		next := <-c.fromWriter
@@ -140,6 +131,7 @@ func (c *Conn) Flush() error {
 
 		c.WriteBuf = next
 		c.WritePos = 0
+		c.Stats.Flushed.Add(1)
 	}
 	return nil
 }

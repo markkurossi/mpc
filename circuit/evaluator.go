@@ -85,8 +85,8 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	ioStats := conn.Stats
-	timing.Sample("Recv", []string{FileSize(ioStats.Sum()).String()})
+	ioStats := conn.Stats.Sum()
+	timing.Sample("Recv", []string{FileSize(ioStats).String()})
 
 	// Query our inputs.
 	if verbose {
@@ -112,9 +112,9 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err := oti.Receive(flags, wires[circ.Inputs[0].Size:]); err != nil {
 		return nil, err
 	}
-	xfer := conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Inputs", []string{FileSize(xfer.Sum()).String()})
+	xfer := conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Inputs", []string{FileSize(xfer).String()})
 
 	// Evaluate gates.
 	if verbose {
@@ -149,11 +149,11 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	}
 	raw := big.NewInt(0).SetBytes(result)
 
-	xfer = conn.Stats.Sub(ioStats)
-	ioStats = conn.Stats
-	timing.Sample("Result", []string{FileSize(xfer.Sum()).String()})
+	xfer = conn.Stats.Sum() - ioStats
+	ioStats = conn.Stats.Sum()
+	timing.Sample("Result", []string{FileSize(xfer).String()})
 	if verbose {
-		timing.Print(conn.Stats.Sent.Load(), conn.Stats.Recvd.Load())
+		timing.Print(conn.Stats)
 	}
 
 	return circ.Outputs.Split(raw), nil

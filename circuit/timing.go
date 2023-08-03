@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/markkurossi/mpc/p2p"
 	"github.com/markkurossi/tabulate"
 )
 
@@ -44,10 +45,14 @@ func (t *Timing) Sample(label string, cols []string) *Sample {
 }
 
 // Print prints profiling report to standard output.
-func (t *Timing) Print(sent, received uint64) {
+func (t *Timing) Print(stats p2p.IOStats) {
 	if len(t.Samples) == 0 {
 		return
 	}
+
+	sent := stats.Sent.Load()
+	received := stats.Recvd.Load()
+	flushed := stats.Flushed.Load()
 
 	tab := tabulate.New(tabulate.UnicodeLight)
 	tab.Header("Op").SetAlign(tabulate.ML)
@@ -103,12 +108,18 @@ func (t *Timing) Print(sent, received uint64) {
 	row.Column(FileSize(sent).String()).SetFormat(tabulate.FmtItalic)
 
 	row = tab.Row()
-	row.Column("\u2570\u2574Rcvd").SetFormat(tabulate.FmtItalic)
+	row.Column("\u251C\u2574Rcvd").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column(
 		fmt.Sprintf("%.2f%%", float64(received)/float64(sent+received)*100)).
 		SetFormat(tabulate.FmtItalic)
 	row.Column(FileSize(received).String()).SetFormat(tabulate.FmtItalic)
+
+	row = tab.Row()
+	row.Column("\u2570\u2574Flcd").SetFormat(tabulate.FmtItalic)
+	row.Column("")
+	row.Column("")
+	row.Column(fmt.Sprintf("%v", flushed)).SetFormat(tabulate.FmtItalic)
 
 	tab.Print(os.Stdout)
 }
