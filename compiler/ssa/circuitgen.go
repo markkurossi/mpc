@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -482,7 +482,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 			}
 			for _, o := range cc.OutputWires {
-				o.Output = true
+				o.SetOutput(true)
 			}
 
 		case Circ:

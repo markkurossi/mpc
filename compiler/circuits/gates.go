@@ -1,7 +1,7 @@
 //
 // gates.go
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -54,7 +54,7 @@ func NewINV(i, o *Wire) *Gate {
 }
 
 func (g *Gate) String() string {
-	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID, g.B.ID, g.O.ID)
+	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID(), g.B.ID(), g.O.ID())
 }
 
 // Visit adds gate to the list of pending gates to be compiled.
@@ -77,18 +77,15 @@ func (g *Gate) Visit(c *Compiler) {
 // ShortCircuit replaces gate with the value of the wire o.
 func (g *Gate) ShortCircuit(o *Wire) {
 	// Do not short circuit output wires.
-	if g.O.Output {
+	if g.O.Output() {
 		return
 	}
 
 	// Add gate's outputs to short circuit output wire.
-	for _, output := range g.O.Outputs {
-		output.ReplaceInput(g.O, o)
-	}
-
-	// Disconnect gate's output wire.
-	g.O.NumOutputs = 0
-	g.O.Outputs = nil
+	g.O.ForEachOutput(func(gate *Gate) {
+		gate.ReplaceInput(g.O, o)
+	})
+	g.O.DisconnectOutputs()
 }
 
 // ResetOutput resets the gate's output with the wire o.
@@ -115,7 +112,7 @@ func (g *Gate) ReplaceInput(from, to *Wire) {
 // Prune removes gate from the circuit if gate is dead i.e. its output
 // wire is not connected into circuit's output wires.
 func (g *Gate) Prune() bool {
-	if g.Dead || g.O.Output || g.O.NumOutputs > 0 {
+	if g.Dead || g.O.Output() || g.O.NumOutputs() > 0 {
 		return false
 	}
 	g.Dead = true
@@ -147,16 +144,16 @@ func (g *Gate) Compile(c *Compiler) {
 	switch g.Op {
 	case circuit.INV:
 		c.compiled = append(c.compiled, circuit.Gate{
-			Input0: circuit.Wire(g.A.ID),
-			Output: circuit.Wire(g.O.ID),
+			Input0: circuit.Wire(g.A.ID()),
+			Output: circuit.Wire(g.O.ID()),
 			Op:     g.Op,
 		})
 
 	default:
 		c.compiled = append(c.compiled, circuit.Gate{
-			Input0: circuit.Wire(g.A.ID),
-			Input1: circuit.Wire(g.B.ID),
-			Output: circuit.Wire(g.O.ID),
+			Input0: circuit.Wire(g.A.ID()),
+			Input1: circuit.Wire(g.B.ID()),
+			Output: circuit.Wire(g.O.ID()),
 			Op:     g.Op,
 		})
 	}

@@ -67,9 +67,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	for _, w := range prog.InputWires {
 		// Program's inputs are unassigned because parser is shared
 		// between streaming and non-streaming modes.
-		w.ID = prog.nextWireID
+		w.SetID(prog.nextWireID)
 		prog.nextWireID++
-		ids = append(ids, circuit.Wire(w.ID))
+		ids = append(ids, circuit.Wire(w.ID()))
 	}
 
 	streaming, err := circuit.NewStreaming(key[:], ids, conn)
@@ -210,15 +210,15 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			for bit := 0; bit < len(out); bit++ {
 				var id uint32
 				if bit-int(count) >= 0 && bit-int(count) < len(wires[0]) {
-					id = wires[0][bit-int(count)].ID
+					id = wires[0][bit-int(count)].ID()
 				} else {
 					w, err := prog.ZeroWire(conn, streaming)
 					if err != nil {
 						return nil, nil, err
 					}
-					id = w.ID
+					id = w.ID()
 				}
-				out[bit].ID = id
+				out[bit].SetID(id)
 			}
 
 		case Rshift, Srshift:
@@ -245,11 +245,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			for bit := 0; bit < len(out); bit++ {
 				var id uint32
 				if bit+int(count) < len(wires[0]) {
-					id = wires[0][bit+int(count)].ID
+					id = wires[0][bit+int(count)].ID()
 				} else {
-					id = signWire.ID
+					id = signWire.ID()
 				}
-				out[bit].ID = id
+				out[bit].SetID(id)
 			}
 
 		case Slice:
@@ -272,15 +272,15 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			for bit := from; bit < to; bit++ {
 				var id uint32
 				if int(bit) < len(wires[0]) {
-					id = wires[0][bit].ID
+					id = wires[0][bit].ID()
 				} else {
 					w, err := prog.ZeroWire(conn, streaming)
 					if err != nil {
 						return nil, nil, err
 					}
-					id = w.ID
+					id = w.ID()
 				}
-				out[bit-from].ID = id
+				out[bit-from].SetID(id)
 			}
 
 		case Mov, Smov:
@@ -297,11 +297,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			for bit := types.Size(0); bit < instr.Out.Type.Bits; bit++ {
 				var id uint32
 				if bit < types.Size(len(wires[0])) {
-					id = wires[0][bit].ID
+					id = wires[0][bit].ID()
 				} else {
-					id = signWire.ID
+					id = signWire.ID()
 				}
-				out[bit].ID = id
+				out[bit].SetID(id)
 			}
 
 		case Amov:
@@ -326,27 +326,27 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 				var id uint32
 				if bit < from || bit >= to {
 					if bit < types.Size(len(wires[1])) {
-						id = wires[1][bit].ID
+						id = wires[1][bit].ID()
 					} else {
 						w, err := prog.ZeroWire(conn, streaming)
 						if err != nil {
 							return nil, nil, err
 						}
-						id = w.ID
+						id = w.ID()
 					}
 				} else {
 					idx := bit - from
 					if idx < types.Size(len(wires[0])) {
-						id = wires[0][idx].ID
+						id = wires[0][idx].ID()
 					} else {
 						w, err := prog.ZeroWire(conn, streaming)
 						if err != nil {
 							return nil, nil, err
 						}
-						id = w.ID
+						id = w.ID()
 					}
 				}
-				out[bit].ID = id
+				out[bit].SetID(id)
 			}
 
 		case Ret:
@@ -355,10 +355,10 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			}
 			for _, arg := range wires {
 				for _, w := range arg {
-					if err := conn.SendUint32(int(w.ID)); err != nil {
+					if err := conn.SendUint32(int(w.ID())); err != nil {
 						return nil, nil, err
 					}
-					returnIDs = append(returnIDs, w.ID)
+					returnIDs = append(returnIDs, w.ID())
 				}
 			}
 			if circuit.StreamDebug {
@@ -375,9 +375,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			for i := 0; i < len(wires); i++ {
 				for j := 0; j < instr.Circ.Inputs[i].Size; j++ {
 					if j < len(wires[i]) {
-						iIDs = append(iIDs, circuit.Wire(wires[i][j].ID))
+						iIDs = append(iIDs, circuit.Wire(wires[i][j].ID()))
 					} else {
-						iIDs = append(iIDs, circuit.Wire(prog.zeroWire.ID))
+						iIDs = append(iIDs, circuit.Wire(prog.zeroWire.ID()))
 					}
 				}
 			}
@@ -389,9 +389,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 				}
 				for j := 0; j < instr.Circ.Outputs[i].Size; j++ {
 					if j < len(wires) {
-						oIDs = append(oIDs, circuit.Wire(wires[j].ID))
+						oIDs = append(oIDs, circuit.Wire(wires[j].ID()))
 					} else {
-						oIDs = append(oIDs, circuit.Wire(prog.zeroWire.ID))
+						oIDs = append(oIDs, circuit.Wire(prog.zeroWire.ID()))
 					}
 				}
 			}
@@ -442,7 +442,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 
 				cOut := circuits.MakeWires(instr.Out.Type.Bits)
 				for i := types.Size(0); i < instr.Out.Type.Bits; i++ {
-					cOut[i].Output = true
+					cOut[i].SetOutput(true)
 				}
 
 				cc, err := circuits.NewCompiler(params, nil, nil, flat, cOut)
@@ -481,11 +481,11 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			oIDs = oIDs[:0]
 			for _, vars := range wires {
 				for _, w := range vars {
-					iIDs = append(iIDs, circuit.Wire(w.ID))
+					iIDs = append(iIDs, circuit.Wire(w.ID()))
 				}
 			}
 			for _, w := range out {
-				oIDs = append(oIDs, circuit.Wire(w.ID))
+				oIDs = append(oIDs, circuit.Wire(w.ID()))
 			}
 
 			err = prog.garble(conn, streaming, idx, circ, iIDs, oIDs)
@@ -699,7 +699,7 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			Stats: circuit.Stats{
 				circuit.XOR: 1,
 			},
-		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
+		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID())})
 		if err != nil {
 			return nil, err
 		}
@@ -745,7 +745,7 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			Stats: circuit.Stats{
 				circuit.XNOR: 1,
 			},
-		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID)})
+		}, []circuit.Wire{0}, []circuit.Wire{circuit.Wire(wires[0].ID())})
 		if err != nil {
 			return nil, err
 		}

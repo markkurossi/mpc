@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -119,7 +119,7 @@ func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
 	fl, ok := prog.freeWires[bits]
 	if ok && len(fl) > 0 {
 		result.Wires = fl[0]
-		result.Base = result.Wires[0].ID
+		result.Base = result.Wires[0].ID()
 		prog.freeWires[bits] = fl[1:]
 	} else {
 		result.Wires = circuits.MakeWires(bits)
@@ -129,7 +129,7 @@ func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
 		// Assign wire IDs.
 		result.Base = prog.nextWireID
 		for i := 0; i < int(bits); i++ {
-			result.Wires[i].ID = prog.nextWireID + uint32(i)
+			result.Wires[i].SetID(prog.nextWireID + uint32(i))
 		}
 		prog.nextWireID += uint32(bits)
 	}
@@ -139,16 +139,12 @@ func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
 
 func (prog *Program) recycleWires(alloc *wireAlloc) {
 	if alloc.Base == circuits.UnassignedID {
-		alloc.Base = alloc.Wires[0].ID
+		alloc.Base = alloc.Wires[0].ID()
 	}
 	// Clear wires and reassign their IDs.
 	bits := types.Size(len(alloc.Wires))
 	for i := 0; i < int(bits); i++ {
-		alloc.Wires[i].ID = alloc.Base + uint32(i)
-		alloc.Wires[i].Output = false
-		alloc.Wires[i].NumOutputs = 0
-		alloc.Wires[i].Input = nil
-		alloc.Wires[i].Outputs = nil
+		alloc.Wires[i].Reset(alloc.Base + uint32(i))
 	}
 
 	fl := prog.freeWires[bits]
@@ -175,7 +171,7 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 	if len(w) == 0 {
 		alloc.Base = circuits.UnassignedID
 	} else {
-		alloc.Base = w[0].ID
+		alloc.Base = w[0].ID()
 	}
 
 	prog.wires[v] = alloc

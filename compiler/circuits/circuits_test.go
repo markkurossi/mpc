@@ -1,7 +1,7 @@
 //
 // circuits_test.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -29,7 +29,7 @@ func makeWires(count int, output bool) []*Wire {
 	var result []*Wire
 	for i := 0; i < count; i++ {
 		w := NewWire()
-		w.Output = output
+		w.SetOutput(output)
 		result = append(result, w)
 	}
 	return result

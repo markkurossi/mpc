@@ -58,7 +58,7 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 		r:    r,
 	}
 
-	stream.ensureWires(inputs)
+	stream.ensureWires(maxWire(0, inputs))
 
 	// Assing all input wires.
 	for i := 0; i < len(inputs); i++ {
@@ -72,17 +72,20 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 	return stream, nil
 }
 
-func (stream *Streaming) ensureWires(wires []Wire) {
-	// Verify that wires is big enough.
-	var max Wire
+func maxWire(max Wire, wires []Wire) Wire {
 	for _, w := range wires {
 		if w > max {
 			max = w
 		}
 	}
+	return max
+}
+
+func (stream *Streaming) ensureWires(max Wire) {
+	// Verify that wires is big enough.
 	if len(stream.wires) <= int(max) {
 		var i int
-		for i = 1024; i <= int(max); i <<= 1 {
+		for i = 65536; i <= int(max); i <<= 1 {
 		}
 		n := make([]ot.Wire, i)
 		copy(n, stream.wires)
@@ -91,8 +94,7 @@ func (stream *Streaming) ensureWires(wires []Wire) {
 }
 
 func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
-	stream.ensureWires(in)
-	stream.ensureWires(out)
+	stream.ensureWires(maxWire(maxWire(0, in), out))
 
 	if len(stream.tmp) < c.NumWires {
 		stream.tmp = make([]ot.Wire, c.NumWires)
