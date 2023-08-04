@@ -119,7 +119,7 @@ func (t *Timing) Print(stats p2p.IOStats) {
 	row.Column("\u2570\u2574Flcd").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column("")
-	row.Column(fmt.Sprintf("%v", flushed)).SetFormat(tabulate.FmtItalic)
+	row.Column(fmt.Sprintf("%v#", flushed)).SetFormat(tabulate.FmtItalic)
 
 	tab.Print(os.Stdout)
 }
