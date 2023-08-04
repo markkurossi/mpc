@@ -16,16 +16,18 @@ import (
 const (
 	// UnassignedID identifies an unassigned wire ID.
 	UnassignedID uint32 = math.MaxUint32
+	outputMask          = 0b10000000000000000000000000000000
+	valueMask           = 0b01100000000000000000000000000000
+	numMask             = 0b00011111111111111111111111111111
+	valueShift          = 29
 )
 
 // Wire implements a wire connecting binary gates.
 type Wire struct {
-	output     bool
-	value      WireValue
-	id         uint32
-	numOutputs uint32
-	input      *Gate
-	outputs    []*Gate
+	ovnum   uint32
+	id      uint32
+	input   *Gate
+	outputs []*Gate
 }
 
 // WireValue defines wire values.
@@ -61,22 +63,27 @@ func (w *Wire) SetID(id uint32) {
 
 // Output tests if the wire is an output wire.
 func (w *Wire) Output() bool {
-	return w.output
+	return w.ovnum&outputMask != 0
 }
 
 // SetOutput sets the wire output flag.
 func (w *Wire) SetOutput(output bool) {
-	w.output = output
+	if output {
+		w.ovnum |= outputMask
+	} else {
+		w.ovnum &^= outputMask
+	}
 }
 
 // Value returns the wire value.
 func (w *Wire) Value() WireValue {
-	return w.value
+	return WireValue((w.ovnum & valueMask) >> valueShift)
 }
 
 // SetValue sets the wire value.
 func (w *Wire) SetValue(value WireValue) {
-	w.value = value
+	w.ovnum &^= valueMask
+	w.ovnum |= (uint32(value) << valueShift) & valueMask
 }
 
 // Assigned tests if the wire is assigned with an unique ID.
@@ -86,12 +93,13 @@ func (w *Wire) Assigned() bool {
 
 // NumOutputs returns the number of output gates assigned to the wire.
 func (w *Wire) NumOutputs() uint32 {
-	return w.numOutputs
+	return w.ovnum & numMask
 }
 
 // SetNumOutputs sets the number of output gates assigned to the wire.
 func (w *Wire) SetNumOutputs(num uint32) {
-	w.numOutputs = num
+	w.ovnum &^= numMask
+	w.ovnum |= (num & numMask)
 }
 
 // NewWire creates an unassigned wire.

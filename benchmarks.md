@@ -483,27 +483,55 @@ CO OT:
 │ Result      │       338.085µs │  0.00% │ 55kB │
 │ Total       │ 1m17.852519512s │        │ 15GB │
 └─────────────┴─────────────────┴────────┴──────┘
-Max permanent wires: 53913890, cached circuits: 25 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796)
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796)
 #w=853882864
+```
+
+Optimized `compiler/circuits/Wire` data structure:
+
+```
+┌─────────────┬─────────────────┬─────────┬────────┐
+│ Op          │            Time │       % │   Xfer │
+├─────────────┼─────────────────┼─────────┼────────┤
+│ Compile     │    2.179716097s │   2.90% │        │
+│ Init        │      2.321499ms │   0.00% │     0B │
+│ OT Init     │         8.833µs │   0.00% │   16kB │
+│ Peer Inputs │     43.987663ms │   0.06% │   57kB │
+│ Garble      │ 1m12.830374104s │  97.03% │   15GB │
+│ Result      │       431.631µs │   0.00% │    8kB │
+│ Total       │ 1m15.056839827s │         │   15GB │
+│ ├╴Sent      │                 │ 100.00% │   15GB │
+│ ├╴Rcvd      │                 │   0.00% │   45kB │
+│ ╰╴Flcd      │                 │         │ 231284 │
+└─────────────┴─────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
 ```
 
 Theoretical minimum single-threaded garbling time:
 
 ```
-AND:    267575026 * 6 * 24.28 = 38980329787.68 ns
-OR:     496562    * 4 * 28.59 =    56786830.32 ns
-INV:    103369    * 2 * 28.59 =     5910639.42 ns
-                                =================
-                                39043027257.42 ns
-                                         39.04 s
+XOR:    533177896 *  21.47 = 11447329427.119999 ns
+XNOR:   28813441  *  19.98 =   575692551.180000 ns
+AND:    267575026 * 155.10 = 41500886532.600000 ns
+OR:     496562    * 143.20 =    71107678.399999 ns
+INV:    103369    *  77.97 = 53603075870.229996 ns
+                             =====================
+                             53603075870.229996 ns
+                                      53.603076 s
 ```
 
-The gate garbling speeds are measured with the `circuit/enc_test.go`:
+The gate garbling speeds are measured with the
+`circuit/stream_garble_test.go`:
 
 ```
 cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
-BenchmarkEnc-8                    	35426180	        28.59 ns/op
-BenchmarkEncHalf-8                	48652969	        24.28 ns/op
+BenchmarkGarbleXOR-8              	59785843	        21.47 ns/op
+BenchmarkGarbleXNOR-8             	61427943	        19.98 ns/op
+BenchmarkGarbleAND-8              	 7628728	       155.1 ns/op
+BenchmarkGarbleOR-8               	 8398204	       143.2 ns/op
+BenchmarkGarbleINV-8              	14924721	        77.97 ns/op
 ```
 
 ## RSA signature computation
