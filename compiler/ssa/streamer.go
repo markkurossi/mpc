@@ -537,7 +537,6 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	}
 
 	xfer = conn.Stats.Sum() - ioStats
-	ioStats = conn.Stats.Sum()
 	timing.Sample("Result", []string{circuit.FileSize(xfer).String()})
 
 	if params.Verbose {

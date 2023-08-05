@@ -362,7 +362,6 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 
 	xfer = nw.Stats().Sum() - ioStats
-	ioStats = nw.Stats().Sum()
 	timing.Sample("Result", []string{FileSize(xfer).String()})
 	if verbose {
 		timing.Print(nw.Stats())

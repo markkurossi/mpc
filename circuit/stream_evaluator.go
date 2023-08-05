@@ -451,7 +451,6 @@ loop:
 	}
 
 	xfer = conn.Stats.Sum() - ioStats
-	ioStats = conn.Stats.Sum()
 	timing.Sample("Result", []string{FileSize(xfer).String()})
 
 	if verbose {
