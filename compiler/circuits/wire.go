@@ -51,6 +51,31 @@ func (v WireValue) String() string {
 	}
 }
 
+// NewWire creates an unassigned wire.
+func NewWire() *Wire {
+	w := new(Wire)
+	w.Reset(UnassignedID)
+	return w
+}
+
+// MakeWires creates bits number of wires.
+func MakeWires(bits types.Size) []*Wire {
+	result := make([]*Wire, bits)
+	for i := 0; i < int(bits); i++ {
+		result[i] = NewWire()
+	}
+	return result
+}
+
+// Reset resets the wire with the new ID.
+func (w *Wire) Reset(id uint32) {
+	w.SetOutput(false)
+	w.SetValue(Unknown)
+	w.SetID(id)
+	w.input = nil
+	w.DisconnectOutputs()
+}
+
 // ID returns the wire ID.
 func (w *Wire) ID() uint32 {
 	return w.id
@@ -59,6 +84,11 @@ func (w *Wire) ID() uint32 {
 // SetID sets the wire ID.
 func (w *Wire) SetID(id uint32) {
 	w.id = id
+}
+
+// Assigned tests if the wire is assigned with an unique ID.
+func (w *Wire) Assigned() bool {
+	return w.id != UnassignedID
 }
 
 // Output tests if the wire is an output wire.
@@ -86,11 +116,6 @@ func (w *Wire) SetValue(value WireValue) {
 	w.ovnum |= (uint32(value) << valueShift) & valueMask
 }
 
-// Assigned tests if the wire is assigned with an unique ID.
-func (w *Wire) Assigned() bool {
-	return w.id != UnassignedID
-}
-
 // NumOutputs returns the number of output gates assigned to the wire.
 func (w *Wire) NumOutputs() uint32 {
 	return w.ovnum & numMask
@@ -98,33 +123,11 @@ func (w *Wire) NumOutputs() uint32 {
 
 // SetNumOutputs sets the number of output gates assigned to the wire.
 func (w *Wire) SetNumOutputs(num uint32) {
-	w.ovnum &^= numMask
-	w.ovnum |= (num & numMask)
-}
-
-// NewWire creates an unassigned wire.
-func NewWire() *Wire {
-	w := new(Wire)
-	w.Reset(UnassignedID)
-	return w
-}
-
-// MakeWires creates bits number of wires.
-func MakeWires(bits types.Size) []*Wire {
-	result := make([]*Wire, bits)
-	for i := 0; i < int(bits); i++ {
-		result[i] = NewWire()
+	if num > numMask {
+		panic("too big circuit, wire outputs overflow")
 	}
-	return result
-}
-
-// Reset resets the wire with the new ID.
-func (w *Wire) Reset(id uint32) {
-	w.SetOutput(false)
-	w.SetValue(Unknown)
-	w.SetID(id)
-	w.input = nil
-	w.DisconnectOutputs()
+	w.ovnum &^= numMask
+	w.ovnum |= num
 }
 
 // DisconnectOutputs disconnects wire from its output gates.
@@ -136,11 +139,6 @@ func (w *Wire) DisconnectOutputs() {
 func (w *Wire) String() string {
 	return fmt.Sprintf("Wire{%x, Input:%s, Value:%s, Outputs:%v, Output=%v}",
 		w.ID(), w.input, w.Value(), w.outputs, w.Output())
-}
-
-// IsInput tests if the wire is an input wire.
-func (w *Wire) IsInput() bool {
-	return w.input == nil
 }
 
 // Assign assings wire ID.
@@ -167,6 +165,11 @@ func (w *Wire) SetInput(gate *Gate) {
 		panic("Input gate already set")
 	}
 	w.input = gate
+}
+
+// IsInput tests if the wire is an input wire.
+func (w *Wire) IsInput() bool {
+	return w.input == nil
 }
 
 // ForEachOutput calls the argument function for each output gate of
