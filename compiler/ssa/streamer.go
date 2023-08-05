@@ -145,6 +145,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 
 	start := time.Now()
 	lastReport := start
+	var circCompileDuration time.Duration
 
 	istats := make(map[string]circuit.Stats)
 
@@ -433,6 +434,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			if !ok {
 				var cIn [][]*circuits.Wire
 				var flat []*circuits.Wire
+				startTime := time.Now()
 
 				for _, in := range wires {
 					w := circuits.MakeWires(types.Size(len(in)))
@@ -467,6 +469,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
 				circ.AssignLevels()
+				circCompileDuration += time.Now().Sub(startTime)
 			}
 			if false {
 				circ.Dump()
@@ -497,7 +500,15 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 
 	xfer = conn.Stats.Sum() - ioStats
 	ioStats = conn.Stats.Sum()
-	timing.Sample("Garble", []string{circuit.FileSize(xfer).String()})
+	sample := timing.Sample("Stream", []string{circuit.FileSize(xfer).String()})
+	sample.Samples = append(sample.Samples, &circuit.Sample{
+		Label: "Compile",
+		Abs:   circCompileDuration,
+	})
+	sample.Samples = append(sample.Samples, &circuit.Sample{
+		Label: "Garble",
+		Abs:   prog.garbleDuration,
+	})
 
 	result := new(big.Int)
 

@@ -74,9 +74,17 @@ func (t *Timing) Print(stats p2p.IOStats) {
 			row.Column(col)
 		}
 
-		for _, sub := range sample.Samples {
+		for idx, sub := range sample.Samples {
 			row := tab.Row()
-			row.Column("\u2570\u2574" + sub.Label).SetFormat(tabulate.FmtItalic)
+
+			var prefix string
+			if idx+1 >= len(sample.Samples) {
+				prefix = "\u2570\u2574"
+			} else {
+				prefix = "\u251C\u2574"
+			}
+
+			row.Column(prefix + sub.Label).SetFormat(tabulate.FmtItalic)
 
 			var d time.Duration
 			if sub.Abs > 0 {
@@ -89,7 +97,6 @@ func (t *Timing) Print(stats p2p.IOStats) {
 			row.Column(
 				fmt.Sprintf("%.2f%%", float64(d)/float64(duration)*100)).
 				SetFormat(tabulate.FmtItalic)
-
 		}
 	}
 	row := tab.Row()
