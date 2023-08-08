@@ -11,6 +11,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
@@ -148,30 +149,37 @@ func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 
 // Garble garbles the circuit and streams the garbled tables into the
 // stream.
-func (stream *Streaming) Garble(c *Circuit, in, out []Wire) error {
+func (stream *Streaming) Garble(c *Circuit, in, out []Wire) (
+	time.Duration, time.Duration, error) {
 	if StreamDebug {
 		fmt.Printf(" - Streaming.Garble: in=%v, out=%v\n", in, out)
 	}
 
+	start := time.Now()
+
 	stream.initCircuit(c, in, out)
 
 	// Garble gates.
+
 	var data ot.LabelData
 	var id uint32
 	var table [4]ot.Label
+
+	mid := time.Now()
+
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
 		err := stream.conn.NeedSpace(512)
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 		err = stream.garbleGate(gate, &id, table[:], &data,
 			stream.conn.WriteBuf, &stream.conn.WritePos)
 		if err != nil {
-			return err
+			return 0, 0, err
 		}
 	}
-	return nil
+	return mid.Sub(start), time.Now().Sub(mid), nil
 }
 
 // GarbleGate garbles the gate and streams it to the stream.

@@ -145,7 +145,9 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 
 	start := time.Now()
 	lastReport := start
-	var circCompileDuration time.Duration
+
+	var dInstrInit time.Duration
+	var dCircCompile time.Duration
 
 	istats := make(map[string]circuit.Stats)
 
@@ -153,6 +155,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	var iIDs, oIDs []circuit.Wire
 
 	for idx, step := range prog.Steps {
+		dStart := time.Now()
 		if idx%10 == 0 && params.Verbose {
 			now := time.Now()
 			if now.Sub(lastReport) > time.Second*5 {
@@ -194,6 +197,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		if params.Verbose && circuit.StreamDebug {
 			fmt.Printf("%05d: %s\n", idx, instr.String())
 		}
+		dInstrInit += time.Now().Sub(dStart)
 
 		switch instr.Op {
 
@@ -469,7 +473,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
 				circ.AssignLevels()
-				circCompileDuration += time.Now().Sub(startTime)
+				dCircCompile += time.Now().Sub(startTime)
 			}
 			if false {
 				circ.Dump()
@@ -502,12 +506,20 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	ioStats = conn.Stats.Sum()
 	sample := timing.Sample("Stream", []string{circuit.FileSize(xfer).String()})
 	sample.Samples = append(sample.Samples, &circuit.Sample{
-		Label: "Compile",
-		Abs:   circCompileDuration,
+		Label: "InstrInit",
+		Abs:   dInstrInit,
+	})
+	sample.Samples = append(sample.Samples, &circuit.Sample{
+		Label: "CircComp",
+		Abs:   dCircCompile,
+	})
+	sample.Samples = append(sample.Samples, &circuit.Sample{
+		Label: "StreamInit",
+		Abs:   prog.tInit,
 	})
 	sample.Samples = append(sample.Samples, &circuit.Sample{
 		Label: "Garble",
-		Abs:   prog.garbleDuration,
+		Abs:   prog.tGarble,
 	})
 
 	result := new(big.Int)
@@ -652,20 +664,12 @@ func (prog *Program) garble(conn *p2p.Conn, streaming *circuit.Streaming,
 	if err := conn.SendUint32(int(maxID + 1)); err != nil {
 		return err
 	}
-
-	gStart := time.Now()
-	err := streaming.Garble(circ, in, out)
+	tInit, tGarble, err := streaming.Garble(circ, in, out)
 	if err != nil {
 		return err
 	}
-	dt := time.Now().Sub(gStart)
-	elapsed := float64(time.Now().UnixNano() - gStart.UnixNano())
-	elapsed /= 1000000000
-	if elapsed > 0 && false {
-		fmt.Printf("%05d: - garbled %10.0f gates/s (%s)\n",
-			step, float64(circ.NumGates)/elapsed, dt)
-	}
-	prog.garbleDuration += dt
+	prog.tInit += tInit
+	prog.tGarble += tGarble
 	prog.stats.Add(circ.Stats)
 	prog.numWires += circ.NumWires
 

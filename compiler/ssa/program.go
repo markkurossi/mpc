@@ -22,21 +22,22 @@ import (
 
 // Program implements SSA program.
 type Program struct {
-	Params         *utils.Params
-	Inputs         circuit.IO
-	Outputs        circuit.IO
-	InputWires     []*circuits.Wire
-	OutputWires    []*circuits.Wire
-	Constants      map[string]ConstantInst
-	Steps          []Step
-	wires          map[string]*wireAlloc
-	freeWires      map[types.Size][][]*circuits.Wire
-	nextWireID     uint32
-	zeroWire       *circuits.Wire
-	oneWire        *circuits.Wire
-	stats          circuit.Stats
-	numWires       int
-	garbleDuration time.Duration
+	Params      *utils.Params
+	Inputs      circuit.IO
+	Outputs     circuit.IO
+	InputWires  []*circuits.Wire
+	OutputWires []*circuits.Wire
+	Constants   map[string]ConstantInst
+	Steps       []Step
+	wires       map[string]*wireAlloc
+	freeWires   map[types.Size][][]*circuits.Wire
+	nextWireID  uint32
+	zeroWire    *circuits.Wire
+	oneWire     *circuits.Wire
+	stats       circuit.Stats
+	numWires    int
+	tInit       time.Duration
+	tGarble     time.Duration
 }
 
 type wireAlloc struct {
@@ -118,9 +119,9 @@ func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
 
 	fl, ok := prog.freeWires[bits]
 	if ok && len(fl) > 0 {
-		result.Wires = fl[0]
+		result.Wires = fl[len(fl)-1]
 		result.Base = result.Wires[0].ID()
-		prog.freeWires[bits] = fl[1:]
+		prog.freeWires[bits] = fl[:len(fl)-1]
 	} else {
 		result.Wires = circuits.MakeWires(bits)
 	}
