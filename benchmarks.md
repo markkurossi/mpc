@@ -509,6 +509,35 @@ Max permanent wires: 53913890, cached circuits: 25
 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
 ```
 
+Changes:
+ - changed `compiler/circuits/MakeWires` to allocate wires as one
+   continuous array
+ - Go 1.21.0
+ - Added `apps/garbled/default.pgo`
+
+```
+┌──────────────┬─────────────────┬─────────┬────────┐
+│ Op           │            Time │       % │   Xfer │
+├──────────────┼─────────────────┼─────────┼────────┤
+│ Compile      │    2.201645057s │   3.09% │        │
+│ Init         │      2.355373ms │   0.00% │     0B │
+│ OT Init      │          7.79µs │   0.00% │   16kB │
+│ Peer Inputs  │     43.485891ms │   0.06% │   57kB │
+│ Stream       │   1m8.95812062s │  96.84% │   15GB │
+│ ├╴InstrInit  │    4.142664938s │   6.01% │        │
+│ ├╴CircComp   │     33.135987ms │   0.05% │        │
+│ ├╴StreamInit │    2.519242464s │   3.65% │        │
+│ ╰╴Garble     │  1m1.343566909s │  88.96% │        │
+│ Result       │       290.111µs │   0.00% │    8kB │
+│ Total        │ 1m11.205904842s │         │   15GB │
+│ ├╴Sent       │                 │ 100.00% │   15GB │
+│ ├╴Rcvd       │                 │   0.00% │   45kB │
+│ ╰╴Flcd       │                 │         │ 231284 │
+└──────────────┴─────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```

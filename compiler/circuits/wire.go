@@ -61,8 +61,11 @@ func NewWire() *Wire {
 // MakeWires creates bits number of wires.
 func MakeWires(bits types.Size) []*Wire {
 	result := make([]*Wire, bits)
+	wires := make([]Wire, bits)
 	for i := 0; i < int(bits); i++ {
-		result[i] = NewWire()
+		w := &wires[i]
+		w.id = UnassignedID
+		result[i] = w
 	}
 	return result
 }

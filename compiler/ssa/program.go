@@ -32,17 +32,14 @@ type Program struct {
 	wires       map[string]*wireAlloc
 	freeWires   map[types.Size][][]*circuits.Wire
 	nextWireID  uint32
+	flHit       int
+	flMiss      int
 	zeroWire    *circuits.Wire
 	oneWire     *circuits.Wire
 	stats       circuit.Stats
 	numWires    int
 	tInit       time.Duration
 	tGarble     time.Duration
-}
-
-type wireAlloc struct {
-	Base  uint32
-	Wires []*circuits.Wire
 }
 
 // NewProgram creates a new program for the constants and program
@@ -80,104 +77,6 @@ type Step struct {
 	Label string
 	Instr Instr
 	Live  Set
-}
-
-// Wires allocates unassigned wires for the argument value.
-func (prog *Program) Wires(v string, bits types.Size) (
-	[]*circuits.Wire, error) {
-
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for value %v", v)
-	}
-	alloc, ok := prog.wires[v]
-	if !ok {
-		alloc = prog.allocWires(bits, false)
-		prog.wires[v] = alloc
-	}
-	return alloc.Wires, nil
-}
-
-// AssignedWires allocates assigned wires for the argument value.
-func (prog *Program) AssignedWires(v string, bits types.Size) (
-	[]*circuits.Wire, error) {
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for value %v", v)
-	}
-	alloc, ok := prog.wires[v]
-	if !ok {
-		alloc = prog.allocWires(bits, true)
-		prog.wires[v] = alloc
-	}
-	return alloc.Wires, nil
-}
-
-func (prog *Program) allocWires(bits types.Size, assign bool) *wireAlloc {
-
-	result := &wireAlloc{
-		Base: circuits.UnassignedID,
-	}
-
-	fl, ok := prog.freeWires[bits]
-	if ok && len(fl) > 0 {
-		result.Wires = fl[len(fl)-1]
-		result.Base = result.Wires[0].ID()
-		prog.freeWires[bits] = fl[:len(fl)-1]
-	} else {
-		result.Wires = circuits.MakeWires(bits)
-	}
-
-	if assign && result.Base == circuits.UnassignedID {
-		// Assign wire IDs.
-		result.Base = prog.nextWireID
-		for i := 0; i < int(bits); i++ {
-			result.Wires[i].SetID(prog.nextWireID + uint32(i))
-		}
-		prog.nextWireID += uint32(bits)
-	}
-
-	return result
-}
-
-func (prog *Program) recycleWires(alloc *wireAlloc) {
-	if alloc.Base == circuits.UnassignedID {
-		alloc.Base = alloc.Wires[0].ID()
-	}
-	// Clear wires and reassign their IDs.
-	bits := types.Size(len(alloc.Wires))
-	for i := 0; i < int(bits); i++ {
-		alloc.Wires[i].Reset(alloc.Base + uint32(i))
-	}
-
-	fl := prog.freeWires[bits]
-	fl = append(fl, alloc.Wires)
-	prog.freeWires[bits] = fl
-	if false {
-		fmt.Printf("FL: %d: ", bits)
-		for k, v := range prog.freeWires {
-			fmt.Printf(" %d:%d", k, len(v))
-		}
-		fmt.Println()
-	}
-}
-
-// SetWires allocates wire IDs for the value's wires.
-func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
-	_, ok := prog.wires[v]
-	if ok {
-		return fmt.Errorf("wires already set for %v", v)
-	}
-	alloc := &wireAlloc{
-		Wires: w,
-	}
-	if len(w) == 0 {
-		alloc.Base = circuits.UnassignedID
-	} else {
-		alloc.Base = w[0].ID()
-	}
-
-	prog.wires[v] = alloc
-
-	return nil
 }
 
 func (prog *Program) liveness() {

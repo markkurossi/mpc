@@ -144,7 +144,14 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 	fmt.Printf(" - Out: %s\n", program.Outputs)
 	fmt.Printf(" -  In: %s\n", inputFlag)
 
-	return program.StreamCircuit(conn, oti, c.params, input, timing)
+	out, bits, err := program.StreamCircuit(conn, oti, c.params, input, timing)
+	if err != nil {
+		return nil, nil, err
+	}
+	if false {
+		program.StreamDebug()
+	}
+	return out, bits, err
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
