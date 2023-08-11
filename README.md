@@ -302,8 +302,8 @@ form assembly:
        - [ ] SSA aliasing is 1:1 but `amov` has 2:1 relation
        - [ ] variable liveness analysis for templates
      - [ ] BitShift
-   - [ ] Circuit & garbling:
-     - [ ] Oblivious transfer extensions
+   - [x] Circuit & garbling:
+     - [x] Oblivious transfer extensions
    - [ ] Misc:
      - [ ] Uninitialized variables produce unspecified values in stream mode
      - [ ] TLS for garbler-evaluator protocol
@@ -320,6 +320,11 @@ form assembly:
    - [ ] Compound init values must be zero-padded to full size
    - [ ] Circuit generation:
      - [ ] SSA variable liveness analysis must be optimized
+     - [ ] The `compiler/ssa/wire_allocator.go` uses `Value.String()`
+           as the wire map key. This causes unnecessary memory
+           allocation. Should change to use `Value.HashCode()` and
+           `Value.Equal()` to implement a custom hashtable. The wire
+           allocation API must be changed to use values (ptr / ref).
    - [ ] SHA-512 message digest
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
