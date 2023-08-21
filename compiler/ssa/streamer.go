@@ -177,7 +177,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		instr := step.Instr
 		wires = wires[:0]
 		for _, in := range instr.In {
-			w, err := prog.AssignedWires(in.String(), in.Type.Bits)
+			w, err := prog.AssignedWires(in, in.Type.Bits)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -187,8 +187,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 		var out []*circuits.Wire
 		var err error
 		if instr.Out != nil {
-			out, err = prog.AssignedWires(instr.Out.String(),
-				instr.Out.Type.Bits)
+			out, err = prog.AssignedWires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -388,7 +387,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			}
 			// Return wires.
 			for i, ret := range instr.Ret {
-				wires, err := prog.AssignedWires(ret.String(), ret.Type.Bits)
+				wires, err := prog.AssignedWires(ret, ret.Type.Bits)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -416,13 +415,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			}
 
 		case GC:
-			alloc, ok := prog.wires[instr.GC]
-			if ok {
-				delete(prog.wires, instr.GC)
-				prog.recycleWires(alloc)
-			} else {
-				fmt.Printf("GC: %s not known\n", instr.GC)
-			}
+			prog.GCWires(*instr.GC)
 
 		default:
 			f, ok := circuitGenerators[instr.Op]
@@ -681,7 +674,10 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.zeroWire == nil {
-		wires, err := prog.AssignedWires("{zero}", 1)
+		wires, err := prog.AssignedWires(Value{
+			Const: true,
+			Name:  "{zero}",
+		}, 1)
 		if err != nil {
 			return nil, err
 		}
@@ -727,7 +723,10 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.oneWire == nil {
-		wires, err := prog.AssignedWires("{one}", 1)
+		wires, err := prog.AssignedWires(Value{
+			Const: true,
+			Name:  "{one}",
+		}, 1)
 		if err != nil {
 			return nil, err
 		}

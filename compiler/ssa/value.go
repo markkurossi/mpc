@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -26,7 +26,7 @@ type Value struct {
 	ConstValue interface{}
 }
 
-// Scope defines variable scope (max 256 levels of nested blocks).
+// Scope defines variable scope (max 65536 levels of nested blocks).
 type Scope int16
 
 // PtrInfo defines context information for pointer values.
@@ -119,6 +119,16 @@ func (v *Value) ConstInt() (types.Size, error) {
 	default:
 		return 0, fmt.Errorf("cannot use %v as integer", val)
 	}
+}
+
+// HashCode returns a hash code for the value.
+func (v *Value) HashCode() (hash int) {
+	for r := range v.Name {
+		hash = hash<<8 ^ int(r) ^ hash>>24
+	}
+	hash ^= int(v.Scope) << 15
+	hash ^= int(v.Version) << 7
+	return
 }
 
 // Equal implements BindingValue.Equal.

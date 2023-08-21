@@ -62,7 +62,10 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		if len(arg.Name) == 0 {
 			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
-		wires, err := prog.Wires(arg.Name, types.Size(arg.Size))
+		wires, err := prog.Wires(Value{
+			Const: true,
+			Name:  arg.Name,
+		}, types.Size(arg.Size))
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +197,7 @@ func (prog *Program) GC() {
 				if !live {
 					// Input is not live.
 					gcs = append(gcs, Step{
-						Instr: NewGCInstr(in.String()),
+						Instr: NewGCInstr(in),
 					})
 				}
 			}
@@ -255,7 +258,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 			wires = append(wires, w)
 		}
 
-		err := prog.SetWires(c.String(), wires)
+		err := prog.SetWires(c, wires)
 		if err != nil {
 			return err
 		}

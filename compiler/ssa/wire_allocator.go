@@ -15,29 +15,31 @@ import (
 )
 
 // Wires allocates unassigned wires for the argument value.
-func (prog *Program) Wires(v string, bits types.Size) (
+func (prog *Program) Wires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
-	alloc, ok := prog.wires[v]
+	key := v.String()
+	alloc, ok := prog.wires[key]
 	if !ok {
 		alloc = prog.allocWires(bits)
-		prog.wires[v] = alloc
+		prog.wires[key] = alloc
 	}
 	return alloc.Wires, nil
 }
 
 // AssignedWires allocates assigned wires for the argument value.
-func (prog *Program) AssignedWires(v string, bits types.Size) (
+func (prog *Program) AssignedWires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
-	alloc, ok := prog.wires[v]
+	key := v.String()
+	alloc, ok := prog.wires[key]
 	if !ok {
 		alloc = prog.allocWires(bits)
-		prog.wires[v] = alloc
+		prog.wires[key] = alloc
 
 		// Assign wire IDs.
 		if alloc.Base == circuits.UnassignedID {
@@ -76,7 +78,17 @@ func (prog *Program) allocWires(bits types.Size) *wireAlloc {
 	return result
 }
 
-func (prog *Program) recycleWires(alloc *wireAlloc) {
+// GCWires recycles the wires of the argument value. The wires must
+// have been previously allocated with Wires, AssignedWires, or
+// SetWires; the function panics if the wires have not been allocated.
+func (prog *Program) GCWires(v Value) {
+	key := v.String()
+	alloc, ok := prog.wires[key]
+	if !ok {
+		panic(fmt.Sprintf("GC: %s not known", key))
+	}
+	delete(prog.wires, key)
+
 	if alloc.Base == circuits.UnassignedID {
 		alloc.Base = alloc.Wires[0].ID()
 	}
@@ -99,10 +111,11 @@ func (prog *Program) recycleWires(alloc *wireAlloc) {
 }
 
 // SetWires allocates wire IDs for the value's wires.
-func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
-	_, ok := prog.wires[v]
+func (prog *Program) SetWires(v Value, w []*circuits.Wire) error {
+	key := v.String()
+	_, ok := prog.wires[key]
 	if ok {
-		return fmt.Errorf("wires already set for %v", v)
+		return fmt.Errorf("wires already set for %v", key)
 	}
 	alloc := &wireAlloc{
 		Wires: w,
@@ -113,7 +126,7 @@ func (prog *Program) SetWires(v string, w []*circuits.Wire) error {
 		alloc.Base = w[0].ID()
 	}
 
-	prog.wires[v] = alloc
+	prog.wires[key] = alloc
 
 	return nil
 }

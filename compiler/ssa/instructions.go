@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -151,7 +151,7 @@ type Instr struct {
 	Label   *Block
 	Circ    *circuit.Circuit
 	Builtin circuits.Builtin
-	GC      string
+	GC      *Value
 	Ret     []Value
 }
 
@@ -541,10 +541,10 @@ func NewBuiltinInstr(builtin circuits.Builtin, a, b, r Value) Instr {
 }
 
 // NewGCInstr creates a new GC instruction.
-func NewGCInstr(v string) Instr {
+func NewGCInstr(v Value) Instr {
 	return Instr{
 		Op: GC,
-		GC: v,
+		GC: &v,
 	}
 }
 
@@ -560,7 +560,7 @@ func (i Instr) StringTyped() string {
 func (i Instr) string(maxLen int, typesOnly bool) string {
 	result := i.Op.String()
 
-	if len(i.In) == 0 && i.Out == nil && i.Label == nil && len(i.GC) == 0 {
+	if len(i.In) == 0 && i.Out == nil && i.Label == nil && i.GC == nil {
 		return result
 	}
 
@@ -590,9 +590,9 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 	if i.Circ != nil {
 		result += fmt.Sprintf(" {G=%d, W=%d}", i.Circ.NumGates, i.Circ.NumWires)
 	}
-	if len(i.GC) > 0 {
+	if i.GC != nil {
 		result += " "
-		result += i.GC
+		result += i.GC.String()
 	}
 	for _, r := range i.Ret {
 		result += " "
