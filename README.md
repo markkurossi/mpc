@@ -287,6 +287,12 @@ form assembly:
 
 # TODO
 
+ - [ ] Foundation
+   - [x] Circuit & garbling:
+     - [x] Oblivious transfer extensions
+     - [ ] SSA variable liveness analysis must be optimized
+   - [ ] TLS for garbler-evaluator protocol
+   - [ ] BMR multi-party protocol
  - [ ] Compiler
    - [ ] Incremental compiler
      - [ ] Constant folding
@@ -302,35 +308,29 @@ form assembly:
        - [ ] SSA aliasing is 1:1 but `amov` has 2:1 relation
        - [ ] variable liveness analysis for templates
      - [ ] BitShift
-   - [x] Circuit & garbling:
-     - [x] Oblivious transfer extensions
-   - [ ] Misc:
-     - [ ] Uninitialized variables produce unspecified values in stream mode
-     - [ ] TLS for garbler-evaluator protocol
- - [ ] BMR multi-party protocol
- - [ ] Ed25519
-   - [X] Parsing Ed25519 MPCL files
-     - [ ] for-range statements
-     - [ ] local variables in for-loop unrolling
+   - [ ] `copy()` does not work on arrays which have been `make()`:ed
+   - [ ] `&base[pos][i]` returns the address of the first element
+   - [ ] reading from `*[32]int32` returns invalid values
    - [X] Pointer handling
      - [X] Pointer to struct field
      - [ ] Cleanup pointer r-value handling
      - [ ] Slices are passed by value instead of by reference
      - [ ] Selecting struct members from struct pointer value
+ - [ ] Streamer
+   - [ ] Uninitialized variables produce unspecified values in stream mode
+   - [ ] The `compiler/ssa/wire_allocator.go` uses `Value.String()` as
+         the wire map key. This causes unnecessary memory
+         allocation. Should change to use `Value.HashCode()` and
+         `Value.Equal()` to implement a custom hashtable. The wire
+         allocation API must be changed to use values (ptr / ref).
+ - [ ] Ed25519
+   - [X] Parsing Ed25519 MPCL files
+     - [ ] for-range statements
+     - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
-   - [ ] Circuit generation:
-     - [ ] SSA variable liveness analysis must be optimized
-     - [ ] The `compiler/ssa/wire_allocator.go` uses `Value.String()`
-           as the wire map key. This causes unnecessary memory
-           allocation. Should change to use `Value.HashCode()` and
-           `Value.Equal()` to implement a custom hashtable. The wire
-           allocation API must be changed to use values (ptr / ref).
    - [ ] SHA-512 message digest
      - [ ] Empty arrays should be allowed, now unspecified length
      - [ ] `block = 0` sets block's type to int32
-   - [ ] `copy()` does not work on arrays which have been `make()`:ed
-   - [ ] `&base[pos][i]` returns the address of the first element
-   - [ ] reading from `*[32]int32` returns invalid values
 
 # Benchmarks and tests
 

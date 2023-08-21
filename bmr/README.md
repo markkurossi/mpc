@@ -1,3 +1,9 @@
+# Abstract
+
+This module implements the [Optimizing Semi-Honest Secure Multiparty
+Computation for the Internet](https://eprint.iacr.org/2016/1066)
+multi-party protocol.
+
 # BMR Protocol
 
 
