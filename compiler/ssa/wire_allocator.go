@@ -14,12 +14,35 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+var (
+	vConst   int
+	vTypeRef int
+	vPtr     int
+	vDefault int
+	hash     [1024]int
+)
+
+func addValueStats(v Value) {
+	if v.Const {
+		vConst++
+	} else if v.TypeRef {
+		vTypeRef++
+	} else if v.Type.Type == types.TPtr {
+		vPtr++
+	} else {
+		vDefault++
+	}
+
+	hash[v.HashCode()%len(hash)]++
+}
+
 // Wires allocates unassigned wires for the argument value.
 func (prog *Program) Wires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
+	addValueStats(v)
 	key := v.String()
 	alloc, ok := prog.wires[key]
 	if !ok {
@@ -35,6 +58,7 @@ func (prog *Program) AssignedWires(v Value, bits types.Size) (
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
+	addValueStats(v)
 	key := v.String()
 	alloc, ok := prog.wires[key]
 	if !ok {
@@ -112,6 +136,7 @@ func (prog *Program) GCWires(v Value) {
 
 // SetWires allocates wire IDs for the value's wires.
 func (prog *Program) SetWires(v Value, w []*circuits.Wire) error {
+	addValueStats(v)
 	key := v.String()
 	_, ok := prog.wires[key]
 	if ok {
@@ -151,4 +176,25 @@ func (prog *Program) StreamDebug() {
 		fmt.Printf(" %d:\t%d\n", k, len(prog.freeWires[types.Size(k)]))
 	}
 	fmt.Println()
+
+	fmt.Println("Value Stats:")
+
+	sum := float64(vConst + vTypeRef + vPtr + vDefault)
+
+	fmt.Printf(" - vConst:\t%v\t%f%%\n", vConst, float64(vConst)/sum*100)
+	fmt.Printf(" - vTypeRef:\t%v\t%f%%\n", vTypeRef, float64(vTypeRef)/sum*100)
+	fmt.Printf(" - vPtr:\t%v\t%f%%\n", vPtr, float64(vPtr)/sum*100)
+	fmt.Printf(" - vDefault:\t%v\t%f%%\n", vDefault, float64(vDefault)/sum*100)
+
+	if false {
+		var zeroes int
+		for idx, count := range hash {
+			if count == 0 {
+				zeroes++
+			} else {
+				fmt.Printf("%v:\t%v\n", idx, count)
+			}
+		}
+		fmt.Printf("%v zero buckets\n", zeroes)
+	}
 }

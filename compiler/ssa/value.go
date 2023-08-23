@@ -42,6 +42,17 @@ func (ptr PtrInfo) String() string {
 	return fmt.Sprintf("*%s@%d", ptr.Name, ptr.Scope)
 }
 
+// Equal tests if this PtrInfo is equal to the argument PtrInfo.
+func (ptr *PtrInfo) Equal(o *PtrInfo) bool {
+	if ptr == nil {
+		return o == nil
+	}
+	if o == nil {
+		return false
+	}
+	return ptr.Name == o.Name && ptr.Scope == o.Scope && ptr.Offset == o.Offset
+}
+
 // Undefined defines an undefined value.
 var Undefined Value
 
@@ -126,8 +137,12 @@ func (v *Value) HashCode() (hash int) {
 	for r := range v.Name {
 		hash = hash<<8 ^ int(r) ^ hash>>24
 	}
-	hash ^= int(v.Scope) << 15
-	hash ^= int(v.Version) << 7
+	hash ^= int(v.Type.Bits) << 5
+	hash ^= int(v.Scope) << 3
+	hash ^= int(v.Version) << 1
+	if hash < 0 {
+		hash = -hash
+	}
 	return
 }
 
@@ -137,7 +152,11 @@ func (v *Value) Equal(other BindingValue) bool {
 	if !ok {
 		return false
 	}
-	return o.Name == v.Name && o.Scope == v.Scope && o.Version == v.Version
+	if o.Name != v.Name || o.Scope != v.Scope || o.Version != v.Version ||
+		v.Type.Bits != o.Type.Bits {
+		return false
+	}
+	return v.PtrInfo.Equal(o.PtrInfo)
 }
 
 // Value implements BindingValue.Value.
