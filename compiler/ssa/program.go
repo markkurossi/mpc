@@ -29,11 +29,7 @@ type Program struct {
 	OutputWires []*circuits.Wire
 	Constants   map[string]ConstantInst
 	Steps       []Step
-	wires       map[string]*wireAlloc
-	freeWires   map[types.Size][][]*circuits.Wire
-	nextWireID  uint32
-	flHit       int
-	flMiss      int
+	walloc      WireAllocator
 	zeroWire    *circuits.Wire
 	oneWire     *circuits.Wire
 	stats       circuit.Stats
@@ -53,8 +49,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		wires:     make(map[string]*wireAlloc),
-		freeWires: make(map[types.Size][][]*circuits.Wire),
+		walloc:    NewWAllocValue(),
 	}
 
 	// Inputs into wires.
@@ -62,8 +57,9 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		if len(arg.Name) == 0 {
 			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
-		wires, err := prog.Wires(Value{
+		wires, err := prog.walloc.Wires(Value{
 			Const: true,
+			Scope: 1, // Arguments are at scope 1.
 			Name:  arg.Name,
 		}, types.Size(arg.Size))
 		if err != nil {
@@ -240,8 +236,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
 	var constWires int
 	for _, c := range consts {
-		_, ok := prog.wires[c.String()]
-		if ok {
+		if prog.walloc.Allocated(c) {
 			continue
 		}
 
@@ -258,16 +253,17 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 			wires = append(wires, w)
 		}
 
-		err := prog.SetWires(c, wires)
-		if err != nil {
-			return err
-		}
+		prog.walloc.SetWires(c, wires)
 	}
 	if len(consts) > 0 && prog.Params.Verbose {
 		fmt.Printf("Defined %d constants: %d wires\n",
 			len(consts), constWires)
 	}
 	return nil
+}
+
+func (prog *Program) StreamDebug() {
+	prog.walloc.Debug()
 }
 
 // PP pretty-prints the program to the argument io.Writer.
