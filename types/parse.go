@@ -1,7 +1,7 @@
 //
 // parse.go
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -49,8 +49,11 @@ func Parse(val string) (info Info, err error) {
 		case "s", "string":
 			info.Type = TString
 
+		case "struct":
+			info.Type = TStruct
+
 		default:
-			return info, fmt.Errorf("unknown type: %s", val)
+			return info, fmt.Errorf("types.Parse: unknown type: %s", val)
 		}
 		var bits int64
 		if len(m[2]) > 0 {
@@ -66,7 +69,7 @@ func Parse(val string) (info Info, err error) {
 
 	m = reArr.FindStringSubmatch(val)
 	if m == nil {
-		return info, fmt.Errorf("unknown type: %s", val)
+		return info, fmt.Errorf("types.Parse: unknown type: %s", val)
 	}
 	var elType Info
 	elType, err = Parse(m[2])

@@ -15,6 +15,7 @@ import (
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/mpc/types"
 )
 
 // Protocol operation codes.
@@ -474,7 +475,10 @@ func receiveArgument(conn *p2p.Conn) (arg IOArg, err error) {
 		return arg, err
 	}
 	arg.Name = name
-	arg.Type = t
+	arg.Type, err = types.Parse(t)
+	if err != nil {
+		return arg, err
+	}
 	arg.Size = size
 
 	count, err := conn.ReceiveUint32()

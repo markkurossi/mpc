@@ -148,7 +148,7 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 	if err != nil {
 		return nil, nil, err
 	}
-	if false {
+	if true {
 		program.StreamDebug()
 	}
 	return out, bits, err

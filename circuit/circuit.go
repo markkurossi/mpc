@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,9 +11,6 @@ import (
 	"io"
 	"math"
 	"math/big"
-	"regexp"
-	"strconv"
-	"strings"
 
 	"github.com/markkurossi/tabulate"
 )
@@ -100,153 +97,6 @@ func (op Operation) String() string {
 	}
 }
 
-// IOArg describes circuit input argument.
-type IOArg struct {
-	Name     string
-	Type     string
-	Size     int
-	Compound IO
-}
-
-func (io IOArg) String() string {
-	if len(io.Compound) > 0 {
-		return io.Compound.String()
-	}
-
-	if len(io.Name) > 0 {
-		return io.Name + ":" + io.Type
-	}
-	return io.Type
-}
-
-// Parse parses the I/O argument from the input string values.
-func (io IOArg) Parse(inputs []string) (*big.Int, error) {
-	result := new(big.Int)
-
-	if len(io.Compound) == 0 {
-		if len(inputs) != 1 {
-			return nil,
-				fmt.Errorf("invalid amount of arguments, got %d, expected 1",
-					len(inputs))
-		}
-
-		if strings.HasPrefix(io.Type, "u") || strings.HasPrefix(io.Type, "i") {
-			_, ok := result.SetString(inputs[0], 0)
-			if !ok {
-				return nil, fmt.Errorf("invalid input: %s", inputs[0])
-			}
-		} else if io.Type == "bool" {
-			switch inputs[0] {
-			case "0", "f", "false":
-			case "1", "t", "true":
-				result.SetInt64(1)
-			default:
-				return nil, fmt.Errorf("invalid bool constant: %s", inputs[0])
-			}
-		} else {
-			ok, count, elSize, _ := ParseArrayType(io.Type)
-			if ok {
-				val := new(big.Int)
-				_, ok := val.SetString(inputs[0], 0)
-				if !ok {
-					return nil, fmt.Errorf("invalid input: %s", inputs[0])
-				}
-
-				valElCount := val.BitLen() / elSize
-				if val.BitLen()%elSize != 0 {
-					valElCount++
-				}
-				if valElCount > count {
-					return nil, fmt.Errorf("too many values for input: %s",
-						inputs[0])
-				}
-				pad := count - valElCount
-				val.Lsh(val, uint(pad*elSize))
-
-				mask := new(big.Int)
-				for i := 0; i < elSize; i++ {
-					mask.SetBit(mask, i, 1)
-				}
-
-				for i := 0; i < count; i++ {
-					next := new(big.Int).Rsh(val, uint((count-i-1)*elSize))
-					next = next.And(next, mask)
-
-					next.Lsh(next, uint(i*elSize))
-					result.Or(result, next)
-				}
-			} else {
-				return nil, fmt.Errorf("unsupported input type: %s", io.Type)
-			}
-		}
-
-		return result, nil
-	}
-	if len(inputs) != len(io.Compound) {
-		return nil,
-			fmt.Errorf("invalid amount of arguments, got %d, expected %d",
-				len(inputs), len(io.Compound))
-	}
-
-	var offset int
-
-	for idx, arg := range io.Compound {
-		input, err := arg.Parse(inputs[idx : idx+1])
-		if err != nil {
-			return nil, err
-		}
-
-		input.Lsh(input, uint(offset))
-		result.Or(result, input)
-
-		offset += arg.Size
-	}
-	return result, nil
-}
-
-var reArr = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
-var reSized = regexp.MustCompilePOSIX(`^[[:^digit:]]+([[:digit:]]+)$`)
-
-// ParseArrayType parses the argument value as array type.
-func ParseArrayType(val string) (ok bool, count, elementSize int,
-	elementType string) {
-
-	matches := reArr.FindStringSubmatch(val)
-	if matches == nil {
-		return
-	}
-	var err error
-	count, err = strconv.Atoi(matches[1])
-	if err != nil {
-		panic(fmt.Sprintf("invalid array size: %s", matches[1]))
-	}
-	ok = true
-	elementSize = Size(matches[2])
-	elementType = matches[2]
-	return
-}
-
-// Size returns the type size in bits.
-func Size(t string) int {
-	matches := reArr.FindStringSubmatch(t)
-	if matches != nil {
-		count, err := strconv.Atoi(matches[1])
-		if err != nil {
-			panic(fmt.Sprintf("invalid array size: %s", matches[1]))
-		}
-		return count * Size(matches[2])
-	}
-	matches = reSized.FindStringSubmatch(t)
-	if matches == nil {
-		panic(fmt.Sprintf("invalid type: %s", t))
-	}
-	bits, err := strconv.Atoi(matches[1])
-	if err != nil {
-		panic(fmt.Sprintf("invalid bit count: %s", matches[1]))
-	}
-	return bits
-}
-
 // IO specifies circuit input and output arguments.
 type IO []IOArg
 
@@ -269,7 +119,7 @@ func (io IO) String() string {
 		if len(a.Name) > 0 {
 			str += a.Name + ":"
 		}
-		str += a.Type
+		str += a.Type.String()
 	}
 	return str
 }

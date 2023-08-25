@@ -687,14 +687,20 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			Inputs: []circuit.IOArg{
 				{
 					Name: "i0",
-					Type: "uint1",
+					Type: types.Info{
+						Type: types.TUint,
+						Bits: 1,
+					},
 					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
 				{
 					Name: "o0",
-					Type: "uint1",
+					Type: types.Info{
+						Type: types.TUint,
+						Bits: 1,
+					},
 					Size: 1,
 				},
 			},
@@ -736,14 +742,20 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 			Inputs: []circuit.IOArg{
 				{
 					Name: "i0",
-					Type: "uint1",
+					Type: types.Info{
+						Type: types.TUint,
+						Bits: 1,
+					},
 					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
 				{
 					Name: "o0",
-					Type: "uint1",
+					Type: types.Info{
+						Type: types.TUint,
+						Bits: 1,
+					},
 					Size: 1,
 				},
 			},
@@ -771,7 +783,7 @@ func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {
 	if err := conn.SendString(arg.Name); err != nil {
 		return err
 	}
-	if err := conn.SendString(arg.Type); err != nil {
+	if err := conn.SendString(arg.Type.String()); err != nil {
 		return err
 	}
 	if err := conn.SendUint32(arg.Size); err != nil {

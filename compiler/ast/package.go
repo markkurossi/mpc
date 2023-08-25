@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -83,7 +83,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 
 		arg := circuit.IOArg{
 			Name: a.String(),
-			Type: a.Type.String(),
+			Type: a.Type,
 			Size: int(a.Type.Bits),
 		}
 		if typeInfo.Type == types.TStruct {
@@ -128,7 +128,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		v := returnVars[idx]
 		outputs = append(outputs, circuit.IOArg{
 			Name: v.String(),
-			Type: v.Type.String(),
+			Type: v.Type,
 			Size: int(v.Type.Bits),
 		})
 	}
@@ -171,7 +171,7 @@ func flattenStruct(t types.Info) circuit.IO {
 		} else {
 			result = append(result, circuit.IOArg{
 				Name: f.Name,
-				Type: f.Type.String(),
+				Type: f.Type,
 				Size: int(f.Type.Bits),
 			})
 		}

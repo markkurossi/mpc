@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2021, 2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -87,7 +87,7 @@ func marshalIOArg(out io.Writer, arg IOArg) error {
 	if err := marshalString(out, arg.Name); err != nil {
 		return err
 	}
-	if err := marshalString(out, arg.Type); err != nil {
+	if err := marshalString(out, arg.Type.String()); err != nil {
 		return err
 	}
 	if err := binary.Write(out, bo, uint32(arg.Size)); err != nil {
