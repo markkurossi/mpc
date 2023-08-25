@@ -142,7 +142,8 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	fmt.Printf(" - Out: %s\n", outputs)
 	fmt.Printf(" -  In: %s\n", inputFlag)
 
-	streaming, err := NewStreamEval(key, in1.Size+in2.Size, outputs.Size())
+	streaming, err := NewStreamEval(key, int(in1.Type.Bits+in2.Type.Bits),
+		outputs.Size())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -150,7 +151,7 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	// Receive peer inputs.
 	var label ot.Label
 	var labelData ot.LabelData
-	for w := 0; w < in1.Size; w++ {
+	for w := 0; w < int(in1.Type.Bits); w++ {
 		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, nil, err
@@ -170,13 +171,13 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	if verbose {
 		fmt.Printf(" - Querying our inputs...\n")
 	}
-	flags := make([]bool, in2.Size)
-	for i := 0; i < in2.Size; i++ {
+	flags := make([]bool, in2.Type.Bits)
+	for i := 0; i < int(in2.Type.Bits); i++ {
 		if inputs.Bit(i) == 1 {
 			flags[i] = true
 		}
 	}
-	inputLabels := streaming.GetInputs(in1.Size, in2.Size)
+	inputLabels := streaming.GetInputs(int(in1.Type.Bits), int(in2.Type.Bits))
 	if err := oti.Receive(flags, inputLabels); err != nil {
 		return nil, nil, err
 	}
@@ -479,7 +480,7 @@ func receiveArgument(conn *p2p.Conn) (arg IOArg, err error) {
 	if err != nil {
 		return arg, err
 	}
-	arg.Size = size
+	arg.Type.Bits = types.Size(size)
 
 	count, err := conn.ReceiveUint32()
 	if err != nil {

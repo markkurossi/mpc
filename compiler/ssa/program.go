@@ -61,7 +61,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 			Const: true,
 			Scope: 1, // Arguments are at scope 1.
 			Name:  arg.Name,
-		}, types.Size(arg.Size))
+		}, arg.Type.Bits)
 		if err != nil {
 			return nil, err
 		}

@@ -474,9 +474,9 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			var circWires []*circuits.Wire
 
 			// Flatten input wires.
-			for idx, w := range wires {
+			for wi, w := range wires {
 				circWires = append(circWires, w...)
-				for i := len(w); i < instr.Circ.Inputs[idx].Size; i++ {
+				for i := len(w); i < int(instr.Circ.Inputs[wi].Type.Bits); i++ {
 					// Zeroes for unset input wires.
 					zw := cc.ZeroWire()
 					circWires = append(circWires, zw)

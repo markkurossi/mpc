@@ -92,7 +92,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			return nil, err
 		}
 		inputs = append(inputs, arg)
-		inputWires += arg.Size
+		inputWires += int(arg.Type.Bits)
 	}
 	for i := 0; i < int(header.NumOutputs); i++ {
 		out, err := parseIOArg(r)
@@ -100,7 +100,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			return nil, err
 		}
 		outputs = append(outputs, out)
-		outputWires += out.Size
+		outputWires += int(out.Type.Bits)
 	}
 
 	// Mark input wires seen.
@@ -228,7 +228,7 @@ func parseIOArg(r *bufio.Reader) (arg IOArg, err error) {
 	if err != nil {
 		return arg, err
 	}
-	arg.Size = int(ui32)
+	arg.Type.Bits = types.Size(ui32)
 
 	// Compound
 	if err := binary.Read(r, bo, &ui32); err != nil {
@@ -318,7 +318,6 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 				Type: types.TUint,
 				Bits: types.Size(bits),
 			},
-			Size: bits,
 		})
 		inputWires += bits
 	}
@@ -360,7 +359,6 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 				Type: types.TUint,
 				Bits: types.Size(bits),
 			},
-			Size: bits,
 		})
 	}
 

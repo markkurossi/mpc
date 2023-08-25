@@ -412,7 +412,7 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 	case types.TString:
 		mask := big.NewInt(0xff)
 
-		for i := 0; i < output.Size/8; i++ {
+		for i := 0; i < int(output.Type.Bits)/8; i++ {
 			tmp := new(big.Int).Rsh(result, uint(i*8))
 			r := rune(tmp.And(tmp, mask).Uint64())
 			if unicode.IsPrint(r) {
@@ -440,7 +440,7 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 		}
 		if short {
 			str = fmt.Sprintf("%v", result)
-		} else if output.Size <= 64 {
+		} else if output.Type.Bits <= 64 {
 			str = fmt.Sprintf("0x%x\t%v", bytes, result)
 		} else {
 			str = fmt.Sprintf("0x%x", bytes)
@@ -478,7 +478,6 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 				}
 				str += printResult(r, circuit.IOArg{
 					Type: *output.Type.ElementType,
-					Size: int(output.Type.ElementType.Bits),
 				}, true)
 			}
 		}

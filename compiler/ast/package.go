@@ -84,7 +84,6 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		arg := circuit.IOArg{
 			Name: a.String(),
 			Type: a.Type,
-			Size: int(a.Type.Bits),
 		}
 		if typeInfo.Type == types.TStruct {
 			arg.Compound = flattenStruct(typeInfo)
@@ -129,7 +128,6 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		outputs = append(outputs, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type,
-			Size: int(v.Type.Bits),
 		})
 	}
 
@@ -172,7 +170,6 @@ func flattenStruct(t types.Info) circuit.IO {
 			result = append(result, circuit.IOArg{
 				Name: f.Name,
 				Type: f.Type,
-				Size: int(f.Type.Bits),
 			})
 		}
 	}

@@ -17,7 +17,6 @@ import (
 type IOArg struct {
 	Name     string
 	Type     types.Info
-	Size     int
 	Compound IO
 }
 
@@ -116,7 +115,7 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 		input.Lsh(input, uint(offset))
 		result.Or(result, input)
 
-		offset += arg.Size
+		offset += int(arg.Type.Bits)
 	}
 	return result, nil
 }

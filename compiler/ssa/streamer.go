@@ -78,7 +78,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 
 	// Select our inputs.
 	var n1 []ot.Label
-	for i := 0; i < prog.Inputs[0].Size; i++ {
+	for i := 0; i < int(prog.Inputs[0].Type.Bits); i++ {
 		wire := streaming.GetInput(circuit.Wire(i))
 
 		var n ot.Label
@@ -114,8 +114,8 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 	timing.Sample("OT Init", []string{circuit.FileSize(xfer).String()})
 
 	// Peer OTs its inputs.
-	err = oti.Send(streaming.GetInputs(prog.Inputs[0].Size,
-		prog.Inputs[1].Size))
+	err = oti.Send(streaming.GetInputs(int(prog.Inputs[0].Type.Bits),
+		int(prog.Inputs[1].Type.Bits)))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -377,7 +377,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 			iIDs = iIDs[:0]
 			oIDs = oIDs[:0]
 			for i := 0; i < len(wires); i++ {
-				for j := 0; j < instr.Circ.Inputs[i].Size; j++ {
+				for j := 0; j < int(instr.Circ.Inputs[i].Type.Bits); j++ {
 					if j < len(wires[i]) {
 						iIDs = append(iIDs, circuit.Wire(wires[i][j].ID()))
 					} else {
@@ -391,7 +391,7 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 				if err != nil {
 					return nil, nil, err
 				}
-				for j := 0; j < instr.Circ.Outputs[i].Size; j++ {
+				for j := 0; j < int(instr.Circ.Outputs[i].Type.Bits); j++ {
 					if j < len(wires) {
 						oIDs = append(oIDs, circuit.Wire(wires[j].ID()))
 					} else {
@@ -691,7 +691,6 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 						Type: types.TUint,
 						Bits: 1,
 					},
-					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
@@ -701,7 +700,6 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 						Type: types.TUint,
 						Bits: 1,
 					},
-					Size: 1,
 				},
 			},
 			Gates: []circuit.Gate{
@@ -746,7 +744,6 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 						Type: types.TUint,
 						Bits: 1,
 					},
-					Size: 1,
 				},
 			},
 			Outputs: []circuit.IOArg{
@@ -756,7 +753,6 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 						Type: types.TUint,
 						Bits: 1,
 					},
-					Size: 1,
 				},
 			},
 			Gates: []circuit.Gate{
@@ -786,7 +782,7 @@ func sendArgument(conn *p2p.Conn, arg circuit.IOArg) error {
 	if err := conn.SendString(arg.Type.String()); err != nil {
 		return err
 	}
-	if err := conn.SendUint32(arg.Size); err != nil {
+	if err := conn.SendUint32(int(arg.Type.Bits)); err != nil {
 		return err
 	}
 

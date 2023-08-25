@@ -15,6 +15,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 const (
@@ -39,7 +40,10 @@ func NewIO(size int, name string) circuit.IO {
 	return circuit.IO{
 		circuit.IOArg{
 			Name: name,
-			Size: size,
+			Type: types.Info{
+				Type: types.TUint,
+				Bits: types.Size(size),
+			},
 		},
 	}
 }

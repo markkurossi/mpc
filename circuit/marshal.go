@@ -90,7 +90,7 @@ func marshalIOArg(out io.Writer, arg IOArg) error {
 	if err := marshalString(out, arg.Type.String()); err != nil {
 		return err
 	}
-	if err := binary.Write(out, bo, uint32(arg.Size)); err != nil {
+	if err := binary.Write(out, bo, uint32(arg.Type.Bits)); err != nil {
 		return err
 	}
 	if err := binary.Write(out, bo, uint32(len(arg.Compound))); err != nil {
@@ -118,12 +118,12 @@ func (c *Circuit) MarshalBristol(out io.Writer) error {
 	fmt.Fprintf(out, "%d %d\n", c.NumGates, c.NumWires)
 	fmt.Fprintf(out, "%d", len(c.Inputs))
 	for _, input := range c.Inputs {
-		fmt.Fprintf(out, " %d", input.Size)
+		fmt.Fprintf(out, " %d", input.Type.Bits)
 	}
 	fmt.Fprintln(out)
 	fmt.Fprintf(out, "%d", len(c.Outputs))
 	for _, ret := range c.Outputs {
-		fmt.Fprintf(out, " %d", ret.Size)
+		fmt.Fprintf(out, " %d", ret.Type.Bits)
 	}
 	fmt.Fprintln(out)
 	fmt.Fprintln(out)

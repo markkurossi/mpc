@@ -105,7 +105,7 @@ type IO []IOArg
 func (io IO) Size() int {
 	var sum int
 	for _, a := range io {
-		sum += a.Size
+		sum += int(a.Type.Bits)
 	}
 	return sum
 }
@@ -130,7 +130,7 @@ func (io IO) Split(in *big.Int) []*big.Int {
 	var bit int
 	for _, arg := range io {
 		r := big.NewInt(0)
-		for i := 0; i < arg.Size; i++ {
+		for i := 0; i < int(arg.Type.Bits); i++ {
 			if in.Bit(bit) == 1 {
 				r = big.NewInt(0).SetBit(r, i, 1)
 			}
