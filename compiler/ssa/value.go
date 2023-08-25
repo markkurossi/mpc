@@ -137,9 +137,13 @@ func (v *Value) HashCode() (hash int) {
 	for r := range v.Name {
 		hash = hash<<8 ^ int(r) ^ hash>>24
 	}
-	hash ^= int(v.Type.Bits) << 5
 	hash ^= int(v.Scope) << 3
 	hash ^= int(v.Version) << 1
+
+	if !v.Const {
+		hash ^= int(v.Type.Bits) << 5
+	}
+
 	if hash < 0 {
 		hash = -hash
 	}
@@ -152,8 +156,13 @@ func (v *Value) Equal(other BindingValue) bool {
 	if !ok {
 		return false
 	}
-	if o.Name != v.Name || o.Scope != v.Scope || o.Version != v.Version ||
-		v.Type.Bits != o.Type.Bits {
+	if o.Const != v.Const {
+		return false
+	}
+	if o.Name != v.Name || o.Scope != v.Scope || o.Version != v.Version {
+		return false
+	}
+	if !v.Const && v.Type.Bits != o.Type.Bits {
 		return false
 	}
 	return v.PtrInfo.Equal(o.PtrInfo)

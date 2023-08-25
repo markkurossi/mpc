@@ -81,15 +81,15 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
 		ctx.Start().Bindings.Set(a, nil)
 
-		arg := circuit.IOArg{
-			Name: a.String(),
+		input := circuit.IOArg{
+			Name: arg.Name,
 			Type: a.Type,
 		}
 		if typeInfo.Type == types.TStruct {
-			arg.Compound = flattenStruct(typeInfo)
+			input.Compound = flattenStruct(typeInfo)
 		}
 
-		inputs = append(inputs, arg)
+		inputs = append(inputs, input)
 	}
 
 	// Compile main.

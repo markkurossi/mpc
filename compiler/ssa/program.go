@@ -49,7 +49,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		walloc:    NewWAllocString(),
+		walloc:    NewWAllocValue(),
 	}
 
 	// Inputs into wires.
@@ -58,9 +58,9 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
 		wires, err := prog.walloc.Wires(Value{
-			Const: true,
-			Scope: 1, // Arguments are at scope 1.
 			Name:  arg.Name,
+			Scope: 1, // Arguments are at scope 1.
+			Type:  arg.Type,
 		}, arg.Type.Bits)
 		if err != nil {
 			return nil, err
