@@ -18,7 +18,6 @@ import (
 type WAllocValue struct {
 	freeWires  map[types.Size][][]*circuits.Wire
 	wires      [10240]*allocByValue
-	debug      map[string]*allocByValue
 	nextWireID uint32
 	flHit      int
 	flMiss     int
@@ -41,7 +40,6 @@ func (alloc *allocByValue) String() string {
 func NewWAllocValue() WireAllocator {
 	return &WAllocValue{
 		freeWires: make(map[types.Size][][]*circuits.Wire),
-		debug:     make(map[string]*allocByValue),
 	}
 }
 
@@ -59,83 +57,11 @@ func (walloc *WAllocValue) NextWireID() uint32 {
 	return ret
 }
 
-func (walloc *WAllocValue) verify(v Value, expected *allocByValue) {
-	dbg, ok := walloc.debug[v.String()]
-	if expected == nil {
-		if ok {
-			panic(fmt.Sprintf("debug has key %v", v.String()))
-		}
-		if walloc.Allocated(v) {
-			panic(fmt.Sprintf("hash has key %v", v.String()))
-		}
-		return
-	}
-	if !ok {
-		panic(fmt.Sprintf("debug has not key %v", v.String()))
-	}
-	if !walloc.Allocated(v) {
-		panic(fmt.Sprintf("hash has not key %v", v.String()))
-	}
-	if dbg != expected {
-		fmt.Printf("debug %v != expected %v\n", dbg, expected)
-		fmt.Printf(" - debug.key:    %v\n", dbg.key)
-		fmt.Printf(" - expected.key: %v\n", expected.key)
-		if dbg.key.Equal(&expected.key) {
-			fmt.Printf(" - keys Equal\n")
-		} else {
-			fmt.Printf(" - keys not Equal\n")
-			fmt.Printf(" - dbg: %v, expected: %v\n",
-				dbg.key.HashCode()%len(walloc.wires),
-				expected.key.HashCode()%len(walloc.wires))
-
-		}
-		panic("done")
-	}
-	if dbg.key.String() != v.String() {
-		panic("dbg.String() mismatch")
-	}
-
-	hash := v.HashCode() % len(walloc.wires)
-	for alloc := walloc.wires[hash]; alloc != nil; alloc = alloc.next {
-		if alloc.key.Equal(&v) {
-			if alloc != expected {
-				panic("wires 1")
-			}
-			if alloc != dbg {
-				panic("wires 2")
-			}
-			if alloc.key.String() != v.String() {
-				panic("alloc.String() mismatch")
-			}
-			return
-		}
-	}
-	panic("wires not found")
-}
-
-func (walloc *WAllocValue) verifyAdd(v Value, alloc *allocByValue) {
-	walloc.debug[v.String()] = alloc
-	walloc.verify(v, alloc)
-}
-
 func (walloc *WAllocValue) lookup(hash int, v Value) *allocByValue {
-	const key = "g{1,0}struct1024"
-	var keyMatch bool
-	if v.String() == key {
-		fmt.Printf("*** lookup %v: Const=%v, Bits=%v, Scope=%v, Version=%v, hash=%v\n",
-			key, v.Const, v.Type.Bits, v.Scope, v.Version, hash)
-		keyMatch = true
-	}
 	for a := walloc.wires[hash]; a != nil; a = a.next {
 		if a.key.Equal(&v) {
-			if keyMatch {
-				fmt.Printf("  - found!\n")
-			}
 			return a
 		}
-	}
-	if keyMatch {
-		fmt.Printf("  - not found!\n")
 	}
 	return nil
 }
@@ -144,7 +70,6 @@ func (walloc *WAllocValue) remove(hash int, v Value) *allocByValue {
 	for ptr := &walloc.wires[hash]; *ptr != nil; ptr = &(*ptr).next {
 		if (*ptr).key.Equal(&v) {
 			ret := *ptr
-			delete(walloc.debug, v.String())
 			*ptr = (*ptr).next
 			return ret
 		}
@@ -181,18 +106,10 @@ func (walloc *WAllocValue) Wires(v Value, bits types.Size) (
 	hash := v.HashCode() % len(walloc.wires)
 	alloc := walloc.lookup(hash, v)
 	if alloc == nil {
-		_, ok := walloc.debug[v.String()]
-		if ok {
-			panic(fmt.Sprintf("Wires: dbg has %v, TypeRef=%v",
-				v.String(), v.TypeRef))
-		}
-
 		alloc = walloc.alloc(bits, v)
 		alloc.next = walloc.wires[hash]
 		walloc.wires[hash] = alloc
-		walloc.verifyAdd(v, alloc)
 	}
-	walloc.verify(v, alloc)
 	return alloc.wires, nil
 }
 
@@ -205,15 +122,9 @@ func (walloc *WAllocValue) AssignedWires(v Value, bits types.Size) (
 	hash := v.HashCode() % len(walloc.wires)
 	alloc := walloc.lookup(hash, v)
 	if alloc == nil {
-		_, ok := walloc.debug[v.String()]
-		if ok {
-			panic(fmt.Sprintf("AssignedWires: dbg has %v: Const=%v, Bits=%v, Scope=%v, Version=%v",
-				v.String(), v.Const, v.Type.Bits, v.Scope, v.Version))
-		}
 		alloc = walloc.alloc(bits, v)
 		alloc.next = walloc.wires[hash]
 		walloc.wires[hash] = alloc
-		walloc.verifyAdd(v, alloc)
 
 		// Assign wire IDs.
 		if alloc.base == circuits.UnassignedID {
@@ -224,7 +135,6 @@ func (walloc *WAllocValue) AssignedWires(v Value, bits types.Size) (
 			walloc.nextWireID += uint32(bits)
 		}
 	}
-	walloc.verify(v, alloc)
 	return alloc.wires, nil
 }
 
@@ -247,8 +157,6 @@ func (walloc *WAllocValue) SetWires(v Value, w []*circuits.Wire) {
 
 	alloc.next = walloc.wires[hash]
 	walloc.wires[hash] = alloc
-	walloc.verifyAdd(v, alloc)
-	walloc.verify(v, alloc)
 }
 
 // GCWires implements WireAllocator.GCWires.
@@ -258,7 +166,6 @@ func (walloc *WAllocValue) GCWires(v Value) {
 	if alloc == nil {
 		panic(fmt.Sprintf("GC: %s not known", v))
 	}
-	walloc.verify(v, nil)
 
 	if alloc.base == circuits.UnassignedID {
 		alloc.base = alloc.wires[0].ID()

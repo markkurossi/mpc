@@ -538,6 +538,31 @@ Max permanent wires: 53913890, cached circuits: 25
 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
 ```
 
+Value.HashValue based `WireAllocator`:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │    1.89192514s │   2.70% │        │
+│ Init         │     2.706353ms │   0.00% │     0B │
+│ OT Init      │       11.731µs │   0.00% │   16kB │
+│ Peer Inputs  │    45.549977ms │   0.07% │   57kB │
+│ Stream       │ 1m8.029901416s │  97.23% │   15GB │
+│ ├╴InstrInit  │   2.933100244s │   4.31% │        │
+│ ├╴CircComp   │    30.339124ms │   0.04% │        │
+│ ├╴StreamInit │   2.608974096s │   3.84% │        │
+│ ╰╴Garble     │ 1m1.560371684s │  90.49% │        │
+│ Result       │      324.555µs │   0.00% │    8kB │
+│ Total        │ 1m9.970419172s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 231284 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```
