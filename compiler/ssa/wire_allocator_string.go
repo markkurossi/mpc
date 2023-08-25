@@ -14,6 +14,8 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+// WAllocString implements WireAllocator using Value.String to map
+// values to wires.
 type WAllocString struct {
 	freeWires  map[types.Size][][]*circuits.Wire
 	wires      map[string]*wireAlloc
@@ -22,6 +24,7 @@ type WAllocString struct {
 	flMiss     int
 }
 
+// NewWAllocString creates a new WAllocString.
 func NewWAllocString() WireAllocator {
 	return &WAllocString{
 		wires:     make(map[string]*wireAlloc),

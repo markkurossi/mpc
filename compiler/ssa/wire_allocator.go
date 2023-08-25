@@ -11,6 +11,7 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+// WireAllocator implements dynamic wire allocation.
 type WireAllocator interface {
 	// Allocated tests if the wires have been allocated for the value.
 	Allocated(v Value) bool

@@ -49,7 +49,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		walloc:    NewWAllocValue(),
+		walloc:    NewWAllocString(),
 	}
 
 	// Inputs into wires.
@@ -262,6 +262,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 	return nil
 }
 
+// StreamDebug print debugging information about streaming mode.
 func (prog *Program) StreamDebug() {
 	prog.walloc.Debug()
 }

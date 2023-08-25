@@ -13,6 +13,8 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+// WAllocValue implements WireAllocator using Value.HashCode to map
+// values to wires.
 type WAllocValue struct {
 	freeWires  map[types.Size][][]*circuits.Wire
 	wires      [10240]*allocByValue
@@ -35,6 +37,7 @@ func (alloc *allocByValue) String() string {
 		alloc.base, len(alloc.wires))
 }
 
+// NewWAllocValue creates a new WAllocValue.
 func NewWAllocValue() WireAllocator {
 	return &WAllocValue{
 		freeWires: make(map[types.Size][][]*circuits.Wire),
