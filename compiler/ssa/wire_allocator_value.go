@@ -8,6 +8,7 @@ package ssa
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/types"
@@ -16,11 +17,13 @@ import (
 // WAllocValue implements WireAllocator using Value.HashCode to map
 // values to wires.
 type WAllocValue struct {
-	freeWires  map[types.Size][][]*circuits.Wire
-	wires      [10240]*allocByValue
-	nextWireID uint32
-	flHit      int
-	flMiss     int
+	freeWires   map[types.Size][][]*circuits.Wire
+	wires       [10240]*allocByValue
+	nextWireID  uint32
+	flHit       int
+	flMiss      int
+	lookupCount int
+	lookupFound int
 }
 
 type allocByValue struct {
@@ -58,9 +61,22 @@ func (walloc *WAllocValue) NextWireID() uint32 {
 }
 
 func (walloc *WAllocValue) lookup(hash int, v Value) *allocByValue {
-	for a := walloc.wires[hash]; a != nil; a = a.next {
-		if a.key.Equal(&v) {
-			return a
+	var count int
+	for ptr := &walloc.wires[hash]; *ptr != nil; ptr = &(*ptr).next {
+		count++
+		if (*ptr).key.Equal(&v) {
+			alloc := *ptr
+
+			if count > 2 {
+				// MRU in the hash bucket.
+				*ptr = alloc.next
+				alloc.next = walloc.wires[hash]
+				walloc.wires[hash] = alloc
+			}
+
+			walloc.lookupCount++
+			walloc.lookupFound += count
+			return alloc
 		}
 	}
 	return nil
@@ -190,4 +206,29 @@ func (walloc *WAllocValue) GCWires(v Value) {
 
 // Debug implements WireAllocator.Debug.
 func (walloc *WAllocValue) Debug() {
+	total := float64(walloc.flHit + walloc.flMiss)
+	fmt.Printf("Wire freelist: hit=%v (%.2f%%), miss=%v (%.2f%%)\n",
+		walloc.flHit, float64(walloc.flHit)/total*100,
+		walloc.flMiss, float64(walloc.flMiss)/total*100)
+
+	var sum, max int
+	min := math.MaxInt
+
+	for i := 0; i < len(walloc.wires); i++ {
+		var count int
+		for alloc := walloc.wires[i]; alloc != nil; alloc = alloc.next {
+			count++
+		}
+		sum += count
+		if count < min {
+			min = count
+		}
+		if count > max {
+			max = count
+		}
+	}
+	fmt.Printf("Hash: min=%v, max=%v, avg=%.4f, lookup=%v (avg=%.4f)\n",
+		min, max, float64(sum)/float64(len(walloc.wires)),
+		walloc.lookupCount,
+		float64(walloc.lookupFound)/float64(walloc.lookupCount))
 }
