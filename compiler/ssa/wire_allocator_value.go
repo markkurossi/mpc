@@ -214,6 +214,8 @@ func (walloc *WAllocValue) Debug() {
 	var sum, max int
 	min := math.MaxInt
 
+	var maxIndex int
+
 	for i := 0; i < len(walloc.wires); i++ {
 		var count int
 		for alloc := walloc.wires[i]; alloc != nil; alloc = alloc.next {
@@ -225,10 +227,18 @@ func (walloc *WAllocValue) Debug() {
 		}
 		if count > max {
 			max = count
+			maxIndex = i
 		}
 	}
 	fmt.Printf("Hash: min=%v, max=%v, avg=%.4f, lookup=%v (avg=%.4f)\n",
 		min, max, float64(sum)/float64(len(walloc.wires)),
 		walloc.lookupCount,
 		float64(walloc.lookupFound)/float64(walloc.lookupCount))
+
+	if false {
+		fmt.Printf("Max bucket:\n")
+		for alloc := walloc.wires[maxIndex]; alloc != nil; alloc = alloc.next {
+			fmt.Printf(" %v: %v\n", alloc.key.String(), len(alloc.wires))
+		}
+	}
 }

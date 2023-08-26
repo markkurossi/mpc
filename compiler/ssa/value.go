@@ -134,8 +134,8 @@ func (v *Value) ConstInt() (types.Size, error) {
 
 // HashCode returns a hash code for the value.
 func (v *Value) HashCode() (hash int) {
-	for r := range v.Name {
-		hash = hash<<8 ^ int(r) ^ hash>>24
+	for _, r := range v.Name {
+		hash = hash<<4 ^ int(r) ^ hash>>24
 	}
 	hash ^= int(v.Scope) << 3
 	hash ^= int(v.Version) << 1
