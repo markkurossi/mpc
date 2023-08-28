@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -65,7 +65,7 @@ func newIndex(compiler *Compiler, bit, length, size int,
 
 	fVal := make([]*Wire, size)
 	for i := 0; i < size; i++ {
-		fVal[i] = NewWire()
+		fVal[i] = compiler.Calloc.Wire()
 	}
 	fArray := array
 	if n > length {
@@ -80,7 +80,7 @@ func newIndex(compiler *Compiler, bit, length, size int,
 	if n > length {
 		tVal = make([]*Wire, size)
 		for i := 0; i < size; i++ {
-			tVal[i] = NewWire()
+			tVal[i] = compiler.Calloc.Wire()
 		}
 		err = newIndex(compiler, bit-1, length, size,
 			array[length*size:], index, tVal)

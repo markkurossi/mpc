@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -22,8 +22,8 @@ func NewMUX(compiler *Compiler, cond, t, f, out []*Wire) error {
 	}
 
 	for i := 0; i < len(t); i++ {
-		w1 := NewWire()
-		w2 := NewWire()
+		w1 := compiler.Calloc.Wire()
+		w2 := compiler.Calloc.Wire()
 
 		// w1 = XOR(f[i], t[i])
 		compiler.AddGate(NewBinary(circuit.XOR, f[i], t[i], w1))

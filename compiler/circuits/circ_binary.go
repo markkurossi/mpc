@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2021, 2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -31,7 +31,7 @@ func NewBinaryClear(compiler *Compiler, x, y, r []*Wire) error {
 		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
-		w := NewWire()
+		w := compiler.Calloc.Wire()
 		compiler.INV(y[i], w)
 		compiler.AddGate(NewBinary(circuit.AND, x[i], w, r[i]))
 	}

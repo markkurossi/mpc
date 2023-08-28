@@ -434,17 +434,18 @@ func (prog *Program) StreamCircuit(conn *p2p.Conn, oti ot.OT,
 				startTime := time.Now()
 
 				for _, in := range wires {
-					w := circuits.MakeWires(types.Size(len(in)))
+					w := prog.calloc.Wires(types.Size(len(in)))
 					cIn = append(cIn, w)
 					flat = append(flat, w...)
 				}
 
-				cOut := circuits.MakeWires(instr.Out.Type.Bits)
+				cOut := prog.calloc.Wires(instr.Out.Type.Bits)
 				for i := types.Size(0); i < instr.Out.Type.Bits; i++ {
 					cOut[i].SetOutput(true)
 				}
 
-				cc, err := circuits.NewCompiler(params, nil, nil, flat, cOut)
+				cc, err := circuits.NewCompiler(params, prog.calloc, nil, nil,
+					flat, cOut)
 				if err != nil {
 					return nil, nil, err
 				}

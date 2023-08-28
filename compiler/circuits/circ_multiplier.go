@@ -55,7 +55,7 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		if i == 0 {
 			s = z[0]
 		} else {
-			s = NewWire()
+			s = compiler.Calloc.Wire()
 			sums = append(sums, s)
 		}
 		compiler.AddGate(NewBinary(circuit.AND, xn, y[0], s))
@@ -67,7 +67,7 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		// ANDs for y(j)
 		var ands []*Wire
 		for _, xn := range x {
-			wire := NewWire()
+			wire := compiler.Calloc.Wire()
 			compiler.AddGate(NewBinary(circuit.AND, xn, y[j], wire))
 			ands = append(ands, wire)
 		}
@@ -76,13 +76,13 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		var nsums []*Wire
 		var c *Wire
 		for i := 0; i < len(ands); i++ {
-			cout := NewWire()
+			cout := compiler.Calloc.Wire()
 
 			var s *Wire
 			if i == 0 {
 				s = z[j]
 			} else {
-				s = NewWire()
+				s = compiler.Calloc.Wire()
 				nsums = append(nsums, s)
 			}
 
@@ -102,14 +102,14 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	// Construct final layer.
 	var c *Wire
 	for i, xn := range x {
-		and := NewWire()
+		and := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.AND, xn, y[j], and))
 
 		var cout *Wire
 		if i+1 >= len(x) && j+i+1 < len(z) {
 			cout = z[j+i+1]
 		} else {
-			cout = NewWire()
+			cout = compiler.Calloc.Wire()
 		}
 
 		if j+i < len(z) {
@@ -169,34 +169,34 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 	bLow := b[:mid]
 	bHigh := b[mid:]
 
-	z0 := MakeWires(types.Size(min(max(len(aLow), len(bLow))*2, len(r))))
+	z0 := cc.Calloc.Wires(types.Size(min(max(len(aLow), len(bLow))*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aLow, bLow, z0); err != nil {
 		return err
 	}
 	aSumLen := max(len(aLow), len(aHigh)) + 1
-	aSum := MakeWires(types.Size(aSumLen))
+	aSum := cc.Calloc.Wires(types.Size(aSumLen))
 	if err := NewAdder(cc, aLow, aHigh, aSum); err != nil {
 		return err
 	}
 	bSumLen := max(len(bLow), len(bHigh)) + 1
-	bSum := MakeWires(types.Size(bSumLen))
+	bSum := cc.Calloc.Wires(types.Size(bSumLen))
 	if err := NewAdder(cc, bLow, bHigh, bSum); err != nil {
 		return err
 	}
-	z1 := MakeWires(types.Size(min(max(aSumLen, bSumLen)*2, len(r))))
+	z1 := cc.Calloc.Wires(types.Size(min(max(aSumLen, bSumLen)*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aSum, bSum, z1); err != nil {
 		return err
 	}
-	z2 := MakeWires(types.Size(min(max(len(aHigh), len(bHigh))*2, len(r))))
+	z2 := cc.Calloc.Wires(types.Size(min(max(len(aHigh), len(bHigh))*2, len(r))))
 	if err := NewKaratsubaMultiplier(cc, limit, aHigh, bHigh, z2); err != nil {
 		return err
 	}
 
-	sub1 := MakeWires(types.Size(len(r)))
+	sub1 := cc.Calloc.Wires(types.Size(len(r)))
 	if err := NewSubtractor(cc, z1, z2, sub1); err != nil {
 		return err
 	}
-	sub2 := MakeWires(types.Size(len(r)))
+	sub2 := cc.Calloc.Wires(types.Size(len(r)))
 	if err := NewSubtractor(cc, sub1, z0, sub2); err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 	shift1 := cc.ShiftLeft(z2, len(r), mid*2)
 	shift2 := cc.ShiftLeft(sub2, len(r), mid)
 
-	add1 := MakeWires(types.Size(len(r)))
+	add1 := cc.Calloc.Wires(types.Size(len(r)))
 	if err := NewAdder(cc, shift1, shift2, add1); err != nil {
 		return err
 	}

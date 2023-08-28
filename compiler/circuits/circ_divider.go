@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -16,7 +16,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 	// Init bINV.
 	bINV := make([]*Wire, len(b))
 	for i := 0; i < len(b); i++ {
-		bINV[i] = NewWire()
+		bINV[i] = compiler.Calloc.Wire()
 		compiler.INV(b[i], bINV[i])
 	}
 
@@ -40,8 +40,8 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 			} else {
 				bw = compiler.OneWire() // INV(0)
 			}
-			co := NewWire()
-			ro := NewWire()
+			co := compiler.Calloc.Wire()
+			ro := compiler.Calloc.Wire()
 			NewFullAdder(compiler, rIn[x], bw, cIn, ro, co)
 			rOut[x] = ro
 			cIn = co
@@ -49,7 +49,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 
 		// Quotient y.
 		if len(a)-1-y < len(q) {
-			w := NewWire()
+			w := compiler.Calloc.Wire()
 			compiler.INV(cIn, w)
 			compiler.INV(w, q[len(a)-1-y])
 		}
@@ -60,7 +60,7 @@ func NewDivider(compiler *Compiler, a, b, q, r []*Wire) error {
 			if y+1 >= len(a) && x < len(r) {
 				ro = r[x]
 			} else {
-				ro = NewWire()
+				ro = compiler.Calloc.Wire()
 			}
 
 			err := NewMUX(compiler, []*Wire{cIn}, rOut[x:x+1], rIn[x:x+1],

@@ -1,7 +1,7 @@
 //
 // circ_subtractor.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,15 +14,15 @@ import (
 
 // NewFullSubtractor creates a full subtractor circuit.
 func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
-	w1 := NewWire()
+	w1 := compiler.Calloc.Wire()
 	compiler.AddGate(NewBinary(circuit.XNOR, y, cin, w1))
 	compiler.AddGate(NewBinary(circuit.XNOR, x, w1, d))
 
 	if cout != nil {
-		w2 := NewWire()
+		w2 := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.XOR, x, cin, w2))
 
-		w3 := NewWire()
+		w3 := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.AND, w1, w2, w3))
 
 		compiler.AddGate(NewBinary(circuit.XOR, w3, cin, cout))
@@ -48,7 +48,7 @@ func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 				cout = z[i+1]
 			}
 		} else {
-			cout = NewWire()
+			cout = compiler.Calloc.Wire()
 		}
 
 		// Note y-x here.

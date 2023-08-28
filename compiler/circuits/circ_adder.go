@@ -1,7 +1,7 @@
 //
 // circ_adder.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -25,9 +25,9 @@ func NewHalfAdder(compiler *Compiler, a, b, s, c *Wire) {
 
 // NewFullAdder creates a full adder circuit
 func NewFullAdder(compiler *Compiler, a, b, cin, s, cout *Wire) {
-	w1 := NewWire()
-	w2 := NewWire()
-	w3 := NewWire()
+	w1 := compiler.Calloc.Wire()
+	w2 := compiler.Calloc.Wire()
+	w3 := compiler.Calloc.Wire()
 
 	// s = a XOR b XOR cin
 	// cout = cin XOR ((a XOR cin) AND (b XOR cin)).
@@ -65,7 +65,7 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 		}
 		NewHalfAdder(compiler, x[0], y[0], z[0], cin)
 	} else {
-		cin := NewWire()
+		cin := compiler.Calloc.Wire()
 		NewHalfAdder(compiler, x[0], y[0], z[0], cin)
 
 		for i := 1; i < len(x); i++ {
@@ -78,7 +78,7 @@ func NewAdder(compiler *Compiler, x, y, z []*Wire) error {
 					cout = z[len(x)]
 				}
 			} else {
-				cout = NewWire()
+				cout = compiler.Calloc.Wire()
 			}
 
 			NewFullAdder(compiler, x[i], y[i], cin, z[i], cout)

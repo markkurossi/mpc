@@ -9,8 +9,6 @@ package circuits
 import (
 	"fmt"
 	"math"
-
-	"github.com/markkurossi/mpc/types"
 )
 
 const (
@@ -49,25 +47,6 @@ func (v WireValue) String() string {
 	default:
 		return "?"
 	}
-}
-
-// NewWire creates an unassigned wire.
-func NewWire() *Wire {
-	w := new(Wire)
-	w.Reset(UnassignedID)
-	return w
-}
-
-// MakeWires creates bits number of wires.
-func MakeWires(bits types.Size) []*Wire {
-	result := make([]*Wire, bits)
-	wires := make([]Wire, bits)
-	for i := 0; i < int(bits); i++ {
-		w := &wires[i]
-		w.id = UnassignedID
-		result[i] = w
-	}
-	return result
 }
 
 // Reset resets the wire with the new ID.

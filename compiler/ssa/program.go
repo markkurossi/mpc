@@ -30,6 +30,7 @@ type Program struct {
 	Constants   map[string]ConstantInst
 	Steps       []Step
 	walloc      WireAllocator
+	calloc      *circuits.Allocator
 	zeroWire    *circuits.Wire
 	oneWire     *circuits.Wire
 	stats       circuit.Stats
@@ -43,13 +44,16 @@ type Program struct {
 func NewProgram(params *utils.Params, in, out circuit.IO,
 	consts map[string]ConstantInst, steps []Step) (*Program, error) {
 
+	calloc := circuits.NewAllocator()
+
 	prog := &Program{
 		Params:    params,
 		Inputs:    in,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		walloc:    NewWAllocValue(),
+		walloc:    NewWAllocValue(calloc),
+		calloc:    calloc,
 	}
 
 	// Inputs into wires.
@@ -265,6 +269,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 // StreamDebug print debugging information about streaming mode.
 func (prog *Program) StreamDebug() {
 	prog.walloc.Debug()
+	prog.calloc.Debug()
 }
 
 // PP pretty-prints the program to the argument io.Writer.

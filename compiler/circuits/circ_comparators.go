@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -21,16 +21,16 @@ func comparator(compiler *Compiler, cin *Wire, x, y, r []*Wire) error {
 	}
 
 	for i := 0; i < len(x); i++ {
-		w1 := NewWire()
+		w1 := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.XNOR, cin, y[i], w1))
-		w2 := NewWire()
+		w2 := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.XOR, cin, x[i], w2))
-		w3 := NewWire()
+		w3 := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.AND, w1, w2, w3))
 
 		var cout *Wire
 		if i+1 < len(x) {
-			cout = NewWire()
+			cout = compiler.Calloc.Wire()
 		} else {
 			cout = r[0]
 		}
@@ -72,18 +72,18 @@ func NewNeqComparator(compiler *Compiler, x, y, r []*Wire) error {
 		return nil
 	}
 
-	c := NewWire()
+	c := compiler.Calloc.Wire()
 	compiler.AddGate(NewBinary(circuit.XOR, x[0], y[0], c))
 
 	for i := 1; i < len(x); i++ {
-		xor := NewWire()
+		xor := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.XOR, x[i], y[i], xor))
 
 		var out *Wire
 		if i+1 >= len(x) {
 			out = r[0]
 		} else {
-			out = NewWire()
+			out = compiler.Calloc.Wire()
 		}
 		compiler.AddGate(NewBinary(circuit.OR, c, xor, out))
 		c = out
@@ -98,7 +98,7 @@ func NewEqComparator(compiler *Compiler, x, y, r []*Wire) error {
 	}
 
 	// w = x == y
-	w := NewWire()
+	w := compiler.Calloc.Wire()
 	err := NewNeqComparator(compiler, x, y, []*Wire{w})
 	if err != nil {
 		return err

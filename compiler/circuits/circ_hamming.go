@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -18,7 +18,7 @@ func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 
 	var arr [][]*Wire
 	for i := 0; i < len(a); i++ {
-		w := NewWire()
+		w := compiler.Calloc.Wire()
 		compiler.AddGate(NewBinary(circuit.XOR, a[i], b[i], w))
 		arr = append(arr, []*Wire{w})
 	}
@@ -27,7 +27,7 @@ func Hamming(compiler *Compiler, a, b, r []*Wire) error {
 		var n [][]*Wire
 		for i := 0; i < len(arr); i += 2 {
 			if i+1 < len(arr) {
-				result := MakeWires(types.Size(len(arr[i]) + 1))
+				result := compiler.Calloc.Wires(types.Size(len(arr[i]) + 1))
 				err := NewAdder(compiler, arr[i], arr[i+1], result)
 				if err != nil {
 					return err

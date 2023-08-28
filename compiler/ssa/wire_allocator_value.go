@@ -17,6 +17,7 @@ import (
 // WAllocValue implements WireAllocator using Value.HashCode to map
 // values to wires.
 type WAllocValue struct {
+	calloc      *circuits.Allocator
 	freeWires   map[types.Size][][]*circuits.Wire
 	wires       [10240]*allocByValue
 	nextWireID  uint32
@@ -40,8 +41,9 @@ func (alloc *allocByValue) String() string {
 }
 
 // NewWAllocValue creates a new WAllocValue.
-func NewWAllocValue() WireAllocator {
+func NewWAllocValue(calloc *circuits.Allocator) WireAllocator {
 	return &WAllocValue{
+		calloc:    calloc,
 		freeWires: make(map[types.Size][][]*circuits.Wire),
 	}
 }
@@ -106,7 +108,7 @@ func (walloc *WAllocValue) alloc(bits types.Size, v Value) *allocByValue {
 		walloc.freeWires[bits] = fl[:len(fl)-1]
 		walloc.flHit++
 	} else {
-		result.wires = circuits.MakeWires(bits)
+		result.wires = walloc.calloc.Wires(bits)
 		walloc.flMiss++
 	}
 

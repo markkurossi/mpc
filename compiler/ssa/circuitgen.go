@@ -19,7 +19,9 @@ import (
 func (prog *Program) CompileCircuit(params *utils.Params) (
 	*circuit.Circuit, error) {
 
-	cc, err := circuits.NewCompiler(params, prog.Inputs, prog.Outputs,
+	calloc := circuits.NewAllocator()
+
+	cc, err := circuits.NewCompiler(params, calloc, prog.Inputs, prog.Outputs,
 		prog.InputWires, prog.OutputWires)
 	if err != nil {
 		return nil, err
@@ -461,7 +463,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			// Assign output wires.
 			for _, wg := range wires {
 				for _, w := range wg {
-					o := circuits.NewWire()
+					o := cc.Calloc.Wire()
 					cc.ID(w, o)
 					cc.OutputWires = append(cc.OutputWires, o)
 				}
@@ -497,7 +499,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			// Add intermediate wires.
 			nint := instr.Circ.NumWires - len(circWires) - len(circOut)
 			for i := 0; i < nint; i++ {
-				circWires = append(circWires, circuits.NewWire())
+				circWires = append(circWires, cc.Calloc.Wire())
 			}
 
 			// Append output wires.

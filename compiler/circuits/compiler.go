@@ -21,6 +21,7 @@ type Builtin func(cc *Compiler, a, b, r []*Wire) error
 // Compiler implements binary circuit compiler.
 type Compiler struct {
 	Params          *utils.Params
+	Calloc          *Allocator
 	OutputsAssigned bool
 	Inputs          circuit.IO
 	Outputs         circuit.IO
@@ -39,14 +40,16 @@ type Compiler struct {
 
 // NewCompiler creates a new circuit compiler for the specified
 // circuit input and output values.
-func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
-	inputWires, outputWires []*Wire) (*Compiler, error) {
+func NewCompiler(params *utils.Params, calloc *Allocator,
+	inputs, outputs circuit.IO, inputWires, outputWires []*Wire) (
+	*Compiler, error) {
 
 	if len(inputWires) == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
 	return &Compiler{
 		Params:      params,
+		Calloc:      calloc,
 		Inputs:      inputs,
 		Outputs:     outputs,
 		InputWires:  inputWires,
@@ -58,7 +61,7 @@ func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 // InvI0Wire returns a wire holding value INV(input[0]).
 func (c *Compiler) InvI0Wire() *Wire {
 	if c.invI0Wire == nil {
-		c.invI0Wire = NewWire()
+		c.invI0Wire = c.Calloc.Wire()
 		c.AddGate(NewINV(c.InputWires[0], c.invI0Wire))
 	}
 	return c.invI0Wire
@@ -67,7 +70,7 @@ func (c *Compiler) InvI0Wire() *Wire {
 // ZeroWire returns a wire holding value 0.
 func (c *Compiler) ZeroWire() *Wire {
 	if c.zeroWire == nil {
-		c.zeroWire = NewWire()
+		c.zeroWire = c.Calloc.Wire()
 		c.AddGate(NewBinary(circuit.AND, c.InputWires[0], c.InvI0Wire(),
 			c.zeroWire))
 		c.zeroWire.SetValue(Zero)
@@ -78,7 +81,7 @@ func (c *Compiler) ZeroWire() *Wire {
 // OneWire returns a wire holding value 1.
 func (c *Compiler) OneWire() *Wire {
 	if c.oneWire == nil {
-		c.oneWire = NewWire()
+		c.oneWire = c.Calloc.Wire()
 		c.AddGate(NewBinary(circuit.OR, c.InputWires[0], c.InvI0Wire(),
 			c.oneWire))
 		c.oneWire.SetValue(One)
@@ -297,7 +300,7 @@ func (c *Compiler) ShortCircuitXORZero() {
 			g.B.Input().ResetOutput(g.O)
 
 			// Disconnect gate's output wire.
-			g.O = NewWire()
+			g.O = c.Calloc.Wire()
 
 			stats[g.Op]++
 		}
@@ -307,7 +310,7 @@ func (c *Compiler) ShortCircuitXORZero() {
 			g.A.Input().ResetOutput(g.O)
 
 			// Disconnect gate's output wire.
-			g.O = NewWire()
+			g.O = c.Calloc.Wire()
 
 			stats[g.Op]++
 		}
