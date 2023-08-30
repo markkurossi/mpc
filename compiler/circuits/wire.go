@@ -24,6 +24,7 @@ const (
 type Wire struct {
 	ovnum uint32
 	id    uint32
+	// The gates[0] is the input gate, gates[1:] are the output gates.
 	gates []*Gate
 }
 
