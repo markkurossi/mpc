@@ -31,8 +31,8 @@ func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
 
 // NewArrayMultiplier creates a multiplier circuit implementing
 // x*y=z. This function implements Array Multiplier Circuit.
-func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
-	x, y = compiler.ZeroPad(x, y)
+func NewArrayMultiplier(cc *Compiler, x, y, z []*Wire) error {
+	x, y = cc.ZeroPad(x, y)
 	if len(x) > len(z) {
 		x = x[0:len(z)]
 		y = y[0:len(z)]
@@ -40,9 +40,9 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 
 	// One bit multiplication is AND.
 	if len(x) == 1 {
-		compiler.AddGate(NewBinary(circuit.AND, x[0], y[0], z[0]))
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, x[0], y[0], z[0]))
 		if len(z) > 1 {
-			z[1] = compiler.ZeroWire()
+			z[1] = cc.ZeroWire()
 		}
 		return nil
 	}
@@ -55,10 +55,10 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		if i == 0 {
 			s = z[0]
 		} else {
-			s = compiler.Calloc.Wire()
+			s = cc.Calloc.Wire()
 			sums = append(sums, s)
 		}
-		compiler.AddGate(NewBinary(circuit.AND, xn, y[0], s))
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, xn, y[0], s))
 	}
 
 	// Construct len(y)-2 intermediate layers
@@ -67,8 +67,8 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		// ANDs for y(j)
 		var ands []*Wire
 		for _, xn := range x {
-			wire := compiler.Calloc.Wire()
-			compiler.AddGate(NewBinary(circuit.AND, xn, y[j], wire))
+			wire := cc.Calloc.Wire()
+			cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, xn, y[j], wire))
 			ands = append(ands, wire)
 		}
 
@@ -76,22 +76,22 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 		var nsums []*Wire
 		var c *Wire
 		for i := 0; i < len(ands); i++ {
-			cout := compiler.Calloc.Wire()
+			cout := cc.Calloc.Wire()
 
 			var s *Wire
 			if i == 0 {
 				s = z[j]
 			} else {
-				s = compiler.Calloc.Wire()
+				s = cc.Calloc.Wire()
 				nsums = append(nsums, s)
 			}
 
 			if i == 0 {
-				NewHalfAdder(compiler, ands[i], sums[i], s, cout)
+				NewHalfAdder(cc, ands[i], sums[i], s, cout)
 			} else if i >= len(sums) {
-				NewHalfAdder(compiler, ands[i], c, s, cout)
+				NewHalfAdder(cc, ands[i], c, s, cout)
 			} else {
-				NewFullAdder(compiler, ands[i], sums[i], c, s, cout)
+				NewFullAdder(cc, ands[i], sums[i], c, s, cout)
 			}
 			c = cout
 		}
@@ -102,29 +102,29 @@ func NewArrayMultiplier(compiler *Compiler, x, y, z []*Wire) error {
 	// Construct final layer.
 	var c *Wire
 	for i, xn := range x {
-		and := compiler.Calloc.Wire()
-		compiler.AddGate(NewBinary(circuit.AND, xn, y[j], and))
+		and := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, xn, y[j], and))
 
 		var cout *Wire
 		if i+1 >= len(x) && j+i+1 < len(z) {
 			cout = z[j+i+1]
 		} else {
-			cout = compiler.Calloc.Wire()
+			cout = cc.Calloc.Wire()
 		}
 
 		if j+i < len(z) {
 			if i == 0 {
-				NewHalfAdder(compiler, and, sums[i], z[j+i], cout)
+				NewHalfAdder(cc, and, sums[i], z[j+i], cout)
 			} else if i >= len(sums) {
-				NewHalfAdder(compiler, and, c, z[j+i], cout)
+				NewHalfAdder(cc, and, c, z[j+i], cout)
 			} else {
-				NewFullAdder(compiler, and, sums[i], c, z[j+i], cout)
+				NewFullAdder(cc, and, sums[i], c, z[j+i], cout)
 			}
 		}
 		c = cout
 	}
 	for i := j + len(x) + 1; i < len(z); i++ {
-		z[1] = compiler.ZeroWire()
+		z[1] = cc.ZeroWire()
 	}
 
 	return nil

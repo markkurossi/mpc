@@ -13,30 +13,30 @@ import (
 )
 
 // NewFullSubtractor creates a full subtractor circuit.
-func NewFullSubtractor(compiler *Compiler, x, y, cin, d, cout *Wire) {
-	w1 := compiler.Calloc.Wire()
-	compiler.AddGate(NewBinary(circuit.XNOR, y, cin, w1))
-	compiler.AddGate(NewBinary(circuit.XNOR, x, w1, d))
+func NewFullSubtractor(cc *Compiler, x, y, cin, d, cout *Wire) {
+	w1 := cc.Calloc.Wire()
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR, y, cin, w1))
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR, x, w1, d))
 
 	if cout != nil {
-		w2 := compiler.Calloc.Wire()
-		compiler.AddGate(NewBinary(circuit.XOR, x, cin, w2))
+		w2 := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x, cin, w2))
 
-		w3 := compiler.Calloc.Wire()
-		compiler.AddGate(NewBinary(circuit.AND, w1, w2, w3))
+		w3 := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, w1, w2, w3))
 
-		compiler.AddGate(NewBinary(circuit.XOR, w3, cin, cout))
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, w3, cin, cout))
 	}
 }
 
 // NewSubtractor creates a new subtractor circuit implementing z=x-y.
-func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
-	x, y = compiler.ZeroPad(x, y)
+func NewSubtractor(cc *Compiler, x, y, z []*Wire) error {
+	x, y = cc.ZeroPad(x, y)
 	if len(x) > len(z) {
 		x = x[0:len(z)]
 		y = y[0:len(z)]
 	}
-	cin := compiler.ZeroWire()
+	cin := cc.ZeroWire()
 
 	for i := 0; i < len(x); i++ {
 		var cout *Wire
@@ -48,16 +48,16 @@ func NewSubtractor(compiler *Compiler, x, y, z []*Wire) error {
 				cout = z[i+1]
 			}
 		} else {
-			cout = compiler.Calloc.Wire()
+			cout = cc.Calloc.Wire()
 		}
 
 		// Note y-x here.
-		NewFullSubtractor(compiler, y[i], x[i], cin, z[i], cout)
+		NewFullSubtractor(cc, y[i], x[i], cin, z[i], cout)
 
 		cin = cout
 	}
 	for i := len(x) + 1; i < len(z); i++ {
-		z[i] = compiler.ZeroWire()
+		z[i] = cc.ZeroWire()
 	}
 	return nil
 }

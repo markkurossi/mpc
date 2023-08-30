@@ -509,22 +509,22 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			for _, gate := range instr.Circ.Gates {
 				switch gate.Op {
 				case circuit.XOR:
-					cc.AddGate(circuits.NewBinary(circuit.XOR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.XNOR:
-					cc.AddGate(circuits.NewBinary(circuit.XNOR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.AND:
-					cc.AddGate(circuits.NewBinary(circuit.AND,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.AND,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.OR:
-					cc.AddGate(circuits.NewBinary(circuit.OR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.OR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
