@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,6 +8,7 @@ package circuit
 
 import (
 	"testing"
+	"time"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -343,4 +344,13 @@ func encode7var5(b []byte, v uint32) {
 	b[2] = byte(v >> 14)
 	b[3] = byte(v >> 7)
 	b[4] = byte(v)
+}
+
+func BenchmarkTimeDuration(b *testing.B) {
+	var total time.Duration
+
+	for i := 0; i < b.N; i++ {
+		start := time.Now()
+		total += time.Now().Sub(start)
+	}
 }
