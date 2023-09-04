@@ -29,11 +29,8 @@ type Program struct {
 	OutputWires []*circuits.Wire
 	Constants   map[string]ConstantInst
 	Steps       []Step
-	wires       map[string]*wireAlloc
-	freeWires   map[types.Size][][]*circuits.Wire
-	nextWireID  uint32
-	flHit       int
-	flMiss      int
+	walloc      *WireAllocator
+	calloc      *circuits.Allocator
 	zeroWire    *circuits.Wire
 	oneWire     *circuits.Wire
 	stats       circuit.Stats
@@ -47,14 +44,16 @@ type Program struct {
 func NewProgram(params *utils.Params, in, out circuit.IO,
 	consts map[string]ConstantInst, steps []Step) (*Program, error) {
 
+	calloc := circuits.NewAllocator()
+
 	prog := &Program{
 		Params:    params,
 		Inputs:    in,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		wires:     make(map[string]*wireAlloc),
-		freeWires: make(map[types.Size][][]*circuits.Wire),
+		walloc:    NewWireAllocator(calloc),
+		calloc:    calloc,
 	}
 
 	// Inputs into wires.
@@ -62,7 +61,11 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		if len(arg.Name) == 0 {
 			arg.Name = fmt.Sprintf("arg{%d}", idx)
 		}
-		wires, err := prog.Wires(arg.Name, types.Size(arg.Size))
+		wires, err := prog.walloc.Wires(Value{
+			Name:  arg.Name,
+			Scope: 1, // Arguments are at scope 1.
+			Type:  arg.Type,
+		}, arg.Type.Bits)
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +197,7 @@ func (prog *Program) GC() {
 				if !live {
 					// Input is not live.
 					gcs = append(gcs, Step{
-						Instr: NewGCInstr(in.String()),
+						Instr: NewGCInstr(in),
 					})
 				}
 			}
@@ -237,8 +240,7 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 
 	var constWires int
 	for _, c := range consts {
-		_, ok := prog.wires[c.String()]
-		if ok {
+		if prog.walloc.Allocated(c) {
 			continue
 		}
 
@@ -255,16 +257,19 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 			wires = append(wires, w)
 		}
 
-		err := prog.SetWires(c.String(), wires)
-		if err != nil {
-			return err
-		}
+		prog.walloc.SetWires(c, wires)
 	}
 	if len(consts) > 0 && prog.Params.Verbose {
 		fmt.Printf("Defined %d constants: %d wires\n",
 			len(consts), constWires)
 	}
 	return nil
+}
+
+// StreamDebug print debugging information about streaming mode.
+func (prog *Program) StreamDebug() {
+	prog.walloc.Debug()
+	prog.calloc.Debug()
 }
 
 // PP pretty-prints the program to the argument io.Writer.

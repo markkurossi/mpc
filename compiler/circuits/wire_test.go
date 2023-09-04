@@ -11,7 +11,7 @@ import (
 )
 
 func TestWire(t *testing.T) {
-	w := NewWire()
+	w := calloc.Wire()
 	if w.ID() != UnassignedID {
 		t.Error("w.ID")
 	}

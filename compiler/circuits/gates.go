@@ -25,51 +25,23 @@ type Gate struct {
 	O        *Wire
 }
 
-// NewBinary creates a new binary gate.
-func NewBinary(op circuit.Operation, a, b, o *Wire) *Gate {
-	gate := &Gate{
-		Op: op,
-		A:  a,
-		B:  b,
-		O:  o,
-	}
-	a.AddOutput(gate)
-	b.AddOutput(gate)
-	o.SetInput(gate)
-
-	return gate
-}
-
-// NewINV creates a new INV gate.
-func NewINV(i, o *Wire) *Gate {
-	gate := &Gate{
-		Op: circuit.INV,
-		A:  i,
-		O:  o,
-	}
-	i.AddOutput(gate)
-	o.SetInput(gate)
-
-	return gate
-}
-
 func (g *Gate) String() string {
 	return fmt.Sprintf("%s %x %x %x", g.Op, g.A.ID(), g.B.ID(), g.O.ID())
 }
 
 // Visit adds gate to the list of pending gates to be compiled.
-func (g *Gate) Visit(c *Compiler) {
+func (g *Gate) Visit(cc *Compiler) {
 	switch g.Op {
 	case circuit.INV:
 		if !g.Dead && !g.Visited && g.A.Assigned() {
 			g.Visited = true
-			c.pending = append(c.pending, g)
+			cc.pending = append(cc.pending, g)
 		}
 
 	default:
 		if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
 			g.Visited = true
-			c.pending = append(c.pending, g)
+			cc.pending = append(cc.pending, g)
 		}
 	}
 }
@@ -128,29 +100,29 @@ func (g *Gate) Prune() bool {
 }
 
 // Assign assigns gate's output wire ID.
-func (g *Gate) Assign(c *Compiler) {
+func (g *Gate) Assign(cc *Compiler) {
 	if !g.Dead {
-		g.O.Assign(c)
-		c.assigned = append(c.assigned, g)
+		g.O.Assign(cc)
+		cc.assigned = append(cc.assigned, g)
 	}
 }
 
 // Compile adds gate's binary circuit into compile circuit.
-func (g *Gate) Compile(c *Compiler) {
+func (g *Gate) Compile(cc *Compiler) {
 	if g.Dead || g.Compiled {
 		return
 	}
 	g.Compiled = true
 	switch g.Op {
 	case circuit.INV:
-		c.compiled = append(c.compiled, circuit.Gate{
+		cc.compiled = append(cc.compiled, circuit.Gate{
 			Input0: circuit.Wire(g.A.ID()),
 			Output: circuit.Wire(g.O.ID()),
 			Op:     g.Op,
 		})
 
 	default:
-		c.compiled = append(c.compiled, circuit.Gate{
+		cc.compiled = append(cc.compiled, circuit.Gate{
 			Input0: circuit.Wire(g.A.ID()),
 			Input1: circuit.Wire(g.B.ID()),
 			Output: circuit.Wire(g.O.ID()),

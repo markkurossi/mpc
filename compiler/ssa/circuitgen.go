@@ -19,7 +19,9 @@ import (
 func (prog *Program) CompileCircuit(params *utils.Params) (
 	*circuit.Circuit, error) {
 
-	cc, err := circuits.NewCompiler(params, prog.Inputs, prog.Outputs,
+	calloc := circuits.NewAllocator()
+
+	cc, err := circuits.NewCompiler(params, calloc, prog.Inputs, prog.Outputs,
 		prog.InputWires, prog.OutputWires)
 	if err != nil {
 		return nil, err
@@ -78,7 +80,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 		instr := step.Instr
 		var wires [][]*circuits.Wire
 		for _, in := range instr.In {
-			w, err := prog.Wires(in.String(), in.Type.Bits)
+			w, err := prog.walloc.Wires(in, in.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -86,7 +88,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 		}
 		switch instr.Op {
 		case Iadd, Uadd:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -96,7 +98,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Isub, Usub:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -106,7 +108,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Imult, Umult:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -117,7 +119,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Idiv, Udiv:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -128,7 +130,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Imod, Umod:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -158,10 +160,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 				o[bit] = w
 			}
-			err = prog.SetWires(instr.Out.String(), o)
-			if err != nil {
-				return err
-			}
+			prog.walloc.SetWires(*instr.Out, o)
 
 		case Rshift, Srshift:
 			var signWire *circuits.Wire
@@ -189,10 +188,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 				o[bit] = w
 			}
-			err = prog.SetWires(instr.Out.String(), o)
-			if err != nil {
-				return err
-			}
+			prog.walloc.SetWires(*instr.Out, o)
 
 		case Slice:
 			from, err := instr.In[1].ConstInt()
@@ -225,13 +221,10 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			for bit := to - from; int(bit) < len(o); bit++ {
 				o[bit] = cc.ZeroWire()
 			}
-			err = prog.SetWires(instr.Out.String(), o)
-			if err != nil {
-				return err
-			}
+			prog.walloc.SetWires(*instr.Out, o)
 
 		case Index:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -247,7 +240,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Ilt, Ult:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -257,7 +250,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Ile, Ule:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -267,7 +260,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Igt, Ugt:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -277,7 +270,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Ige, Uge:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -287,7 +280,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Eq:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -297,7 +290,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Neq:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -312,7 +305,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return fmt.Errorf("%s unsupported index type %T: %s",
 					instr.Op, instr.In[1], err)
 			}
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -327,7 +320,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return fmt.Errorf("%s unsupported index type %T: %s",
 					instr.Op, instr.In[1], err)
 			}
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -337,7 +330,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case And:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -347,7 +340,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Or:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -357,7 +350,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Band:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -367,7 +360,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Bclr:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -377,7 +370,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Bor:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -387,7 +380,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Bxor:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -415,10 +408,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 				o[bit] = w
 			}
-			err := prog.SetWires(instr.Out.String(), o)
-			if err != nil {
-				return err
-			}
+			prog.walloc.SetWires(*instr.Out, o)
 
 		case Amov:
 			// v arr from to:
@@ -457,13 +447,10 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				}
 				o[bit] = w
 			}
-			err = prog.SetWires(instr.Out.String(), o)
-			if err != nil {
-				return err
-			}
+			prog.walloc.SetWires(*instr.Out, o)
 
 		case Phi:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
@@ -476,7 +463,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			// Assign output wires.
 			for _, wg := range wires {
 				for _, w := range wg {
-					o := circuits.NewWire()
+					o := cc.Calloc.Wire()
 					cc.ID(w, o)
 					cc.OutputWires = append(cc.OutputWires, o)
 				}
@@ -489,9 +476,9 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			var circWires []*circuits.Wire
 
 			// Flatten input wires.
-			for idx, w := range wires {
+			for wi, w := range wires {
 				circWires = append(circWires, w...)
-				for i := len(w); i < instr.Circ.Inputs[idx].Size; i++ {
+				for i := len(w); i < int(instr.Circ.Inputs[wi].Type.Bits); i++ {
 					// Zeroes for unset input wires.
 					zw := cc.ZeroWire()
 					circWires = append(circWires, zw)
@@ -502,7 +489,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			var circOut []*circuits.Wire
 
 			for _, r := range instr.Ret {
-				o, err := prog.Wires(r.String(), r.Type.Bits)
+				o, err := prog.walloc.Wires(r, r.Type.Bits)
 				if err != nil {
 					return err
 				}
@@ -512,7 +499,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			// Add intermediate wires.
 			nint := instr.Circ.NumWires - len(circWires) - len(circOut)
 			for i := 0; i < nint; i++ {
-				circWires = append(circWires, circuits.NewWire())
+				circWires = append(circWires, cc.Calloc.Wire())
 			}
 
 			// Append output wires.
@@ -522,22 +509,22 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			for _, gate := range instr.Circ.Gates {
 				switch gate.Op {
 				case circuit.XOR:
-					cc.AddGate(circuits.NewBinary(circuit.XOR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.XNOR:
-					cc.AddGate(circuits.NewBinary(circuit.XNOR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.AND:
-					cc.AddGate(circuits.NewBinary(circuit.AND,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.AND,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
 				case circuit.OR:
-					cc.AddGate(circuits.NewBinary(circuit.OR,
+					cc.AddGate(cc.Calloc.BinaryGate(circuit.OR,
 						circWires[gate.Input0],
 						circWires[gate.Input1],
 						circWires[gate.Output]))
@@ -549,7 +536,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			}
 
 		case Builtin:
-			o, err := prog.Wires(instr.Out.String(), instr.Out.Type.Bits)
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}

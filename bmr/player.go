@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -86,11 +86,11 @@ func (p *Player) offlinePhase() error {
 	var inputIndex int
 	for id, input := range p.c.Inputs {
 		if id != p.id {
-			for i := 0; i < input.Size; i++ {
+			for i := 0; i < int(input.Type.Bits); i++ {
 				p.lambda.SetBit(p.lambda, inputIndex+i, 0)
 			}
 		}
-		inputIndex += input.Size
+		inputIndex += int(input.Type.Bits)
 	}
 
 	wires := make([]Wire, p.c.NumWires)

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -26,7 +26,7 @@ type Value struct {
 	ConstValue interface{}
 }
 
-// Scope defines variable scope (max 256 levels of nested blocks).
+// Scope defines variable scope (max 65536 levels of nested blocks).
 type Scope int16
 
 // PtrInfo defines context information for pointer values.
@@ -40,6 +40,17 @@ type PtrInfo struct {
 
 func (ptr PtrInfo) String() string {
 	return fmt.Sprintf("*%s@%d", ptr.Name, ptr.Scope)
+}
+
+// Equal tests if this PtrInfo is equal to the argument PtrInfo.
+func (ptr *PtrInfo) Equal(o *PtrInfo) bool {
+	if ptr == nil {
+		return o == nil
+	}
+	if o == nil {
+		return false
+	}
+	return ptr.Name == o.Name && ptr.Scope == o.Scope && ptr.Offset == o.Offset
 }
 
 // Undefined defines an undefined value.
@@ -121,13 +132,40 @@ func (v *Value) ConstInt() (types.Size, error) {
 	}
 }
 
+// HashCode returns a hash code for the value.
+func (v *Value) HashCode() (hash int) {
+	for _, r := range v.Name {
+		hash = hash<<4 ^ int(r) ^ hash>>24
+	}
+	hash ^= int(v.Scope) << 3
+	hash ^= int(v.Version) << 1
+
+	if !v.Const {
+		hash ^= int(v.Type.Bits) << 5
+	}
+
+	if hash < 0 {
+		hash = -hash
+	}
+	return
+}
+
 // Equal implements BindingValue.Equal.
 func (v *Value) Equal(other BindingValue) bool {
 	o, ok := other.(*Value)
 	if !ok {
 		return false
 	}
-	return o.Name == v.Name && o.Scope == v.Scope && o.Version == v.Version
+	if o.Const != v.Const {
+		return false
+	}
+	if o.Name != v.Name || o.Scope != v.Scope || o.Version != v.Version {
+		return false
+	}
+	if !v.Const && v.Type.Bits != o.Type.Bits {
+		return false
+	}
+	return v.PtrInfo.Equal(o.PtrInfo)
 }
 
 // Value implements BindingValue.Value.

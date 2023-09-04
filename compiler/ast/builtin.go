@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -365,11 +365,11 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	// Check that the argument types match.
 	for idx, io := range circ.Inputs {
 		arg := args[idx]
-		if io.Size < int(arg.Type.Bits) || io.Size > int(arg.Type.Bits) &&
+		if io.Type.Bits < arg.Type.Bits || io.Type.Bits > arg.Type.Bits &&
 			!arg.Const {
 			return nil, nil, ctx.Errorf(loc,
 				"invalid argument %d for native circuit: got %s, need %d",
-				idx, arg.Type, io.Size)
+				idx, arg.Type, io.Type.Bits)
 		}
 	}
 
@@ -384,7 +384,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	for _, io := range circ.Outputs {
 		result = append(result, gen.AnonVal(types.Info{
 			Type: types.TUndefined,
-			Bits: types.Size(io.Size),
+			Bits: io.Type.Bits,
 		}))
 	}
 

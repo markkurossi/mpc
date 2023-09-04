@@ -21,13 +21,14 @@ type Builtin func(cc *Compiler, a, b, r []*Wire) error
 // Compiler implements binary circuit compiler.
 type Compiler struct {
 	Params          *utils.Params
+	Calloc          *Allocator
 	OutputsAssigned bool
 	Inputs          circuit.IO
 	Outputs         circuit.IO
 	InputWires      []*Wire
 	OutputWires     []*Wire
 	Gates           []*Gate
-	nextWireID      uint32
+	nextWireID      circuit.Wire
 	pending         []*Gate
 	assigned        []*Gate
 	compiled        []circuit.Gate
@@ -39,14 +40,16 @@ type Compiler struct {
 
 // NewCompiler creates a new circuit compiler for the specified
 // circuit input and output values.
-func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
-	inputWires, outputWires []*Wire) (*Compiler, error) {
+func NewCompiler(params *utils.Params, calloc *Allocator,
+	inputs, outputs circuit.IO, inputWires, outputWires []*Wire) (
+	*Compiler, error) {
 
 	if len(inputWires) == 0 {
 		return nil, fmt.Errorf("no inputs defined")
 	}
 	return &Compiler{
 		Params:      params,
+		Calloc:      calloc,
 		Inputs:      inputs,
 		Outputs:     outputs,
 		InputWires:  inputWires,
@@ -56,39 +59,39 @@ func NewCompiler(params *utils.Params, inputs, outputs circuit.IO,
 }
 
 // InvI0Wire returns a wire holding value INV(input[0]).
-func (c *Compiler) InvI0Wire() *Wire {
-	if c.invI0Wire == nil {
-		c.invI0Wire = NewWire()
-		c.AddGate(NewINV(c.InputWires[0], c.invI0Wire))
+func (cc *Compiler) InvI0Wire() *Wire {
+	if cc.invI0Wire == nil {
+		cc.invI0Wire = cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.INVGate(cc.InputWires[0], cc.invI0Wire))
 	}
-	return c.invI0Wire
+	return cc.invI0Wire
 }
 
 // ZeroWire returns a wire holding value 0.
-func (c *Compiler) ZeroWire() *Wire {
-	if c.zeroWire == nil {
-		c.zeroWire = NewWire()
-		c.AddGate(NewBinary(circuit.AND, c.InputWires[0], c.InvI0Wire(),
-			c.zeroWire))
-		c.zeroWire.SetValue(Zero)
+func (cc *Compiler) ZeroWire() *Wire {
+	if cc.zeroWire == nil {
+		cc.zeroWire = cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, cc.InputWires[0],
+			cc.InvI0Wire(), cc.zeroWire))
+		cc.zeroWire.SetValue(Zero)
 	}
-	return c.zeroWire
+	return cc.zeroWire
 }
 
 // OneWire returns a wire holding value 1.
-func (c *Compiler) OneWire() *Wire {
-	if c.oneWire == nil {
-		c.oneWire = NewWire()
-		c.AddGate(NewBinary(circuit.OR, c.InputWires[0], c.InvI0Wire(),
-			c.oneWire))
-		c.oneWire.SetValue(One)
+func (cc *Compiler) OneWire() *Wire {
+	if cc.oneWire == nil {
+		cc.oneWire = cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.OR, cc.InputWires[0],
+			cc.InvI0Wire(), cc.oneWire))
+		cc.oneWire.SetValue(One)
 	}
-	return c.oneWire
+	return cc.oneWire
 }
 
 // ZeroPad pads the argument wires x and y with zero values so that
 // the resulting wires have the same number of bits.
-func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
+func (cc *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 	if len(x) == len(y) {
 		return x, y
 	}
@@ -103,7 +106,7 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 		if i < len(x) {
 			rx[i] = x[i]
 		} else {
-			rx[i] = c.ZeroWire()
+			rx[i] = cc.ZeroWire()
 		}
 	}
 
@@ -112,7 +115,7 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 		if i < len(y) {
 			ry[i] = y[i]
 		} else {
-			ry[i] = c.ZeroWire()
+			ry[i] = cc.ZeroWire()
 		}
 	}
 
@@ -121,59 +124,59 @@ func (c *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 
 // ShiftLeft shifts the size number of bits of the input wires w,
 // count bits left.
-func (c *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
+func (cc *Compiler) ShiftLeft(w []*Wire, size, count int) []*Wire {
 	result := make([]*Wire, size)
 
 	if count < size {
 		copy(result[count:], w)
 	}
 	for i := 0; i < count; i++ {
-		result[i] = c.ZeroWire()
+		result[i] = cc.ZeroWire()
 	}
 	for i := count + len(w); i < size; i++ {
-		result[i] = c.ZeroWire()
+		result[i] = cc.ZeroWire()
 	}
 	return result
 }
 
 // INV creates an inverse wire inverting the input wire i's value to
 // the output wire o.
-func (c *Compiler) INV(i, o *Wire) {
-	c.AddGate(NewBinary(circuit.XOR, i, c.OneWire(), o))
+func (cc *Compiler) INV(i, o *Wire) {
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, i, cc.OneWire(), o))
 }
 
 // ID creates an identity wire passing the input wire i's value to the
 // output wire o.
-func (c *Compiler) ID(i, o *Wire) {
-	c.AddGate(NewBinary(circuit.XOR, i, c.ZeroWire(), o))
+func (cc *Compiler) ID(i, o *Wire) {
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, i, cc.ZeroWire(), o))
 }
 
 // AddGate adds a get into the circuit.
-func (c *Compiler) AddGate(gate *Gate) {
-	c.Gates = append(c.Gates, gate)
+func (cc *Compiler) AddGate(gate *Gate) {
+	cc.Gates = append(cc.Gates, gate)
 }
 
 // SetNextWireID sets the next unique wire ID to use.
-func (c *Compiler) SetNextWireID(next uint32) {
-	c.nextWireID = next
+func (cc *Compiler) SetNextWireID(next circuit.Wire) {
+	cc.nextWireID = next
 }
 
 // NextWireID returns the next unique wire ID.
-func (c *Compiler) NextWireID() uint32 {
-	ret := c.nextWireID
-	c.nextWireID++
+func (cc *Compiler) NextWireID() circuit.Wire {
+	ret := cc.nextWireID
+	cc.nextWireID++
 	return ret
 }
 
 // ConstPropagate propagates constant wire values in the circuit and
 // short circuits gates if their output does not depend on the gate's
 // logical operation.
-func (c *Compiler) ConstPropagate() {
+func (cc *Compiler) ConstPropagate() {
 	var stats circuit.Stats
 
 	start := time.Now()
 
-	for _, g := range c.Gates {
+	for _, g := range cc.Gates {
 		switch g.Op {
 		case circuit.XOR:
 			if (g.A.Value() == Zero && g.B.Value() == Zero) ||
@@ -251,21 +254,21 @@ func (c *Compiler) ConstPropagate() {
 
 		if g.A.Value() == Zero {
 			g.A.RemoveOutput(g)
-			g.A = c.ZeroWire()
+			g.A = cc.ZeroWire()
 			g.A.AddOutput(g)
 		} else if g.A.Value() == One {
 			g.A.RemoveOutput(g)
-			g.A = c.OneWire()
+			g.A = cc.OneWire()
 			g.A.AddOutput(g)
 		}
 		if g.B != nil {
 			if g.B.Value() == Zero {
 				g.B.RemoveOutput(g)
-				g.B = c.ZeroWire()
+				g.B = cc.ZeroWire()
 				g.B.AddOutput(g)
 			} else if g.B.Value() == One {
 				g.B.RemoveOutput(g)
-				g.B = c.OneWire()
+				g.B = cc.OneWire()
 				g.B.AddOutput(g)
 			}
 		}
@@ -273,21 +276,21 @@ func (c *Compiler) ConstPropagate() {
 
 	elapsed := time.Since(start)
 
-	if c.Params.Diagnostics && stats.Count() > 0 {
+	if cc.Params.Diagnostics && stats.Count() > 0 {
 		fmt.Printf(" - ConstPropagate:      %12s: %d/%d (%.2f%%)\n",
-			elapsed, stats.Count(), len(c.Gates),
-			float64(stats.Count())/float64(len(c.Gates))*100)
+			elapsed, stats.Count(), len(cc.Gates),
+			float64(stats.Count())/float64(len(cc.Gates))*100)
 	}
 }
 
 // ShortCircuitXORZero short circuits input to output where input is
 // XOR'ed to zero.
-func (c *Compiler) ShortCircuitXORZero() {
+func (cc *Compiler) ShortCircuitXORZero() {
 	var stats circuit.Stats
 
 	start := time.Now()
 
-	for _, g := range c.Gates {
+	for _, g := range cc.Gates {
 		if g.Op != circuit.XOR {
 			continue
 		}
@@ -297,7 +300,7 @@ func (c *Compiler) ShortCircuitXORZero() {
 			g.B.Input().ResetOutput(g.O)
 
 			// Disconnect gate's output wire.
-			g.O = NewWire()
+			g.O = cc.Calloc.Wire()
 
 			stats[g.Op]++
 		}
@@ -307,7 +310,7 @@ func (c *Compiler) ShortCircuitXORZero() {
 			g.A.Input().ResetOutput(g.O)
 
 			// Disconnect gate's output wire.
-			g.O = NewWire()
+			g.O = cc.Calloc.Wire()
 
 			stats[g.Op]++
 		}
@@ -315,81 +318,81 @@ func (c *Compiler) ShortCircuitXORZero() {
 
 	elapsed := time.Since(start)
 
-	if c.Params.Diagnostics && stats.Count() > 0 {
+	if cc.Params.Diagnostics && stats.Count() > 0 {
 		fmt.Printf(" - ShortCircuitXORZero: %12s: %d/%d (%.2f%%)\n",
-			elapsed, stats.Count(), len(c.Gates),
-			float64(stats.Count())/float64(len(c.Gates))*100)
+			elapsed, stats.Count(), len(cc.Gates),
+			float64(stats.Count())/float64(len(cc.Gates))*100)
 	}
 }
 
 // Prune removes all gates whose output wires are unused.
-func (c *Compiler) Prune() int {
+func (cc *Compiler) Prune() int {
 
-	n := make([]*Gate, len(c.Gates))
+	n := make([]*Gate, len(cc.Gates))
 	nPos := len(n)
 
-	for i := len(c.Gates) - 1; i >= 0; i-- {
-		g := c.Gates[i]
+	for i := len(cc.Gates) - 1; i >= 0; i-- {
+		g := cc.Gates[i]
 		if !g.Prune() {
 			nPos--
 			n[nPos] = g
 		}
 	}
-	c.Gates = n[nPos:]
+	cc.Gates = n[nPos:]
 
 	return nPos
 }
 
 // Compile compiles the circuit.
-func (c *Compiler) Compile() *circuit.Circuit {
-	if len(c.pending) != 0 {
+func (cc *Compiler) Compile() *circuit.Circuit {
+	if len(cc.pending) != 0 {
 		panic("Compile: pending set")
 	}
-	c.pending = make([]*Gate, 0, len(c.Gates))
-	if len(c.assigned) != 0 {
+	cc.pending = make([]*Gate, 0, len(cc.Gates))
+	if len(cc.assigned) != 0 {
 		panic("Compile: assigned set")
 	}
-	c.assigned = make([]*Gate, 0, len(c.Gates))
-	if len(c.compiled) != 0 {
+	cc.assigned = make([]*Gate, 0, len(cc.Gates))
+	if len(cc.compiled) != 0 {
 		panic("Compile: compiled set")
 	}
-	c.compiled = make([]circuit.Gate, 0, len(c.Gates))
+	cc.compiled = make([]circuit.Gate, 0, len(cc.Gates))
 
-	for _, w := range c.InputWires {
-		w.Assign(c)
+	for _, w := range cc.InputWires {
+		w.Assign(cc)
 	}
-	for len(c.pending) > 0 {
-		gate := c.pending[0]
-		c.pending = c.pending[1:]
-		gate.Assign(c)
+	for len(cc.pending) > 0 {
+		gate := cc.pending[0]
+		cc.pending = cc.pending[1:]
+		gate.Assign(cc)
 	}
 	// Assign outputs.
-	for _, w := range c.OutputWires {
+	for _, w := range cc.OutputWires {
 		if w.Assigned() {
-			if !c.OutputsAssigned {
+			if !cc.OutputsAssigned {
 				panic("Output already assigned")
 			}
 		} else {
-			w.SetID(c.NextWireID())
+			w.SetID(cc.NextWireID())
 		}
 	}
 
 	// Compile circuit.
-	for _, gate := range c.assigned {
-		gate.Compile(c)
+	for _, gate := range cc.assigned {
+		gate.Compile(cc)
 	}
 
 	var stats circuit.Stats
-	for _, g := range c.compiled {
+	for _, g := range cc.compiled {
 		stats[g.Op]++
 	}
 
 	result := &circuit.Circuit{
-		NumGates: len(c.compiled),
-		NumWires: int(c.nextWireID),
-		Inputs:   c.Inputs,
-		Outputs:  c.Outputs,
-		Gates:    c.compiled,
+		NumGates: len(cc.compiled),
+		NumWires: int(cc.nextWireID),
+		Inputs:   cc.Inputs,
+		Outputs:  cc.Outputs,
+		Gates:    cc.compiled,
 		Stats:    stats,
 	}
 

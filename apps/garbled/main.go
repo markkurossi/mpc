@@ -27,6 +27,7 @@ import (
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/mpc/types"
 )
 
 var (
@@ -407,10 +408,11 @@ func printResults(results []*big.Int, outputs circuit.IO) {
 func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 	var str string
 
-	if strings.HasPrefix(output.Type, "string") {
+	switch output.Type.Type {
+	case types.TString:
 		mask := big.NewInt(0xff)
 
-		for i := 0; i < output.Size/8; i++ {
+		for i := 0; i < int(output.Type.Bits)/8; i++ {
 			tmp := new(big.Int).Rsh(result, uint(i*8))
 			r := rune(tmp.And(tmp, mask).Uint64())
 			if unicode.IsPrint(r) {
@@ -419,11 +421,10 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 				str += fmt.Sprintf("\\u%04x", r)
 			}
 		}
-	} else if strings.HasPrefix(output.Type, "uint") ||
-		strings.HasPrefix(output.Type, "int") {
 
-		if output.Type[0] == 'i' {
-			bits := circuit.Size(output.Type)
+	case types.TUint, types.TInt:
+		if output.Type.Type == types.TInt {
+			bits := int(output.Type.Bits)
 			if result.Bit(bits-1) == 1 {
 				// Negative number.
 				tmp := new(big.Int)
@@ -439,47 +440,53 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 		}
 		if short {
 			str = fmt.Sprintf("%v", result)
-		} else if output.Size <= 64 {
+		} else if output.Type.Bits <= 64 {
 			str = fmt.Sprintf("0x%x\t%v", bytes, result)
 		} else {
 			str = fmt.Sprintf("0x%x", bytes)
 		}
-	} else if strings.HasPrefix(output.Type, "bool") {
+
+	case types.TBool:
 		str = fmt.Sprintf("%v", result.Uint64() != 0)
-	} else {
-		ok, count, elSize, elType := circuit.ParseArrayType(output.Type)
-		if ok {
-			mask := new(big.Int)
-			for i := 0; i < elSize; i++ {
-				mask.SetBit(mask, i, 1)
-			}
 
-			hexString := elType == "uint8"
-			if !hexString {
-				str = "["
-			}
-			for i := 0; i < count; i++ {
-				r := new(big.Int).Rsh(result, uint(i*elSize))
-				r = r.And(r, mask)
+	case types.TArray:
+		count := int(output.Type.ArraySize)
+		elSize := int(output.Type.ElementType.Bits)
 
-				if hexString {
-					str += fmt.Sprintf("%02x", r.Int64())
-				} else {
-					if i > 0 {
-						str += " "
-					}
-					str += printResult(r, circuit.IOArg{
-						Type: elType,
-						Size: elSize,
-					}, true)
-				}
-			}
-			if !hexString {
-				str += "]"
-			}
-		} else {
-			str = fmt.Sprintf("%v (%s)", result, output.Type)
+		mask := new(big.Int)
+		for i := 0; i < elSize; i++ {
+			mask.SetBit(mask, i, 1)
 		}
+
+		var hexString bool
+		if output.Type.ElementType.Type == types.TUint &&
+			output.Type.ElementType.Bits == 8 {
+			hexString = true
+		}
+		if !hexString {
+			str = "["
+		}
+		for i := 0; i < count; i++ {
+			r := new(big.Int).Rsh(result, uint(i*elSize))
+			r = r.And(r, mask)
+
+			if hexString {
+				str += fmt.Sprintf("%02x", r.Int64())
+			} else {
+				if i > 0 {
+					str += " "
+				}
+				str += printResult(r, circuit.IOArg{
+					Type: *output.Type.ElementType,
+				}, true)
+			}
+		}
+		if !hexString {
+			str += "]"
+		}
+
+	default:
+		str = fmt.Sprintf("%v (%s)", result, output.Type)
 	}
 
 	return str

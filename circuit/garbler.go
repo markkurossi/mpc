@@ -82,7 +82,7 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 
 	// Select our inputs.
 	var n1 []ot.Label
-	for i := 0; i < circ.Inputs[0].Size; i++ {
+	for i := 0; i < int(circ.Inputs[0].Type.Bits); i++ {
 		wire := garbled.Wires[i]
 
 		var n ot.Label
@@ -128,7 +128,8 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	if err != nil {
 		return nil, err
 	}
-	if offset != circ.Inputs[0].Size || count != circ.Inputs[1].Size {
+	if offset != int(circ.Inputs[0].Type.Bits) ||
+		count != int(circ.Inputs[1].Type.Bits) {
 		return nil, fmt.Errorf("peer can't OT wires [%d...%d[",
 			offset, offset+count)
 	}

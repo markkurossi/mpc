@@ -72,7 +72,7 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 	wires := make([]ot.Label, circ.NumWires)
 
 	// Receive peer inputs.
-	for i := 0; i < circ.Inputs[0].Size; i++ {
+	for i := 0; i < int(circ.Inputs[0].Type.Bits); i++ {
 		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, err
@@ -93,23 +93,23 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 		fmt.Printf(" - Querying our inputs...\n")
 	}
 	// Wire offset.
-	if err := conn.SendUint32(circ.Inputs[0].Size); err != nil {
+	if err := conn.SendUint32(int(circ.Inputs[0].Type.Bits)); err != nil {
 		return nil, err
 	}
 	// Wire count.
-	if err := conn.SendUint32(circ.Inputs[1].Size); err != nil {
+	if err := conn.SendUint32(int(circ.Inputs[1].Type.Bits)); err != nil {
 		return nil, err
 	}
 	if err := conn.Flush(); err != nil {
 		return nil, err
 	}
-	flags := make([]bool, circ.Inputs[1].Size)
-	for i := 0; i < circ.Inputs[1].Size; i++ {
+	flags := make([]bool, int(circ.Inputs[1].Type.Bits))
+	for i := 0; i < int(circ.Inputs[1].Type.Bits); i++ {
 		if inputs.Bit(i) == 1 {
 			flags[i] = true
 		}
 	}
-	if err := oti.Receive(flags, wires[circ.Inputs[0].Size:]); err != nil {
+	if err := oti.Receive(flags, wires[circ.Inputs[0].Type.Bits:]); err != nil {
 		return nil, err
 	}
 	xfer := conn.Stats.Sum() - ioStats

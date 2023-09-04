@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -32,7 +32,7 @@ func (c *Circuit) Dot(out io.Writer) {
 		fmt.Fprintf(out, "  {  rank=same")
 		var numInputs int
 		for _, input := range c.Inputs {
-			numInputs += input.Size
+			numInputs += int(input.Type.Bits)
 		}
 		for w := 0; w < numInputs; w++ {
 			fmt.Fprintf(out, "; w%d", w)

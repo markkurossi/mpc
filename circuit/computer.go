@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -32,7 +32,7 @@ func (c *Circuit) Compute(inputs []*big.Int) ([]*big.Int, error) {
 
 	var w int
 	for idx, io := range args {
-		for bit := 0; bit < io.Size; bit++ {
+		for bit := 0; bit < int(io.Type.Bits); bit++ {
 			wires[w] = byte(inputs[idx].Bit(bit))
 			w++
 		}
@@ -78,7 +78,7 @@ func (c *Circuit) Compute(inputs []*big.Int) ([]*big.Int, error) {
 	var result []*big.Int
 	for _, io := range c.Outputs {
 		r := new(big.Int)
-		for bit := 0; bit < io.Size; bit++ {
+		for bit := 0; bit < int(io.Type.Bits); bit++ {
 			if wires[w] != 0 {
 				r.SetBit(r, bit, 1)
 			}

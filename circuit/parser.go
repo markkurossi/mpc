@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -17,6 +17,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/markkurossi/mpc/types"
 )
 
 var reParts = regexp.MustCompilePOSIX("[[:space:]]+")
@@ -90,7 +92,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			return nil, err
 		}
 		inputs = append(inputs, arg)
-		inputWires += arg.Size
+		inputWires += int(arg.Type.Bits)
 	}
 	for i := 0; i < int(header.NumOutputs); i++ {
 		out, err := parseIOArg(r)
@@ -98,7 +100,7 @@ func ParseMPCLC(in io.Reader) (*Circuit, error) {
 			return nil, err
 		}
 		outputs = append(outputs, out)
-		outputWires += out.Size
+		outputWires += int(out.Type.Bits)
 	}
 
 	// Mark input wires seen.
@@ -222,8 +224,11 @@ func parseIOArg(r *bufio.Reader) (arg IOArg, err error) {
 		return arg, err
 	}
 	arg.Name = name
-	arg.Type = t
-	arg.Size = int(ui32)
+	arg.Type, err = types.Parse(t)
+	if err != nil {
+		return arg, err
+	}
+	arg.Type.Bits = types.Size(ui32)
 
 	// Compound
 	if err := binary.Read(r, bo, &ui32); err != nil {
@@ -309,8 +314,10 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		}
 		inputs = append(inputs, IOArg{
 			Name: fmt.Sprintf("NI%d", i),
-			Type: fmt.Sprintf("u%d", bits),
-			Size: bits,
+			Type: types.Info{
+				Type: types.TUint,
+				Bits: types.Size(bits),
+			},
 		})
 		inputWires += bits
 	}
@@ -348,8 +355,10 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		}
 		outputs = append(outputs, IOArg{
 			Name: fmt.Sprintf("NO%d", i),
-			Type: fmt.Sprintf("u%d", bits),
-			Size: bits,
+			Type: types.Info{
+				Type: types.TUint,
+				Bits: types.Size(bits),
+			},
 		})
 	}
 

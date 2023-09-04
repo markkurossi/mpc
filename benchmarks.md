@@ -538,6 +538,85 @@ Max permanent wires: 53913890, cached circuits: 25
 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
 ```
 
+Value.HashValue based `WireAllocator`:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │    1.89192514s │   2.70% │        │
+│ Init         │     2.706353ms │   0.00% │     0B │
+│ OT Init      │       11.731µs │   0.00% │   16kB │
+│ Peer Inputs  │    45.549977ms │   0.07% │   57kB │
+│ Stream       │ 1m8.029901416s │  97.23% │   15GB │
+│ ├╴InstrInit  │   2.933100244s │   4.31% │        │
+│ ├╴CircComp   │    30.339124ms │   0.04% │        │
+│ ├╴StreamInit │   2.608974096s │   3.84% │        │
+│ ╰╴Garble     │ 1m1.560371684s │  90.49% │        │
+│ Result       │      324.555µs │   0.00% │    8kB │
+│ Total        │ 1m9.970419172s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 231284 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+```
+
+Optimized `compiler/circuits/Wire`:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   1.870993069s │   2.71% │        │
+│ Init         │     2.331431ms │   0.00% │     0B │
+│ OT Init      │       10.949µs │   0.00% │   16kB │
+│ Peer Inputs  │    44.089085ms │   0.06% │   57kB │
+│ Stream       │   1m7.0813688s │  97.22% │   15GB │
+│ ├╴InstrInit  │   2.421297578s │   3.61% │        │
+│ ├╴CircComp   │     17.09415ms │   0.03% │        │
+│ ├╴StreamInit │   2.155089182s │   3.21% │        │
+│ ╰╴Garble     │ 1m1.550598148s │  91.76% │        │
+│ Result       │       432.27µs │   0.00% │    8kB │
+│ Total        │ 1m8.999225604s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 231284 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+```
+
+Optimized streamer to use `circuit.Wire` instead of
+`compiler/circuits/Wire` in wire cache:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   1.755362404s │   2.64% │        │
+│ Init         │      2.79287ms │   0.00% │     0B │
+│ OT Init      │       13.525µs │   0.00% │   16kB │
+│ Peer Inputs  │    45.376796ms │   0.07% │   57kB │
+│ Stream       │ 1m4.624303427s │  97.28% │   15GB │
+│ ├╴InstrInit  │   1.166489974s │   1.81% │        │
+│ ├╴CircComp   │     18.17144ms │   0.03% │        │
+│ ├╴StreamInit │   1.886360054s │   2.92% │        │
+│ ╰╴Garble     │ 1m0.866348862s │  94.18% │        │
+│ Result       │      225.299µs │   0.00% │    8kB │
+│ Total        │ 1m6.428074321s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 231284 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+       66.59 real        69.15 user         6.69 sys
+          3568140288  maximum resident set size
+          4119990272  peak memory footprint
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```
