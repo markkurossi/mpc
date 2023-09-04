@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -244,11 +244,11 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		b = wires[g.Input1.ID()]
+		b = wires[g.Input1.Int()]
 		fallthrough
 
 	case INV:
-		a = wires[g.Input0.ID()]
+		a = wires[g.Input0.Int()]
 
 	default:
 		return nil, fmt.Errorf("invalid gate type %s", g.Op)
@@ -404,7 +404,7 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	default:
 		return nil, fmt.Errorf("invalid operand %s", g.Op)
 	}
-	wires[g.Output.ID()] = c
+	wires[g.Output.Int()] = c
 
 	return table[start : start+count], nil
 }

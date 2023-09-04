@@ -144,7 +144,7 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 	fmt.Printf(" - Out: %s\n", program.Outputs)
 	fmt.Printf(" -  In: %s\n", inputFlag)
 
-	out, bits, err := program.StreamCircuit(conn, oti, c.params, input, timing)
+	out, bits, err := program.Stream(conn, oti, c.params, input, timing)
 	if err != nil {
 		return nil, nil, err
 	}

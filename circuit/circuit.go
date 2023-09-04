@@ -277,8 +277,8 @@ type Wire uint32
 // InvalidWire specifies an invalid wire ID.
 const InvalidWire Wire = math.MaxUint32
 
-// ID returns the wire ID as integer.
-func (w Wire) ID() int {
+// Int returns the wire ID as integer.
+func (w Wire) Int() int {
 	return int(w)
 }
 

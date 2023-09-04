@@ -7,6 +7,7 @@
 package ssa
 
 import (
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/types"
 )
@@ -16,23 +17,31 @@ type WireAllocator interface {
 	// Allocated tests if the wires have been allocated for the value.
 	Allocated(v Value) bool
 
-	// NextWireID allocated and returns the next unassigned wire ID.
-	NextWireID() uint32
+	// Streamer API.
 
-	// Wires allocates unassigned wires for the argument value.
-	Wires(v Value, bits types.Size) ([]*circuits.Wire, error)
+	// NextWireID allocated and returns the next unassigned wire ID.
+	// XXX is this sync with circuits.Compiler.NextWireID()?
+	NextWireID() circuit.Wire
 
 	// AssignedWires allocates assigned wires for the argument value.
-	AssignedWires(v Value, bits types.Size) ([]*circuits.Wire, error)
+	AssignedWires(v Value, bits types.Size) ([]circuit.Wire, error)
 
-	// SetWires allocates wire IDs for the value's wires.
-	SetWires(v Value, w []*circuits.Wire)
+	// AssignedWires allocates assigned wires for the argument value.
+	AssignedWiresAndIDs(v Value, bits types.Size) ([]*circuits.Wire, error)
 
 	// GCWires recycles the wires of the argument value. The wires
 	// must have been previously allocated with Wires, AssignedWires,
 	// or SetWires; the function panics if the wires have not been
 	// allocated.
 	GCWires(v Value)
+
+	// Circuit compilation API.
+
+	// Wires allocates unassigned wires for the argument value.
+	Wires(v Value, bits types.Size) ([]*circuits.Wire, error)
+
+	// SetWires allocates wire IDs for the value's wires.
+	SetWires(v Value, w []*circuits.Wire)
 
 	// Debug prints debugging information about the wire allocator.
 	Debug()

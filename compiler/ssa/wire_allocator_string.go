@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/types"
 )
@@ -20,7 +21,7 @@ type WAllocString struct {
 	calloc     *circuits.Allocator
 	freeWires  map[types.Size][][]*circuits.Wire
 	wires      map[string]*wireAlloc
-	nextWireID uint32
+	nextWireID circuit.Wire
 	flHit      int
 	flMiss     int
 }
@@ -64,7 +65,7 @@ func (walloc *WAllocString) Allocated(v Value) bool {
 }
 
 // NextWireID implements WireAllocator.NextWireID.
-func (walloc *WAllocString) NextWireID() uint32 {
+func (walloc *WAllocString) NextWireID() circuit.Wire {
 	ret := walloc.nextWireID
 	walloc.nextWireID++
 	return ret
@@ -88,7 +89,7 @@ func (walloc *WAllocString) Wires(v Value, bits types.Size) (
 
 // AssignedWires implements WireAllocator.AssignedWires.
 func (walloc *WAllocString) AssignedWires(v Value, bits types.Size) (
-	[]*circuits.Wire, error) {
+	[]circuit.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
 	}
@@ -103,18 +104,24 @@ func (walloc *WAllocString) AssignedWires(v Value, bits types.Size) (
 		if alloc.Base == circuits.UnassignedID {
 			alloc.Base = walloc.nextWireID
 			for i := 0; i < int(bits); i++ {
-				alloc.Wires[i].SetID(walloc.nextWireID + uint32(i))
+				alloc.Wires[i].SetID(walloc.nextWireID + circuit.Wire(i))
 			}
-			walloc.nextWireID += uint32(bits)
+			walloc.nextWireID += circuit.Wire(bits)
 		}
 	}
 
-	return alloc.Wires, nil
+	return alloc.IDs, nil
+}
+
+func (walloc *WAllocString) AssignedWiresAndIDs(v Value, bits types.Size) (
+	[]*circuits.Wire, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 
 type wireAlloc struct {
-	Base  uint32
+	Base  circuit.Wire
 	Wires []*circuits.Wire
+	IDs   []circuit.Wire
 }
 
 func (walloc *WAllocString) allocWires(bits types.Size) *wireAlloc {
@@ -171,7 +178,7 @@ func (walloc *WAllocString) GCWires(v Value) {
 	// Clear wires and reassign their IDs.
 	bits := types.Size(len(alloc.Wires))
 	for i := 0; i < int(bits); i++ {
-		alloc.Wires[i].Reset(alloc.Base + uint32(i))
+		alloc.Wires[i].Reset(alloc.Base + circuit.Wire(i))
 	}
 
 	fl := walloc.freeWires[bits]

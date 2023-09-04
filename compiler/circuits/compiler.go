@@ -28,7 +28,7 @@ type Compiler struct {
 	InputWires      []*Wire
 	OutputWires     []*Wire
 	Gates           []*Gate
-	nextWireID      uint32
+	nextWireID      circuit.Wire
 	pending         []*Gate
 	assigned        []*Gate
 	compiled        []circuit.Gate
@@ -157,12 +157,12 @@ func (cc *Compiler) AddGate(gate *Gate) {
 }
 
 // SetNextWireID sets the next unique wire ID to use.
-func (cc *Compiler) SetNextWireID(next uint32) {
+func (cc *Compiler) SetNextWireID(next circuit.Wire) {
 	cc.nextWireID = next
 }
 
 // NextWireID returns the next unique wire ID.
-func (cc *Compiler) NextWireID() uint32 {
+func (cc *Compiler) NextWireID() circuit.Wire {
 	ret := cc.nextWireID
 	cc.nextWireID++
 	return ret

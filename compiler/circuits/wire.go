@@ -9,21 +9,23 @@ package circuits
 import (
 	"fmt"
 	"math"
+
+	"github.com/markkurossi/mpc/circuit"
 )
 
 const (
 	// UnassignedID identifies an unassigned wire ID.
-	UnassignedID uint32 = math.MaxUint32
-	outputMask          = 0b10000000000000000000000000000000
-	valueMask           = 0b01100000000000000000000000000000
-	numMask             = 0b00011111111111111111111111111111
-	valueShift          = 29
+	UnassignedID circuit.Wire = math.MaxUint32
+	outputMask                = 0b10000000000000000000000000000000
+	valueMask                 = 0b01100000000000000000000000000000
+	numMask                   = 0b00011111111111111111111111111111
+	valueShift                = 29
 )
 
 // Wire implements a wire connecting binary gates.
 type Wire struct {
 	ovnum uint32
-	id    uint32
+	id    circuit.Wire
 	// The gates[0] is the input gate, gates[1:] are the output gates.
 	gates []*Gate
 }
@@ -50,7 +52,7 @@ func (v WireValue) String() string {
 }
 
 // Reset resets the wire with the new ID.
-func (w *Wire) Reset(id uint32) {
+func (w *Wire) Reset(id circuit.Wire) {
 	w.SetOutput(false)
 	w.SetValue(Unknown)
 	w.SetID(id)
@@ -59,12 +61,12 @@ func (w *Wire) Reset(id uint32) {
 }
 
 // ID returns the wire ID.
-func (w *Wire) ID() uint32 {
+func (w *Wire) ID() circuit.Wire {
 	return w.id
 }
 
 // SetID sets the wire ID.
-func (w *Wire) SetID(id uint32) {
+func (w *Wire) SetID(id circuit.Wire) {
 	w.id = id
 }
 
