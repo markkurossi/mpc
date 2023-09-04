@@ -29,7 +29,7 @@ type Program struct {
 	OutputWires []*circuits.Wire
 	Constants   map[string]ConstantInst
 	Steps       []Step
-	walloc      WireAllocator
+	walloc      *WireAllocator
 	calloc      *circuits.Allocator
 	zeroWire    *circuits.Wire
 	oneWire     *circuits.Wire
@@ -52,7 +52,7 @@ func NewProgram(params *utils.Params, in, out circuit.IO,
 		Outputs:   out,
 		Constants: consts,
 		Steps:     steps,
-		walloc:    NewWAllocValue(calloc),
+		walloc:    NewWireAllocator(calloc),
 		calloc:    calloc,
 	}
 
