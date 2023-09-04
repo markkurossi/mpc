@@ -24,10 +24,23 @@ type WireAllocator struct {
 	freeIDs     map[types.Size][][]circuit.Wire
 	hash        [10240]*allocByValue
 	nextWireID  circuit.Wire
-	flHit       int
-	flMiss      int
+	flHdrs      cacheStats
+	flWires     cacheStats
+	flIDs       cacheStats
 	lookupCount int
 	lookupFound int
+}
+
+type cacheStats struct {
+	hit  int
+	miss int
+}
+
+func (cs cacheStats) String() string {
+	total := float64(cs.hit + cs.miss)
+	return fmt.Sprintf("hit=%v (%.2f%%), miss=%v (%.2f%%)",
+		cs.hit, float64(cs.hit)/total*100,
+		cs.miss, float64(cs.miss)/total*100)
 }
 
 type allocByValue struct {
@@ -60,9 +73,11 @@ func (walloc *WireAllocator) hashCode(v Value) int {
 func (walloc *WireAllocator) newHeader(v Value) (ret *allocByValue) {
 	if len(walloc.freeHdrs) == 0 {
 		ret = new(allocByValue)
+		walloc.flHdrs.miss++
 	} else {
 		ret = walloc.freeHdrs[len(walloc.freeHdrs)-1]
 		walloc.freeHdrs = walloc.freeHdrs[:len(walloc.freeHdrs)-1]
+		walloc.flHdrs.hit++
 	}
 	ret.key = v
 	ret.base = circuits.UnassignedID
@@ -76,10 +91,10 @@ func (walloc *WireAllocator) newWires(bits types.Size) (
 	if ok && len(fl) > 0 {
 		result = fl[len(fl)-1]
 		walloc.freeWires[bits] = fl[:len(fl)-1]
-		walloc.flHit++
+		walloc.flWires.hit++
 	} else {
 		result = walloc.calloc.Wires(bits)
-		walloc.flMiss++
+		walloc.flWires.miss++
 	}
 	return result
 }
@@ -89,13 +104,13 @@ func (walloc *WireAllocator) newIDs(bits types.Size) (result []circuit.Wire) {
 	if ok && len(fl) > 0 {
 		result = fl[len(fl)-1]
 		walloc.freeIDs[bits] = fl[:len(fl)-1]
-		walloc.flHit++
+		walloc.flIDs.hit++
 	} else {
 		result = make([]circuit.Wire, bits)
 		for i := 0; i < int(bits); i++ {
 			result[i] = circuits.UnassignedID
 		}
-		walloc.flMiss++
+		walloc.flIDs.miss++
 	}
 	return result
 }
@@ -171,8 +186,8 @@ func (walloc *WireAllocator) NextWireID() circuit.Wire {
 	return ret
 }
 
-// AssignedWires allocates assigned wires for the argument value.
-func (walloc *WireAllocator) AssignedWires(v Value, bits types.Size) (
+// AssignedIDs allocates assigned wire IDs for the argument value.
+func (walloc *WireAllocator) AssignedIDs(v Value, bits types.Size) (
 	[]circuit.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
@@ -202,8 +217,8 @@ func (walloc *WireAllocator) AssignedWires(v Value, bits types.Size) (
 	return alloc.ids, nil
 }
 
-// AssignedWiresAndIDs allocates assigned wires for the argument value.
-func (walloc *WireAllocator) AssignedWiresAndIDs(v Value, bits types.Size) (
+// AssignedWires allocates assigned wires for the argument value.
+func (walloc *WireAllocator) AssignedWires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
 	if bits <= 0 {
 		return nil, fmt.Errorf("size not set for value %v", v)
@@ -316,10 +331,10 @@ func (walloc *WireAllocator) SetWires(v Value, w []*circuits.Wire) {
 
 // Debug prints debugging information about the wire allocator.
 func (walloc *WireAllocator) Debug() {
-	total := float64(walloc.flHit + walloc.flMiss)
-	fmt.Printf("Wire freelist: hit=%v (%.2f%%), miss=%v (%.2f%%)\n",
-		walloc.flHit, float64(walloc.flHit)/total*100,
-		walloc.flMiss, float64(walloc.flMiss)/total*100)
+	fmt.Printf("WireAllocator:\n")
+	fmt.Printf("  hdrs : %s\n", walloc.flHdrs)
+	fmt.Printf("  wires: %s\n", walloc.flWires)
+	fmt.Printf("  ids  : %s\n", walloc.flIDs)
 
 	var sum, max int
 	min := math.MaxInt

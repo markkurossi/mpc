@@ -92,10 +92,10 @@ func (alloc *Allocator) Debug() {
 	total := float64(wireSize + wiresSize + gatesSize)
 
 	fmt.Println("circuits.Allocator:")
-	fmt.Printf(" wire : %9v %5s %5.2f%%\n",
+	fmt.Printf("  wire : %9v %5s %5.2f%%\n",
 		alloc.numWire, wireSize, float64(wireSize)/total*100.0)
-	fmt.Printf(" wires: %9v %5s %5.2f%%\n",
+	fmt.Printf("  wires: %9v %5s %5.2f%%\n",
 		alloc.numWires, wiresSize, float64(wiresSize)/total*100.0)
-	fmt.Printf(" gates: %9v %5s %5.2f%%\n",
+	fmt.Printf("  gates: %9v %5s %5.2f%%\n",
 		alloc.numGates, gatesSize, float64(gatesSize)/total*100.0)
 }

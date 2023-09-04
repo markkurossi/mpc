@@ -176,7 +176,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 		instr := step.Instr
 		wires = wires[:0]
 		for _, in := range instr.In {
-			w, err := prog.walloc.AssignedWires(in, in.Type.Bits)
+			w, err := prog.walloc.AssignedIDs(in, in.Type.Bits)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -186,8 +186,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 		var out []circuit.Wire
 		var err error
 		if instr.Out != nil {
-			out, err = prog.walloc.AssignedWires(*instr.Out,
-				instr.Out.Type.Bits)
+			out, err = prog.walloc.AssignedIDs(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -387,7 +386,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 			}
 			// Return wires.
 			for i, ret := range instr.Ret {
-				wires, err := prog.walloc.AssignedWires(ret, ret.Type.Bits)
+				wires, err := prog.walloc.AssignedIDs(ret, ret.Type.Bits)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -674,7 +673,7 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.zeroWire == nil {
-		wires, err := prog.walloc.AssignedWiresAndIDs(Value{
+		wires, err := prog.walloc.AssignedWires(Value{
 			Const: true,
 			Name:  "{zero}",
 		}, 1)
@@ -727,7 +726,7 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 	*circuits.Wire, error) {
 
 	if prog.oneWire == nil {
-		wires, err := prog.walloc.AssignedWiresAndIDs(Value{
+		wires, err := prog.walloc.AssignedWires(Value{
 			Const: true,
 			Name:  "{one}",
 		}, 1)
