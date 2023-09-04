@@ -588,6 +588,35 @@ Max permanent wires: 53913890, cached circuits: 25
 #gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
 ```
 
+Optimized streamer to use `circuit.Wire` instead of
+`compiler/circuits/Wire` in wire cache:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   1.755362404s │   2.64% │        │
+│ Init         │      2.79287ms │   0.00% │     0B │
+│ OT Init      │       13.525µs │   0.00% │   16kB │
+│ Peer Inputs  │    45.376796ms │   0.07% │   57kB │
+│ Stream       │ 1m4.624303427s │  97.28% │   15GB │
+│ ├╴InstrInit  │   1.166489974s │   1.81% │        │
+│ ├╴CircComp   │     18.17144ms │   0.03% │        │
+│ ├╴StreamInit │   1.886360054s │   2.92% │        │
+│ ╰╴Garble     │ 1m0.866348862s │  94.18% │        │
+│ Result       │      225.299µs │   0.00% │    8kB │
+│ Total        │ 1m6.428074321s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 231284 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 53913890, cached circuits: 25
+#gates=830166294 (XOR=533177896 XNOR=28813441 AND=267575026 OR=496562 INV=103369 xor=561991337 !xor=268174957 levels=10548 width=1796) #w=853882864
+       66.59 real        69.15 user         6.69 sys
+          3568140288  maximum resident set size
+          4119990272  peak memory footprint
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```
