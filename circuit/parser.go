@@ -303,9 +303,9 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 			niv, len(line))
 	}
 	var inputs IO
-	var inputWires int
+	var inputWires int64
 	for i := 1; i < len(line); i++ {
-		bits, err := strconv.Atoi(line[i])
+		bits, err := strconv.ParseInt(line[i], 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("invalid input bits: %s", err)
 		}
@@ -326,7 +326,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 	}
 
 	// Mark input wires seen.
-	for i := 0; i < inputWires; i++ {
+	for i := int64(0); i < inputWires; i++ {
 		if err := wiresSeen.Set(Wire(i)); err != nil {
 			return nil, err
 		}
@@ -346,7 +346,7 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 	}
 	var outputs IO
 	for i := 1; i < len(line); i++ {
-		bits, err := strconv.Atoi(line[i])
+		bits, err := strconv.ParseInt(line[i], 10, 32)
 		if err != nil {
 			return nil, fmt.Errorf("invalid output bits: %s", err)
 		}
