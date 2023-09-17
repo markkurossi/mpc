@@ -333,7 +333,13 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 		if err != nil {
 			return nil, nil, ctx.Errorf(loc, "failed to parse circuit: %s", err)
 		}
+		circ.AssignLevels()
 		ctx.Native[fp] = circ
+		if ctx.Verbose {
+			fmt.Printf(" - native %s: %v\n", name, circ)
+		}
+	} else {
+		fmt.Printf(" - native %s: cached\n", name)
 	}
 
 	if len(circ.Inputs) > len(args) {
@@ -351,12 +357,6 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 				"invalid argument %d for native circuit: got %s, need %d",
 				idx, arg.Type, io.Type.Bits)
 		}
-	}
-
-	circ.AssignLevels()
-
-	if ctx.Verbose {
-		fmt.Printf(" - native %s: %v\n", name, circ)
 	}
 
 	var result []ssa.Value
