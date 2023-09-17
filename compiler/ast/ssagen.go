@@ -636,10 +636,8 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if called == nil {
 		// Check builtin functions.
-		for _, bi := range builtins {
-			if bi.Name != ast.Ref.Name.Name {
-				continue
-			}
+		bi, ok := builtins[ast.Ref.Name.Name]
+		if ok {
 			// Flatten arguments.
 			var args []ssa.Value
 			for _, arg := range callValues {

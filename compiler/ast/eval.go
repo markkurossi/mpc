@@ -133,13 +133,8 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, nil
 	}
 	// Check builtin functions.
-	for _, bi := range builtins {
-		if bi.Name != ast.Ref.Name.Name {
-			continue
-		}
-		if bi.Eval == nil {
-			return ssa.Undefined, false, nil
-		}
+	bi, ok := builtins[ast.Ref.Name.Name]
+	if ok && bi.Eval != nil {
 		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
 	}
 

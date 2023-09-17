@@ -17,9 +17,8 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
-// Builtin implements MPCL builtin elements.
+// Builtin implements MPCL builtin functions.
 type Builtin struct {
-	Name string
 	SSA  SSA
 	Eval Eval
 }
@@ -33,27 +32,22 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	loc utils.Point) (ssa.Value, bool, error)
 
 // Predeclared identifiers.
-var builtins = []Builtin{
-	{
-		Name: "copy",
-		SSA:  copySSA,
+var builtins = map[string]Builtin{
+	"copy": {
+		SSA: copySSA,
 	},
-	{
-		Name: "floorPow2",
+	"floorPow2": {
 		SSA:  floorPow2SSA,
 		Eval: floorPow2Eval,
 	},
-	{
-		Name: "len",
+	"len": {
 		SSA:  lenSSA,
 		Eval: lenEval,
 	},
-	{
-		Name: "native",
-		SSA:  nativeSSA,
+	"native": {
+		SSA: nativeSSA,
 	},
-	{
-		Name: "size",
+	"size": {
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},
