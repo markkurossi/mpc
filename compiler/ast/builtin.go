@@ -20,18 +20,9 @@ import (
 // Builtin implements MPCL builtin elements.
 type Builtin struct {
 	Name string
-	Type BuiltinType
 	SSA  SSA
 	Eval Eval
 }
-
-// BuiltinType specifies the different MPCL builtin elements.
-type BuiltinType int
-
-// Builtin types.
-const (
-	BuiltinFunc BuiltinType = iota
-)
 
 // SSA implements the builtin SSA generation.
 type SSA func(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -45,29 +36,24 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 var builtins = []Builtin{
 	{
 		Name: "copy",
-		Type: BuiltinFunc,
 		SSA:  copySSA,
 	},
 	{
 		Name: "floorPow2",
-		Type: BuiltinFunc,
 		SSA:  floorPow2SSA,
 		Eval: floorPow2Eval,
 	},
 	{
 		Name: "len",
-		Type: BuiltinFunc,
 		SSA:  lenSSA,
 		Eval: lenEval,
 	},
 	{
 		Name: "native",
-		Type: BuiltinFunc,
 		SSA:  nativeSSA,
 	},
 	{
 		Name: "size",
-		Type: BuiltinFunc,
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},

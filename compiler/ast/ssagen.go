@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -639,10 +639,6 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		for _, bi := range builtins {
 			if bi.Name != ast.Ref.Name.Name {
 				continue
-			}
-			if bi.Type != BuiltinFunc || bi.SSA == nil {
-				return nil, nil, ctx.Errorf(ast, "builtin %s used as function",
-					bi.Name)
 			}
 			// Flatten arguments.
 			var args []ssa.Value
