@@ -4,5 +4,9 @@ github.com/markkurossi/tabulate v0.0.0-20230223130100-d4965869b123 h1:aGg9ACNKrI
 github.com/markkurossi/tabulate v0.0.0-20230223130100-d4965869b123/go.mod h1:qPNWLW3h4173ZWYHjOgJ1wbvNyLuE1fboZilv97Aq7k=
 github.com/markkurossi/text v0.0.0-20211120112602-ba19517ff5d4 h1:pWtwSM48LTHSETPII0rdjcSTbbQzWY7bPrFLs5goWQc=
 github.com/markkurossi/text v0.0.0-20211120112602-ba19517ff5d4/go.mod h1:NdoMTINXTG7tKD94hd9UevVM9Jtc4o6giWNaoo+sOQ0=
+github.com/markkurossi/trace v0.0.0-20230914162844-83004ca939cf h1:w37D1ma7Fi0WPO9qx6BqsXh5qsVBmmUHotww7p6VyRE=
+github.com/markkurossi/trace v0.0.0-20230914162844-83004ca939cf/go.mod h1:q/fKjzVV/3JWqw1Kw+O7LkymxDzTQU0AJukL8YUTJNU=
+github.com/markkurossi/trace v0.0.0-20230914183940-001386e55369 h1:jyqHzDkWtlOPyCL/BBqi1dg+DMkbleqPExNSyV7gDH8=
+github.com/markkurossi/trace v0.0.0-20230914183940-001386e55369/go.mod h1:q/fKjzVV/3JWqw1Kw+O7LkymxDzTQU0AJukL8YUTJNU=
 golang.org/x/text v0.13.0 h1:ablQoSUd0tRdKxZewP80B+BaqeKJuVhuRxj/dkrun3k=
 golang.org/x/text v0.13.0/go.mod h1:TvPlkZtksWOMsz7fbANvkp4WM8x/WCo/om8BMLbz+aE=

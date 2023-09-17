@@ -9,6 +9,7 @@ package ssa
 import (
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"os"
 	"sort"
@@ -144,6 +145,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 
 	start := time.Now()
 	lastReport := start
+	lastTrace := lastReport
 
 	var dInstrInit time.Duration
 	var dCircCompile time.Duration
@@ -157,6 +159,18 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 		dStart := time.Now()
 		if idx%10 == 0 && params.Verbose {
 			now := time.Now()
+			if false && now.Sub(lastTrace) > time.Millisecond*200 {
+				lastTrace = now
+				slog.Info("progress",
+					slog.Int("done", idx),
+					slog.Int("total", len(prog.Steps)),
+					slog.Group("gates",
+						slog.Uint64("xor", prog.stats[circuit.XOR]),
+						slog.Uint64("xnor", prog.stats[circuit.XNOR]),
+						slog.Uint64("and", prog.stats[circuit.AND]),
+						slog.Uint64("or", prog.stats[circuit.OR]),
+						slog.Uint64("inv", prog.stats[circuit.INV])))
+			}
 			if now.Sub(lastReport) > time.Second*5 {
 				lastReport = now
 				elapsed := now.Sub(start)

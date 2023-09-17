@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"math/big"
 	"net"
 	"os"
@@ -28,6 +29,7 @@ import (
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 	"github.com/markkurossi/mpc/types"
+	"github.com/markkurossi/trace"
 )
 
 var (
@@ -66,6 +68,7 @@ func main() {
 	optimize := flag.Int("O", 1, "optimization level")
 	fVerbose := flag.Bool("v", false, "verbose output")
 	fDiagnostics := flag.Bool("d", false, "diagnostics output")
+	fSlog := flag.String("slog", "", "structure logging with log/slog")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
@@ -100,6 +103,14 @@ func main() {
 
 	params.Verbose = *fVerbose
 	params.Diagnostics = *fDiagnostics
+
+	if len(*fSlog) > 0 {
+		logger, err := trace.NewClient(*fSlog)
+		if err != nil {
+			log.Fatal("could not create slog client: ", err)
+		}
+		slog.SetDefault(slog.New(logger))
+	}
 
 	if *optimize > 0 {
 		params.OptPruneGates = true
