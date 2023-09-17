@@ -175,11 +175,10 @@ func (prog *Program) GC() {
 		}
 	}
 
-	steps := make([]Step, 0, len(prog.Steps))
+	steps := make([]Step, 0, len(prog.Steps)*3/2)
 
 	for i := len(prog.Steps) - 1; i >= 0; i-- {
 		step := &prog.Steps[i]
-		var gcs []Step
 
 		for _, in := range step.Instr.In {
 			if in.Const {
@@ -196,7 +195,7 @@ func (prog *Program) GC() {
 				}
 				if !live {
 					// Input is not live.
-					gcs = append(gcs, Step{
+					steps = append(steps, Step{
 						Instr: NewGCInstr(in),
 					})
 				}
@@ -207,8 +206,6 @@ func (prog *Program) GC() {
 			set.SetBit(set, int(step.Instr.Out.ID), 0)
 		}
 
-		reverse(gcs)
-		steps = append(steps, gcs...)
 		steps = append(steps, *step)
 	}
 	reverse(steps)
