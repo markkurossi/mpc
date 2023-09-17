@@ -279,12 +279,12 @@ func nativeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	if len(args) < 1 {
 		return nil, nil, ctx.Errorf(loc,
-			"not enought argument in call to native")
+			"not enough arguments in call to native")
 	}
 	name, ok := args[0].ConstValue.(string)
 	if !args[0].Const || !ok {
 		return nil, nil, ctx.Errorf(loc,
-			"not enought argument in call to native")
+			"not enough arguments in call to native")
 	}
 	// Our native name constant is not needed in the implementation.
 	gen.RemoveConstant(args[0])
@@ -338,7 +338,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	if len(circ.Inputs) > len(args) {
 		return nil, nil, ctx.Errorf(loc,
-			"not enought argument in call to native")
+			"not enough arguments in call to native")
 	} else if len(circ.Inputs) < len(args) {
 		return nil, nil, ctx.Errorf(loc, "too many argument in call to native")
 	}
