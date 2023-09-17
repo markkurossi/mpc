@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -95,7 +95,7 @@ func TestMerge(t *testing.T) {
 	}
 	_, ok = bound.Bound.(*Value)
 	if !ok {
-		t.Errorf("bindinf for value 'b' is not *Value: %T", bound.Bound)
+		t.Errorf("binding for value 'b' is not *Value: %T", bound.Bound)
 	}
 	bound, ok = merged.Get("a")
 	if !ok {
@@ -104,7 +104,7 @@ func TestMerge(t *testing.T) {
 	fmt.Printf("merged.a: %v (%T)\n", bound, bound)
 	_, ok = bound.Bound.(*Select)
 	if !ok {
-		t.Errorf("bindinf for value 'a' is not *Select: %T", bound.Bound)
+		t.Errorf("binding for value 'a' is not *Select: %T", bound.Bound)
 	}
 }
 

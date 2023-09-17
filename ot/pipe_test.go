@@ -63,7 +63,7 @@ func TestPipe(t *testing.T) {
 	}
 	err = pipe.Close()
 	if err != nil {
-		t.Errorf("Close faield: %v", err)
+		t.Errorf("Close failed: %v", err)
 	}
 
 	err = <-done
