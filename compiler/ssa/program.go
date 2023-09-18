@@ -175,7 +175,7 @@ func (prog *Program) GC() {
 		}
 	}
 
-	steps := make([]Step, 0, len(prog.Steps)*3/2)
+	steps := make([]Step, 0, len(prog.Steps)*2)
 
 	for i := len(prog.Steps) - 1; i >= 0; i-- {
 		step := &prog.Steps[i]
