@@ -70,7 +70,6 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
-	objdump := flag.Bool("objdump", false, "print information about objects")
 	testIO := flag.Int64("test-io", 0, "test I/O performance")
 	flag.Parse()
 
@@ -105,17 +104,6 @@ func main() {
 	if *ssa && !*compile {
 		params.NoCircCompile = true
 	}
-	if *objdump {
-		if len(flag.Args()) == 0 {
-			fmt.Printf("no files specified\n")
-			os.Exit(1)
-		}
-		if err := dumpObjects(flag.Args()); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
-
 	if *testIO > 0 {
 		if *evaluator {
 			err := evaluatorTestIO(*testIO, len(*cpuprofile) > 0)

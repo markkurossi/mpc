@@ -21,6 +21,7 @@
 *.bristol
 apps/circuit/circuit
 apps/garbled/garbled
-apps/ot/ot
 apps/iter/iter
 apps/mpcldoc/mpcldoc
+apps/objdump/objdump
+apps/ot/ot
