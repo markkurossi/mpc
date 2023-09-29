@@ -147,7 +147,6 @@ func main() {
 		return
 	}
 
-	//oti := ot.NewRSA(2048)
 	oti := ot.NewCO()
 
 	if *stream {
