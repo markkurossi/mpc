@@ -74,7 +74,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		}
 		if typeInfo.Bits == 0 {
 			return nil, nil,
-				fmt.Errorf("argument %s of %s has unspecified type",
+				ctx.Errorf(arg, "argument %s of %s has unspecified type",
 					arg.Name, main)
 		}
 		// Define argument in block.
