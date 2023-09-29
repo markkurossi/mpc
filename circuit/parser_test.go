@@ -1,7 +1,7 @@
 //
 // parser_test.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,7 +10,6 @@ package circuit
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 )
 
@@ -22,9 +21,8 @@ var data = `1 3
 `
 
 func TestParse(t *testing.T) {
-	circuit, err := ParseBristol(bytes.NewReader([]byte(data)))
+	_, err := ParseBristol(bytes.NewReader([]byte(data)))
 	if err != nil {
 		t.Fatalf("Parse failed: %s", err)
 	}
-	fmt.Printf("Circuit: %#v\n", circuit)
 }

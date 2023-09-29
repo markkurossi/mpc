@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,12 +7,13 @@
 package circuit
 
 import (
-	"fmt"
 	"testing"
 	"unsafe"
 )
 
 func TestSize(t *testing.T) {
 	var g Gate
-	fmt.Printf("sizeof(Gate)=%d\n", unsafe.Sizeof(g))
+	if unsafe.Sizeof(g) != 20 {
+		t.Errorf("unexpected gate size: got %v, expected 20", unsafe.Sizeof(g))
+	}
 }
