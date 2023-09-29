@@ -119,3 +119,27 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 	}
 	return result, nil
 }
+
+// InputSizes computes the bit sizes of the input arguments. This is
+// used for parametrized main() when the program is instantiated based
+// on input sizes.
+func InputSizes(inputs []string) ([]int, error) {
+	var result []int
+
+	for _, input := range inputs {
+		switch input {
+		case "0", "f", "false", "1", "t", "true":
+			result = append(result, 1)
+
+		default:
+			val := new(big.Int)
+			_, ok := val.SetString(input, 0)
+			if !ok {
+				return nil, fmt.Errorf("invalid input: %s", input)
+			}
+			result = append(result, val.BitLen())
+		}
+	}
+
+	return result, nil
+}
