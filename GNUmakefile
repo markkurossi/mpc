@@ -7,7 +7,7 @@ all:
 
 apidoc:
 	$(BLOG)/blog -site -lib $(BLOG) -draft -t templates/mpcl -o $(OUTPUT) docs/apidoc/
-	./apps/garbled/garbled -doc $(OUTPUT) pkg
+	./apps/mpcldoc/mpcldoc -dir $(OUTPUT) pkg
 
 public:
 	make apidoc OUTPUT=$(HOME)/work/www/mpcl

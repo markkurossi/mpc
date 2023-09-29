@@ -70,8 +70,6 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
-	doc := flag.String("doc", "",
-		"generate documentation about files to the argument directory")
 	objdump := flag.Bool("objdump", false, "print information about objects")
 	testIO := flag.Int64("test-io", 0, "test I/O performance")
 	flag.Parse()
@@ -118,20 +116,6 @@ func main() {
 		return
 	}
 
-	if len(*doc) > 0 {
-		if len(flag.Args()) == 0 {
-			fmt.Printf("no files specified\n")
-			os.Exit(1)
-		}
-		doc, err := NewHTMLDoc(*doc)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if err := documentation(flag.Args(), doc); err != nil {
-			log.Fatal(err)
-		}
-		return
-	}
 	if *testIO > 0 {
 		if *evaluator {
 			err := evaluatorTestIO(*testIO, len(*cpuprofile) > 0)
