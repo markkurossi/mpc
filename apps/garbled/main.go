@@ -70,7 +70,6 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
-	testIO := flag.Int64("test-io", 0, "test I/O performance")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -103,20 +102,6 @@ func main() {
 	}
 	if *ssa && !*compile {
 		params.NoCircCompile = true
-	}
-	if *testIO > 0 {
-		if *evaluator {
-			err := evaluatorTestIO(*testIO, len(*cpuprofile) > 0)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else {
-			err := garblerTestIO(*testIO)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		return
 	}
 
 	oti := ot.NewCO()
