@@ -9,7 +9,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -76,9 +75,6 @@ func main() {
 
 	verbose = *fVerbose
 
-	var circ *circuit.Circuit
-	var err error
-
 	if len(*cpuprofile) > 0 {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -104,6 +100,19 @@ func main() {
 		params.NoCircCompile = true
 	}
 
+	if *compile || *ssa {
+		err := compileFiles(flag.Args(), params, *compile, *ssa, *dot, *svg,
+			*circFormat)
+		if err != nil {
+			fmt.Printf("compile failed: %s\n", err)
+			os.Exit(1)
+		}
+		memProfile(*memprofile)
+		return
+	}
+
+	var err error
+
 	oti := ot.NewCO()
 
 	if *stream {
@@ -120,86 +129,36 @@ func main() {
 		return
 	}
 
-	if len(flag.Args()) == 0 {
-		fmt.Printf("No input files\n")
+	if len(flag.Args()) != 1 {
+		fmt.Printf("expected one input file, got %v\n", len(flag.Args()))
 		os.Exit(1)
 	}
 
-	for _, arg := range flag.Args() {
-		if *compile {
-			params.CircOut, err = makeOutput(arg, *circFormat)
-			if err != nil {
-				fmt.Printf("Failed to create circuit file: %s\n", err)
-				return
-			}
-			params.CircFormat = *circFormat
-			if *dot {
-				params.CircDotOut, err = makeOutput(arg, "circ.dot")
-				if err != nil {
-					fmt.Printf("Failed to create circuit DOT file: %s\n", err)
-					return
-				}
-			}
-			if *svg {
-				params.CircSvgOut, err = makeOutput(arg, "circ.svg")
-				if err != nil {
-					fmt.Printf("Failed to crate circuit SVG file: %s\n", err)
-					return
-				}
-			}
-		}
-		if circuit.IsFilename(arg) {
-			circ, err = circuit.Parse(arg)
-			if err != nil {
-				fmt.Printf("Failed to parse circuit file '%s': %s\n", arg, err)
-				return
-			}
-			if params.CircOut != nil {
-				if params.Verbose {
-					fmt.Printf("Serializing circuit...\n")
-				}
-				err = circ.MarshalFormat(params.CircOut, params.CircFormat)
-				if err != nil {
-					fmt.Printf("Failed to save circuit: %s\n", err)
-					return
-				}
-			}
-		} else if strings.HasSuffix(arg, ".mpcl") {
-			if *ssa {
-				params.SSAOut, err = makeOutput(arg, "ssa")
-				if err != nil {
-					fmt.Printf("Failed to create SSA file: %s\n", err)
-					return
-				}
-				if *dot {
-					params.SSADotOut, err = makeOutput(arg, "ssa.dot")
-					if err != nil {
-						fmt.Printf("Failed to create SSA DOT file: %s\n", err)
-						return
-					}
-				}
-			}
-			circ, _, err = compiler.New(params).CompileFile(arg)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				return
-			}
-		} else {
-			fmt.Printf("Unknown file type '%s'\n", arg)
+	var circ *circuit.Circuit
+
+	file := flag.Args()[0]
+	if circuit.IsFilename(file) {
+		circ, err = circuit.Parse(file)
+		if err != nil {
+			fmt.Printf("failed to parse circuit file '%s': %s\n", file, err)
 			return
 		}
+	} else if strings.HasSuffix(file, ".mpcl") {
+		circ, _, err = compiler.New(params).CompileFile(file)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return
+		}
+	} else {
+		fmt.Printf("unknown file type '%s'\n", file)
+		return
 	}
 
 	if circ != nil {
 		circ.AssignLevels()
 		if verbose {
-			fmt.Printf("Circuit: %v\n", circ)
+			fmt.Printf("circuit: %v\n", circ)
 		}
-	}
-
-	if *ssa || *compile || *stream {
-		memProfile(*memprofile)
-		return
 	}
 
 	var input *big.Int
@@ -446,41 +405,4 @@ func printResult(result *big.Int, output circuit.IOArg, short bool) string {
 	}
 
 	return str
-}
-
-func makeOutput(base, suffix string) (io.WriteCloser, error) {
-	var path string
-
-	idx := strings.LastIndexByte(base, '.')
-	if idx < 0 {
-		path = base + "." + suffix
-	} else {
-		path = base[:idx+1] + suffix
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return nil, err
-	}
-	return &OutputFile{
-		File:     f,
-		Buffered: bufio.NewWriter(f),
-	}, nil
-}
-
-// OutputFile implements a buffered output file.
-type OutputFile struct {
-	File     *os.File
-	Buffered *bufio.Writer
-}
-
-func (out *OutputFile) Write(p []byte) (nn int, err error) {
-	return out.Buffered.Write(p)
-}
-
-// Close implements io.Closer.Close for the buffered output file.
-func (out *OutputFile) Close() error {
-	if err := out.Buffered.Flush(); err != nil {
-		return err
-	}
-	return out.File.Close()
 }
