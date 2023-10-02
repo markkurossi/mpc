@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -76,7 +76,7 @@ func main() {
 
 				for limit := *minLimit; limit <= *maxLimit; limit++ {
 					params.CircMultArrayTreshold = limit
-					circ, _, err := compiler.New(params).Compile(code)
+					circ, _, err := compiler.New(params).Compile(code, nil)
 					if err != nil {
 						log.Fatalf("Compilation %d:%d failed: %s\n%s",
 							bits, limit, err, code)

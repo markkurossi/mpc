@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -99,7 +99,7 @@ func main(a, b uint6) uint6 {
 
 func TestIterator(t *testing.T) {
 	for idx, test := range iteratorTests {
-		circ, _, err := New(utils.NewParams()).Compile(test.Code)
+		circ, _, err := New(utils.NewParams()).Compile(test.Code, nil)
 		if err != nil {
 			t.Fatalf("Failed to compile test %s: %s", test.Name, err)
 		}
@@ -213,7 +213,7 @@ func MinMax(a, b int) (int, int) {
 
 func TestFixed(t *testing.T) {
 	for idx, test := range fixedTests {
-		circ, _, err := New(utils.NewParams()).Compile(test.Code)
+		circ, _, err := New(utils.NewParams()).Compile(test.Code, nil)
 		if err != nil {
 			t.Errorf("failed to compile test %d: %s", idx, err)
 			continue
@@ -237,7 +237,7 @@ func TestSubtraction(t *testing.T) {
 func main(a, b uint64) uint64 {
     return a - b
 }
-`)
+`, nil)
 	if err != nil {
 		t.Fatalf("Failed to compile test: %s", err)
 	}

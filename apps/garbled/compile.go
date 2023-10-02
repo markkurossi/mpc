@@ -73,7 +73,7 @@ func compileFiles(files []string, params *utils.Params,
 					}
 				}
 			}
-			circ, _, err = compiler.New(params).CompileFile(file)
+			circ, _, err = compiler.New(params).CompileFile(file, nil)
 			if err != nil {
 				return err
 			}

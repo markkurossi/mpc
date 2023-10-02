@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -286,7 +286,7 @@ func TestSSAGen(t *testing.T) {
 		params := utils.NewParams()
 		params.Verbose = verbose
 		params.SSAOut = ssaOut
-		_, _, err := New(params).Compile(test.Code)
+		_, _, err := New(params).Compile(test.Code, nil)
 		if err != nil {
 			t.Fatalf("SSA test %s (%d) failed: %s", test.Name, idx, err)
 		}

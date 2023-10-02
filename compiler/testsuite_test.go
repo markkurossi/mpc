@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -47,7 +47,7 @@ loop:
 			continue
 		}
 		name := path.Join(testsuite, file)
-		circ, annotations, err := compiler.CompileFile(name)
+		circ, annotations, err := compiler.CompileFile(name, nil)
 		if err != nil {
 			t.Errorf("failed to compile '%s': %s", file, err)
 			continue

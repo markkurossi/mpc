@@ -43,21 +43,21 @@ func New(params *utils.Params) *Compiler {
 }
 
 // Compile compiles the input program.
-func (c *Compiler) Compile(data string) (*circuit.Circuit, ast.Annotations,
-	error) {
-	return c.compile("{data}", strings.NewReader(data))
+func (c *Compiler) Compile(data string, inputSizes [][]int) (
+	*circuit.Circuit, ast.Annotations, error) {
+	return c.compile("{data}", strings.NewReader(data), inputSizes)
 }
 
 // CompileFile compiles the input file.
-func (c *Compiler) CompileFile(file string) (*circuit.Circuit, ast.Annotations,
-	error) {
+func (c *Compiler) CompileFile(file string, inputSizes [][]int) (
+	*circuit.Circuit, ast.Annotations, error) {
 
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer f.Close()
-	return c.compile(file, f)
+	return c.compile(file, f, inputSizes)
 }
 
 // ParseFile parses the input file.
@@ -71,7 +71,7 @@ func (c *Compiler) ParseFile(file string) (*ast.Package, error) {
 	return c.parse(file, f, logger, nil)
 }
 
-func (c *Compiler) compile(source string, in io.Reader) (
+func (c *Compiler) compile(source string, in io.Reader, inputSizes [][]int) (
 	*circuit.Circuit, ast.Annotations, error) {
 
 	logger := utils.NewLogger(os.Stdout)
@@ -80,7 +80,7 @@ func (c *Compiler) compile(source string, in io.Reader) (
 		return nil, nil, err
 	}
 
-	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params, nil)
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params, inputSizes)
 
 	program, annotation, err := pkg.Compile(ctx)
 	if err != nil {

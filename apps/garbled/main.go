@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/big"
 	"net"
 	"os"
 	"runtime"
@@ -138,52 +137,19 @@ func main() {
 		return
 	}
 
-	circ, err := loadCircuit(file, params)
-	if err != nil {
-		log.Fatalf("failed to load circuit file '%s': %s", file, err)
-	}
-
-	var input *big.Int
-
-	if len(circ.Inputs) != 2 {
-		fmt.Printf("invalid circuit for 2-party computation: %d parties\n",
-			len(circ.Inputs))
-		return
-	}
-
-	var i1t, i2t string
 	if *evaluator {
-		i1t = "- "
-		i2t = "+ "
+		err = evaluatorMode(oti, file, params, len(*cpuprofile) > 0)
 	} else {
-		i1t = "+ "
-		i2t = "- "
-	}
-
-	fmt.Printf(" %sIn1: %s\n", i1t, circ.Inputs[0])
-	fmt.Printf(" %sIn2: %s\n", i2t, circ.Inputs[1])
-	fmt.Printf(" - Out: %s\n", circ.Outputs)
-	fmt.Printf(" -  In: %s\n", inputFlag)
-
-	if *evaluator {
-		input, err = circ.Inputs[1].Parse(inputFlag)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = evaluatorMode(oti, circ, input, len(*cpuprofile) > 0)
-	} else {
-		input, err = circ.Inputs[0].Parse(inputFlag)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = garblerMode(oti, circ, input)
+		err = garblerMode(oti, file, params)
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func loadCircuit(file string, params *utils.Params) (*circuit.Circuit, error) {
+func loadCircuit(file string, params *utils.Params, inputSizes [][]int) (
+	*circuit.Circuit, error) {
+
 	var circ *circuit.Circuit
 	var err error
 
@@ -193,7 +159,7 @@ func loadCircuit(file string, params *utils.Params) (*circuit.Circuit, error) {
 			return nil, err
 		}
 	} else if strings.HasSuffix(file, ".mpcl") {
-		circ, _, err = compiler.New(params).CompileFile(file)
+		circ, _, err = compiler.New(params).CompileFile(file, inputSizes)
 		if err != nil {
 			return nil, err
 		}
@@ -208,6 +174,22 @@ func loadCircuit(file string, params *utils.Params) (*circuit.Circuit, error) {
 		}
 	}
 	return circ, err
+}
+
+func printInputs(evaluator bool, circ *circuit.Circuit) {
+	var i1t, i2t string
+	if evaluator {
+		i1t = "- "
+		i2t = "+ "
+	} else {
+		i1t = "+ "
+		i2t = "- "
+	}
+
+	fmt.Printf(" %sIn1: %s\n", i1t, circ.Inputs[0])
+	fmt.Printf(" %sIn2: %s\n", i2t, circ.Inputs[1])
+	fmt.Printf(" - Out: %s\n", circ.Outputs)
+	fmt.Printf(" -  In: %s\n", inputFlag)
 }
 
 func memProfile(file string) {
@@ -228,8 +210,16 @@ func memProfile(file string) {
 	}
 }
 
-func evaluatorMode(oti ot.OT, circ *circuit.Circuit, input *big.Int,
+func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 	once bool) error {
+
+	inputSizes := make([][]int, 2)
+	myInputSizes, err := circuit.InputSizes(inputFlag)
+	if err != nil {
+		return err
+	}
+	inputSizes[1] = myInputSizes
+
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -244,13 +234,45 @@ func evaluatorMode(oti ot.OT, circ *circuit.Circuit, input *big.Int,
 		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
 		conn := p2p.NewConn(nc)
+
+		err = conn.SendInputSizes(myInputSizes)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		err = conn.Flush()
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		peerInputSizes, err := conn.ReceiveInputSizes()
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		inputSizes[0] = peerInputSizes
+
+		circ, err := loadCircuit(file, params, inputSizes)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		printInputs(true, circ)
+		if len(circ.Inputs) != 2 {
+			return fmt.Errorf("invalid circuit for 2-party MPC: %d parties",
+				len(circ.Inputs))
+		}
+
+		input, err := circ.Inputs[1].Parse(inputFlag)
+		if err != nil {
+			conn.Close()
+			return err
+		}
 		result, err := circuit.Evaluator(conn, oti, circ, input, verbose)
 		conn.Close()
-
 		if err != nil && err != io.EOF {
 			return err
 		}
-
 		printResults(result, circ.Outputs)
 		if once {
 			return nil
@@ -258,7 +280,14 @@ func evaluatorMode(oti ot.OT, circ *circuit.Circuit, input *big.Int,
 	}
 }
 
-func garblerMode(oti ot.OT, circ *circuit.Circuit, input *big.Int) error {
+func garblerMode(oti ot.OT, file string, params *utils.Params) error {
+	inputSizes := make([][]int, 2)
+	myInputSizes, err := circuit.InputSizes(inputFlag)
+	if err != nil {
+		return err
+	}
+	inputSizes[0] = myInputSizes
+
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
 		return err
@@ -266,6 +295,37 @@ func garblerMode(oti ot.OT, circ *circuit.Circuit, input *big.Int) error {
 	conn := p2p.NewConn(nc)
 	defer conn.Close()
 
+	peerInputSizes, err := conn.ReceiveInputSizes()
+	if err != nil {
+		conn.Close()
+		return err
+	}
+	inputSizes[1] = peerInputSizes
+	err = conn.SendInputSizes(myInputSizes)
+	if err != nil {
+		conn.Close()
+		return err
+	}
+	err = conn.Flush()
+	if err != nil {
+		conn.Close()
+		return err
+	}
+
+	circ, err := loadCircuit(file, params, inputSizes)
+	if err != nil {
+		return err
+	}
+	printInputs(false, circ)
+	if len(circ.Inputs) != 2 {
+		return fmt.Errorf("invalid circuit for 2-party MPC: %d parties",
+			len(circ.Inputs))
+	}
+
+	input, err := circ.Inputs[0].Parse(inputFlag)
+	if err != nil {
+		return err
+	}
 	result, err := circuit.Garbler(conn, oti, circ, input, verbose)
 	if err != nil {
 		return err

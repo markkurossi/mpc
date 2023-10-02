@@ -19,7 +19,7 @@ func bmrMode(file string, params *utils.Params, player int) error {
 	fmt.Printf("semi-honest secure BMR protocol\n")
 	fmt.Printf("player: %d\n", player)
 
-	circ, err := loadCircuit(file, params)
+	circ, err := loadCircuit(file, params, nil)
 	if err != nil {
 		return err
 	}
