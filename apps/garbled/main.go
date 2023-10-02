@@ -104,8 +104,7 @@ func main() {
 		err := compileFiles(flag.Args(), params, *compile, *ssa, *dot, *svg,
 			*circFormat)
 		if err != nil {
-			fmt.Printf("compile failed: %s\n", err)
-			os.Exit(1)
+			log.Fatalf("compile failed: %s", err)
 		}
 		memProfile(*memprofile)
 		return
