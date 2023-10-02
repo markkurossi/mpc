@@ -30,6 +30,14 @@ var inputSizeTests = []struct {
 			32, 8,
 		},
 	},
+	{
+		inputs: []string{
+			"0x0", "0x00", "0x000", "0x0000",
+		},
+		sizes: []int{
+			4, 8, 12, 16,
+		},
+	},
 }
 
 func TestInputSizes(t *testing.T) {

@@ -9,6 +9,7 @@ package circuit
 import (
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/markkurossi/mpc/types"
 )
@@ -132,12 +133,16 @@ func InputSizes(inputs []string) ([]int, error) {
 			result = append(result, 1)
 
 		default:
-			val := new(big.Int)
-			_, ok := val.SetString(input, 0)
-			if !ok {
-				return nil, fmt.Errorf("invalid input: %s", input)
+			if strings.HasPrefix(input, "0x") {
+				result = append(result, (len(input)-2)*4)
+			} else {
+				val := new(big.Int)
+				_, ok := val.SetString(input, 0)
+				if !ok {
+					return nil, fmt.Errorf("invalid input: %s", input)
+				}
+				result = append(result, val.BitLen())
 			}
-			result = append(result, val.BitLen())
 		}
 	}
 
