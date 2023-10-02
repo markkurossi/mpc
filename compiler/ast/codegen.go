@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -19,28 +19,32 @@ import (
 
 // Codegen implements compilation stack.
 type Codegen struct {
-	logger   *utils.Logger
-	Params   *utils.Params
-	Verbose  bool
-	Package  *Package
-	Packages map[string]*Package
-	Stack    []Compilation
-	Types    map[types.ID]*TypeInfo
-	Native   map[string]*circuit.Circuit
-	HeapID   int
+	logger         *utils.Logger
+	Params         *utils.Params
+	Verbose        bool
+	Package        *Package
+	Packages       map[string]*Package
+	MainInputSizes [][]int
+	Stack          []Compilation
+	Types          map[types.ID]*TypeInfo
+	Native         map[string]*circuit.Circuit
+	HeapID         int
 }
 
 // NewCodegen creates a new compilation.
 func NewCodegen(logger *utils.Logger, pkg *Package,
-	packages map[string]*Package, params *utils.Params) *Codegen {
+	packages map[string]*Package, params *utils.Params,
+	mainInputSizes [][]int) *Codegen {
+
 	return &Codegen{
-		logger:   logger,
-		Params:   params,
-		Verbose:  params.Verbose,
-		Package:  pkg,
-		Packages: packages,
-		Types:    make(map[types.ID]*TypeInfo),
-		Native:   make(map[string]*circuit.Circuit),
+		logger:         logger,
+		Params:         params,
+		Verbose:        params.Verbose,
+		Package:        pkg,
+		Packages:       packages,
+		MainInputSizes: mainInputSizes,
+		Types:          make(map[types.ID]*TypeInfo),
+		Native:         make(map[string]*circuit.Circuit),
 	}
 }
 

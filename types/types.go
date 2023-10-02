@@ -1,7 +1,7 @@
 //
 // types.go
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -242,6 +242,53 @@ func (i *Info) Instantiate(o Info) bool {
 		i.Bits = o.Bits
 		return true
 	}
+}
+
+// InstantiateWithSizes creates a concrete type of the unspecified
+// type with given element sizes.
+func (i *Info) InstantiateWithSizes(sizes []int) error {
+	if len(sizes) == 0 {
+		return fmt.Errorf("not enought sizes for type %v", i)
+	}
+
+	switch i.Type {
+	case TBool:
+
+	case TInt, TUint, TFloat:
+		if i.Bits == 0 {
+			i.Bits = Size(sizes[0])
+		}
+
+	case TStruct:
+		var structBits Size
+		for idx := range i.Struct {
+			if idx >= len(sizes) {
+				return fmt.Errorf("not enought sizes for type %v", i)
+			}
+			err := i.Struct[idx].Type.InstantiateWithSizes(sizes[idx:])
+			if err != nil {
+				return err
+			}
+			i.Struct[idx].Type.Offset = structBits
+			structBits += i.Struct[idx].Type.Bits
+		}
+		i.Bits = structBits
+
+	case TArray:
+		if i.ElementType == nil || i.ElementType.Bits == 0 {
+			return fmt.Errorf("array element type unspecified: %v", i)
+		}
+		i.ArraySize = Size(sizes[0]) / i.ElementType.Bits
+		if Size(sizes[0])%i.ElementType.Bits != 0 {
+			i.ArraySize++
+		}
+		i.Bits = i.ArraySize * i.ElementType.Bits
+
+	default:
+		return fmt.Errorf("can't specify %v", i)
+	}
+
+	return nil
 }
 
 // Equal tests if the argument type is equal to this type info.

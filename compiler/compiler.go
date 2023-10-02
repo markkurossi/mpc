@@ -80,7 +80,7 @@ func (c *Compiler) compile(source string, in io.Reader) (
 		return nil, nil, err
 	}
 
-	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params)
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params, nil)
 
 	program, annotation, err := pkg.Compile(ctx)
 	if err != nil {
@@ -99,18 +99,19 @@ func (c *Compiler) compile(source string, in io.Reader) (
 // StreamFile compiles the input program and uses the streaming mode
 // to garble and stream the circuit to the evaluator node.
 func (c *Compiler) StreamFile(conn *p2p.Conn, oti ot.OT, file string,
-	input []string) (circuit.IO, []*big.Int, error) {
+	input []string, inputSizes [][]int) (circuit.IO, []*big.Int, error) {
 
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer f.Close()
-	return c.stream(conn, oti, file, f, input)
+	return c.stream(conn, oti, file, f, input, inputSizes)
 }
 
 func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
-	in io.Reader, inputFlag []string) (circuit.IO, []*big.Int, error) {
+	in io.Reader, inputFlag []string, inputSizes [][]int) (
+	circuit.IO, []*big.Int, error) {
 
 	timing := circuit.NewTiming()
 
@@ -120,7 +121,7 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 		return nil, nil, err
 	}
 
-	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params)
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params, inputSizes)
 
 	program, _, err := pkg.Compile(ctx)
 	if err != nil {

@@ -20,6 +20,11 @@ import (
 )
 
 func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
+	inputSizes, err := circuit.InputSizes(input)
+	if err != nil {
+		return err
+	}
+
 	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		return err
@@ -34,6 +39,18 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 		fmt.Printf("New connection from %s\n", nc.RemoteAddr())
 
 		conn := p2p.NewConn(nc)
+
+		err = conn.SendInputSizes(inputSizes)
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		err = conn.Flush()
+		if err != nil {
+			conn.Close()
+			return err
+		}
+
 		outputs, result, err := circuit.StreamEvaluator(conn, oti, input,
 			verbose)
 		conn.Close()
@@ -52,6 +69,14 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	args []string) error {
 
+	inputSizes := make([][]int, 2)
+
+	sizes, err := circuit.InputSizes(input)
+	if err != nil {
+		return err
+	}
+	inputSizes[0] = sizes
+
 	if len(args) != 1 || !strings.HasSuffix(args[0], ".mpcl") {
 		return fmt.Errorf("streaming mode takes single MPCL file")
 	}
@@ -62,8 +87,14 @@ func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	conn := p2p.NewConn(nc)
 	defer conn.Close()
 
+	sizes, err = conn.ReceiveInputSizes()
+	if err != nil {
+		return err
+	}
+	inputSizes[1] = sizes
+
 	outputs, result, err := compiler.New(params).StreamFile(
-		conn, oti, args[0], input)
+		conn, oti, args[0], input, inputSizes)
 	if err != nil {
 		return err
 	}

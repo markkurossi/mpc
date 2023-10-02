@@ -228,30 +228,53 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 	switch arg := args[0].(type) {
 	case *VariableRef:
-		var b ssa.Binding
-		var ok bool
+		var typeInfo types.Info
 
 		if len(arg.Name.Package) > 0 {
-			var pkg *Package
-			pkg, ok = ctx.Packages[arg.Name.Package]
+			// Check if the package name is bound to a value.
+			b, ok := env.Get(arg.Name.Package)
+			if ok {
+				if b.Type.Type != types.TStruct {
+					return ssa.Undefined, false, ctx.Errorf(loc,
+						"%s undefined", arg.Name)
+				}
+				ok = false
+				for _, f := range b.Type.Struct {
+					if f.Name == arg.Name.Name {
+						typeInfo = f.Type
+						ok = true
+						break
+					}
+				}
+				if !ok {
+					return ssa.Undefined, false, ctx.Errorf(loc,
+						"undefined variable '%s'", arg.Name)
+				}
+			} else {
+				// Resolve name from the package.
+				pkg, ok := ctx.Packages[arg.Name.Package]
+				if !ok {
+					return ssa.Undefined, false, ctx.Errorf(loc,
+						"package '%s' not found", arg.Name.Package)
+				}
+				b, ok := pkg.Bindings.Get(arg.Name.Name)
+				if !ok {
+					return ssa.Undefined, false, ctx.Errorf(loc,
+						"undefined variable '%s'", arg.Name)
+				}
+				typeInfo = b.Type
+			}
+		} else {
+			b, ok := env.Get(arg.Name.Name)
 			if !ok {
 				return ssa.Undefined, false, ctx.Errorf(loc,
-					"package '%s' not found", arg.Name.Package)
+					"undefined variable '%s'", arg.Name)
 			}
-			b, ok = pkg.Bindings.Get(arg.Name.Name)
-		} else {
-			b, ok = env.Get(arg.Name.Name)
-		}
-		if !ok {
-			return ssa.Undefined, false, ctx.Errorf(loc,
-				"undefined variable '%s'", arg.Name.String())
+			typeInfo = b.Type
 		}
 
-		var typeInfo types.Info
-		if b.Type.Type == types.TPtr {
-			typeInfo = *b.Type.ElementType
-		} else {
-			typeInfo = b.Type
+		if typeInfo.Type == types.TPtr {
+			typeInfo = *typeInfo.ElementType
 		}
 
 		switch typeInfo.Type {
@@ -265,7 +288,7 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 		default:
 			return ssa.Undefined, false, ctx.Errorf(loc,
-				"invalid argument 1 (type %s) for len", b.Type)
+				"invalid argument 1 (type %s) for len", typeInfo)
 		}
 
 	default:

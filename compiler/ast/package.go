@@ -67,15 +67,29 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 
 	// Arguments.
 	var inputs circuit.IO
-	for _, arg := range main.Args {
+	for idx, arg := range main.Args {
 		typeInfo, err := arg.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		if typeInfo.Bits == 0 {
-			return nil, nil,
-				ctx.Errorf(arg, "argument %s of %s has unspecified type",
+			if ctx.MainInputSizes == nil {
+				return nil, nil,
+					ctx.Errorf(arg, "argument %s of %s has unspecified type",
+						arg.Name, main)
+			}
+			// Specify unspecified argument type.
+			if idx >= len(ctx.MainInputSizes) {
+				return nil, nil, ctx.Errorf(arg,
+					"not enough values for argument %s of %s",
 					arg.Name, main)
+			}
+			err = typeInfo.InstantiateWithSizes(ctx.MainInputSizes[idx])
+			if err != nil {
+				return nil, nil, ctx.Errorf(arg,
+					"can't specify unspecified argument %s of %s: %s",
+					arg.Name, main, err)
+			}
 		}
 		// Define argument in block.
 		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
@@ -264,10 +278,6 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			info, err := field.Type.Resolve(env, ctx, gen)
 			if err != nil {
 				return err
-			}
-			if info.Bits == 0 {
-				return ctx.Errorf(field,
-					"unspecified size for struct field %s", field.Name)
 			}
 			field := types.StructField{
 				Name: field.Name,

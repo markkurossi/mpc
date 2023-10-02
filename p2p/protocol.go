@@ -252,6 +252,19 @@ func (c *Conn) SendString(val string) error {
 	return c.SendData([]byte(val))
 }
 
+// SendInputSizes sends the input sizes.
+func (c *Conn) SendInputSizes(sizes []int) error {
+	if err := c.SendUint32(len(sizes)); err != nil {
+		return err
+	}
+	for i := 0; i < len(sizes); i++ {
+		if err := c.SendUint32(sizes[i]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // ReceiveByte receives a byte value.
 func (c *Conn) ReceiveByte() (byte, error) {
 	if c.ReadStart+1 > c.ReadEnd {
@@ -338,6 +351,23 @@ func (c *Conn) ReceiveString() (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// ReceiveInputSizes receives input sizes.
+func (c *Conn) ReceiveInputSizes() ([]int, error) {
+	count, err := c.ReceiveUint32()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]int, count)
+	for i := 0; i < count; i++ {
+		size, err := c.ReceiveUint32()
+		if err != nil {
+			return nil, err
+		}
+		result[i] = size
+	}
+	return result, nil
 }
 
 // Receive implements OT receive for the bit value of a wire.
