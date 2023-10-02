@@ -120,80 +120,30 @@ func main() {
 		}
 		memProfile(*memprofile)
 		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		return
 	}
 
 	if len(flag.Args()) != 1 {
-		fmt.Printf("expected one input file, got %v\n", len(flag.Args()))
-		os.Exit(1)
+		log.Fatalf("expected one input file, got %v\n", len(flag.Args()))
 	}
-
-	var circ *circuit.Circuit
-
 	file := flag.Args()[0]
-	if circuit.IsFilename(file) {
-		circ, err = circuit.Parse(file)
+
+	if *bmr >= 0 {
+		err = bmrMode(file, params, *bmr)
 		if err != nil {
-			fmt.Printf("failed to parse circuit file '%s': %s\n", file, err)
-			return
+			log.Fatal(err)
 		}
-	} else if strings.HasSuffix(file, ".mpcl") {
-		circ, _, err = compiler.New(params).CompileFile(file)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			return
-		}
-	} else {
-		fmt.Printf("unknown file type '%s'\n", file)
 		return
 	}
 
-	if circ != nil {
-		circ.AssignLevels()
-		if verbose {
-			fmt.Printf("circuit: %v\n", circ)
-		}
+	circ, err := loadCircuit(file, params)
+	if err != nil {
+		log.Fatalf("failed to load circuit file '%s': %s", file, err)
 	}
 
 	var input *big.Int
-
-	if *bmr >= 0 {
-		fmt.Printf("semi-honest secure BMR protocol\n")
-		fmt.Printf("player: %d\n", *bmr)
-
-		if *bmr >= len(circ.Inputs) {
-			fmt.Printf("invalid party number %d for %d-party computation\n",
-				*bmr, len(circ.Inputs))
-			return
-		}
-
-		input, err = circ.Inputs[*bmr].Parse(inputFlag)
-		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
-		}
-
-		for idx, arg := range circ.Inputs {
-			if idx == *bmr {
-				fmt.Printf(" + In%d: %s\n", idx, arg)
-			} else {
-				fmt.Printf(" - In%d: %s\n", idx, arg)
-			}
-		}
-
-		fmt.Printf(" - Out: %s\n", circ.Outputs)
-		fmt.Printf(" - In:  %s\n", inputFlag)
-
-		err := bmrMode(circ, input, *bmr)
-		if err != nil {
-			fmt.Printf("BMR mode failed: %s\n", err)
-			os.Exit(1)
-		}
-		return
-	}
 
 	if len(circ.Inputs) != 2 {
 		fmt.Printf("invalid circuit for 2-party computation: %d parties\n",
@@ -218,21 +168,46 @@ func main() {
 	if *evaluator {
 		input, err = circ.Inputs[1].Parse(inputFlag)
 		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		err = evaluatorMode(oti, circ, input, len(*cpuprofile) > 0)
 	} else {
 		input, err = circ.Inputs[0].Parse(inputFlag)
 		if err != nil {
-			fmt.Printf("%s\n", err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		err = garblerMode(oti, circ, input)
 	}
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func loadCircuit(file string, params *utils.Params) (*circuit.Circuit, error) {
+	var circ *circuit.Circuit
+	var err error
+
+	if circuit.IsFilename(file) {
+		circ, err = circuit.Parse(file)
+		if err != nil {
+			return nil, err
+		}
+	} else if strings.HasSuffix(file, ".mpcl") {
+		circ, _, err = compiler.New(params).CompileFile(file)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("unknown file type '%s'", file)
+	}
+
+	if circ != nil {
+		circ.AssignLevels()
+		if verbose {
+			fmt.Printf("circuit: %v\n", circ)
+		}
+	}
+	return circ, err
 }
 
 func memProfile(file string) {
