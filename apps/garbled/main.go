@@ -17,6 +17,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"slices"
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -226,6 +227,9 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 	}
 	fmt.Printf("Listening for connections at %s\n", port)
 
+	var oPeerInputSizes []int
+	var circ *circuit.Circuit
+
 	for {
 		nc, err := ln.Accept()
 		if err != nil {
@@ -252,10 +256,13 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 		}
 		inputSizes[0] = peerInputSizes
 
-		circ, err := loadCircuit(file, params, inputSizes)
-		if err != nil {
-			conn.Close()
-			return err
+		if circ == nil || slices.Compare(peerInputSizes, oPeerInputSizes) != 0 {
+			circ, err = loadCircuit(file, params, inputSizes)
+			if err != nil {
+				conn.Close()
+				return err
+			}
+			oPeerInputSizes = peerInputSizes
 		}
 		printInputs(true, circ)
 		if len(circ.Inputs) != 2 {
