@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
 )
 
@@ -47,16 +48,22 @@ loop:
 			continue
 		}
 		name := path.Join(testsuite, file)
-		circ, annotations, err := compiler.CompileFile(name, nil)
+		pkg, err := compiler.ParseFile(name)
 		if err != nil {
-			t.Errorf("failed to compile '%s': %s", file, err)
+			t.Errorf("failed to parse '%s': %s", file, err)
+			continue
+		}
+		main, ok := pkg.Functions["main"]
+		if !ok {
+			t.Errorf("%s: no main function", file)
 			continue
 		}
 
 		var cpuprof bool
+		var lsb bool
 		base := 10
 
-		for _, annotation := range annotations {
+		for _, annotation := range main.Annotations {
 			ann := strings.TrimSpace(annotation)
 			if strings.HasPrefix(ann, "@heavy") && testing.Short() {
 				fmt.Printf("Skipping heavy test %s\n", file)
@@ -70,11 +77,16 @@ loop:
 				base = 16
 				continue
 			}
+			if strings.HasPrefix(ann, "@LSB") {
+				lsb = true
+				continue
+			}
 			if !strings.HasPrefix(ann, "@Test ") {
 				continue
 			}
 			parts := reWhitespace.Split(ann, -1)
 
+			var inputValues []string
 			var inputs []*big.Int
 			var outputs []*big.Int
 			var sep bool
@@ -86,19 +98,36 @@ loop:
 					continue
 				}
 				v := new(big.Int)
-				_, ok := v.SetString(parts[i], 0)
+				if base == 16 && lsb {
+					part = reverse(part)
+				}
+
+				_, ok := v.SetString(part, 0)
 				if !ok {
-					t.Errorf("%s: invalid argument '%s'", file, parts[i])
+					t.Errorf("%s: invalid argument '%s'", file, part)
 					continue loop
 				}
 				if sep {
 					outputs = append(outputs, v)
 				} else {
+					inputValues = append(inputValues, part)
 					inputs = append(inputs, v)
 				}
 			}
-
-			// Wrap inputs to args.
+			var inputSizes [][]int
+			for _, iv := range inputValues {
+				sizes, err := circuit.InputSizes([]string{iv})
+				if err != nil {
+					t.Errorf("%s: invalid inputs: %s", file, err)
+					continue loop
+				}
+				inputSizes = append(inputSizes, sizes)
+			}
+			circ, _, err := compiler.CompileFile(name, inputSizes)
+			if err != nil {
+				t.Errorf("failed to compile '%s': %s", file, err)
+				continue loop
+			}
 
 			var prof *os.File
 
@@ -142,4 +171,21 @@ loop:
 			_ = results
 		}
 	}
+}
+
+func reverse(val string) string {
+	var prefix string
+	if strings.HasPrefix(val, "0x") {
+		val = val[2:]
+		prefix = "0x"
+	}
+	var result string
+
+	for i := len(val) - 2; i >= 0; i -= 2 {
+		result += val[i : i+2]
+	}
+	if len(val)%2 == 1 {
+		result += val[0:1]
+	}
+	return prefix + result
 }
