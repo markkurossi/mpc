@@ -361,7 +361,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 		if ctx.Verbose {
 			fmt.Printf(" - native %s: %v\n", name, circ)
 		}
-	} else {
+	} else if ctx.Verbose {
 		fmt.Printf(" - native %s: cached\n", name)
 	}
 
