@@ -60,6 +60,7 @@ loop:
 		}
 
 		var cpuprof bool
+		var prof *os.File
 		var lsb bool
 		base := 10
 
@@ -71,6 +72,16 @@ loop:
 			}
 			if strings.HasPrefix(ann, "@pprof") {
 				cpuprof = true
+				prof, err = os.Create(fmt.Sprintf("%s.cpu.prof", file))
+				if err != nil {
+					t.Errorf("%s: failed to create cpu.prof: %s", file, err)
+					continue loop
+				}
+				err = pprof.StartCPUProfile(prof)
+				if err != nil {
+					t.Errorf("%s: failed to start CPU profile: %s", file, err)
+					continue loop
+				}
 				continue
 			}
 			if strings.HasPrefix(ann, "@Hex") {
@@ -129,28 +140,7 @@ loop:
 				continue loop
 			}
 
-			var prof *os.File
-
-			if cpuprof {
-				prof, err = os.Create(fmt.Sprintf("%s.cpu.prof", file))
-				if err != nil {
-					t.Errorf("%s: failed to create cpu.prof: %s", file, err)
-					continue loop
-				}
-				err = pprof.StartCPUProfile(prof)
-				if err != nil {
-					t.Errorf("%s: failed to start CPU profile: %s", file, err)
-					continue loop
-				}
-			}
-
 			results, err := circ.Compute(inputs)
-
-			if cpuprof {
-				pprof.StopCPUProfile()
-				prof.Close()
-			}
-
 			if err != nil {
 				t.Errorf("%s: compute failed: %s", file, err)
 				continue loop
@@ -169,6 +159,10 @@ loop:
 			}
 
 			_ = results
+		}
+		if cpuprof {
+			pprof.StopCPUProfile()
+			prof.Close()
 		}
 	}
 }
