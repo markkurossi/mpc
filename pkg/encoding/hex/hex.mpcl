@@ -22,3 +22,9 @@ func EncodeToString(src []byte) string {
 	}
 	return string(bytes)
 }
+
+// EncodedLen returns the length of an encoding of n source
+// bytes. Specifically, this returns n * 2.
+func EncodedLen(n int) int {
+	return n * 2
+}
