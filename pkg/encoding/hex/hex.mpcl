@@ -7,7 +7,8 @@
 
 package hex
 
-var hexDigits = []byte{
+// Digits define the hexadecimal ASCII digits (0-9, a-f).
+var Digits = []byte{
 	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
 	0x38, 0x39, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66,
 }
@@ -17,8 +18,8 @@ func EncodeToString(src []byte) string {
 	bytes := make([]byte, len(src)*2)
 
 	for i := 0; i < len(src); i++ {
-		bytes[i*2] = hexDigits[src[i]>>4]
-		bytes[i*2+1] = hexDigits[src[i]&0xf]
+		bytes[i*2] = Digits[src[i]>>4]
+		bytes[i*2+1] = Digits[src[i]&0xf]
 	}
 	return string(bytes)
 }
