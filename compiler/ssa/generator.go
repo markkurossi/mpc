@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -340,10 +340,14 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		var elementType types.Info
 
 		if len(val) > 0 {
-			ev := gen.Constant(val[0], types.Undefined)
-			elementType = ev.Type
-			bits = ev.Type.Bits * types.Size(len(val))
-			name = ev.Type.String()
+			if ti.Type == types.TArray {
+				elementType = *ti.ElementType
+			} else {
+				ev := gen.Constant(val[0], types.Undefined)
+				elementType = ev.Type
+			}
+			bits = elementType.Bits * types.Size(len(val))
+			name = elementType.String()
 			length = fmt.Sprintf("%d", len(val))
 		} else {
 			name = "interface{}"
