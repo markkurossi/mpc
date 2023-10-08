@@ -129,7 +129,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 				returnVars[idx].Type, idx, main)
 		}
 		// The native() returns undefined values.
-		if returnVars[idx].Type.Type == types.TUndefined {
+		if returnVars[idx].Type.Undefined() {
 			returnVars[idx].Type.Type = typeInfo.Type
 		}
 		if !ssa.LValueFor(typeInfo, returnVars[idx]) {

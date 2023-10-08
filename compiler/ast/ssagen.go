@@ -115,7 +115,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 		return nil, nil, ctx.Errorf(ast.Init, "init value is not constant")
 	}
 	constVar := gen.Constant(constVal, typeInfo)
-	if typeInfo.Type == types.TUndefined {
+	if typeInfo.Undefined() {
 		typeInfo.Type = constVar.Type.Type
 	}
 	if typeInfo.Bits == 0 {
@@ -705,7 +705,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		default:
 			t = gen.AnonVal(typeInfo)
 		}
-		if t.Type.Type == types.TUndefined {
+		if t.Type.Undefined() {
 			return nil, nil, ctx.Errorf(ast.Exprs[0],
 				"cast from %v to %v", cv.Type, typeInfo)
 		}
@@ -1003,7 +1003,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// The native() returns undefined values.
-		if result[idx].Type.Type == types.TUndefined {
+		if result[idx].Type.Undefined() {
 			result[idx].Type.Type = typeInfo.Type
 		}
 

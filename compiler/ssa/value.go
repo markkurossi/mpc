@@ -61,7 +61,7 @@ type ValueID uint32
 
 // Check tests that the value type is properly set.
 func (v Value) Check() {
-	if v.Type.Type == types.TUndefined {
+	if v.Type.Undefined() {
 		panic(fmt.Sprintf("v.Type == TUndefined: %v", v))
 	}
 	if v.Type.Bits == 0 {
