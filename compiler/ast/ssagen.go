@@ -676,6 +676,12 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		switch typeInfo.Type {
 		case types.TString:
 			switch cv.Type.Type {
+			case types.TUint:
+				if cv.Type.Bits != 8 {
+					break castTargetType
+				}
+				typeInfo.Bits = cv.Type.Bits
+
 			case types.TString:
 				typeInfo.Bits = cv.Type.Bits
 
