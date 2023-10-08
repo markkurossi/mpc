@@ -188,6 +188,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 	v := Value{
 		Const:      true,
 		ConstValue: value,
+		Type:       ti,
 	}
 	switch val := value.(type) {
 	case int8:
@@ -199,15 +200,17 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Bits:    8,
-			MinBits: minBits,
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Bits: 8,
+			}
+			if val < 0 {
+				v.Type.Type = types.TInt
+			} else {
+				v.Type.Type = types.TUint
+			}
 		}
-		if val < 0 {
-			v.Type.Type = types.TInt
-		} else {
-			v.Type.Type = types.TUint
-		}
+		v.Type.MinBits = minBits
 
 	case uint8:
 		// Count minimum bits needed to represent the value.
@@ -218,11 +221,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Type:    types.TUint,
-			Bits:    8,
-			MinBits: minBits,
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Type: types.TUint,
+				Bits: 8,
+			}
 		}
+		v.Type.MinBits = minBits
 
 	case int32:
 		// Count minimum bits needed to represent the value.
@@ -233,22 +238,19 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Bits:    32,
-			MinBits: minBits,
-		}
-		if ti.Undefined() {
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Bits: 32,
+			}
 			if val < 0 {
 				v.Type.Type = types.TInt
 			} else {
 				v.Type.Type = types.TUint
 			}
-		} else {
-			v.Type = ti
-			v.Type.MinBits = minBits
-			if v.Type.Bits == 0 {
-				v.Type.Bits = minBits
-			}
+		}
+		v.Type.MinBits = minBits
+		if v.Type.Bits == 0 {
+			v.Type.Bits = minBits
 		}
 
 	case int64:
@@ -258,7 +260,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 				break
 			}
 		}
-
 		if minBits > 32 {
 			bits = 64
 		} else {
@@ -266,15 +267,17 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Bits:    bits,
-			MinBits: minBits,
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Bits: bits,
+			}
+			if val < 0 {
+				v.Type.Type = types.TInt
+			} else {
+				v.Type.Type = types.TUint
+			}
 		}
-		if val < 0 {
-			v.Type.Type = types.TInt
-		} else {
-			v.Type.Type = types.TUint
-		}
+		v.Type.MinBits = minBits
 
 	case uint64:
 		// Count minimum bits needed to represent the value.
@@ -283,7 +286,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 				break
 			}
 		}
-
 		if minBits > 32 {
 			bits = 64
 		} else {
@@ -291,11 +293,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 
 		v.Name = fmt.Sprintf("$%d", val)
-		v.Type = types.Info{
-			Type:    types.TUint,
-			Bits:    bits,
-			MinBits: minBits,
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Type: types.TUint,
+				Bits: bits,
+			}
 		}
+		v.Type.MinBits = minBits
 
 	case *big.Int:
 		v.Name = fmt.Sprintf("$%s", val.String())
@@ -383,6 +387,9 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 	case Value:
 		if !val.Const {
 			panic(fmt.Sprintf("value %v (%T) is not constant", val, val))
+		}
+		if !ti.Undefined() {
+			return gen.Constant(val.ConstValue, ti)
 		}
 		v = val
 

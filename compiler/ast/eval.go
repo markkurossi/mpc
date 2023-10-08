@@ -445,7 +445,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element array)",
 				index, len(val))
 		}
-		return gen.Constant(val[index], types.Undefined), true, nil
+		return gen.Constant(val[index], *expr.Type.ElementType), true, nil
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
