@@ -667,10 +667,42 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"multiple-value %s in single-value context", ast.Exprs[0])
 		}
 
-		// Convert value to type
+		// Convert value to type.
 
 		cv := callValues[0][0]
-		t := gen.AnonVal(typeInfo)
+		var t ssa.Value
+
+	castTargetType:
+		switch typeInfo.Type {
+		case types.TString:
+			switch cv.Type.Type {
+			case types.TString:
+				typeInfo.Bits = cv.Type.Bits
+
+			case types.TArray:
+				switch cv.Type.ElementType.Type {
+				case types.TUint:
+					if cv.Type.ElementType.Bits != 8 {
+						break castTargetType
+					}
+					typeInfo.Bits = cv.Type.ElementType.Bits * cv.Type.ArraySize
+
+				default:
+					break castTargetType
+				}
+
+			default:
+				break castTargetType
+			}
+			t = gen.AnonVal(typeInfo)
+
+		default:
+			t = gen.AnonVal(typeInfo)
+		}
+		if t.Type.Type == types.TUndefined {
+			return nil, nil, ctx.Errorf(ast.Exprs[0],
+				"cast from %v to %v", cv.Type, typeInfo)
+		}
 
 		if cv.Type.Type == types.TInt && typeInfo.Type == types.TInt &&
 			typeInfo.Bits > cv.Type.Bits {
