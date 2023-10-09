@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -39,8 +39,8 @@ func floorPow2(v int) int {}
 // The len built-in function returns the length of the argument value,
 // according to its type:
 //
-//   Array:  the number of elements in the array
-//   String: the number of bytes in the string
+//	Array:  the number of elements in the array
+//	String: the number of bytes in the string
 func len(v Type) int32 {}
 
 // The native built-in function loads native circuit from the named
@@ -48,8 +48,8 @@ func len(v Type) int32 {}
 // calling MPCL script. The native built-in function supports the
 // following circuit formats:
 //
-//   .circ   Bristol circuit format
-//   .mpclc  compiled MPCL circuit format
+//	.circ   Bristol circuit format
+//	.mpclc  compiled MPCL circuit format
 func native(name string) []Type {}
 
 // The size built-in function returns the size of the argument value
