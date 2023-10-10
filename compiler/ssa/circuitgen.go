@@ -140,6 +140,16 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Concat:
+			o := make([]*circuits.Wire, instr.Out.Type.Bits)
+			for i := 0; i < len(wires[0]); i++ {
+				o[i] = wires[0][i]
+			}
+			for i := 0; i < len(wires[1]); i++ {
+				o[len(wires[0])+i] = wires[1][i]
+			}
+			prog.walloc.SetWires(*instr.Out, o)
+
 		case Lshift:
 			count, err := instr.In[1].ConstInt()
 			if err != nil {

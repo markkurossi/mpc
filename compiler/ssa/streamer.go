@@ -199,6 +199,17 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 
 		switch instr.Op {
 
+		case Concat:
+			for bit := 0; bit < len(out); bit++ {
+				var id circuit.Wire
+				if bit < len(wires[0]) {
+					id = wires[0][bit]
+				} else {
+					id = wires[1][bit-len(wires[0])]
+				}
+				out[bit] = id
+			}
+
 		case Lshift:
 			count, err := instr.In[1].ConstInt()
 			if err != nil {

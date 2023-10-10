@@ -296,6 +296,14 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
 		}
 
+	case string:
+		rval, ok := r.ConstValue.(string)
+		if !ok {
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"invalid types: %s %s %s", l, ast.Op, r)
+		}
+		return gen.Constant(lval+rval, types.Undefined), true, nil
+
 	default:
 		return ssa.Undefined, false, ctx.Errorf(ast.Left,
 			"%s %v %s: invalid l-value %v (%T)", l, ast.Op, r, lval, lval)

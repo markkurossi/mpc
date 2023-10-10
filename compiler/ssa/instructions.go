@@ -41,6 +41,7 @@ const (
 	Imod
 	Umod
 	Fmod
+	Concat
 	Lshift
 	Rshift
 	Srshift
@@ -94,6 +95,7 @@ var operands = map[Operand]string{
 	Imod:    "imod",
 	Umod:    "umod",
 	Fmod:    "fmod",
+	Concat:  "concat",
 	Lshift:  "lshift",
 	Rshift:  "rshift",
 	Srshift: "srshift",
@@ -173,6 +175,8 @@ func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 		op = Uadd
 	case types.TFloat:
 		op = Fadd
+	case types.TString:
+		op = Concat
 	default:
 		fmt.Printf("%v + %v (%v)\n", l, r, t)
 		return Instr{}, fmt.Errorf("invalid type %s for addition", t)

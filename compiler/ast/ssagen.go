@@ -1259,13 +1259,28 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var resultType types.Info
 	switch ast.Op {
 	case BinaryMult, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
-		BinaryPlus, BinaryMinus, BinaryBor, BinaryBxor:
+		BinaryMinus, BinaryBor, BinaryBxor:
 		superType := l.TypeCompatible(r)
 		if superType == nil {
 			return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
 				l.Type, ast.Op, r.Type)
 		}
 		resultType = *superType
+
+	case BinaryPlus:
+		// Binary addition is handled separately since we must handle
+		// string concatenation.
+		if l.Type.Type == types.TString && r.Type.Type == types.TString {
+			resultType = l.Type
+			resultType.Bits += r.Type.Bits
+		} else {
+			superType := l.TypeCompatible(r)
+			if superType == nil {
+				return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
+					l.Type, ast.Op, r.Type)
+			}
+			resultType = *superType
+		}
 
 	case BinaryLshift, BinaryRshift:
 		if !l.IntegerLike() || !r.IntegerLike() {
