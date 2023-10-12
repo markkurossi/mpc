@@ -386,8 +386,9 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	for _, io := range circ.Outputs {
 		result = append(result, gen.AnonVal(types.Info{
-			Type: types.TUndefined,
-			Bits: io.Type.Bits,
+			Type:       types.TUndefined,
+			IsConcrete: true,
+			Bits:       io.Type.Bits,
 		}))
 	}
 

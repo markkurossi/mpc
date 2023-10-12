@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -263,6 +263,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return types.Info{
 			Type:        types.TArray,
+			IsConcrete:  true,
 			Bits:        length * elInfo.Bits,
 			MinBits:     length * elInfo.MinBits,
 			ElementType: &elInfo,
@@ -290,6 +291,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return types.Info{
 			Type:        types.TPtr,
+			IsConcrete:  true,
 			Bits:        elInfo.Bits,
 			MinBits:     elInfo.Bits,
 			ElementType: &elInfo,

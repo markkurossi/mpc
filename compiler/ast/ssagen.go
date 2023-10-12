@@ -118,7 +118,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	if typeInfo.Undefined() {
 		typeInfo.Type = constVar.Type.Type
 	}
-	if typeInfo.Bits == 0 {
+	if !typeInfo.Concrete() {
 		typeInfo.Bits = constVar.Type.Bits
 	}
 	if !typeInfo.CanAssignConst(constVar.Type) {
@@ -154,7 +154,7 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			if typeInfo.Undefined() {
 				return nil, nil, ctx.Errorf(ast, "undefined variable")
 			}
-			if typeInfo.Bits == 0 {
+			if !typeInfo.Concrete() {
 				return nil, nil, ctx.Errorf(ast, "undefined variable size: %s",
 					typeInfo)
 			}
@@ -772,7 +772,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
 		// Instantiate argument types of template functions.
-		if typeInfo.Bits == 0 && !typeInfo.Instantiate(args[idx].Type) {
+		if !typeInfo.Concrete() && !typeInfo.Instantiate(args[idx].Type) {
 			return nil, nil, ctx.Errorf(ast.Exprs[idx],
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
@@ -817,6 +817,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// Pointer receiver.
 			this = gen.AnonVal(types.Info{
 				Type:        types.TPtr,
+				IsConcrete:  true,
 				Bits:        b.Type.Bits,
 				MinBits:     b.Type.Bits,
 				ElementType: &b.Type,
@@ -992,7 +993,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(r, "invalid return type: %s", err)
 		}
 		// Instantiate result values for template functions.
-		if typeInfo.Bits == 0 && !typeInfo.Instantiate(result[idx].Type) {
+		if !typeInfo.Concrete() && !typeInfo.Instantiate(result[idx].Type) {
 			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for return value %v",
 				result[idx].Type, typeInfo)
@@ -1291,7 +1292,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
 		BinaryAnd, BinaryOr:
-		resultType = types.BoolType()
+		resultType = types.Bool
 
 	default:
 		fmt.Printf("%s %s %s\n", l, ast.Op, r)
@@ -1435,9 +1436,10 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		switch expr.Type.Type {
 		case types.TInt, types.TUint:
 			zero := gen.Constant(int32(0), types.Info{
-				Type:    types.TInt,
-				MinBits: 1,
-				Bits:    1,
+				Type:       types.TInt,
+				IsConcrete: true,
+				MinBits:    1,
+				Bits:       1,
 			})
 			gen.AddConstant(zero)
 			instr, err := ssa.NewSubInstr(expr.Type, zero, expr, t)
@@ -1527,6 +1529,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 			t := gen.AnonVal(types.Info{
 				Type:        types.TPtr,
+				IsConcrete:  true,
 				Bits:        elementType.Bits,
 				MinBits:     elementType.Bits,
 				ElementType: &elementType,
@@ -1547,6 +1550,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 			t := gen.AnonVal(types.Info{
 				Type:        types.TPtr,
+				IsConcrete:  true,
 				Bits:        ptrType.Bits,
 				MinBits:     ptrType.Bits,
 				ElementType: ptrType,
@@ -1723,6 +1727,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 			ti := types.Info{
 				Type:        types.TPtr,
+				IsConcrete:  true,
 				Bits:        bits,
 				MinBits:     bits,
 				ElementType: &et,
@@ -1735,9 +1740,10 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	} else {
 		ti := types.Info{
-			Type:    elementType.Type,
-			Bits:    bits,
-			MinBits: bits,
+			Type:       elementType.Type,
+			IsConcrete: true,
+			Bits:       bits,
+			MinBits:    bits,
 		}
 		if elementType.Type == types.TArray {
 			ti.ElementType = elementType.ElementType
@@ -1815,9 +1821,10 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		toConst := gen.Constant(to, types.Uint32)
 
 		indexType := types.Info{
-			Type:    types.TUint,
-			Bits:    types.ByteBits,
-			MinBits: types.ByteBits,
+			Type:       types.TUint,
+			IsConcrete: true,
+			Bits:       types.ByteBits,
+			MinBits:    types.ByteBits,
 		}
 
 		t := gen.AnonVal(indexType)

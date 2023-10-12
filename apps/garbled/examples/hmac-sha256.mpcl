@@ -47,7 +47,7 @@ import (
 )
 
 type Garbler struct {
-	msg      [32]byte
+	msg      []byte
 	keyShare [64]byte
 }
 

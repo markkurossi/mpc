@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -57,21 +57,24 @@ var parseTests = []struct {
 	{
 		input: "string8",
 		info: Info{
-			Type:    TString,
-			Bits:    8,
-			MinBits: 8,
+			Type:       TString,
+			IsConcrete: true,
+			Bits:       8,
+			MinBits:    8,
 		},
 	},
 	{
 		input: "[8]byte",
 		info: Info{
-			Type:    TArray,
-			Bits:    64,
-			MinBits: 64,
+			Type:       TArray,
+			IsConcrete: true,
+			Bits:       64,
+			MinBits:    64,
 			ElementType: &Info{
-				Type:    TUint,
-				Bits:    8,
-				MinBits: 8,
+				Type:       TUint,
+				IsConcrete: true,
+				Bits:       8,
+				MinBits:    8,
 			},
 			ArraySize: 8,
 		},

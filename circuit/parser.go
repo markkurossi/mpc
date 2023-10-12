@@ -315,8 +315,9 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		inputs = append(inputs, IOArg{
 			Name: fmt.Sprintf("NI%d", i),
 			Type: types.Info{
-				Type: types.TUint,
-				Bits: types.Size(bits),
+				Type:       types.TUint,
+				IsConcrete: true,
+				Bits:       types.Size(bits),
 			},
 		})
 		inputWires += bits
@@ -356,8 +357,9 @@ func ParseBristol(in io.Reader) (*Circuit, error) {
 		outputs = append(outputs, IOArg{
 			Name: fmt.Sprintf("NO%d", i),
 			Type: types.Info{
-				Type: types.TUint,
-				Bits: types.Size(bits),
+				Type:       types.TUint,
+				IsConcrete: true,
+				Bits:       types.Size(bits),
 			},
 		})
 	}

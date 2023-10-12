@@ -59,8 +59,9 @@ func (ast *Assign) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	arrType := types.Info{
-		Type:      types.TArray,
-		ArraySize: types.Size(len(values)),
+		Type:       types.TArray,
+		IsConcrete: true,
+		ArraySize:  types.Size(len(values)),
 	}
 
 	if ast.Define {
@@ -559,10 +560,11 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			"non-integer (%T) len argument in %s: %s", constVal, ast, err)
 	}
 	if typeInfo.Type == types.TArray {
-		if typeInfo.ElementType.Bits == 0 {
+		if !typeInfo.ElementType.Concrete() {
 			return ssa.Undefined, false, ctx.Errorf(ast.Type,
 				"unspecified array element type: %s", typeInfo.ElementType)
 		}
+		typeInfo.IsConcrete = true
 		typeInfo.ArraySize = length
 		typeInfo.Bits = typeInfo.ElementType.Bits * length
 		typeInfo.MinBits = typeInfo.Bits
@@ -571,6 +573,7 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return v, true, nil
 	}
 
+	typeInfo.IsConcrete = true
 	typeInfo.Bits = length
 
 	return gen.Constant(typeInfo, types.Undefined), true, nil

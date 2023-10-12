@@ -61,6 +61,7 @@ func Parse(val string) (info Info, err error) {
 			if err != nil {
 				return
 			}
+			info.IsConcrete = true
 		}
 		info.Bits = Size(bits)
 		info.MinBits = info.Bits
@@ -82,6 +83,7 @@ func Parse(val string) (info Info, err error) {
 	}
 
 	info.Type = TArray
+	info.IsConcrete = true
 	info.Bits = Size(ival) * elType.Bits
 	info.MinBits = info.Bits
 	info.ElementType = &elType

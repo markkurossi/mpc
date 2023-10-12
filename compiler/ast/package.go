@@ -72,7 +72,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		if err != nil {
 			return nil, nil, ctx.Errorf(arg, "invalid argument type: %s", err)
 		}
-		if typeInfo.Bits == 0 {
+		if !typeInfo.Concrete() {
 			if ctx.MainInputSizes == nil {
 				return nil, nil,
 					ctx.Errorf(arg, "argument %s of %s has unspecified type",
@@ -123,7 +123,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 			return nil, nil, ctx.Errorf(rt, "invalid return type: %s", err)
 		}
 		// Instantiate result values for template functions.
-		if typeInfo.Bits == 0 && !typeInfo.Instantiate(returnVars[idx].Type) {
+		if !typeInfo.Concrete() && !typeInfo.Instantiate(returnVars[idx].Type) {
 			return nil, nil, ctx.Errorf(main,
 				"invalid value %v for return value %d of %s",
 				returnVars[idx].Type, idx, main)
@@ -291,10 +291,11 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 			offset += info.Bits
 		}
 		info = types.Info{
-			Type:    types.TStruct,
-			Bits:    bits,
-			MinBits: minBits,
-			Struct:  fields,
+			Type:       types.TStruct,
+			IsConcrete: true,
+			Bits:       bits,
+			MinBits:    minBits,
+			Struct:     fields,
 		}
 
 	case TypeArray:

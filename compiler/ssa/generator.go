@@ -397,6 +397,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		panic(fmt.Sprintf("Generator.Constant: %v (%T) not implemented yet",
 			val, val))
 	}
+	v.Type.SetConcrete(true)
 	v.ID = gen.nextValueID()
 
 	return v

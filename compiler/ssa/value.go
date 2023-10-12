@@ -64,8 +64,8 @@ func (v Value) Check() {
 	if v.Type.Undefined() {
 		panic(fmt.Sprintf("v.Type == TUndefined: %v", v))
 	}
-	if v.Type.Bits == 0 {
-		panic(fmt.Sprintf("v.Type.Bits == 0: %v", v))
+	if !v.Type.Concrete() {
+		panic(fmt.Sprintf("v.Type not concrete: %v", v))
 	}
 }
 

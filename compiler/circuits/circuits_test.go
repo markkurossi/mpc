@@ -42,8 +42,9 @@ func NewIO(size int, name string) circuit.IO {
 		circuit.IOArg{
 			Name: name,
 			Type: types.Info{
-				Type: types.TUint,
-				Bits: types.Size(size),
+				Type:       types.TUint,
+				IsConcrete: true,
+				Bits:       types.Size(size),
 			},
 		},
 	}

@@ -84,6 +84,7 @@ var shortTypes = map[Type]string{
 type Info struct {
 	ID          ID
 	Type        Type
+	IsConcrete  bool
 	Bits        Size
 	MinBits     Size
 	Struct      []StructField
@@ -94,49 +95,56 @@ type Info struct {
 
 // Undefined defines type info for undefined types.
 var Undefined = Info{
-	Type: TUndefined,
+	Type:       TUndefined,
+	IsConcrete: true,
 }
 
 // Bool defines type info for boolean values.
 var Bool = Info{
-	Type:    TBool,
-	Bits:    1,
-	MinBits: 1,
+	Type:       TBool,
+	IsConcrete: true,
+	Bits:       1,
+	MinBits:    1,
 }
 
 // Byte defines type info for byte values.
 var Byte = Info{
-	Type:    TUint,
-	Bits:    8,
-	MinBits: 8,
+	Type:       TUint,
+	IsConcrete: true,
+	Bits:       8,
+	MinBits:    8,
 }
 
 // Rune defines type info for rune values.
 var Rune = Info{
-	Type:    TInt,
-	Bits:    32,
-	MinBits: 32,
+	Type:       TInt,
+	IsConcrete: true,
+	Bits:       32,
+	MinBits:    32,
 }
 
 // Int32 defines type info for signed 32bit integers.
 var Int32 = Info{
-	Type:    TInt,
-	Bits:    32,
-	MinBits: 32,
+	Type:       TInt,
+	IsConcrete: true,
+	Bits:       32,
+	MinBits:    32,
 }
 
 // Uint32 defines type info for unsigned 32bit integers.
 var Uint32 = Info{
-	Type:    TUint,
-	Bits:    32,
-	MinBits: 32,
+	Type:       TUint,
+	IsConcrete: true,
+	Bits:       32,
+	MinBits:    32,
 }
 
 // Uint64 defines type info for unsigned 64bit integers.
 var Uint64 = Info{
-	Type:    TUint,
-	Bits:    64,
-	MinBits: 64,
+	Type:       TUint,
+	IsConcrete: true,
+	Bits:       64,
+	MinBits:    64,
 }
 
 // StructField defines a structure field name and type.
@@ -159,7 +167,7 @@ func (i Info) String() string {
 		return fmt.Sprintf("*%s", i.ElementType)
 
 	default:
-		if i.Bits == 0 {
+		if !i.Concrete() {
 			return i.Type.String()
 		}
 		return fmt.Sprintf("%s%d", i.Type, i.Bits)
@@ -168,7 +176,7 @@ func (i Info) String() string {
 
 // ShortString returns a short string name for the type info.
 func (i Info) ShortString() string {
-	if i.Bits == 0 {
+	if !i.Concrete() {
 		return i.Type.ShortString()
 	}
 	if i.Type == TPtr {
@@ -180,6 +188,24 @@ func (i Info) ShortString() string {
 // Undefined tests if type is undefined.
 func (i Info) Undefined() bool {
 	return i.Type == TUndefined
+}
+
+// Concrete tests if the type is concrete.
+func (i Info) Concrete() bool {
+	if i.Type != TStruct {
+		return i.IsConcrete
+	}
+	for _, field := range i.Struct {
+		if !field.Type.Concrete() {
+			return false
+		}
+	}
+	return true
+}
+
+// SetConcrete sets the type concrete status.
+func (i *Info) SetConcrete(c bool) {
+	i.IsConcrete = c
 }
 
 // Instantiate instantiates template type to match parameter type.
@@ -201,6 +227,7 @@ func (i *Info) Instantiate(o Info) bool {
 					// Unsigned integer not using all bits i.e. it is
 					// non-negative. We can use it as r-value for
 					// signed integer.
+					i.IsConcrete = true
 					i.Bits = o.Bits
 					i.MinBits = o.Bits
 					return true
@@ -212,7 +239,7 @@ func (i *Info) Instantiate(o Info) bool {
 			return false
 		}
 	}
-	if i.Bits != 0 {
+	if i.Concrete() {
 		return false
 	}
 	switch i.Type {
@@ -220,13 +247,14 @@ func (i *Info) Instantiate(o Info) bool {
 		return false
 
 	case TArray:
-		if i.ElementType.Bits == 0 &&
+		if !i.ElementType.Concrete() &&
 			!i.ElementType.Instantiate(*o.ElementType) {
 			return false
 		}
 		if i.ElementType.Type != o.ElementType.Type {
 			return false
 		}
+		i.IsConcrete = true
 		i.Bits = o.Bits
 		i.ArraySize = o.ArraySize
 		return true
@@ -235,10 +263,12 @@ func (i *Info) Instantiate(o Info) bool {
 		if i.ElementType.Type != o.ElementType.Type {
 			return false
 		}
+		i.IsConcrete = true
 		i.Bits = o.Bits
 		return true
 
 	default:
+		i.IsConcrete = true
 		i.Bits = o.Bits
 		return true
 	}
@@ -255,7 +285,7 @@ func (i *Info) InstantiateWithSizes(sizes []int) error {
 	case TBool:
 
 	case TInt, TUint, TFloat:
-		if i.Bits == 0 {
+		if !i.Concrete() {
 			i.Bits = Size(sizes[0])
 		}
 
@@ -275,18 +305,21 @@ func (i *Info) InstantiateWithSizes(sizes []int) error {
 		i.Bits = structBits
 
 	case TArray:
-		if i.ElementType == nil || i.ElementType.Bits == 0 {
+		if i.ElementType == nil {
 			return fmt.Errorf("array element type unspecified: %v", i)
 		}
-		i.ArraySize = Size(sizes[0]) / i.ElementType.Bits
-		if Size(sizes[0])%i.ElementType.Bits != 0 {
-			i.ArraySize++
+		if !i.Concrete() {
+			i.ArraySize = Size(sizes[0]) / i.ElementType.Bits
+			if Size(sizes[0])%i.ElementType.Bits != 0 {
+				i.ArraySize++
+			}
+			i.Bits = i.ArraySize * i.ElementType.Bits
 		}
-		i.Bits = i.ArraySize * i.ElementType.Bits
 
 	default:
 		return fmt.Errorf("can't specify %v", i)
 	}
+	i.SetConcrete(true)
 
 	return nil
 }
@@ -334,13 +367,5 @@ func (i Info) CanAssignConst(o Info) bool {
 
 	default:
 		return i.Type == o.Type && i.Bits >= o.MinBits
-	}
-}
-
-// BoolType returns type information for the boolean type.
-func BoolType() Info {
-	return Info{
-		Type: TBool,
-		Bits: 1,
 	}
 }

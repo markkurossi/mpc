@@ -698,8 +698,9 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 				{
 					Name: "i0",
 					Type: types.Info{
-						Type: types.TUint,
-						Bits: 1,
+						Type:       types.TUint,
+						IsConcrete: true,
+						Bits:       1,
 					},
 				},
 			},
@@ -707,8 +708,9 @@ func (prog *Program) ZeroWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 				{
 					Name: "o0",
 					Type: types.Info{
-						Type: types.TUint,
-						Bits: 1,
+						Type:       types.TUint,
+						IsConcrete: true,
+						Bits:       1,
 					},
 				},
 			},
@@ -751,8 +753,9 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 				{
 					Name: "i0",
 					Type: types.Info{
-						Type: types.TUint,
-						Bits: 1,
+						Type:       types.TUint,
+						IsConcrete: true,
+						Bits:       1,
 					},
 				},
 			},
@@ -760,8 +763,9 @@ func (prog *Program) OneWire(conn *p2p.Conn, streaming *circuit.Streaming) (
 				{
 					Name: "o0",
 					Type: types.Info{
-						Type: types.TUint,
-						Bits: 1,
+						Type:       types.TUint,
+						IsConcrete: true,
+						Bits:       1,
 					},
 				},
 			},
