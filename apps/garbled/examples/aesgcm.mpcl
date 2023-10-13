@@ -30,7 +30,7 @@ func main(a, b byte) (string, int) {
 
 	c := gcm.EncryptAES128(key, nonce, plain, additional)
 	p, ok := gcm.DecryptAES128(key, nonce, c, additional)
-	if ok == false {
+	if !ok {
 		return "Open failed", 0
 	}
 	return string(p), bytes.Compare(plain, p)

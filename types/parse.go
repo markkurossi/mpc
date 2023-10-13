@@ -40,6 +40,9 @@ func Parse(val string) (info Info, err error) {
 	m := reSized.FindStringSubmatch(val)
 	if m != nil {
 		switch m[1] {
+		case "b", "bool":
+			info.Type = TBool
+
 		case "i", "int":
 			info.Type = TInt
 

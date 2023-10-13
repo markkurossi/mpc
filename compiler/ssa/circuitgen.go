@@ -359,6 +359,15 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
+		case Not:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			for i := 0; i < int(instr.Out.Type.Bits); i++ {
+				cc.INV(wires[0][i], o[i])
+			}
+
 		case Band:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {

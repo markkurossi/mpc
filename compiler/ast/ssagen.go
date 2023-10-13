@@ -1456,6 +1456,29 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast, "%s not supported", ast)
 		}
 
+	case UnaryNot:
+		block, exprs, err := ast.Expr.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+		if len(exprs) != 1 {
+			return nil, nil, ctx.Errorf(ast,
+				"multiple-value %s used in single-value context", ast.Expr)
+		}
+		expr := exprs[0]
+		if expr.Type.Type != types.TBool {
+			return nil, nil, ctx.Errorf(ast,
+				"invalid operation: operator ! not defined on %v (%v)",
+				ast.Expr, expr.Type)
+		}
+		t := gen.AnonVal(expr.Type)
+		instr, err := ssa.NewNotInstr(expr, t)
+		if err != nil {
+			return nil, nil, err
+		}
+		block.AddInstr(instr)
+		return block, []ssa.Value{t}, nil
+
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:

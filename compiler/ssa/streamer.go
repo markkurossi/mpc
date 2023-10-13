@@ -854,6 +854,14 @@ func newIndex(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 		in[0][offset:], in[2], out)
 }
 
+func newNot(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+	out []*circuits.Wire) (bool, error) {
+	for i := 0; i < len(out); i++ {
+		cc.INV(in[0][i], out[i])
+	}
+	return true, nil
+}
+
 var circuitGenerators = map[Operand]NewCircuit{
 	Iadd:  newBinary(circuits.NewAdder),
 	Uadd:  newBinary(circuits.NewAdder),
@@ -878,6 +886,7 @@ var circuitGenerators = map[Operand]NewCircuit{
 	Neq:   newBinary(circuits.NewNeqComparator),
 	And:   newBinary(circuits.NewLogicalAND),
 	Or:    newBinary(circuits.NewLogicalOR),
+	Not:   newNot,
 	Band:  newBinary(circuits.NewBinaryAND),
 	Bclr:  newBinary(circuits.NewBinaryClear),
 	Bor:   newBinary(circuits.NewBinaryOR),

@@ -63,6 +63,7 @@ const (
 	Neq
 	And
 	Or
+	Not
 	Mov
 	Smov
 	Amov
@@ -117,6 +118,7 @@ var operands = map[Operand]string{
 	Neq:     "neq",
 	And:     "and",
 	Or:      "or",
+	Not:     "not",
 	Mov:     "mov",
 	Smov:    "smov",
 	Amov:    "amov",
@@ -430,6 +432,15 @@ func NewOrInstr(l, r, o Value) (Instr, error) {
 	return Instr{
 		Op:  Or,
 		In:  []Value{l, r},
+		Out: &o,
+	}, nil
+}
+
+// NewNotInstr creates a new Not instruction.
+func NewNotInstr(i, o Value) (Instr, error) {
+	return Instr{
+		Op:  Not,
+		In:  []Value{i},
 		Out: &o,
 	}, nil
 }
