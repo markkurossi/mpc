@@ -681,9 +681,11 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 					break castTargetType
 				}
 				typeInfo.Bits = cv.Type.Bits
+				typeInfo.SetConcrete(true)
 
 			case types.TString:
 				typeInfo.Bits = cv.Type.Bits
+				typeInfo.SetConcrete(true)
 
 			case types.TArray:
 				switch cv.Type.ElementType.Type {
@@ -692,6 +694,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 						break castTargetType
 					}
 					typeInfo.Bits = cv.Type.ElementType.Bits * cv.Type.ArraySize
+					typeInfo.SetConcrete(true)
 
 				default:
 					break castTargetType
