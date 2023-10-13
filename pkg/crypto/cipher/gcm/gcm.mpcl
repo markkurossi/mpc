@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,6 +15,9 @@ import (
 
 // NonceSize specifies the nonce size in bytes.
 const NonceSize = 12
+
+// TagSize specifies the tag size in bytes.
+const TagSize = 16
 
 // EncryptAES128 encrypts the plaintext in AES-GCM mode. The key
 // specifies the AES encryption key and nonce is an unique
@@ -72,6 +75,72 @@ func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
 	}
 
 	return cipher
+}
+
+// DecryptAES128 decrypts the ciphertext in AES-GCM mode. They key
+// specifies the AES encryption key and nonce is an unique
+// initialization vector; the nonce must not be reused for the same
+// encryption key. The additionalData specifies additional data that
+// is was authenticated but not encrypted when the ciphertext was
+// created.
+func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
+	ciphertext, additionalData []byte) ([]byte, bool) {
+
+	var counter [aes.BlockSize]byte
+
+	counter = memcpy(counter, 0, nonce, 0)
+	counter = incr(counter)
+
+	e0 := byteToUint128(aes.Block128(key, counter))
+
+	var block [aes.BlockSize]byte
+
+	// h = E(k, 0^128)
+	h := byteToUint128(aes.Block128(key, block))
+
+	// Auth data.
+	var x uint128 = 0
+	// XXX additionalData
+
+	if len(ciphertext) < TagSize {
+		// XXX should return []byte
+		return ciphertext, false
+	}
+	cipherLen := len(ciphertext) - TagSize
+	cipher := ciphertext[0:cipherLen]
+	tag := ciphertext[cipherLen:]
+
+	var plain [cipherLen]byte
+	var cipherBlock [aes.BlockSize]byte
+
+	for i := 0; i < len(cipher); i += aes.BlockSize {
+		counter = incr(counter)
+		block = aes.Block128(key, counter)
+		for j := 0; i+j < len(cipher) && j < aes.BlockSize; j++ {
+			cipherBlock[j] = cipher[i+j]
+			plain[i+j] = cipher[i+j] ^ block[j]
+		}
+
+		// Auth data.
+		x ^= byteToUint128(cipherBlock)
+		x = multGF2Pow128(x, h)
+	}
+
+	// len(A) || len(C)
+	var l uint128 = 0
+	l |= uint128(0) << 64
+	l |= uint128(len(plain) * 8)
+
+	x ^= l
+	x = multGF2Pow128(x, h)
+	x ^= e0
+
+	computedTag := uint128ToByte(x)
+	if bytes.Compare(tag, computedTag) != 0 {
+		return cipher, false
+	}
+
+	return plain, true
 }
 
 func byteToUint128(x [16]byte) uint128 {
