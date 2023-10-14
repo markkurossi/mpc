@@ -141,6 +141,9 @@ func (walloc *WireAllocator) alloc(bits types.Size, v Value,
 	wires, ids bool) *allocByValue {
 
 	result := walloc.newHeader(v)
+	if bits == 0 {
+		return result
+	}
 
 	if wires && ids {
 		result.wires = walloc.newWires(bits)
@@ -189,9 +192,7 @@ func (walloc *WireAllocator) NextWireID() circuit.Wire {
 // AssignedIDs allocates assigned wire IDs for the argument value.
 func (walloc *WireAllocator) AssignedIDs(v Value, bits types.Size) (
 	[]circuit.Wire, error) {
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for value %v", v)
-	}
+
 	hash := walloc.hashCode(v)
 	alloc := walloc.lookup(hash, v)
 	if alloc == nil {
@@ -220,9 +221,7 @@ func (walloc *WireAllocator) AssignedIDs(v Value, bits types.Size) (
 // AssignedWires allocates assigned wires for the argument value.
 func (walloc *WireAllocator) AssignedWires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for value %v", v)
-	}
+
 	hash := walloc.hashCode(v)
 	alloc := walloc.lookup(hash, v)
 	if alloc == nil {
@@ -291,9 +290,7 @@ func (walloc *WireAllocator) GCWires(v Value) {
 // Wires allocates unassigned wires for the argument value.
 func (walloc *WireAllocator) Wires(v Value, bits types.Size) (
 	[]*circuits.Wire, error) {
-	if bits <= 0 {
-		return nil, fmt.Errorf("size not set for value %v", v)
-	}
+
 	hash := walloc.hashCode(v)
 	alloc := walloc.lookup(hash, v)
 	if alloc == nil {

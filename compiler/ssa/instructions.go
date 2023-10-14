@@ -177,7 +177,7 @@ func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 		op = Uadd
 	case types.TFloat:
 		op = Fadd
-	case types.TString:
+	case types.TString, types.TArray:
 		op = Concat
 	default:
 		fmt.Printf("%v + %v (%v)\n", l, r, t)

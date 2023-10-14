@@ -155,8 +155,10 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.Errorf(ast, "undefined variable")
 			}
 			if !typeInfo.Concrete() {
-				return nil, nil, ctx.Errorf(ast, "undefined variable size: %s",
-					typeInfo)
+				typeInfo.SetConcrete(true)
+				lValue := gen.NewVal(n, typeInfo, ctx.Scope())
+				block.Bindings.Set(lValue, nil)
+				return block, nil, nil
 			}
 			initVal, err := initValue(typeInfo)
 			if err != nil {
@@ -1273,10 +1275,15 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	case BinaryPlus:
 		// Binary addition is handled separately since we must handle
-		// string concatenation.
+		// string and array concatenation.
 		if l.Type.Type == types.TString && r.Type.Type == types.TString {
 			resultType = l.Type
 			resultType.Bits += r.Type.Bits
+		} else if l.Type.Type == types.TArray && r.Type.Type == types.TArray &&
+			l.Type.ElementType.Equal(*r.Type.ElementType) {
+			resultType = l.Type
+			resultType.Bits += r.Type.Bits
+			resultType.ArraySize += r.Type.ArraySize
 		} else {
 			superType := l.TypeCompatible(r)
 			if superType == nil {

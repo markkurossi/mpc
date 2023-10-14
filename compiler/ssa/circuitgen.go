@@ -79,7 +79,11 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 	for _, step := range prog.Steps {
 		instr := step.Instr
 		var wires [][]*circuits.Wire
-		for _, in := range instr.In {
+		for idx, in := range instr.In {
+			if !in.Type.Concrete() {
+				return fmt.Errorf("%s: type %v of input %v not concrete",
+					instr, in, idx)
+			}
 			w, err := prog.walloc.Wires(in, in.Type.Bits)
 			if err != nil {
 				return err
