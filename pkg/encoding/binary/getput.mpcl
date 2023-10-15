@@ -1,16 +1,46 @@
 // -*- go -*-
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
 
 package binary
 
+// GetUint gets a MSB-encoded unsigned integer from the argument
+// buffer. The size of the result number is determined by the length
+// of the input buffer.
+func GetUint(d []byte) uint {
+	resultType := make(uint, len(d)*8)
+
+	var result resultType
+	for i := 0; i < len(d); i++ {
+		result <<= 8
+		result |= resultType(d[i])
+	}
+	return result
+}
+
+// PutUint puts the unsigned integer v to the buffer d starting from
+// the offset offset in MSB-order. The number of bytes encoded is
+// determined by the size of the input value v.
+func PutUint(d []byte, offset int, v uint) []byte {
+	bytes := size(v) / 8
+
+	for i := 0; i < bytes; i++ {
+		d[offset+bytes-1-i] = byte(v & 0xff)
+		v >>= 8
+	}
+	return d
+}
+
+// GetUint32 gets a MSB-encoded uint32 value from the argument buffer.
 func GetUint32(d []byte) uint32 {
 	return uint32(d[0])<<24 | uint32(d[1])<<16 | uint32(d[2])<<8 | uint32(d[3])
 }
 
+// PutUint32 puts the uint32 value v to the buffer d starting from the
+// offset offset in MSB-order.
 func PutUint32(d []byte, offset int, v uint32) []byte {
 	d[offset+0] = byte(v >> 24)
 	d[offset+1] = byte(v >> 16)
