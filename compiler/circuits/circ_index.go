@@ -62,14 +62,20 @@ func newIndex(cc *Compiler, bit, length, size int,
 	}
 
 	length /= 2
+	fArray := array
+	if n > length {
+		fArray = fArray[:length*size]
+	}
+
+	if bit >= len(index) {
+		// Not enough bits to select upper half so just select from
+		// the lower half.
+		return newIndex(cc, bit-1, length, size, fArray, index, out)
+	}
 
 	fVal := make([]*Wire, size)
 	for i := 0; i < size; i++ {
 		fVal[i] = cc.Calloc.Wire()
-	}
-	fArray := array
-	if n > length {
-		fArray = fArray[:length*size]
 	}
 	err := newIndex(cc, bit-1, length, size, fArray, index, fVal)
 	if err != nil {
