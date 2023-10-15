@@ -68,9 +68,15 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 			if !ok {
 				return nil, fmt.Errorf("invalid input: %s", inputs[0])
 			}
+			var bitLen int
+			if strings.HasPrefix(inputs[0], "0x") {
+				bitLen = (len(inputs[0]) - 2) * 4
+			} else {
+				bitLen = val.BitLen()
+			}
 
-			valElCount := val.BitLen() / elSize
-			if val.BitLen()%elSize != 0 {
+			valElCount := bitLen / elSize
+			if bitLen%elSize != 0 {
 				valElCount++
 			}
 			if valElCount > count {
