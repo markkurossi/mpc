@@ -296,7 +296,7 @@ form assembly:
  - [ ] Compiler
    - [x] Print a warning if return branches return values of different
          bit size
-   - [ ] foo, ok := make(); bar, ok := make() says no new variables
+   - [x] foo, ok := make(); bar, ok := make() says no new variables
    - [ ] Incremental compiler
      - [ ] Constant folding
        - [ ] Implement arithmetics with `math.big` instead of int{32,64}

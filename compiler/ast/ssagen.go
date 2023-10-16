@@ -280,6 +280,8 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			len(values), len(ast.LValues))
 	}
 
+	var defined bool
+
 	for idx, lvalue := range ast.LValues {
 		rv := values[idx]
 		switch lv := lvalue.(type) {
@@ -367,12 +369,13 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			b, ok = block.Bindings.Get(lv.Name.Name)
 			if ast.Define {
 				if ok {
-					return nil, nil, ctx.Errorf(ast,
-						"no new variables on left side of :=")
-				}
-				lValue = gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
-				if rv.Type.Type == types.TPtr {
-					lValue.PtrInfo = rv.PtrInfo
+					lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
+				} else {
+					lValue = gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
+					if rv.Type.Type == types.TPtr {
+						lValue.PtrInfo = rv.PtrInfo
+					}
+					defined = true
 				}
 			} else {
 				if !ok {
@@ -505,6 +508,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		default:
 			return nil, nil, ctx.Errorf(ast, "cannot assign to %s (%T)", lv, lv)
 		}
+	}
+	if ast.Define && !defined {
+		return nil, nil, ctx.Errorf(ast, "no new variables on left side of :=")
 	}
 
 	return block, values, nil
