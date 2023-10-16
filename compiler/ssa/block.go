@@ -87,8 +87,9 @@ type returnBindingKey struct {
 
 // ReturnBindingValue define return binding value for a return value.
 type ReturnBindingValue struct {
-	v  Value
-	ok bool
+	v    Value
+	diff bool
+	ok   bool
 }
 
 // ReturnBindingCTX defines a context for return binding resolve
@@ -110,13 +111,16 @@ func (ctx *ReturnBindingCTX) Get(b *Block, name string) (
 
 // Set sets the return binding for the return value in the basic
 // block.
-func (ctx *ReturnBindingCTX) Set(b *Block, name string, v Value, ok bool) {
+func (ctx *ReturnBindingCTX) Set(b *Block, name string, v Value,
+	diff, ok bool) {
+
 	ctx.cache[returnBindingKey{
 		BlockID: b.ID,
 		Name:    name,
 	}] = ReturnBindingValue{
-		v:  v,
-		ok: ok,
+		v:    v,
+		diff: diff,
+		ok:   ok,
 	}
 }
 
@@ -130,48 +134,49 @@ func NewReturnBindingCTX() *ReturnBindingCTX {
 // ReturnBinding returns the return statement binding for the argument
 // value. If the block contains a branch and value is modified in both
 // branches, the function adds a Phi instruction to resolve the value
-// binding after this basic block.
+// binding after this basic block. The return value diff tells if
+// branch return values has different sizes.
 func (b *Block) ReturnBinding(ctx *ReturnBindingCTX, name string,
-	retBlock *Block, gen *Generator) (v Value, ok bool) {
+	retBlock *Block, gen *Generator) (v Value, diff, ok bool) {
 
 	binding, ok := ctx.Get(b, name)
 	if ok {
-		return binding.v, binding.ok
+		return binding.v, binding.diff, binding.ok
 	}
-	v, ok = b.returnBinding(ctx, name, retBlock, gen)
-	ctx.Set(b, name, v, ok)
-	return v, ok
+	v, diff, ok = b.returnBinding(ctx, name, retBlock, gen)
+	ctx.Set(b, name, v, diff, ok)
+	return v, diff, ok
 }
 
 func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
-	retBlock *Block, gen *Generator) (v Value, ok bool) {
+	retBlock *Block, gen *Generator) (v Value, diff, ok bool) {
 
 	// XXX Check if the if-ssagen could omit branch in this case?
 	if b.Branch == nil || b.Next == b.Branch {
 		// Sequential block, return latest value
 		if b.Next != nil {
-			v, ok = b.Next.ReturnBinding(ctx, name, retBlock, gen)
+			v, diff, ok = b.Next.ReturnBinding(ctx, name, retBlock, gen)
 			if ok {
-				return v, true
+				return v, diff, true
 			}
 			// Next didn't have value, take ours below.
 		}
 		bind, ok := b.Bindings.Get(name)
 		if !ok {
-			return v, false
+			return v, false, false
 		}
-		return bind.Value(retBlock, gen), true
+		return bind.Value(retBlock, gen), false, true
 	}
-	vTrue, ok := b.Branch.ReturnBinding(ctx, name, retBlock, gen)
+	vTrue, diffTrue, ok := b.Branch.ReturnBinding(ctx, name, retBlock, gen)
 	if !ok {
-		return v, false
+		return v, false, false
 	}
-	vFalse, ok := b.Next.ReturnBinding(ctx, name, retBlock, gen)
+	vFalse, diffFalse, ok := b.Next.ReturnBinding(ctx, name, retBlock, gen)
 	if !ok {
-		return v, false
+		return v, false, false
 	}
 	if vTrue.Equal(&vFalse) {
-		return vTrue, true
+		return vTrue, diffTrue || diffFalse, true
 	}
 
 	var rType types.Info
@@ -184,7 +189,7 @@ func (b *Block) returnBinding(ctx *ReturnBindingCTX, name string,
 	v = gen.AnonVal(rType)
 	retBlock.AddInstr(NewPhiInstr(b.BranchCond, vTrue, vFalse, v))
 
-	return v, true
+	return v, vTrue.Type.Bits != vFalse.Type.Bits || diffTrue || diffFalse, true
 }
 
 // Serialize serializes the basic block's instructions.

@@ -54,6 +54,12 @@ func (ctx *Codegen) Errorf(locator utils.Locator, format string,
 	return ctx.logger.Errorf(locator.Location(), format, a...)
 }
 
+// Warningf logs a warning message
+func (ctx *Codegen) Warningf(locator utils.Locator, format string,
+	a ...interface{}) {
+	ctx.logger.Warningf(locator.Location(), format, a...)
+}
+
 // DefineType defines the argument type and assigns it an unique type
 // ID.
 func (ctx *Codegen) DefineType(t *TypeInfo) types.ID {

@@ -79,11 +79,15 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Select return variables.
 	var vars []ssa.Value
 	for _, ret := range ast.Return {
-		v, ok := ctx.Start().ReturnBinding(ssa.NewReturnBindingCTX(), ret.Name,
-			ctx.Return(), gen)
+		v, diff, ok := ctx.Start().ReturnBinding(ssa.NewReturnBindingCTX(),
+			ret.Name, ctx.Return(), gen)
 		if !ok {
 			return nil, nil, ctx.Errorf(ast, "undefined variable '%s'",
 				ret.Name)
+		}
+		if diff {
+			ctx.Warningf(ast, "function %s returns different sized values",
+				ast.Name)
 		}
 		vars = append(vars, v)
 	}
