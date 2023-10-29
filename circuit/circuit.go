@@ -30,6 +30,12 @@ const (
 	MaxWidth
 )
 
+// Known multi-party computation roles.
+const (
+	IDGarbler int = iota
+	IDEvaluator
+)
+
 // Stats holds statistics about circuit operations.
 type Stats [MaxWidth + 1]uint64
 
@@ -153,6 +159,25 @@ type Circuit struct {
 
 func (c *Circuit) String() string {
 	return fmt.Sprintf("#gates=%d (%s) #w=%d", c.NumGates, c.Stats, c.NumWires)
+}
+
+// NumParties returns the number of parties needed for the circuit.
+func (c *Circuit) NumParties() int {
+	return len(c.Inputs)
+}
+
+// PrintInputs prints the circuit inputs.
+func (c *Circuit) PrintInputs(id int, input []string) {
+	for i := 0; i < len(c.Inputs); i++ {
+		if i == id {
+			fmt.Print(" + ")
+		} else {
+			fmt.Print(" - ")
+		}
+		fmt.Printf("In%d: %s\n", i, c.Inputs[i])
+	}
+	fmt.Printf(" - Out: %s\n", c.Outputs)
+	fmt.Printf(" -  In: %s\n", input)
 }
 
 // TabulateStats prints the circuit stats as a table to the specified

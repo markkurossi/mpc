@@ -12,6 +12,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -59,7 +60,7 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 			return err
 		}
 
-		printResults(result, outputs)
+		mpc.PrintResults(result, outputs)
 		if once {
 			return nil
 		}
@@ -98,6 +99,6 @@ func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	if err != nil {
 		return err
 	}
-	printResults(result, outputs)
+	mpc.PrintResults(result, outputs)
 	return nil
 }

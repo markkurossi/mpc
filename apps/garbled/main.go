@@ -20,6 +20,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -177,22 +178,6 @@ func loadCircuit(file string, params *utils.Params, inputSizes [][]int) (
 	return circ, err
 }
 
-func printInputs(evaluator bool, circ *circuit.Circuit) {
-	var i1t, i2t string
-	if evaluator {
-		i1t = "- "
-		i2t = "+ "
-	} else {
-		i1t = "+ "
-		i2t = "- "
-	}
-
-	fmt.Printf(" %sIn1: %s\n", i1t, circ.Inputs[0])
-	fmt.Printf(" %sIn2: %s\n", i2t, circ.Inputs[1])
-	fmt.Printf(" - Out: %s\n", circ.Outputs)
-	fmt.Printf(" -  In: %s\n", inputFlag)
-}
-
 func memProfile(file string) {
 	if len(file) == 0 {
 		return
@@ -264,7 +249,7 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 			}
 			oPeerInputSizes = peerInputSizes
 		}
-		printInputs(true, circ)
+		circ.PrintInputs(circuit.IDEvaluator, inputFlag)
 		if len(circ.Inputs) != 2 {
 			return fmt.Errorf("invalid circuit for 2-party MPC: %d parties",
 				len(circ.Inputs))
@@ -280,7 +265,7 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 		if err != nil && err != io.EOF {
 			return err
 		}
-		printResults(result, circ.Outputs)
+		mpc.PrintResults(result, circ.Outputs)
 		if once {
 			return nil
 		}
@@ -323,7 +308,7 @@ func garblerMode(oti ot.OT, file string, params *utils.Params) error {
 	if err != nil {
 		return err
 	}
-	printInputs(false, circ)
+	circ.PrintInputs(circuit.IDGarbler, inputFlag)
 	if len(circ.Inputs) != 2 {
 		return fmt.Errorf("invalid circuit for 2-party MPC: %d parties",
 			len(circ.Inputs))
@@ -337,7 +322,7 @@ func garblerMode(oti ot.OT, file string, params *utils.Params) error {
 	if err != nil {
 		return err
 	}
-	printResults(result, circ.Outputs)
+	mpc.PrintResults(result, circ.Outputs)
 
 	return nil
 }
