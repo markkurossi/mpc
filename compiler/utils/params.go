@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2022 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -16,6 +16,10 @@ type Params struct {
 	Diagnostics bool
 	SSAOut      io.WriteCloser
 	SSADotOut   io.WriteCloser
+
+	// PkgPath defines additional directories to search for imported
+	// packages.
+	PkgPath []string
 
 	// MaxVarBits specifies the maximum variable width in bits.
 	MaxVarBits int

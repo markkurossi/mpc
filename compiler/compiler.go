@@ -255,16 +255,35 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 		fmt.Printf("looking for package %s (%s)\n", alias, name)
 	}
 
-	dir := path.Join(c.pkgPath, name)
+	var dirs []string
+	dirs = append(dirs, c.pkgPath)
+	dirs = append(dirs, c.params.PkgPath...)
+
+	for _, dir := range dirs {
+		pkg, ok, err := c.tryParsePkg(pkg, dir, name)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			return pkg, nil
+		}
+	}
+	return nil, fmt.Errorf("package %s not found", name)
+}
+
+func (c *Compiler) tryParsePkg(pkg *ast.Package, prefix, name string) (
+	*ast.Package, bool, error) {
+
+	dir := path.Join(prefix, name)
 	df, err := os.Open(dir)
 	if err != nil {
-		return nil, fmt.Errorf("package %s not found", name)
+		return nil, false, nil
 	}
 	defer df.Close()
 
 	files, err := df.Readdirnames(-1)
 	if err != nil {
-		return nil, fmt.Errorf("package %s not found: %s", name, err)
+		return nil, false, fmt.Errorf("package %s not found: %s", name, err)
 	}
 	var mpcls []string
 	for _, f := range files {
@@ -273,7 +292,7 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 		}
 	}
 	if len(mpcls) == 0 {
-		return nil, fmt.Errorf("package %s is empty", name)
+		return nil, false, fmt.Errorf("package %s is empty", name)
 	}
 
 	for _, mpcl := range mpcls {
@@ -286,14 +305,15 @@ func (c *Compiler) parsePkg(alias, name, source string) (*ast.Package, error) {
 		f, err := os.Open(fp)
 		if err != nil {
 			fmt.Printf("pkg not found: %s\n", err)
-			return nil, fmt.Errorf("error reading package %s: %s", name, err)
+			return nil, false, fmt.Errorf("error reading package %s: %s",
+				name, err)
 		}
 		defer f.Close()
 
 		pkg, err = c.parse(fp, f, utils.NewLogger(os.Stdout), pkg)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
-	return pkg, nil
+	return pkg, true, nil
 }
