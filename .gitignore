@@ -26,3 +26,4 @@ apps/iter/iter
 apps/mpcldoc/mpcldoc
 apps/objdump/objdump
 apps/ot/ot
+docs/ref/ecdh/ecdh
