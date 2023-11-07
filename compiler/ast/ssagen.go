@@ -1761,7 +1761,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if expr.Type.Type == types.TPtr {
 		if elementType.Type == types.TArray {
 
-			ptrInfo := expr.PtrInfo
+			// Take a copy of the PtrInfo and adjust its offset.
+			ptrInfo := *expr.PtrInfo
 			ptrInfo.Offset += from * elementSize
 
 			et := elementType
@@ -1776,7 +1777,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				ElementType: &et,
 			}
 			t = gen.AnonVal(ti)
-			t.PtrInfo = ptrInfo
+			t.PtrInfo = &ptrInfo
 		} else {
 			return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
 				expr.Type)
