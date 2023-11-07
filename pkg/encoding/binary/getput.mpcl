@@ -50,7 +50,6 @@ func PutUint32(d []byte, offset int, v uint32) []byte {
 }
 
 // GetUint32 gets a LSB-encoded uint32 value from the argument buffer.
-func GetUint32LSB(d []byte, ofs int) uint32 {
-	return uint32(d[ofs]) | uint32(d[ofs+1])<<8 | uint32(d[ofs+2])<<16 |
-		uint32(d[ofs+3])<<24
+func GetUint32LSB(d []byte) uint32 {
+	return uint32(d[0]) | uint32(d[1])<<8 | uint32(d[2])<<16 | uint32(d[3])<<24
 }
