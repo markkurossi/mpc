@@ -583,7 +583,14 @@ type Call struct {
 }
 
 func (ast *Call) String() string {
-	return fmt.Sprintf("%s()", ast.Ref)
+	str := fmt.Sprintf("%s(", ast.Ref)
+	for idx, expr := range ast.Exprs {
+		if idx > 0 {
+			str += ", "
+		}
+		str += fmt.Sprintf("%v", expr)
+	}
+	return str + ")"
 }
 
 // Return implements an AST return statement.
