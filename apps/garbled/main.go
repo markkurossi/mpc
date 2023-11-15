@@ -68,6 +68,8 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
+	mpclcErrLoc := flag.Bool("mpclc-err-loc", false,
+		"print MPCLC error locations")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -91,6 +93,7 @@ func main() {
 
 	params.Verbose = *fVerbose
 	params.Diagnostics = *fDiagnostics
+	params.MPCLCErrorLoc = *mpclcErrLoc
 
 	if *optimize > 0 {
 		params.OptPruneGates = true

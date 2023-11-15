@@ -12,10 +12,11 @@ import (
 
 // Params specify compiler parameters.
 type Params struct {
-	Verbose     bool
-	Diagnostics bool
-	SSAOut      io.WriteCloser
-	SSADotOut   io.WriteCloser
+	Verbose       bool
+	Diagnostics   bool
+	SSAOut        io.WriteCloser
+	SSADotOut     io.WriteCloser
+	MPCLCErrorLoc bool
 
 	// PkgPath defines additional directories to search for imported
 	// packages.

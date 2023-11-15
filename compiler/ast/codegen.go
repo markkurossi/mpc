@@ -10,6 +10,7 @@ package ast
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ssa"
@@ -48,10 +49,27 @@ func NewCodegen(logger *utils.Logger, pkg *Package,
 	}
 }
 
+func (ctx *Codegen) errorLoc(err error) error {
+	if !ctx.Params.MPCLCErrorLoc {
+		return err
+	}
+	_, file, line, ok := runtime.Caller(2)
+	if !ok {
+		return err
+	}
+	fmt.Printf("%s:%d: MCPLC error:\n\u2514\u2574%s\n", file, line, err)
+	return err
+}
+
+// Error logs an error message.
+func (ctx *Codegen) Error(locator utils.Locator, msg string) error {
+	return ctx.errorLoc(ctx.logger.Errorf(locator.Location(), "%s", msg))
+}
+
 // Errorf logs an error message.
 func (ctx *Codegen) Errorf(locator utils.Locator, format string,
 	a ...interface{}) error {
-	return ctx.logger.Errorf(locator.Location(), format, a...)
+	return ctx.errorLoc(ctx.logger.Errorf(locator.Location(), format, a...))
 }
 
 // Warningf logs a warning message
