@@ -93,7 +93,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		}
 		// Define argument in block.
 		a := gen.NewVal(arg.Name, typeInfo, ctx.Scope())
-		ctx.Start().Bindings.Set(a, nil)
+		ctx.Start().Bindings.Define(a, nil)
 
 		input := circuit.IOArg{
 			Name: arg.Name,
@@ -318,7 +318,7 @@ func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,
 
 	v := gen.Constant(info, types.Undefined)
 	lval := gen.NewVal(def.TypeName, info, ctx.Scope())
-	pkg.Bindings.Set(lval, &v)
+	pkg.Bindings.Define(lval, &v)
 
 	return nil
 }

@@ -15,7 +15,7 @@ import (
 
 func TestSet(t *testing.T) {
 	a := new(Bindings)
-	a.Set(Value{
+	a.Define(Value{
 		Name: "a",
 	}, nil)
 
@@ -28,7 +28,7 @@ func TestSet(t *testing.T) {
 		t.Errorf("non-existing binding for value 'b' found")
 	}
 
-	a.Set(Value{
+	a.Define(Value{
 		Name: "b",
 	}, nil)
 	_, ok = a.Get("b")
@@ -39,7 +39,7 @@ func TestSet(t *testing.T) {
 
 func TestClone(t *testing.T) {
 	a := new(Bindings)
-	a.Set(Value{
+	a.Define(Value{
 		Name: "a",
 	}, nil)
 	_, ok := a.Get("a")
@@ -52,7 +52,7 @@ func TestClone(t *testing.T) {
 	if !ok {
 		t.Errorf("binding for value 'a' not found")
 	}
-	b.Set(Value{
+	b.Define(Value{
 		Name: "b",
 	}, nil)
 	_, ok = a.Get("b")
@@ -69,16 +69,16 @@ func TestMerge(t *testing.T) {
 	a := new(Bindings)
 	b := new(Bindings)
 
-	a.Set(Value{
+	a.Define(Value{
 		Name: "a",
 		Type: types.Int32,
 	}, constInt(1))
-	a.Set(Value{
+	a.Define(Value{
 		Name: "b",
 		Type: types.Int32,
 	}, constInt(42))
 
-	b.Set(Value{
+	b.Define(Value{
 		Name: "a",
 		Type: types.Int32,
 	}, constInt(2))

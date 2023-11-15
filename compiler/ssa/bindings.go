@@ -40,19 +40,36 @@ func (bindings Bindings) Clone() *Bindings {
 	return result
 }
 
-// Set adds a new binding for the value.
-func (bindings *Bindings) Set(v Value, val *Value) {
+// Define defines name v in the bindings.  The argument val specifies
+// an optional value for the name. If val is nil, the value of the
+// name will be v.
+func (bindings *Bindings) Define(v Value, val *Value) {
+	bindings.set(v, v.Type, val)
+}
+
+// Set sets a new binding for the name. It is an error if the name is
+// not defined.
+func (bindings *Bindings) Set(v Value, val *Value) error {
+	b, ok := bindings.Get(v.Name)
+	if !ok {
+		return fmt.Errorf("name %s not defined", v.Name)
+	}
+	bindings.set(v, b.Type, val)
+	return nil
+}
+
+func (bindings *Bindings) set(v Value, t types.Info, val *Value) {
 	if bindings.shared {
 		// Make our own copy of the values.
-		v := make([]Binding, len(bindings.Values))
-		copy(v, bindings.Values)
-		bindings.Values = v
+		values := make([]Binding, len(bindings.Values))
+		copy(values, bindings.Values)
+		bindings.Values = values
 		bindings.shared = false
 	}
 
 	for idx, b := range bindings.Values {
 		if b.Name == v.Name && b.Scope == v.Scope {
-			b.Type = v.Type
+			b.Type = t
 			if val != nil {
 				b.Bound = val
 			} else {
@@ -66,7 +83,7 @@ func (bindings *Bindings) Set(v Value, val *Value) {
 	b := Binding{
 		Name:  v.Name,
 		Scope: v.Scope,
-		Type:  v.Type,
+		Type:  t,
 	}
 	if val != nil {
 		b.Bound = val

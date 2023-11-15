@@ -352,7 +352,7 @@ func (env *Env) Get(name string) (ssa.Binding, bool) {
 
 // Set sets the value binding to the environment.
 func (env *Env) Set(v ssa.Value, val *ssa.Value) {
-	env.Bindings.Set(v, val)
+	env.Bindings.Define(v, val)
 }
 
 // List implements an AST list statement.

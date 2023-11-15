@@ -151,7 +151,10 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	toConst := gen.Constant(int32(dstOffset+srcBits), types.Uint32)
 
 	block.AddInstr(ssa.NewAmovInstr(src, base, fromConst, toConst, lValue))
-	baseBindings.Set(lValue, nil)
+	err := baseBindings.Set(lValue, nil)
+	if err != nil {
+		return nil, nil, ctx.Error(loc, err.Error())
+	}
 
 	v := gen.Constant(int32(copied), types.Int32)
 	gen.AddConstant(v)

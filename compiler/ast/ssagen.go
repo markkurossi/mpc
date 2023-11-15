@@ -63,7 +63,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ret, "invalid return type: %s", err)
 		}
 		r := gen.NewVal(ret.Name, typeInfo, ctx.Scope())
-		block.Bindings.Set(r, nil)
+		block.Bindings.Define(r, nil)
 	}
 
 	ast.Body = append(ast.Body, &Return{
@@ -137,7 +137,7 @@ func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 	lValue := constVar
 	lValue.Name = ast.Name
-	block.Bindings.Set(lValue, &constVar)
+	block.Bindings.Define(lValue, &constVar)
 	gen.AddConstant(constVal)
 
 	return block, nil, nil
@@ -160,13 +160,10 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 			}
 			if !typeInfo.Concrete() {
 				typeInfo.SetConcrete(true)
-				lValue := gen.NewVal(n, typeInfo, ctx.Scope())
-				block.Bindings.Set(lValue, nil)
-				return block, nil, nil
 			}
 			initVal, err := initValue(typeInfo)
 			if err != nil {
-				return nil, nil, ctx.Errorf(ast, "%s", err)
+				return nil, nil, ctx.Error(ast, err.Error())
 			}
 			init = gen.Constant(initVal, typeInfo)
 			gen.AddConstant(init)
@@ -205,9 +202,10 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 		}
 
 		lValue := gen.NewVal(n, typeInfo, ctx.Scope())
-		// XXX lValue.Const = init.Const
-		block.Bindings.Set(lValue, nil)
+		block.Bindings.Define(lValue, nil)
 
+		// Constant init values can be shared between different
+		// instances so let's move the init to the new variable value.
 		block.AddInstr(ssa.NewMovInstr(init, lValue))
 	}
 	return block, nil, nil
@@ -357,13 +355,15 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 
 				block.AddInstr(ssa.NewAmovInstr(rv, b.Value(block, gen),
 					fromConst, toConst, lValue))
-				dstBindings.Set(lValue, nil)
+				err := dstBindings.Set(lValue, nil)
+				if err != nil {
+					return nil, nil, ctx.Error(ast, err.Error())
+				}
 
 				return block, []ssa.Value{lValue}, nil
 			}
 
-			// XXX check if rv can be assigned to lv, also do not
-			// change the binding's type below in the assignment.
+			// Assigning a variable.
 
 			var lValue ssa.Value
 			b, ok = block.Bindings.Get(lv.Name.Name)
@@ -376,6 +376,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						lValue.PtrInfo = rv.PtrInfo
 					}
 					defined = true
+					block.Bindings.Define(lValue, nil)
 				}
 			} else {
 				if !ok {
@@ -383,9 +384,12 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 				lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
 			}
-
+			rv.Type = lValue.Type
 			block.AddInstr(ssa.NewMovInstr(rv, lValue))
-			block.Bindings.Set(lValue, &rv)
+			err := block.Bindings.Set(lValue, &rv)
+			if err != nil {
+				return nil, nil, ctx.Error(ast, err.Error())
+			}
 
 		case *Index:
 			if ast.Define {
@@ -440,7 +444,10 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				lValue := lrv.LValue()
 				block.AddInstr(ssa.NewAmovInstr(rv, lrv.BaseValue(),
 					fromConst, toConst, lValue))
-				basePtrInfo.Bindings.Set(lValue, nil)
+				err = basePtrInfo.Bindings.Set(lValue, nil)
+				if err != nil {
+					return nil, nil, ctx.Error(ast, err.Error())
+				}
 
 				return block, []ssa.Value{lValue}, nil
 
@@ -498,7 +505,10 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						"can't assign %s with value of type %s",
 						lValue.Type.ElementType, rv.Type)
 				}
-				dstBindings.Set(lValue, nil)
+				err := dstBindings.Set(lValue, nil)
+				if err != nil {
+					return nil, nil, ctx.Error(ast, err.Error())
+				}
 
 			default:
 				return nil, nil, ctx.Errorf(ast,
@@ -660,12 +670,13 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		// Resolve name as type.
 		typeName := &TypeInfo{
-			Type: TypeName,
-			Name: ast.Ref.Name,
+			Point: ast.Point,
+			Type:  TypeName,
+			Name:  ast.Ref.Name,
 		}
 		typeInfo, err := typeName.Resolve(NewEnv(block), ctx, gen)
 		if err != nil {
-			return nil, nil, ctx.Errorf(ast, "undefined: %s", ast.Ref)
+			return nil, nil, err
 		}
 		if len(callValues) != 1 {
 			return nil, nil, ctx.Errorf(ast, "undefined: %s", ast.Ref)
@@ -683,6 +694,15 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		cv := callValues[0][0]
 		var t ssa.Value
+
+		if !typeInfo.Concrete() {
+			if !cv.Type.Concrete() {
+				return nil, nil, ctx.Errorf(ast.Ref,
+					"casting to non-concrete type %s", ast.Ref)
+			}
+			typeInfo.Bits = cv.Type.Bits
+			typeInfo.SetConcrete(true)
+		}
 
 	castTargetType:
 		switch typeInfo.Type {
@@ -799,7 +819,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		a := gen.NewVal(arg.Name, args[idx].Type, ctx.Scope())
 		a.PtrInfo = args[idx].PtrInfo
-		ctx.Start().Bindings.Set(a, &args[idx])
+		ctx.Start().Bindings.Define(a, &args[idx])
 
 		block.AddInstr(ssa.NewMovInstr(args[idx], a))
 	}
@@ -854,7 +874,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"cannot use %v as type %s in receiver to %s",
 				this.Type, typeInfo, called.Name)
 		}
-		ctx.Start().Bindings.Set(a, &this)
+		ctx.Start().Bindings.Define(a, &this)
 		block.AddInstr(ssa.NewMovInstr(this, a))
 	}
 
@@ -1030,7 +1050,10 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		block.AddInstr(ssa.NewMovInstr(result[idx], v))
-		block.Bindings.Set(v, nil)
+		err = block.Bindings.Set(v, nil)
+		if err != nil {
+			return nil, nil, ctx.Error(ast, err.Error())
+		}
 	}
 
 	block.SetNext(ctx.Return())
@@ -1208,14 +1231,14 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryMult:
 			// Multiplication is commutative.
 			if rConst {
-				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
 				return ast.constMult(l, rPow2, block, ctx, gen)
 			}
 			if lConst {
-				block, r, err := ast.value(ast.Right, block, ctx, gen)
+				block, r, err := ast.value(env, ast.Right, block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1224,14 +1247,14 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		case BinaryPlus:
 			if rConst && rPow2 == 0 {
-				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
 				return block, []ssa.Value{l}, nil
 			}
 			if lConst && lPow2 == 0 {
-				block, r, err := ast.value(ast.Right, block, ctx, gen)
+				block, r, err := ast.value(env, ast.Right, block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1240,7 +1263,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		case BinaryMinus:
 			if rConst && rPow2 == 0 {
-				block, l, err := ast.value(ast.Left, block, ctx, gen)
+				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -1262,11 +1285,11 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Check that l and r are of same type.
-	block, l, err := ast.value(ast.Left, block, ctx, gen)
+	block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
-	block, r, err := ast.value(ast.Right, block, ctx, gen)
+	block, r, err := ast.value(env, ast.Right, block, ctx, gen)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1380,8 +1403,18 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, []ssa.Value{t}, nil
 }
 
-func (ast *Binary) value(val AST, block *ssa.Block, ctx *Codegen,
+func (ast *Binary) value(env *Env, val AST, block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, ssa.Value, error) {
+
+	// Check if value is constant.
+	v, c, err := val.Eval(env, ctx, gen)
+	if err != nil {
+		return block, v, err
+	}
+	if c {
+		gen.AddConstant(v)
+		return block, v, nil
+	}
 
 	block, arr, err := val.SSA(block, ctx, gen)
 	if err != nil {
