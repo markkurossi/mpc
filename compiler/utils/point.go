@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,6 +8,7 @@ package utils
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 // Locator is an interface that implements Location method for
@@ -30,6 +31,12 @@ func (p Point) Location() Point {
 
 func (p Point) String() string {
 	return fmt.Sprintf("%s:%d:%d", p.Source, p.Line, p.Col)
+}
+
+// ShortString returns the location string without the file directory
+// part.
+func (p Point) ShortString() string {
+	return fmt.Sprintf("%s:%d:%d", filepath.Base(p.Source), p.Line, p.Col)
 }
 
 // Undefined tests if the input position is undefined.
