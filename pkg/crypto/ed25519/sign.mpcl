@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // Ed25519 signature computation in MPCL. This file is derived from
 // Go's crypto/ed25519 package. The original copyright notice follows:
@@ -32,11 +32,13 @@ const (
 )
 
 // PrivateKey defines the Ed25519 private key.
-//   XXX type PrivateKey [PrivateKeySize]byte
+//
+//	XXX type PrivateKey [PrivateKeySize]byte
 type PrivateKey [64]byte
 
 // PublicKey defines the Ed25519 public key.
-//   XXX type PublicKey [PublicKeySize]byte
+//
+//	XXX type PublicKey [PublicKeySize]byte
 type PublicKey [32]byte
 
 // Sign signs the message with privateKey and returns the signature.
