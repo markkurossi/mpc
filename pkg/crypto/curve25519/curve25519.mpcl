@@ -736,7 +736,7 @@ func feMul121666(h, f *fieldElement) {
 // feInvert sets out = z^-1.
 func feInvert(out, z *fieldElement) {
 	var t0, t1, t2, t3 fieldElement
-	var i int
+	var i int32
 
 	feSquare(&t0, z)
 	for i = 1; i < 1; i++ {
@@ -815,7 +815,7 @@ func scalarMult(out, in, base *[32]byte) {
 	swap := int32(0)
 	var b int32
 	for pos := 254; pos >= 0; pos-- {
-		b = e[pos/8] >> (pos & 7)
+		b = e[pos/8] >> uint(pos&7)
 		b &= 1
 		swap ^= int32(b)
 		feCSwap(&x2, &x3, swap)
