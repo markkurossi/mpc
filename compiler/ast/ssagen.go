@@ -259,7 +259,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		}
 		if ok {
 			gen.AddConstant(constVal)
-			values = append(values, constVal)
+			v := gen.AnonVal(constVal.Type)
+			block.AddInstr(ssa.NewMovInstr(constVal, v))
+			values = append(values, v)
 		} else {
 			var v []ssa.Value
 			block, v, err = expr.SSA(block, ctx, gen)
@@ -2001,5 +2003,52 @@ func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
 // SSA implements the compiler.ast.AST.SSA for the builtin function make.
 func (ast *Make) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
-	return nil, nil, fmt.Errorf("Make.SSA not supported")
+
+	if len(ast.Exprs) != 1 {
+		return nil, nil, ctx.Errorf(ast,
+			"invalid amount of argument in call to make")
+	}
+	env := NewEnv(block)
+	typeInfo, err := ast.Type.Resolve(env, ctx, gen)
+	if err != nil {
+		return nil, nil, ctx.Errorf(ast.Type, "%s is not a type", ast.Type)
+	}
+	if typeInfo.Type != types.TArray {
+		return nil, nil, ctx.Errorf(ast.Type,
+			"cant' make instance of type %s", typeInfo)
+	}
+	if typeInfo.Bits != 0 {
+		return nil, nil, ctx.Errorf(ast.Type,
+			"can't make specified type %s", typeInfo)
+	}
+	constVal, _, err := ast.Exprs[0].Eval(env, ctx, gen)
+	if err != nil {
+		return nil, nil, ctx.Error(ast.Exprs[0], err.Error())
+	}
+	length, err := constVal.ConstInt()
+	if err != nil {
+		return nil, nil, ctx.Errorf(ast.Exprs[0],
+			"non-integer (%T) len argument in %s: %s", constVal, ast, err)
+	}
+
+	if !typeInfo.ElementType.Concrete() {
+		return nil, nil, ctx.Errorf(ast.Type,
+			"unspecified array element type: %s", typeInfo.ElementType)
+	}
+	typeInfo.IsConcrete = true
+	typeInfo.ArraySize = length
+	typeInfo.Bits = typeInfo.ElementType.Bits * length
+	typeInfo.MinBits = typeInfo.Bits
+
+	initVal, err := initValue(typeInfo)
+	if err != nil {
+		return nil, nil, ctx.Error(ast, err.Error())
+	}
+	init := gen.Constant(initVal, typeInfo)
+	gen.AddConstant(init)
+
+	v := gen.AnonVal(typeInfo)
+	block.AddInstr(ssa.NewMovInstr(init, v))
+
+	return block, []ssa.Value{v}, nil
 }
