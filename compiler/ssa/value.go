@@ -92,7 +92,7 @@ func (v Value) String() string {
 		return v.Name
 	}
 	if v.TypeRef {
-		return v.Type.String()
+		return fmt.Sprintf("*%v", v.Type.String())
 	}
 	var version string
 	if v.Version >= 0 {
