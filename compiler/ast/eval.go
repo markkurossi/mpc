@@ -15,6 +15,10 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+const (
+	debugEval = false
+)
+
 // Eval implements the compiler.ast.AST.Eval for list statements.
 func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
@@ -117,6 +121,17 @@ func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval for call expressions.
 func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
+
+	if debugEval {
+		fmt.Printf("Call.Eval: %s(", ast.Ref)
+		for idx, expr := range ast.Exprs {
+			if idx > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%v", expr)
+		}
+		fmt.Println(")")
+	}
 
 	// Resolve called.
 	var pkgName string

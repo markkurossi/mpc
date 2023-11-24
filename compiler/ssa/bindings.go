@@ -23,6 +23,15 @@ type Bindings struct {
 	Values []Binding
 }
 
+// Debug prints the bindings.
+func (bindings *Bindings) Debug() {
+	fmt.Printf("Bindings: shared=%v, Values=[\n", bindings.shared)
+	for _, value := range bindings.Values {
+		fmt.Printf("\t%s,\n", value)
+	}
+	fmt.Println("]")
+}
+
 // Count returns the number of variable bindings the Bindings
 // contains.
 func (bindings *Bindings) Count() int {

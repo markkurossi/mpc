@@ -345,6 +345,12 @@ type Env struct {
 	Bindings *ssa.Bindings
 }
 
+// Debug print the environment.
+func (env *Env) Debug() {
+	fmt.Print("Env: ")
+	env.Bindings.Debug()
+}
+
 // Get gets the value binding from the environment.
 func (env *Env) Get(name string) (ssa.Binding, bool) {
 	return env.Bindings.Get(name)
