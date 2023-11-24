@@ -177,7 +177,7 @@ func (lrv *LRValue) BasePtrInfo() *ssa.PtrInfo {
 	return lrv.baseInfo
 }
 
-// LValue returns the l-valiue of the LRValue.
+// LValue returns the l-value of the LRValue.
 func (lrv *LRValue) LValue() ssa.Value {
 	return lrv.gen.NewVal(lrv.baseInfo.Name, lrv.baseInfo.ContainerType,
 		lrv.baseInfo.Scope)
