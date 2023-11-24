@@ -1,16 +1,10 @@
-// -*- go -*-
-//
-// Copyright (c) 2020-2023 Markku Rossi
-//
-// Ed25519 signature algorithm in MPCL. This file is derived from the
-// crypto/ed25519/internal/edwards25519 package of Go 1.16.9. The
-// original copyright notice is as follows:
-//
 // Copyright 2016 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package edwards25519
+
+import "encoding/binary"
 
 // This code is a port of the public domain, “ref10” implementation of ed25519
 // from SUPERCOP.
@@ -24,9 +18,7 @@ type FieldElement [10]int32
 var zero FieldElement
 
 func FeZero(fe *FieldElement) {
-	for i := 0; i < len(fe); i++ {
-		fe[i] = zero[i]
-	}
+	copy(fe[:], zero[:])
 }
 
 func FeOne(fe *FieldElement) {
@@ -61,9 +53,7 @@ func FeSub(dst, a, b *FieldElement) {
 }
 
 func FeCopy(dst, src *FieldElement) {
-	for i := 0; i < len(dst); i++ {
-		dst[i] = src[i]
-	}
+	copy(dst[:], src[:])
 }
 
 // Replace (f,g) with (g,g) if b == 1;
@@ -240,8 +230,8 @@ func FeIsNonZero(f *FieldElement) int32 {
 	var s [32]byte
 	FeToBytes(&s, f)
 	var x uint8
-	for i := 0; i < len(s); i++ {
-		x |= s[i]
+	for _, b := range s {
+		x |= b
 	}
 	x |= x >> 4
 	x |= x >> 2
@@ -478,7 +468,7 @@ func feSquare(f *FieldElement) (h0, h1, h2, h3, h4, h5, h6, h7, h8, h9 int64) {
 	h8 = f0_2*f8 + f1_2*f7_2 + f2_2*f6 + f3_2*f5_2 + f4*f4 + f9*f9_38
 	h9 = f0_2*f9 + f1_2*f8 + f2_2*f7 + f3_2*f6 + f4_2*f5
 
-	return h0, h1, h2, h3, h4, h5, h6, h7, h8, h9
+	return
 }
 
 // FeSquare calculates h = f*f. Can overlap h with f.
@@ -527,7 +517,7 @@ func FeSquare2(h, f *FieldElement) {
 
 func FeInvert(out, z *FieldElement) {
 	var t0, t1, t2, t3 FieldElement
-	var i int32
+	var i int
 
 	FeSquare(&t0, z)        // 2^1
 	FeSquare(&t1, &t0)      // 2^2
@@ -769,8 +759,8 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 		FeMul(&p.X, &p.X, &SqrtM1)
 
 		FeToBytes(&tmpX, &p.X)
-		for i := 0; i < len(tmpX); i++ {
-			tmp2[31-i] = tmpX[i]
+		for i, v := range tmpX {
+			tmp2[31-i] = v
 		}
 	}
 
@@ -864,11 +854,11 @@ func geMixedSub(r *CompletedGroupElement, p *ExtendedGroupElement, q *PreCompute
 }
 
 func slide(r *[256]int8, a *[32]byte) {
-	for i := 0; i < len(r); i++ {
+	for i := range r {
 		r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
 	}
 
-	for i := 0; i < len(r); i++ {
+	for i := range r {
 		if r[i] != 0 {
 			for b := 1; b <= 6 && i+b < 256; b++ {
 				if r[i+b] != 0 {
@@ -973,10 +963,8 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 	bAbs := b - (((-bNegative) & b) << 1)
 
 	t.Zero()
-	var x PreComputedGroupElement
-	for i := 0; i < 8; i++ {
-		x = base[pos][i]
-		PreComputedGroupElementCMove(t, &x, equal(bAbs, i+1))
+	for i := int32(0); i < 8; i++ {
+		PreComputedGroupElementCMove(t, &base[pos][i], equal(bAbs, i+1))
 	}
 	FeCopy(&minusT.yPlusX, &t.yMinusX)
 	FeCopy(&minusT.yMinusX, &t.yPlusX)
@@ -995,9 +983,9 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	var e [64]int8
 
-	for i := 0; i < len(a); i++ {
-		e[2*i] = int8(a[i] & 15)
-		e[2*i+1] = int8((a[i] >> 4) & 15)
+	for i, v := range a {
+		e[2*i] = int8(v & 15)
+		e[2*i+1] = int8((v >> 4) & 15)
 	}
 
 	// each e[i] is between 0 and 15 and e[63] is between 0 and 7.
@@ -1014,7 +1002,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	h.Zero()
 	var t PreComputedGroupElement
 	var r CompletedGroupElement
-	for i := 1; i < 64; i += 2 {
+	for i := int32(1); i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
@@ -1031,7 +1019,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	s.Double(&r)
 	r.ToExtended(h)
 
-	for i := 0; i < 64; i += 2 {
+	for i := int32(0); i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
@@ -1050,7 +1038,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 //
 //	s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
 //	where l = 2^252 + 27742317777372353535851937790883648493.
-func ScMulAdd(s *[32]byte, a, b, c [32]byte) {
+func ScMulAdd(s, a, b, c *[32]byte) {
 	a0 := 2097151 & load3(a[:])
 	a1 := 2097151 & (load4(a[2:]) >> 5)
 	a2 := 2097151 & (load3(a[5:]) >> 2)
@@ -1483,7 +1471,7 @@ func ScMulAdd(s *[32]byte, a, b, c [32]byte) {
 //
 //	s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //	where l = 2^252 + 27742317777372353535851937790883648493.
-func ScReduce(out *[32]byte, s [64]byte) {
+func ScReduce(out *[32]byte, s *[64]byte) {
 	s0 := 2097151 & load3(s[:])
 	s1 := 2097151 & (load4(s[2:]) >> 5)
 	s2 := 2097151 & (load3(s[5:]) >> 2)
@@ -1803,3 +1791,20 @@ func ScReduce(out *[32]byte, s [64]byte) {
 
 // order is the order of Curve25519 in little-endian form.
 var order = [4]uint64{0x5812631a5cf5d3ed, 0x14def9dea2f79cd6, 0, 0x1000000000000000}
+
+// ScMinimal returns true if the given scalar is less than the order of the
+// curve.
+func ScMinimal(scalar *[32]byte) bool {
+	for i := 3; ; i-- {
+		v := binary.LittleEndian.Uint64(scalar[i*8:])
+		if v > order[i] {
+			return false
+		} else if v < order[i] {
+			break
+		} else if i == 0 {
+			return false
+		}
+	}
+
+	return true
+}

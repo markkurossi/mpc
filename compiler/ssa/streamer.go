@@ -180,7 +180,34 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 			if err != nil {
 				return nil, nil, err
 			}
-			wires = append(wires, w)
+			if len(w) != int(in.Type.Bits) {
+				// Const values are cast to different value
+				// sizes. Make sure wire length matches type size.
+				cw := make([]circuit.Wire, in.Type.Bits)
+
+				var pad circuit.Wire
+				if in.Type.Type == types.TInt && len(w) > 0 {
+					// Sign expansion.
+					pad = w[len(w)-1]
+				} else {
+					zero, err = prog.ZeroWire(conn, streaming)
+					if err != nil {
+						return nil, nil, err
+					}
+					pad = zero.ID()
+				}
+
+				for bit := 0; bit < int(in.Type.Bits); bit++ {
+					if bit < len(w) {
+						cw[bit] = w[bit]
+					} else {
+						cw[bit] = pad
+					}
+				}
+				wires = append(wires, cw)
+			} else {
+				wires = append(wires, w)
+			}
 		}
 
 		var out []circuit.Wire

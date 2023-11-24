@@ -68,30 +68,30 @@ func feCSwap(f, g *fieldElement, b int32) {
 }
 
 // load3 reads a 24-bit, little-endian value from in.
-func load3(in []byte, ofs int) int64 {
+func load3(in []byte) int64 {
 	var r int64
-	r = int64(in[ofs])
-	r |= int64(in[ofs+1]) << 8
-	r |= int64(in[ofs+2]) << 16
+	r = int64(in[0])
+	r |= int64(in[1]) << 8
+	r |= int64(in[2]) << 16
 	return r
 }
 
 // load4 reads a 32-bit, little-endian value from in.
-func load4(in []byte, ofs int) int64 {
-	return int64(binary.GetUint32LSB(in, ofs))
+func load4(in []byte) int64 {
+	return int64(binary.GetUint32LSB(in))
 }
 
 func feFromBytes(dst *fieldElement, src *[32]byte) {
-	h0 := load4(src, 0)
-	h1 := load3(src, 4) << 6
-	h2 := load3(src, 7) << 5
-	h3 := load3(src, 10) << 3
-	h4 := load3(src, 13) << 2
-	h5 := load4(src, 16)
-	h6 := load3(src, 20) << 7
-	h7 := load3(src, 23) << 5
-	h8 := load3(src, 26) << 4
-	h9 := load3(src, 29) << 2
+	h0 := load4(src[:])
+	h1 := load3(src[4:]) << 6
+	h2 := load3(src[7:]) << 5
+	h3 := load3(src[10:]) << 3
+	h4 := load3(src[13:]) << 2
+	h5 := load4(src[16:])
+	h6 := load3(src[20:]) << 7
+	h7 := load3(src[23:]) << 5
+	h8 := load3(src[26:]) << 4
+	h9 := load3(src[29:]) << 2
 
 	var carry [10]int64
 	carry[9] = (h9 + 1<<24) >> 25
@@ -736,7 +736,7 @@ func feMul121666(h, f *fieldElement) {
 // feInvert sets out = z^-1.
 func feInvert(out, z *fieldElement) {
 	var t0, t1, t2, t3 fieldElement
-	var i int
+	var i int32
 
 	feSquare(&t0, z)
 	for i = 1; i < 1; i++ {
@@ -815,7 +815,7 @@ func scalarMult(out, in, base *[32]byte) {
 	swap := int32(0)
 	var b int32
 	for pos := 254; pos >= 0; pos-- {
-		b = e[pos/8] >> (pos & 7)
+		b = e[pos/8] >> uint(pos&7)
 		b &= 1
 		swap ^= int32(b)
 		feCSwap(&x2, &x3, swap)

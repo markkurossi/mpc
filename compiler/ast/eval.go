@@ -9,9 +9,14 @@ package ast
 import (
 	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/types"
+)
+
+const (
+	debugEval = false
 )
 
 // Eval implements the compiler.ast.AST.Eval for list statements.
@@ -117,6 +122,17 @@ func (ast *If) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
 
+	if debugEval {
+		fmt.Printf("Call.Eval: %s(", ast.Ref)
+		for idx, expr := range ast.Exprs {
+			if idx > 0 {
+				fmt.Print(", ")
+			}
+			fmt.Printf("%v", expr)
+		}
+		fmt.Println(")")
+	}
+
 	// Resolve called.
 	var pkgName string
 	if len(ast.Ref.Name.Package) > 0 {
@@ -137,6 +153,56 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	bi, ok := builtins[ast.Ref.Name.Name]
 	if ok && bi.Eval != nil {
 		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
+	}
+
+	// Resolve name as type.
+	typeName := &TypeInfo{
+		Point: ast.Point,
+		Type:  TypeName,
+		Name:  ast.Ref.Name,
+	}
+	typeInfo, err := typeName.Resolve(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	if len(ast.Exprs) != 1 {
+		return ssa.Undefined, false, nil
+	}
+	constVal, ok, err := ast.Exprs[0].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	if !ok {
+		return ssa.Undefined, false, nil
+	}
+
+	switch typeInfo.Type {
+	case types.TInt, types.TUint:
+		switch constVal.Type.Type {
+		case types.TInt, types.TUint:
+			if !typeInfo.Concrete() {
+				typeInfo.Bits = constVal.Type.Bits
+				typeInfo.SetConcrete(true)
+			}
+			if constVal.Type.MinBits > typeInfo.Bits {
+				typeInfo.MinBits = typeInfo.Bits
+			} else {
+				typeInfo.MinBits = constVal.Type.MinBits
+			}
+			cast := constVal
+			cast.Type = typeInfo
+			if constVal.HashCode() != cast.HashCode() {
+				panic("const cast changes value HashCode")
+			}
+			if !constVal.Equal(&cast) {
+				panic("const cast changes value equality")
+			}
+			return cast, true, nil
+
+		default:
+			return ssa.Undefined, false,
+				ctx.Errorf(ast.Ref, "casting %T not supported", constVal.Type)
+		}
 	}
 
 	return ssa.Undefined, false, nil
@@ -292,6 +358,33 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval > rval, types.Bool), true, nil
 		case BinaryGe:
 			return gen.Constant(lval >= rval, types.Bool), true, nil
+		default:
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
+		}
+
+	case *big.Int:
+		var rval *big.Int
+		switch rv := r.ConstValue.(type) {
+		case int32:
+			rval = big.NewInt(int64(rv))
+		case uint64:
+			rval = big.NewInt(int64(rv))
+		case *big.Int:
+			rval = rv
+		default:
+			return ssa.Undefined, false, ctx.Errorf(ast.Right,
+				"invalid r-value %v (%T): %v %v %v", rv, rv,
+				l, ast.Op, r)
+		}
+		fmt.Printf(" -> %v %s %v: %v\n", lval, ast.Op, rval, l.Type)
+		switch ast.Op {
+		case BinaryLshift:
+			return gen.Constant(big.NewInt(0).Lsh(lval, uint(rval.Uint64())),
+				l.Type), true, nil
+		case BinaryBor:
+			return gen.Constant(big.NewInt(0).Or(lval, rval),
+				l.Type), true, nil
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
@@ -544,37 +637,27 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, ctx.Errorf(ast.Type, "%s is not a type",
 			ast.Type)
 	}
+	if typeInfo.Type == types.TArray {
+		// Arrays are made in Make.SSA.
+		return ssa.Undefined, false, nil
+	}
 	if typeInfo.Bits != 0 {
 		return ssa.Undefined, false, ctx.Errorf(ast.Type,
 			"can't make specified type %s", typeInfo)
 	}
-
 	constVal, _, err := ast.Exprs[0].Eval(env, ctx, gen)
 	if err != nil {
-		return ssa.Undefined, false, ctx.Errorf(ast.Exprs[0], "%s", err)
+		return ssa.Undefined, false, ctx.Error(ast.Exprs[0], err.Error())
 	}
-
 	length, err := constVal.ConstInt()
 	if err != nil {
 		return ssa.Undefined, false, ctx.Errorf(ast.Exprs[0],
 			"non-integer (%T) len argument in %s: %s", constVal, ast, err)
 	}
-	if typeInfo.Type == types.TArray {
-		if !typeInfo.ElementType.Concrete() {
-			return ssa.Undefined, false, ctx.Errorf(ast.Type,
-				"unspecified array element type: %s", typeInfo.ElementType)
-		}
-		typeInfo.IsConcrete = true
-		typeInfo.ArraySize = length
-		typeInfo.Bits = typeInfo.ElementType.Bits * length
-		typeInfo.MinBits = typeInfo.Bits
-		v := gen.AnonVal(typeInfo)
-
-		return v, true, nil
-	}
 
 	typeInfo.IsConcrete = true
 	typeInfo.Bits = length
 
+	// Create typeref constant.
 	return gen.Constant(typeInfo, types.Undefined), true, nil
 }

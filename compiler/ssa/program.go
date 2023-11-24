@@ -259,6 +259,11 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 	if len(consts) > 0 && prog.Params.Verbose {
 		fmt.Printf("Defined %d constants: %d wires\n",
 			len(consts), constWires)
+		if false {
+			for _, c := range consts {
+				fmt.Printf(" - %s:\t%v\n", c.Name, c.ConstValue)
+			}
+		}
 	}
 	return nil
 }

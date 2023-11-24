@@ -27,7 +27,5 @@ func ScalarMult(dst, in, base *[32]byte) {
 // coordinates of group points, base is the standard generator and all values
 // are in little-endian form.
 func ScalarBaseMult(dst, in *[32]byte) {
-	var bp [32]byte
-	copy(bp, basePoint)
-	ScalarMult(dst, in, &bp)
+	ScalarMult(dst, in, &basePoint)
 }

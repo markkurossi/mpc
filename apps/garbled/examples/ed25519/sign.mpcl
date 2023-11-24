@@ -3,35 +3,37 @@
 // This example implements Ed25519 signature computation. The Ed25519
 // keypair is:
 //
-//	pub  : eeaf1edd378f775a72e6ed706fd30077d3b21595af99898f3cdd0b450482b76f
+//	pub  : 8ae64963506002e267a59665e9a2e6f9348cc159be53747894478e182ece9fcb
 //
-//	priv : 189d087817983d5d68c5fae03a74a719b49f4f0a0a82fe83f265c92e88faaa27
-//	       eeaf1edd378f775a72e6ed706fd30077d3b21595af99898f3cdd0b450482b76f
+//	priv : 2f8d55706c0cb226d75aafe2f4c4648e5cd32bd51fbc9764d54908c67812aee2
+//	       8ae64963506002e267a59665e9a2e6f9348cc159be53747894478e182ece9fcb
 //
 // The Garbler and Evaluator share the private key as two random
 // shares. The private key is contructed during the signature
 // computation by XOR:ing the random shares together:
 //
-//	privG: 5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd
-//	       49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449
+//	privG: a66e6bb15b6ad6b19bacf163573d0179de7f62bafcd6aba521d525a0d7b79f7e
+//	       153801bc47f6d566a274e370f615f140f20202ab80ec88fdd611b726b8526726
 //
-//	privE: 46eb82a021d88960fb13388b0e76ba13b84524ffe114d7f3a728b39efc185eea
-//	       a7137132182bab7504daf200d882b787ee8b9b1c9f41be9c38fb4e0ba1aff326
+//
+//	privE: 89e33ec1376664974cf65e81a3f965f782ac496fe36a3cc1f49c2d66afa5319c
+//	       9fde48df1796d784c5d175151fb717b9c68ec3f23ebffc854256393e969cf8ed
 //
 //	priv = privG ^ privE
 //
 // Run the Evaluator with one input: the Evaluator's private key share:
 //
-//	$ ./garbled -e -v -stream -i 0x46eb82a021d88960fb13388b0e76ba13b84524ffe114d7f3a728b39efc185eeaa7137132182bab7504daf200d882b787ee8b9b1c9f41be9c38fb4e0ba1aff326
+//	$ ./garbled -e -v -stream -i 0x89e33ec1376664974cf65e81a3f965f782ac496fe36a3cc1f49c2d66afa5319c9fde48df1796d784c5d175151fb717b9c68ec3f23ebffc854256393e969cf8ed
 //
 // The Garbler takes two inputs: the message to sign, and the
 // Garbler's private key share:
 //
-//	$ ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0x5e768ad83640b43d93d6c26b34021d0a0cda6bf5eb962970554d7ab074e2f4cd49bc6fef2fa4dc2f763c1f70b751b7f03d398e8930d837130426454ea52d4449 examples/ed25519/sign.mpcl
+//	$ ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0xa66e6bb15b6ad6b19bacf163573d0179de7f62bafcd6aba521d525a0d7b79f7e153801bc47f6d566a274e370f615f140f20202ab80ec88fdd611b726b8526726 examples/ed25519/sign.mpcl
 //
 // The result signature is:
 //
-//	Result[0]: b71a55aece64574bedd94729a9ca95a87b5fe0a587fecf50ff0238805132c1291e08cb871016cb4f3935bd45423626f61dc648a91affda3671b19d7b28e03505
+//	Result[0]: f43c1cf1755345852211942af0838414334eec9cbf36e26a9f9e8d4bb720deb145ffbeec82249c875116757441206bcdc56b501e750f1f590917d772dfee980f
+
 package main
 
 import (

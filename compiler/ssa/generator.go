@@ -321,7 +321,11 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			bits = 32
 		}
 
-		v.Type.Bits = bits
+		if ti.Bits == 0 {
+			v.Type.Bits = bits
+		} else {
+			v.Type.Bits = ti.Bits
+		}
 		v.Type.MinBits = minBits
 
 	case bool:

@@ -345,6 +345,12 @@ type Env struct {
 	Bindings *ssa.Bindings
 }
 
+// Debug print the environment.
+func (env *Env) Debug() {
+	fmt.Print("Env: ")
+	env.Bindings.Debug()
+}
+
 // Get gets the value binding from the environment.
 func (env *Env) Get(name string) (ssa.Binding, bool) {
 	return env.Bindings.Get(name)
@@ -352,7 +358,7 @@ func (env *Env) Get(name string) (ssa.Binding, bool) {
 
 // Set sets the value binding to the environment.
 func (env *Env) Set(v ssa.Value, val *ssa.Value) {
-	env.Bindings.Set(v, val)
+	env.Bindings.Define(v, val)
 }
 
 // List implements an AST list statement.
@@ -583,7 +589,14 @@ type Call struct {
 }
 
 func (ast *Call) String() string {
-	return fmt.Sprintf("%s()", ast.Ref)
+	str := fmt.Sprintf("%s(", ast.Ref)
+	for idx, expr := range ast.Exprs {
+		if idx > 0 {
+			str += ", "
+		}
+		str += fmt.Sprintf("%v", expr)
+	}
+	return str + ")"
 }
 
 // Return implements an AST return statement.
