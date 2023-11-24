@@ -288,7 +288,7 @@ form assembly:
 # TODO
 
  - [ ] Shortlist
-   - [ ] bug.mpcl without `-stream`
+   - [x] bug.mpcl without `-stream`
    - [x] `make(int, 32)`
    - [x] `&basePoint` in `curve25519/doc.mpcl`
    - [ ] create `Value.Cast(type)` and refactor to use it
