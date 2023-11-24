@@ -259,9 +259,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		}
 		if ok {
 			gen.AddConstant(constVal)
-			v := gen.AnonVal(constVal.Type)
-			block.AddInstr(ssa.NewMovInstr(constVal, v))
-			values = append(values, v)
+			values = append(values, constVal)
 		} else {
 			var v []ssa.Value
 			block, v, err = expr.SSA(block, ctx, gen)
