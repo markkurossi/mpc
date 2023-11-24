@@ -88,7 +88,30 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 			if err != nil {
 				return err
 			}
-			wires = append(wires, w)
+			if len(w) != int(in.Type.Bits) {
+				// Const values are cast to different value
+				// sizes. Make sure wire length matches type size.
+				cw := make([]*circuits.Wire, in.Type.Bits)
+
+				var pad *circuits.Wire
+				if in.Type.Type == types.TInt && len(w) > 0 {
+					// Sign extension.
+					pad = w[len(w)-1]
+				} else {
+					pad = cc.ZeroWire()
+				}
+
+				for bit := 0; bit < int(in.Type.Bits); bit++ {
+					if bit < len(w) {
+						cw[bit] = w[bit]
+					} else {
+						cw[bit] = pad
+					}
+				}
+				wires = append(wires, cw)
+			} else {
+				wires = append(wires, w)
+			}
 		}
 		switch instr.Op {
 		case Iadd, Uadd:
