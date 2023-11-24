@@ -290,7 +290,7 @@ form assembly:
  - [ ] Shortlist
    - [ ] bug.mpcl without `-stream`
    - [x] `make(int, 32)`
-   - [ ] `&basePoint` in `curve25519/doc.mpcl`
+   - [x] `&basePoint` in `curve25519/doc.mpcl`
    - [ ] create `Value.Cast(type)` and refactor to use it
    - [ ] `for in range`
    - [ ] Binary.Eval for different int types

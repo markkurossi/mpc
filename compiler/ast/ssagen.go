@@ -1532,90 +1532,30 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
-			var bindings *ssa.Bindings
-			var containerType types.Info
-			var elementType types.Info
-			var elementOffset types.Size
-			var ptrName string
-			var ptrScope ssa.Scope
-
-			if len(v.Name.Package) == 0 {
-				// Identifier
-				ptrName = v.Name.Name
-
-				// First check block bindings.
-				b, ok := block.Bindings.Get(v.Name.Name)
-				if ok {
-					bindings = block.Bindings
-				} else {
-					// Check names in the current package.
-					b, ok = ctx.Package.Bindings.Get(v.Name.Name)
-					if ok {
-						bindings = ctx.Package.Bindings
-					} else {
-						return nil, nil,
-							ctx.Errorf(ast, "undefined: %s", v.Name)
-					}
-				}
-				containerType = b.Type
-				elementType = b.Type
-				elementOffset = 0
-				ptrScope = b.Scope
-			} else {
-				// Qualified name.
-
-				// Check block bindings.
-				b, ok := block.Bindings.Get(v.Name.Package)
-				if ok {
-					bindings = block.Bindings
-				} else {
-					// Check names in the current package.
-					b, ok = ctx.Package.Bindings.Get(v.Name.Package)
-					if ok {
-						bindings = ctx.Package.Bindings
-					} else {
-						return nil, nil,
-							ctx.Errorf(ast, "undefined: %s", v.Name)
-					}
-				}
-				containerType = b.Type
-				bValue := b.Value(block, gen)
-
-				var it types.Info
-				if bValue.Type.Type == types.TPtr {
-					it = *bValue.Type.ElementType
-				} else {
-					it = bValue.Type
-				}
-
-				elementType, elementOffset, err = lookupElement(ctx, ast,
-					it, v.Name.Name)
-				if err != nil {
-					return nil, nil, err
-				}
-				if bValue.Type.Type == types.TPtr {
-					ptrName = bValue.PtrInfo.Name
-					ptrScope = bValue.PtrInfo.Scope
-					bindings = bValue.PtrInfo.Bindings
-					containerType = bValue.PtrInfo.ContainerType
-				} else {
-					ptrScope = b.Scope
-					ptrName = v.Name.Package
-				}
+			lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, v)
+			if err != nil {
+				return nil, nil, err
 			}
+			if !ok {
+				return nil, nil, ctx.Errorf(ast, "%s undefied", v.Name)
+			}
+
+			valueType := lrv.ValueType()
+
 			t := gen.AnonVal(types.Info{
 				Type:        types.TPtr,
 				IsConcrete:  true,
-				Bits:        elementType.Bits,
-				MinBits:     elementType.Bits,
-				ElementType: &elementType,
+				Bits:        valueType.Bits,
+				MinBits:     valueType.MinBits,
+				ElementType: &valueType,
 			})
+			bpi := lrv.BasePtrInfo()
 			t.PtrInfo = &ssa.PtrInfo{
-				Name:          ptrName,
-				Scope:         ptrScope,
-				Bindings:      bindings,
-				ContainerType: containerType,
-				Offset:        elementOffset,
+				Name:          bpi.Name,
+				Scope:         bpi.Scope,
+				Bindings:      bpi.Bindings,
+				ContainerType: bpi.ContainerType,
+				Offset:        valueType.Offset,
 			}
 			return block, []ssa.Value{t}, nil
 
