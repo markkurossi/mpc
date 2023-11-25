@@ -394,11 +394,18 @@ type Func struct {
 	This         *Variable
 	Args         []*Variable
 	Return       []*Variable
+	Returns      []*ReturnInfo
 	NamedReturn  bool
 	Body         List
 	End          utils.Point
 	NumInstances int
 	Annotations  Annotations
+}
+
+// ReturnInfo provide information about function return values.
+type ReturnInfo struct {
+	Return *Return
+	Types  []types.Info
 }
 
 // Annotations specify function annotations.
