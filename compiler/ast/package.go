@@ -7,6 +7,7 @@
 package ast
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -44,11 +45,11 @@ func NewPackage(name, source string, annotations Annotations) *Package {
 // Compile compiles the package.
 func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 
-	main, ok := pkg.Functions["main"]
-	if !ok {
-		return nil, nil, ctx.Errorf(utils.Point{
+	main, err := pkg.Main()
+	if err != nil {
+		return nil, nil, ctx.Error(utils.Point{
 			Source: pkg.Source,
-		}, "no main function defined")
+		}, err.Error())
 	}
 
 	gen := ssa.NewGenerator(ctx.Params)
@@ -168,6 +169,15 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 	}
 
 	return program, main.Annotations, nil
+}
+
+// Main returns package's main function.
+func (pkg *Package) Main() (*Func, error) {
+	main, ok := pkg.Functions["main"]
+	if !ok {
+		return nil, errors.New("no main function defined")
+	}
+	return main, nil
 }
 
 func flattenStruct(t types.Info) circuit.IO {

@@ -261,7 +261,7 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 		input, err := circ.Inputs[1].Parse(inputFlag)
 		if err != nil {
 			conn.Close()
-			return err
+			return fmt.Errorf("%s: %v", file, err)
 		}
 		result, err := circuit.Evaluator(conn, oti, circ, input, verbose)
 		conn.Close()
@@ -319,7 +319,7 @@ func garblerMode(oti ot.OT, file string, params *utils.Params) error {
 
 	input, err := circ.Inputs[0].Parse(inputFlag)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s: %v", file, err)
 	}
 	result, err := circuit.Garbler(conn, oti, circ, input, verbose)
 	if err != nil {

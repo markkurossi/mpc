@@ -137,7 +137,11 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 	}
 	input, err := program.Inputs[0].Parse(inputFlag)
 	if err != nil {
-		return nil, nil, err
+		main, err2 := pkg.Main()
+		if err2 != nil {
+			return nil, nil, err
+		}
+		return nil, nil, ctx.Errorf(main.Location(), "%s: %v", main.Name, err)
 	}
 
 	fmt.Printf(" + In1: %s\n", program.Inputs[0])

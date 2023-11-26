@@ -57,7 +57,7 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 		conn.Close()
 
 		if err != nil && err != io.EOF {
-			return err
+			return fmt.Errorf("%s: %v", nc.RemoteAddr(), err)
 		}
 
 		mpc.PrintResults(result, outputs)
