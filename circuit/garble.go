@@ -244,11 +244,11 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	// Inputs.
 	switch g.Op {
 	case XOR, XNOR, AND, OR:
-		b = wires[g.Input1.Int()]
+		b = wires[g.Input1]
 		fallthrough
 
 	case INV:
-		a = wires[g.Input0.Int()]
+		a = wires[g.Input0]
 
 	default:
 		return nil, fmt.Errorf("invalid gate type %s", g.Op)
@@ -404,7 +404,7 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 	default:
 		return nil, fmt.Errorf("invalid operand %s", g.Op)
 	}
-	wires[g.Output.Int()] = c
+	wires[g.Output] = c
 
 	return table[start : start+count], nil
 }

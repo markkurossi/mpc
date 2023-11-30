@@ -259,6 +259,9 @@ const InvalidWire Wire = math.MaxUint32
 
 // Int returns the wire ID as integer.
 func (w Wire) Int() int {
+	if uint64(w) > math.MaxInt {
+		panic(w)
+	}
 	return int(w)
 }
 
