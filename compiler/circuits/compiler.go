@@ -32,7 +32,6 @@ type Compiler struct {
 	pending         []*Gate
 	assigned        []*Gate
 	compiled        []circuit.Gate
-	wiresX          map[string][]*Wire
 	invI0Wire       *Wire
 	zeroWire        *Wire
 	oneWire         *Wire
