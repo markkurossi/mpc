@@ -14,6 +14,50 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
+// IO specifies circuit input and output arguments.
+type IO []IOArg
+
+// Size computes the size of the circuit input and output arguments in
+// bits.
+func (io IO) Size() int {
+	var sum int
+	for _, a := range io {
+		sum += int(a.Type.Bits)
+	}
+	return sum
+}
+
+func (io IO) String() string {
+	var str = ""
+	for i, a := range io {
+		if i > 0 {
+			str += ", "
+		}
+		if len(a.Name) > 0 {
+			str += a.Name + ":"
+		}
+		str += a.Type.String()
+	}
+	return str
+}
+
+// Split splits the value into separate I/O arguments.
+func (io IO) Split(in *big.Int) []*big.Int {
+	var result []*big.Int
+	var bit int
+	for _, arg := range io {
+		r := big.NewInt(0)
+		for i := 0; i < int(arg.Type.Bits); i++ {
+			if in.Bit(bit) == 1 {
+				r = big.NewInt(0).SetBit(r, i, 1)
+			}
+			bit++
+		}
+		result = append(result, r)
+	}
+	return result
+}
+
 // IOArg describes circuit input argument.
 type IOArg struct {
 	Name     string
