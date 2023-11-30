@@ -11,11 +11,13 @@ import (
 	"testing"
 )
 
-var addTests = []struct {
+type intTest struct {
 	a int64
 	b int64
 	r int64
-}{
+}
+
+var addTests = []intTest{
 	{
 		a: 0x0000ffff,
 		b: 0x00000001,
@@ -50,6 +52,319 @@ func TestIntAdd(t *testing.T) {
 		r := NewInt(0).Add(a, b)
 		if r.Int64() != test.r {
 			t.Errorf("%v+%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var andTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0x00001111,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x00000000,
+	},
+}
+
+func TestIntAnd(t *testing.T) {
+	for _, test := range andTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).And(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v&%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var divTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0x0000000f,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: -1,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 5,
+	},
+}
+
+func TestIntDiv(t *testing.T) {
+	for _, test := range divTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Div(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v/%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var lshTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 1,
+		r: 0x0001fffe,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x0000ffff,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 40,
+	},
+	{
+		a: 1,
+		b: 63,
+		r: -9223372036854775808,
+	},
+}
+
+func TestIntLsh(t *testing.T) {
+	for _, test := range lshTests {
+		a := NewInt(test.a)
+		r := NewInt(0).Lsh(a, uint(test.b))
+		if r.Int64() != test.r {
+			t.Errorf("%v<<%v=%v(%x), expected %v\n",
+				test.a, test.b, r.Int64(), r.Int64(), test.r)
+		}
+	}
+}
+
+var modTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x0000ffff,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 0,
+	},
+}
+
+func TestIntMod(t *testing.T) {
+	for _, test := range modTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Mod(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v%%%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var mulTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0x1110eeef,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x00000000,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 20,
+	},
+	{
+		a: 0x7fffffffffffffff,
+		b: 2,
+		r: -2,
+	},
+	{
+		a: 0x7fffffffffffffff,
+		b: 0x00000000ffffffff,
+		r: 0x7fffffff00000001,
+	},
+}
+
+func TestIntMul(t *testing.T) {
+	for _, test := range mulTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Mul(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v*%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var orTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0x0000ffff,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x0000ffff,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 10,
+	},
+	{
+		a: 0x7fffffffffffffff,
+		b: 2,
+		r: 0x7fffffffffffffff,
+	},
+	{
+		a: 0x0555555555555555,
+		b: 0x0aaaaaaaaaaaaaaa,
+		r: 0x0fffffffffffffff,
+	},
+}
+
+func TestIntOr(t *testing.T) {
+	for _, test := range orTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Or(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v|%v=%v, expected %x\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var rshTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 1,
+		r: 0x00007fff,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x0000ffff,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 2,
+	},
+	{
+		a: 1,
+		b: 63,
+		r: 0,
+	},
+}
+
+func TestIntRsh(t *testing.T) {
+	for _, test := range rshTests {
+		a := NewInt(test.a)
+		r := NewInt(0).Rsh(a, uint(test.b))
+		if r.Int64() != test.r {
+			t.Errorf("%v>>%v=%v(%x), expected %v\n",
+				test.a, test.b, r.Int64(), r.Int64(), test.r)
+		}
+	}
+}
+
+var subTests = []intTest{
+	{
+		a: 0x00010000,
+		b: 0x00000001,
+		r: 0x0000ffff,
+	},
+	{
+		a: 0x0000ffff,
+		b: -1,
+		r: 0x00010000,
+	},
+	{
+		a: math.MaxInt64,
+		b: -1,
+		r: math.MinInt64,
+	},
+	{
+		a: math.MinInt64,
+		b: 1,
+		r: math.MaxInt64,
+	},
+	{
+		a: math.MaxInt64,
+		b: 1,
+		r: math.MaxInt64 - 1,
+	},
+}
+
+func TestIntSub(t *testing.T) {
+	for _, test := range subTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Sub(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v-%v=%v, expected %v\n",
+				test.a, test.b, r.Int64(), test.r)
+		}
+	}
+}
+
+var xorTests = []intTest{
+	{
+		a: 0x0000ffff,
+		b: 0x00001111,
+		r: 0x0000eeee,
+	},
+	{
+		a: 0x0000ffff,
+		b: 0x00000000,
+		r: 0x0000ffff,
+	},
+	{
+		a: 10,
+		b: 2,
+		r: 8,
+	},
+	{
+		a: 0x7fffffffffffffff,
+		b: 2,
+		r: 0x7ffffffffffffffd,
+	},
+	{
+		a: 0x0555555555555555,
+		b: 0x0aaaaaaaaaaaaaaa,
+		r: 0x0fffffffffffffff,
+	},
+}
+
+func TestIntXor(t *testing.T) {
+	for _, test := range xorTests {
+		a := NewInt(test.a)
+		b := NewInt(test.b)
+		r := NewInt(0).Xor(a, b)
+		if r.Int64() != test.r {
+			t.Errorf("%v^%v=%v, expected %x\n",
 				test.a, test.b, r.Int64(), test.r)
 		}
 	}
