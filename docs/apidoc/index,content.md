@@ -1,8 +1,8 @@
 # Multi-Party Computation Language (MPCL)
 
 Multi-Party Computation Language is a high-level programming language
-that implements secure two-party computation with [Garbled
-circuit](https://en.wikipedia.org/wiki/Garbled_circuit) protocol. The
+that implements secure two-party computation with [Garbled Circuit
+Protocol](https://en.wikipedia.org/wiki/Garbled_circuit). The
 [Go](https://golang.org) programming language highly inspires the
 MCPL. Therefore, it is easy to use existing Go functions and programs
 in MPCL with minor modifications. However, the goal is not to make
@@ -15,7 +15,7 @@ evaluator. Both parties run the `garbled` application with
 appropritate arguments:
 
 `-e`
-: specifies circuit _evaluator_ mode. If the `-e` options is not
+: specifies circuit _evaluator_ mode. If the `-e` option is not
   specified, the peer runs in the _garbler_ mode.
 
 `-i`
@@ -23,7 +23,7 @@ appropritate arguments:
   specified by providing the `-i` option multiple times, or by
   separating input values with comma.
 
-For example, this is how you can run the [Yao's Millionaires'
+For example, this is how you can run [Yao's Millionaires'
 Problem](https://en.wikipedia.org/wiki/Yao%27s_Millionaires%27_Problem). The
 evaluator is started with input 800000:
 
@@ -54,7 +54,7 @@ input is smaller than evaluator's input.
 
 ## Command Line Arguments
 
-The garbled application takes the following command line arguemnts:
+The garbled application takes the following command line arguments:
 
 `-O`
 : optimization level (default 1 enabling all current optimizations).
