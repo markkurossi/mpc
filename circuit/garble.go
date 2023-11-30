@@ -168,7 +168,7 @@ type Garbled struct {
 
 // Lambda returns the lambda value of the wire.
 func (g *Garbled) Lambda(wire Wire) uint {
-	if g.Wires[int(wire)].L0.S() {
+	if g.Wires[wire].L0.S() {
 		return 1
 	}
 	return 0
@@ -176,13 +176,13 @@ func (g *Garbled) Lambda(wire Wire) uint {
 
 // SetLambda sets the lambda value of the wire.
 func (g *Garbled) SetLambda(wire Wire, val uint) {
-	w := g.Wires[int(wire)]
+	w := g.Wires[wire]
 	if val == 0 {
 		w.L0.SetS(false)
 	} else {
 		w.L0.SetS(true)
 	}
-	g.Wires[int(wire)] = w
+	g.Wires[wire] = w
 }
 
 // Garble garbles the circuit.
