@@ -330,22 +330,21 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		switch ast.Type {
 		case UnaryNot:
 			return gen.Constant(!val, types.Bool), true, nil
-		default:
-			return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-				"invalid unary expression: %s%T", ast.Type, val)
 		}
 	case int32:
 		switch ast.Type {
 		case UnaryMinus:
 			return gen.Constant(-val, types.Int32), true, nil
-		default:
-			return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-				"Unary.Eval: '%s%T' not implemented yet", ast.Type, val)
 		}
-	default:
-		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-			"invalid value %s%T", ast.Type, val)
+	case *mpa.Int:
+		switch ast.Type {
+		case UnaryMinus:
+			r := mpa.NewInt(0)
+			return gen.Constant(r.Sub(r, val), expr.Type), true, nil
+		}
 	}
+	return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+		"invalid unary expression: %s%T", ast.Type, ast.Expr)
 }
 
 // Eval implements the compiler.ast.AST.Eval for slice expressions.

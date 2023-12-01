@@ -91,7 +91,7 @@ func TestIntCmp(t *testing.T) {
 	c := NewInt(0)
 	cmp := a.Cmp(c)
 	if cmp >= 0 {
-		t.Errorf("%v.Cmp(%v)=%v\n", a, c, cmp)
+		t.Errorf("%v.Cmp(%v)=%v\n", a.Int64(), c.Int64(), cmp)
 	}
 }
 
@@ -303,6 +303,14 @@ func TestIntRsh(t *testing.T) {
 	}
 }
 
+func TestIntSetString(t *testing.T) {
+	i, ok := NewInt(0).SetString("0xdeadbeef", 0)
+	if !ok {
+		t.Fatalf("SetString failed")
+	}
+	_ = i
+}
+
 var subTests = []intTest{
 	{
 		a: 0x00010000,
@@ -329,25 +337,35 @@ var subTests = []intTest{
 		b: 1,
 		r: math.MaxInt64 - 1,
 	},
-}
-
-func TestIntSetString(t *testing.T) {
-	i, ok := NewInt(0).SetString("0xdeadbeef", 0)
-	if !ok {
-		t.Fatalf("SetString failed")
-	}
-	_ = i
+	{
+		a: 0,
+		b: 5,
+		r: -5,
+	},
 }
 
 func TestIntSub(t *testing.T) {
-	for _, test := range subTests {
+	for idx, test := range subTests {
 		a := NewInt(test.a)
 		b := NewInt(test.b)
 		r := NewInt(0).Sub(a, b)
 		if r.Int64() != test.r {
-			t.Errorf("%v-%v=%v, expected %v\n",
-				test.a, test.b, r.Int64(), test.r)
+			t.Errorf("test-%v: %v-%v=%v, expected %v\n",
+				idx, test.a, test.b, r.Int64(), test.r)
 		}
+	}
+}
+
+func TestIntSubNegative(t *testing.T) {
+	val := NewInt(5)
+	r := NewInt(0)
+	r.Sub(r, val)
+
+	add := NewInt(10)
+	r.Add(r, add)
+	result := r.Int64()
+	if result != 5 {
+		t.Errorf("TestIntSubNegative: +10 failed, got %v", result)
 	}
 }
 
