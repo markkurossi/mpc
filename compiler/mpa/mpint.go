@@ -160,7 +160,7 @@ func (z *Int) Div(x, y *Int) *Int {
 func (z *Int) Lsh(x *Int, n uint) *Int {
 	if z != x {
 		z.bits = x.bits
-		z.values.Abs(x.values)
+		z.values.Set(x.values)
 	}
 	z.values.Lsh(z.values, n)
 	for i := z.values.BitLen() - 1; i >= z.bits; i-- {
@@ -240,7 +240,7 @@ func (z *Int) Or(x, y *Int) *Int {
 func (z *Int) Rsh(x *Int, n uint) *Int {
 	if z != x {
 		z.bits = x.bits
-		z.values.Abs(x.values)
+		z.values.Set(x.values)
 	}
 	z.values.Rsh(z.values, n)
 	return z
@@ -252,7 +252,7 @@ func (z *Int) SetBig(x *big.Int) *Int {
 	if z.bits > 0 && x.Sign() == 1 && x.Bit(z.bits-1) == 1 {
 		z.bits++
 	}
-	z.values = new(big.Int).Abs(x)
+	z.values = new(big.Int).Set(x)
 	return z
 }
 
