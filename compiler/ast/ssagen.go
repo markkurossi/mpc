@@ -1268,7 +1268,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	rPow2, rConst := isPowerOf2(ast.Right, env, ctx, gen)
 	if lConst || rConst {
 		switch ast.Op {
-		case BinaryMult:
+		case BinaryMul:
 			// Multiplication is commutative.
 			if rConst {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
@@ -1285,7 +1285,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				return ast.constMult(r, lPow2, block, ctx, gen)
 			}
 
-		case BinaryPlus:
+		case BinaryAdd:
 			if rConst && rPow2 == 0 {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
@@ -1301,7 +1301,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				return block, []ssa.Value{r}, nil
 			}
 
-		case BinaryMinus:
+		case BinarySub:
 			if rConst && rPow2 == 0 {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
@@ -1337,8 +1337,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryMult, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
-		BinaryMinus, BinaryBor, BinaryBxor:
+	case BinaryMul, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
+		BinarySub, BinaryBor, BinaryBxor:
 		superType := l.TypeCompatible(r)
 		if superType == nil {
 			return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
@@ -1346,7 +1346,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		resultType = *superType
 
-	case BinaryPlus:
+	case BinaryAdd:
 		// Binary addition is handled separately since we must handle
 		// string and array concatenation.
 		if l.Type.Type == types.TString && r.Type.Type == types.TString {
@@ -1386,7 +1386,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	var instr ssa.Instr
 	switch ast.Op {
-	case BinaryMult:
+	case BinaryMul:
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryDiv:
 		instr, err = ssa.NewDivInstr(l.Type, l, r, t)
@@ -1405,9 +1405,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewBandInstr(l, r, t)
 	case BinaryBclear:
 		instr, err = ssa.NewBclrInstr(l, r, t)
-	case BinaryPlus:
+	case BinaryAdd:
 		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
-	case BinaryMinus:
+	case BinarySub:
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryBor:
 		instr, err = ssa.NewBorInstr(l, r, t)

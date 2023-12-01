@@ -636,7 +636,7 @@ type BinaryType int
 
 // Binary expression types.
 const (
-	BinaryMult BinaryType = iota // Mul
+	BinaryMul BinaryType = iota
 	BinaryDiv
 	BinaryMod
 	BinaryLshift
@@ -645,8 +645,8 @@ const (
 	BinaryBclear
 	BinaryBor
 	BinaryBxor
-	BinaryPlus  // Add
-	BinaryMinus // Sub
+	BinaryAdd
+	BinarySub
 	BinaryEq
 	BinaryNeq
 	BinaryLt
@@ -658,7 +658,7 @@ const (
 )
 
 var binaryTypes = map[BinaryType]string{
-	BinaryMult:   "*",
+	BinaryMul:    "*",
 	BinaryDiv:    "/",
 	BinaryMod:    "%",
 	BinaryLshift: "<<",
@@ -667,8 +667,8 @@ var binaryTypes = map[BinaryType]string{
 	BinaryBclear: "&^",
 	BinaryBor:    "|",
 	BinaryBxor:   "^",
-	BinaryPlus:   "+",
-	BinaryMinus:  "-",
+	BinaryAdd:    "+",
+	BinarySub:    "-",
 	BinaryEq:     "==",
 	BinaryNeq:    "!=",
 	BinaryLt:     "<",

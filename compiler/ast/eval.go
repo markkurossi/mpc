@@ -268,7 +268,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"invalid r-value %T %s %T", lval, ast.Op, rv)
 		}
 		switch ast.Op {
-		case BinaryMult:
+		case BinaryMul:
 			return gen.Constant(lval*rval, types.Int32), true, nil
 		case BinaryDiv:
 			if rval == 0 {
@@ -295,9 +295,9 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryBxor:
 			return gen.Constant(lval^rval, types.Int32), true, nil
 
-		case BinaryPlus:
+		case BinaryAdd:
 			return gen.Constant(lval+rval, types.Int32), true, nil
-		case BinaryMinus:
+		case BinarySub:
 			return gen.Constant(lval-rval, types.Int32), true, nil
 
 		case BinaryEq:
@@ -327,7 +327,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"%T: invalid r-value %v (%T)", lval, rv, rv)
 		}
 		switch ast.Op {
-		case BinaryMult:
+		case BinaryMul:
 			return gen.Constant(lval*rval, types.Uint64), true, nil
 		case BinaryDiv:
 			if rval == 0 {
@@ -346,9 +346,9 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryRshift:
 			return gen.Constant(lval>>rval, types.Uint64), true, nil
 
-		case BinaryPlus:
+		case BinaryAdd:
 			return gen.Constant(lval+rval, types.Uint64), true, nil
-		case BinaryMinus:
+		case BinarySub:
 			return gen.Constant(lval-rval, types.Uint64), true, nil
 
 		case BinaryEq:
@@ -375,7 +375,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"%s %v %s: invalid r-value %v (%T)", l, ast.Op, r, rval, rval)
 		}
 		switch ast.Op {
-		case BinaryMult:
+		case BinaryMul:
 			return gen.Constant(mpa.NewInt(0).Mul(lval, rval), l.Type),
 				true, nil
 		case BinaryDiv:
@@ -390,10 +390,10 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryBor:
 			return gen.Constant(mpa.NewInt(0).Or(lval, rval), l.Type),
 				true, nil
-		case BinaryPlus:
+		case BinaryAdd:
 			return gen.Constant(mpa.NewInt(0).Add(lval, rval), l.Type),
 				true, nil
-		case BinaryMinus:
+		case BinarySub:
 			return gen.Constant(mpa.NewInt(0).Sub(lval, rval), l.Type),
 				true, nil
 		case BinaryEq:

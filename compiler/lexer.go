@@ -115,9 +115,9 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	'*':       ast.BinaryMult,
-	'+':       ast.BinaryPlus,
-	'-':       ast.BinaryMinus,
+	'*':       ast.BinaryMul,
+	'+':       ast.BinaryAdd,
+	'-':       ast.BinarySub,
 	'/':       ast.BinaryDiv,
 	'%':       ast.BinaryMod,
 	TLt:       ast.BinaryLt,
