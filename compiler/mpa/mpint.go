@@ -30,27 +30,34 @@ func NewInt(x int64) *Int {
 	}
 }
 
+// Debug prints debug information about z.
 func (z *Int) Debug() {
 	fmt.Printf("mpa.Big: val=%v, bits=%v, bitLen=%v\n",
 		z, z.bits, z.BitLen())
 }
 
+// TypeSize returns the type size in bits.
 func (z *Int) TypeSize() int {
 	return z.bits
 }
 
+// SetTypeSize sets the type size in bits.
 func (z *Int) SetTypeSize(size int) {
 	z.bits = size
 }
 
+// Bit returns the value of the i'th bit of z.
 func (z *Int) Bit(i int) uint {
 	return z.values.Bit(i)
 }
 
+// BitLen returns the length of the absolute value of z.
 func (z *Int) BitLen() int {
 	return z.values.BitLen()
 }
 
+// Cmp compares z for x and returns -1, 0, 1 if z is smaller, equal,
+// or greater than x.
 func (z *Int) Cmp(x *Int) int {
 	return z.values.Cmp(x.values)
 }
@@ -237,6 +244,8 @@ func (z *Int) SetBig(x *big.Int) *Int {
 	return z
 }
 
+// SetString sets z to s according to its ascii value. The argument
+// base specifies how the argument string base is interpreted.
 func (z *Int) SetString(s string, base int) (*Int, bool) {
 	i, ok := new(big.Int).SetString(s, base)
 	if !ok {
@@ -246,6 +255,7 @@ func (z *Int) SetString(s string, base int) (*Int, bool) {
 	return z, true
 }
 
+// Sign returns -1, 0, 1 if z is negative, zero, or positive.
 func (z *Int) Sign() int {
 	return z.values.Sign()
 }
