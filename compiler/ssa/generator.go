@@ -8,9 +8,9 @@ package ssa
 
 import (
 	"fmt"
-	"math/big"
 	"strings"
 
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 )
@@ -211,6 +211,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 		v.Type.MinBits = minBits
+		v.ConstValue = mpa.NewInt(int64(val))
 
 	case uint8:
 		// Count minimum bits needed to represent the value.
@@ -228,6 +229,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 		v.Type.MinBits = minBits
+		v.ConstValue = mpa.NewInt(int64(val))
 
 	case int32:
 		// Count minimum bits needed to represent the value.
@@ -252,6 +254,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		if v.Type.Bits == 0 {
 			v.Type.Bits = minBits
 		}
+		v.ConstValue = mpa.NewInt(int64(val))
 
 	case int64:
 		// Count minimum bits needed to represent the value.
@@ -278,6 +281,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 		v.Type.MinBits = minBits
+		v.ConstValue = mpa.NewInt(int64(val))
 
 	case uint64:
 		// Count minimum bits needed to represent the value.
@@ -300,16 +304,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			}
 		}
 		v.Type.MinBits = minBits
+		v.ConstValue = mpa.NewInt(int64(val))
 
-	case *big.Int:
+	case *mpa.Int:
 		v.Name = fmt.Sprintf("$%s", val.String())
-		if val.Sign() == -1 {
+		if v.Type.Undefined() {
 			v.Type = types.Info{
 				Type: types.TInt,
-			}
-		} else {
-			v.Type = types.Info{
-				Type: types.TUint,
 			}
 		}
 		minBits = types.Size(val.BitLen())
@@ -320,13 +321,16 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		} else {
 			bits = 32
 		}
-
-		if ti.Bits == 0 {
+		if v.Type.Bits < bits {
 			v.Type.Bits = bits
-		} else {
-			v.Type.Bits = ti.Bits
 		}
 		v.Type.MinBits = minBits
+		if v.Type.MinBits > v.Type.Bits {
+			panic(fmt.Sprintf(" - Bits=%v, MinBits=%v",
+				v.Type.Bits, v.Type.MinBits))
+		}
+		val.SetTypeSize(int(bits))
+		v.ConstValue = val
 
 	case bool:
 		v.Name = fmt.Sprintf("$%v", val)

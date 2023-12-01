@@ -362,7 +362,7 @@ func (i Info) Equal(o Info) bool {
 // this type.
 func (i Info) CanAssignConst(o Info) bool {
 	switch i.Type {
-	case TInt:
+	case TInt, TUint:
 		return (o.Type == TInt || o.Type == TUint) && i.Bits >= o.MinBits
 
 	default:

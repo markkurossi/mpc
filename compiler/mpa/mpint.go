@@ -7,6 +7,7 @@
 package mpa
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -29,14 +30,40 @@ func NewInt(x int64) *Int {
 	}
 }
 
+func (z *Int) Debug() {
+	fmt.Printf("mpa.Big: val=%v, bits=%v, bitLen=%v\n",
+		z, z.bits, z.BitLen())
+}
+
+func (z *Int) TypeSize() int {
+	return z.bits
+}
+
+func (z *Int) SetTypeSize(size int) {
+	z.bits = size
+}
+
+func (z *Int) Bit(i int) uint {
+	return z.values.Bit(i)
+}
+
+func (z *Int) BitLen() int {
+	return z.values.BitLen()
+}
+
+func (z *Int) Cmp(x *Int) int {
+	return z.values.Cmp(x.values)
+}
+
 // Int64 returns the int64 representation of x. If x cannot be
 // represented as int64, the result is undefined.
 func (z *Int) Int64() int64 {
+	z.setSign()
 	return z.values.Int64()
 }
 
 func (z *Int) String() string {
-	return z.values.Text(16)
+	return z.values.String()
 }
 
 // Add sets z to x+y and returns z.
@@ -48,6 +75,7 @@ func (z *Int) Add(x, y *Int) *Int {
 func (z *Int) And(x, y *Int) *Int {
 	z.values.And(x.values, y.values)
 	z.bits = max(x.bits, y.bits)
+	z.setSign()
 	return z
 }
 
@@ -100,6 +128,7 @@ func (z *Int) Div(x, y *Int) *Int {
 
 	z.bits = int(outputs[0].Type.Bits)
 	z.values = obits[0]
+	z.setSign()
 
 	return z
 }
@@ -114,6 +143,7 @@ func (z *Int) Lsh(x *Int, n uint) *Int {
 	for i := z.values.BitLen() - 1; i >= z.bits; i-- {
 		z.values.SetBit(z.values, i, 0)
 	}
+	z.setSign()
 	return z
 }
 
@@ -166,6 +196,7 @@ func (z *Int) Mod(x, y *Int) *Int {
 
 	z.bits = int(outputs[1].Type.Bits)
 	z.values = obits[1]
+	z.setSign()
 
 	return z
 }
@@ -181,6 +212,7 @@ func (z *Int) Mul(x, y *Int) *Int {
 func (z *Int) Or(x, y *Int) *Int {
 	z.values.Or(x.values, y.values)
 	z.bits = max(x.bits, y.bits)
+	z.setSign()
 	return z
 }
 
@@ -191,14 +223,31 @@ func (z *Int) Rsh(x *Int, n uint) *Int {
 		z.values.Set(x.values)
 	}
 	z.values.Rsh(z.values, n)
+	z.setSign()
 	return z
 }
 
 // SetBig sets z to x and returns z.
 func (z *Int) SetBig(x *big.Int) *Int {
 	z.bits = x.BitLen()
+	if z.bits > 0 && x.Sign() == 1 && x.Bit(z.bits-1) == 1 {
+		z.bits++
+	}
 	z.values = new(big.Int).Set(x)
 	return z
+}
+
+func (z *Int) SetString(s string, base int) (*Int, bool) {
+	i, ok := new(big.Int).SetString(s, base)
+	if !ok {
+		return nil, false
+	}
+	z.SetBig(i)
+	return z, true
+}
+
+func (z *Int) Sign() int {
+	return z.values.Sign()
 }
 
 // Sub sets z to x-y and returns z.
@@ -210,6 +259,7 @@ func (z *Int) Sub(x, y *Int) *Int {
 func (z *Int) Xor(x, y *Int) *Int {
 	z.values.Xor(x.values, y.values)
 	z.bits = max(x.bits, y.bits)
+	z.setSign()
 	return z
 }
 
@@ -255,8 +305,22 @@ func (z *Int) bin(op binaryOp, x, y *Int) *Int {
 
 	z.bits = int(outputs[0].Type.Bits)
 	z.values = obits[0]
+	z.setSign()
 
 	return z
+}
+
+func (z *Int) setSign() {
+	var sign int
+	if z.values.Bit(z.bits-1) == 1 {
+		sign = -1
+	} else {
+		sign = 1
+	}
+	zs := z.values.Sign()
+	if sign != zs {
+		z.values.Neg(z.values)
+	}
 }
 
 func newIOArg(name string, t types.Type, size int) circuit.IOArg {

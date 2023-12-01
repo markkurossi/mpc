@@ -46,13 +46,13 @@ var addTests = []intTest{
 }
 
 func TestIntAdd(t *testing.T) {
-	for _, test := range addTests {
+	for idx, test := range addTests {
 		a := NewInt(test.a)
 		b := NewInt(test.b)
 		r := NewInt(0).Add(a, b)
 		if r.Int64() != test.r {
-			t.Errorf("%v+%v=%v, expected %v\n",
-				test.a, test.b, r.Int64(), test.r)
+			t.Errorf("add%v: %v+%v=%v, expected %v\n",
+				idx, test.a, test.b, r.Int64(), test.r)
 		}
 	}
 }
@@ -79,6 +79,19 @@ func TestIntAnd(t *testing.T) {
 			t.Errorf("%v&%v=%v, expected %v\n",
 				test.a, test.b, r.Int64(), test.r)
 		}
+	}
+}
+
+func TestIntCmp(t *testing.T) {
+	a := NewInt(1)
+	b := NewInt(1)
+	a.Sub(a, b)
+	a.Sub(a, b)
+
+	c := NewInt(0)
+	cmp := a.Cmp(c)
+	if cmp >= 0 {
+		t.Errorf("%v.Cmp(%v)=%v\n", a, c, cmp)
 	}
 }
 
@@ -316,6 +329,14 @@ var subTests = []intTest{
 		b: 1,
 		r: math.MaxInt64 - 1,
 	},
+}
+
+func TestIntSetString(t *testing.T) {
+	i, ok := NewInt(0).SetString("0xdeadbeef", 0)
+	if !ok {
+		t.Fatalf("SetString failed")
+	}
+	_ = i
 }
 
 func TestIntSub(t *testing.T) {

@@ -40,7 +40,9 @@ func TestSuite(t *testing.T) {
 		t.Fatalf("Failed to list tests directory: %s", err)
 	}
 
-	compiler := New(utils.NewParams())
+	params := utils.NewParams()
+	params.MPCLCErrorLoc = true
+	compiler := New(params)
 
 loop:
 	for _, file := range files {

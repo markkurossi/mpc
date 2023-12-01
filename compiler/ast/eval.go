@@ -9,8 +9,8 @@ package ast
 import (
 	"fmt"
 	"math"
-	"math/big"
 
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/types"
 )
@@ -232,6 +232,11 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, ok, err
 	}
 
+	if debugEval {
+		fmt.Printf("Binary.Eval: %v[%v] %v %v[%v]\n",
+			ast.Left, l.Type, ast.Op, ast.Right, r.Type)
+	}
+
 	switch lval := l.ConstValue.(type) {
 	case bool:
 		rval, ok := r.ConstValue.(bool)
@@ -363,28 +368,47 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
 		}
 
-	case *big.Int:
-		var rval *big.Int
-		switch rv := r.ConstValue.(type) {
-		case int32:
-			rval = big.NewInt(int64(rv))
-		case uint64:
-			rval = big.NewInt(int64(rv))
-		case *big.Int:
-			rval = rv
-		default:
+	case *mpa.Int:
+		rval, ok := r.ConstValue.(*mpa.Int)
+		if !ok {
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"invalid r-value %v (%T): %v %v %v", rv, rv,
-				l, ast.Op, r)
+				"%s %v %s: invalid r-value %v (%T)", l, ast.Op, r, rval, rval)
 		}
-		fmt.Printf(" -> %v %s %v: %v\n", lval, ast.Op, rval, l.Type)
 		switch ast.Op {
+		case BinaryMult:
+			return gen.Constant(mpa.NewInt(0).Mul(lval, rval), l.Type),
+				true, nil
+		case BinaryDiv:
+			return gen.Constant(mpa.NewInt(0).Div(lval, rval), l.Type),
+				true, nil
+		case BinaryMod:
+			return gen.Constant(mpa.NewInt(0).Mod(lval, rval), l.Type),
+				true, nil
 		case BinaryLshift:
-			return gen.Constant(big.NewInt(0).Lsh(lval, uint(rval.Uint64())),
+			return gen.Constant(mpa.NewInt(0).Lsh(lval, uint(rval.Int64())),
 				l.Type), true, nil
 		case BinaryBor:
-			return gen.Constant(big.NewInt(0).Or(lval, rval),
-				l.Type), true, nil
+			return gen.Constant(mpa.NewInt(0).Or(lval, rval), l.Type),
+				true, nil
+		case BinaryPlus:
+			return gen.Constant(mpa.NewInt(0).Add(lval, rval), l.Type),
+				true, nil
+		case BinaryMinus:
+			return gen.Constant(mpa.NewInt(0).Sub(lval, rval), l.Type),
+				true, nil
+		case BinaryEq:
+			return gen.Constant(lval.Cmp(rval) == 0, types.Bool), true, nil
+		case BinaryNeq:
+			return gen.Constant(lval.Cmp(rval) != 0, types.Bool), true, nil
+		case BinaryLt:
+			return gen.Constant(lval.Cmp(rval) == -1, types.Bool), true, nil
+		case BinaryLe:
+			return gen.Constant(lval.Cmp(rval) != 1, types.Bool), true, nil
+		case BinaryGt:
+			return gen.Constant(lval.Cmp(rval) == 1, types.Bool), true, nil
+		case BinaryGe:
+			return gen.Constant(lval.Cmp(rval) != -1, types.Bool), true, nil
+
 		default:
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
 				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
@@ -501,6 +525,9 @@ func intVal(val interface{}) (int, error) {
 	switch v := val.(type) {
 	case int32:
 		return int(v), nil
+
+	case *mpa.Int:
+		return int(v.Int64()), nil
 
 	case ssa.Value:
 		if !v.Const {
