@@ -331,11 +331,6 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case UnaryNot:
 			return gen.Constant(!val, types.Bool), true, nil
 		}
-	case int32:
-		switch ast.Type {
-		case UnaryMinus:
-			return gen.Constant(-val, types.Int32), true, nil
-		}
 	case *mpa.Int:
 		switch ast.Type {
 		case UnaryMinus:
@@ -392,7 +387,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		tmp := uint32(val)
 		tmp >>= from
 		tmp &^= 0xffffffff << (to - from)
-		return gen.Constant(int32(tmp), types.Int32), true, nil
+		return gen.Constant(int64(tmp), types.Undefined), true, nil
 
 	case []interface{}:
 		if to == math.MaxInt32 {
@@ -455,7 +450,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 				"invalid array index %d (out of bounds for %d-element string)",
 				index, len(bytes))
 		}
-		return gen.Constant(bytes[index], types.Int32), true, nil
+		return gen.Constant(int64(bytes[index]), types.Undefined), true, nil
 
 	case []interface{}:
 		if index < 0 || index >= len(val) {
@@ -511,7 +506,7 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			if err != nil || !ok {
 				return ssa.Undefined, ok, err
 			}
-			// XXX chck that v is assignment compatible with typeInfo.Struct[i]
+			// XXX check that v is assignment compatible with typeInfo.Struct[i]
 			values = append(values, v)
 		}
 		return gen.Constant(values, typeInfo), true, nil

@@ -191,73 +191,13 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		Type:       ti,
 	}
 	switch val := value.(type) {
-	case int8:
-		// Count minimum bits needed to represent the value.
-		for minBits = 1; minBits < 8; minBits++ {
-			if (0xffffffff<<minBits)&uint64(val) == 0 {
-				break
-			}
-		}
-
-		v.Name = fmt.Sprintf("$%d", val)
-		if v.Type.Undefined() {
-			v.Type = types.Info{
-				Bits: 8,
-			}
-			if val < 0 {
-				v.Type.Type = types.TInt
-			} else {
-				v.Type.Type = types.TUint
-			}
-		}
-		v.Type.MinBits = minBits
-		v.ConstValue = mpa.NewInt(int64(val))
-
-	case uint8:
-		// Count minimum bits needed to represent the value.
-		for minBits = 1; minBits < 8; minBits++ {
-			if (0xffffffff<<minBits)&uint64(val) == 0 {
-				break
-			}
-		}
-
-		v.Name = fmt.Sprintf("$%d", val)
-		if v.Type.Undefined() {
-			v.Type = types.Info{
-				Type: types.TUint,
-				Bits: 8,
-			}
-		}
-		v.Type.MinBits = minBits
-		v.ConstValue = mpa.NewInt(int64(val))
-
-	case int32:
-		// Count minimum bits needed to represent the value.
-		for minBits = 1; minBits < 32; minBits++ {
-			if (0xffffffff<<minBits)&uint64(val) == 0 {
-				break
-			}
-		}
-
-		v.Name = fmt.Sprintf("$%d", val)
-		if v.Type.Undefined() {
-			v.Type = types.Info{
-				Bits: 32,
-			}
-			if val < 0 {
-				v.Type.Type = types.TInt
-			} else {
-				v.Type.Type = types.TUint
-			}
-		}
-		v.Type.MinBits = minBits
-		if v.Type.Bits == 0 {
-			v.Type.Bits = minBits
-		}
-		v.ConstValue = mpa.NewInt(int64(val))
-
 	case int64:
-		// Count minimum bits needed to represent the value.
+		v.Name = fmt.Sprintf("$%d", val)
+		if v.Type.Undefined() {
+			v.Type = types.Info{
+				Type: types.TInt,
+			}
+		}
 		for minBits = 1; minBits < 64; minBits++ {
 			if (0xffffffffffffffff<<minBits)&uint64(val) == 0 {
 				break
@@ -268,43 +208,11 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		} else {
 			bits = 32
 		}
-
-		v.Name = fmt.Sprintf("$%d", val)
-		if v.Type.Undefined() {
-			v.Type = types.Info{
-				Bits: bits,
-			}
-			if val < 0 {
-				v.Type.Type = types.TInt
-			} else {
-				v.Type.Type = types.TUint
-			}
+		if v.Type.Bits < bits {
+			v.Type.Bits = bits
 		}
 		v.Type.MinBits = minBits
-		v.ConstValue = mpa.NewInt(int64(val))
-
-	case uint64:
-		// Count minimum bits needed to represent the value.
-		for minBits = 1; minBits < 64; minBits++ {
-			if (0xffffffffffffffff<<minBits)&val == 0 {
-				break
-			}
-		}
-		if minBits > 32 {
-			bits = 64
-		} else {
-			bits = 32
-		}
-
-		v.Name = fmt.Sprintf("$%d", val)
-		if v.Type.Undefined() {
-			v.Type = types.Info{
-				Type: types.TUint,
-				Bits: bits,
-			}
-		}
-		v.Type.MinBits = minBits
-		v.ConstValue = mpa.NewInt(int64(val))
+		v.ConstValue = mpa.NewInt(val)
 
 	case *mpa.Int:
 		v.Name = fmt.Sprintf("$%s", val.String())
@@ -326,8 +234,8 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		}
 		v.Type.MinBits = minBits
 		if v.Type.MinBits > v.Type.Bits {
-			panic(fmt.Sprintf(" - Bits=%v, MinBits=%v",
-				v.Type.Bits, v.Type.MinBits))
+			panic(fmt.Sprintf("Constant(%v): Bits=%v, MinBits=%v",
+				value, v.Type.Bits, v.Type.MinBits))
 		}
 		val.SetTypeSize(int(bits))
 		v.ConstValue = val

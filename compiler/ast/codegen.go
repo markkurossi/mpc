@@ -191,9 +191,10 @@ func (lrv *LRValue) RValue() ssa.Value {
 
 		lrv.value = lrv.gen.AnonVal(fieldType)
 
-		fromConst := lrv.gen.Constant(int32(lrv.valueType.Offset), types.Int32)
-		toConst := lrv.gen.Constant(int32(lrv.valueType.Offset+
-			lrv.valueType.Bits), types.Int32)
+		fromConst := lrv.gen.Constant(int64(lrv.valueType.Offset),
+			types.Undefined)
+		toConst := lrv.gen.Constant(int64(lrv.valueType.Offset+
+			lrv.valueType.Bits), types.Undefined)
 
 		lrv.block.AddInstr(ssa.NewSliceInstr(lrv.baseValue, fromConst, toConst,
 			lrv.value))

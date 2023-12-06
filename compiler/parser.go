@@ -963,7 +963,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 						Op:    op,
 						Right: &ast.BasicLit{
 							Point: t.From,
-							Value: int32(1),
+							Value: int64(1),
 						},
 					},
 				},

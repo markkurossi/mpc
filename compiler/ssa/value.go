@@ -119,14 +119,6 @@ func (v *Value) ConstInt() (types.Size, error) {
 		return 0, fmt.Errorf("value is not constant")
 	}
 	switch val := v.ConstValue.(type) {
-	case int:
-		return types.Size(val), nil
-	case int32:
-		return types.Size(val), nil
-	case int64:
-		return types.Size(val), nil
-	case uint64:
-		return types.Size(val), nil
 	case *mpa.Int:
 		return types.Size(val.Int64()), nil
 
