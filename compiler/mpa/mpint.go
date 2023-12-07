@@ -20,7 +20,7 @@ import (
 // Int implements multi-precision integer arithmetics.
 type Int struct {
 	bits   int32
-	short  bool
+	small  bool
 	i64    int64
 	values *big.Int
 }
@@ -29,14 +29,14 @@ type Int struct {
 func NewInt(x int64) *Int {
 	return &Int{
 		bits:  64,
-		short: true,
+		small: true,
 		i64:   x,
 	}
 }
 
 // Debug prints debug information about z.
 func (z *Int) Debug() {
-	if z.short {
+	if z.small {
 		fmt.Printf("mpa.Big: val=%v, bits=%v, i64=%v\n", z, z.bits, z.i64)
 	} else {
 		fmt.Printf("mpa.Big: val=%v, bits=%v, bitLen=%v, values=%x\n",
@@ -56,7 +56,7 @@ func (z *Int) SetTypeSize(size int32) {
 
 // Bit returns the value of the i'th bit of z.
 func (z *Int) Bit(i int) uint {
-	if z.short {
+	if z.small {
 		return uint((z.i64 >> uint(i)) & 0x1)
 	}
 	return z.values.Bit(i)
@@ -64,7 +64,7 @@ func (z *Int) Bit(i int) uint {
 
 // BitLen returns the length of the absolute value of z.
 func (z *Int) BitLen() int {
-	if z.short {
+	if z.small {
 		var bitLen int
 		for bitLen = 1; bitLen < 64; bitLen++ {
 			if (0xffffffffffffffff<<bitLen)&uint64(z.i64) == 0 {
@@ -79,7 +79,7 @@ func (z *Int) BitLen() int {
 // Cmp compares z for x and returns -1, 0, 1 if z is smaller, equal,
 // or greater than x.
 func (z *Int) Cmp(x *Int) int {
-	if z.short && x.short {
+	if z.small && x.small {
 		if z.i64 < x.i64 {
 			return -1
 		} else if z.i64 > x.i64 {
@@ -121,14 +121,14 @@ func (z *Int) signed(signBit int32) *big.Int {
 // Int64 returns the int64 representation of x. If x cannot be
 // represented as int64, the result is undefined.
 func (z *Int) Int64() int64 {
-	if z.short {
+	if z.small {
 		return z.i64
 	}
 	return z.values.Int64()
 }
 
 func (z *Int) String() string {
-	if z.short {
+	if z.small {
 		return strconv.FormatInt(z.i64, 10)
 	}
 	return z.values.String()
@@ -136,7 +136,7 @@ func (z *Int) String() string {
 
 // Add sets z to x+y and returns z.
 func (z *Int) Add(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 + y.i64)
 		return z
 	}
@@ -145,11 +145,11 @@ func (z *Int) Add(x, y *Int) *Int {
 
 // And sets z to x&y and returns z.
 func (z *Int) And(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 & y.i64)
 	} else {
 		z.values = big.NewInt(0).And(x.big(), y.big())
-		z.short = false
+		z.small = false
 	}
 	z.bits = max(x.bits, y.bits)
 	return z
@@ -157,7 +157,7 @@ func (z *Int) And(x, y *Int) *Int {
 
 // Div sets z to x/y and returns z.
 func (z *Int) Div(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		if y.i64 == 0 {
 			z.setShort(-1)
 		} else {
@@ -212,21 +212,21 @@ func (z *Int) Div(x, y *Int) *Int {
 
 	z.bits = int32(outputs[0].Type.Bits)
 	z.values = obits[0]
-	z.short = false
+	z.small = false
 
 	return z
 }
 
 // Lsh sets z to x<<n and returns z.
 func (z *Int) Lsh(x *Int, n uint) *Int {
-	if x.short {
+	if x.small {
 		z.setShort(x.i64 << n)
 		return z
 	}
 	if z != x {
 		z.bits = x.bits
 		z.values = big.NewInt(0).Set(x.values)
-		z.short = false
+		z.small = false
 	}
 	z.values.Lsh(z.values, n)
 	for i := z.values.BitLen() - 1; i >= int(z.bits); i-- {
@@ -237,7 +237,7 @@ func (z *Int) Lsh(x *Int, n uint) *Int {
 
 // Mod sets z to x%y and returns z.
 func (z *Int) Mod(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		if y.i64 == 0 {
 			z.setShort(x.i64)
 		} else {
@@ -292,14 +292,14 @@ func (z *Int) Mod(x, y *Int) *Int {
 
 	z.bits = int32(outputs[1].Type.Bits)
 	z.values = obits[1]
-	z.short = false
+	z.small = false
 
 	return z
 }
 
 // Mul sets z to x*y and returns z.
 func (z *Int) Mul(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 * y.i64)
 		return z
 	}
@@ -310,11 +310,11 @@ func (z *Int) Mul(x, y *Int) *Int {
 
 // Or sets z to x|y and returns z.
 func (z *Int) Or(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 | y.i64)
 	} else {
 		z.values = big.NewInt(0).Or(x.big(), y.big())
-		z.short = false
+		z.small = false
 	}
 	z.bits = max(x.bits, y.bits)
 	return z
@@ -322,14 +322,14 @@ func (z *Int) Or(x, y *Int) *Int {
 
 // Rsh sets z to x>>n and returns z.
 func (z *Int) Rsh(x *Int, n uint) *Int {
-	if x.short {
+	if x.small {
 		z.setShort(x.i64 >> n)
 		return z
 	}
 	if z != x {
 		z.bits = x.bits
 		z.values = big.NewInt(0).Set(x.values)
-		z.short = false
+		z.small = false
 	}
 	z.values.Rsh(z.values, n)
 	return z
@@ -346,14 +346,14 @@ func (z *Int) SetBig(x *big.Int) *Int {
 		z.bits++
 	}
 	z.values = new(big.Int).Set(x)
-	z.short = false
+	z.small = false
 	return z
 }
 
 func (z *Int) setShort(x int64) {
 	z.i64 = x
 	z.values = nil
-	z.short = true
+	z.small = true
 }
 
 // SetString sets z to s according to its ascii value. The argument
@@ -369,7 +369,7 @@ func (z *Int) SetString(s string, base int) (*Int, bool) {
 
 // Sign returns -1, 0, 1 if z is negative, zero, or positive.
 func (z *Int) Sign() int {
-	if z.short {
+	if z.small {
 		if z.i64 < 0 {
 			return -1
 		} else if z.i64 > 0 {
@@ -383,7 +383,7 @@ func (z *Int) Sign() int {
 
 // Sub sets z to x-y and returns z.
 func (z *Int) Sub(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 - y.i64)
 		return z
 	}
@@ -392,11 +392,11 @@ func (z *Int) Sub(x, y *Int) *Int {
 
 // Xor sets z to x^y and returns z.
 func (z *Int) Xor(x, y *Int) *Int {
-	if x.short && y.short {
+	if x.small && y.small {
 		z.setShort(x.i64 ^ y.i64)
 	} else {
 		z.values = big.NewInt(0).Xor(x.big(), y.big())
-		z.short = false
+		z.small = false
 	}
 	z.bits = max(x.bits, y.bits)
 	return z
@@ -444,7 +444,7 @@ func (z *Int) bin(op binaryOp, x, y *Int) *Int {
 
 	z.bits = int32(outputs[0].Type.Bits)
 	z.values = obits[0]
-	z.short = false
+	z.small = false
 
 	return z
 }
