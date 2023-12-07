@@ -237,7 +237,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			panic(fmt.Sprintf("Constant(%v): Bits=%v, MinBits=%v",
 				value, v.Type.Bits, v.Type.MinBits))
 		}
-		val.SetTypeSize(int(bits))
+		val.SetTypeSize(int32(bits))
 		v.ConstValue = val
 
 	case bool:
