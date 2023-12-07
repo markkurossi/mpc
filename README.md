@@ -293,7 +293,7 @@ form assembly:
    - [x] `&basePoint` in `curve25519/doc.mpcl`
    - [ ] create `Value.Cast(type)` and refactor to use it
    - [ ] `for in range`
-   - [ ] Binary.Eval for different int types
+   - [x] Binary.Eval for different int types
  - [ ] Foundation
    - [x] Circuit & garbling:
      - [x] Oblivious transfer extensions
