@@ -37,6 +37,8 @@ type Params struct {
 	CircMultArrayTreshold int
 
 	OptPruneGates bool
+
+	BenchmarkCompile bool
 }
 
 // NewParams returns new compiler params object, initialized with the
