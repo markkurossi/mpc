@@ -212,7 +212,9 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			v.Type.Bits = bits
 		}
 		v.Type.MinBits = minBits
-		v.ConstValue = mpa.NewInt(val)
+		constVal := mpa.NewInt(val)
+		constVal.SetTypeSize(int32(v.Type.Bits))
+		v.ConstValue = constVal
 
 	case *mpa.Int:
 		v.Name = fmt.Sprintf("$%s", val.String())
