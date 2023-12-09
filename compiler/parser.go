@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -905,11 +905,11 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			var op ast.BinaryType
 			switch t.Type {
 			case TPlusEq:
-				op = ast.BinaryPlus
+				op = ast.BinaryAdd
 			case TMinusEq:
-				op = ast.BinaryMinus
+				op = ast.BinarySub
 			case TMultEq:
-				op = ast.BinaryMult
+				op = ast.BinaryMul
 			case TDivEq:
 				op = ast.BinaryDiv
 			case TOrEq:
@@ -949,9 +949,9 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 
 			var op ast.BinaryType
 			if t.Type == TPlusPlus {
-				op = ast.BinaryPlus
+				op = ast.BinaryAdd
 			} else {
-				op = ast.BinaryMinus
+				op = ast.BinarySub
 			}
 			return &ast.Assign{
 				Point:   t.From,
@@ -963,7 +963,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 						Op:    op,
 						Right: &ast.BasicLit{
 							Point: t.From,
-							Value: int32(1),
+							Value: int64(1),
 						},
 					},
 				},

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,12 +10,11 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math"
-	"math/big"
 	"strconv"
 	"unicode"
 
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 )
@@ -116,9 +115,9 @@ func (t TokenType) String() string {
 }
 
 var binaryTypes = map[TokenType]ast.BinaryType{
-	'*':       ast.BinaryMult,
-	'+':       ast.BinaryPlus,
-	'-':       ast.BinaryMinus,
+	'*':       ast.BinaryMul,
+	'+':       ast.BinaryAdd,
+	'-':       ast.BinarySub,
 	'/':       ast.BinaryDiv,
 	'%':       ast.BinaryMod,
 	TLt:       ast.BinaryLt,
@@ -199,7 +198,7 @@ func (t *Token) String() string {
 			str = strconv.FormatUint(val, 10)
 		case bool:
 			str = fmt.Sprintf("%v", val)
-		case *big.Int:
+		case *mpa.Int:
 			str = val.String()
 		default:
 			str = t.Type.String()
@@ -619,8 +618,7 @@ func (l *Lexer) Get() (*Token, error) {
 			}
 
 		case '0':
-			var ui64 uint64
-			var bigInt *big.Int
+			var ival *mpa.Int
 
 			r, _, err := l.ReadRune()
 			if err != nil {
@@ -630,13 +628,13 @@ func (l *Lexer) Get() (*Token, error) {
 			} else {
 				switch r {
 				case 'b', 'B':
-					ui64, err = l.readBinaryLiteral([]rune{'0', r})
+					ival, err = l.readBinaryLiteral([]rune{'0', r})
 				case 'o', 'O':
-					ui64, err = l.readOctalLiteral([]rune{'0', r})
+					ival, err = l.readOctalLiteral([]rune{'0', r})
 				case 'x', 'X':
-					ui64, bigInt, err = l.readHexLiteral([]rune{'0', r})
+					ival, err = l.readHexLiteral([]rune{'0', r})
 				case '0', '1', '2', '3', '4', '5', '6', '7':
-					ui64, err = l.readOctalLiteral([]rune{'0', r})
+					ival, err = l.readOctalLiteral([]rune{'0', r})
 				default:
 					l.UnreadRune()
 				}
@@ -644,16 +642,11 @@ func (l *Lexer) Get() (*Token, error) {
 					return nil, err
 				}
 			}
-			token := l.Token(TConstant)
-			if bigInt != nil {
-				token.ConstVal = bigInt
-			} else if ui64 <= math.MaxInt32 {
-				token.ConstVal = int32(ui64)
-			} else if ui64 <= math.MaxInt64 {
-				token.ConstVal = int64(ui64)
-			} else {
-				token.ConstVal = ui64
+			if ival == nil {
+				ival = mpa.NewInt(0)
 			}
+			token := l.Token(TConstant)
+			token.ConstVal = ival
 			return token, nil
 
 		default:
@@ -704,20 +697,12 @@ func (l *Lexer) Get() (*Token, error) {
 						break
 					}
 				}
-				u, err := strconv.ParseUint(string(val), 10, 64)
-				if err != nil {
-					// XXX bigint constants
-					return nil, err
+				ival, ok := mpa.NewInt(0).SetString(string(val), 10)
+				if !ok {
+					return nil, fmt.Errorf("invalid literal '%s'", string(val))
 				}
 				token := l.Token(TConstant)
-
-				if u <= math.MaxInt32 {
-					token.ConstVal = int32(u)
-				} else if u <= math.MaxInt64 {
-					token.ConstVal = int64(u)
-				} else {
-					token.ConstVal = u
-				}
+				token.ConstVal = ival
 				return token, nil
 			}
 			l.UnreadRune()
@@ -816,13 +801,13 @@ func (l *Lexer) readEscape() (int32, error) {
 	return i32, nil
 }
 
-func (l *Lexer) readBinaryLiteral(val []rune) (uint64, error) {
+func (l *Lexer) readBinaryLiteral(val []rune) (*mpa.Int, error) {
 loop:
 	for {
 		r, _, err := l.ReadRune()
 		if err != nil {
 			if err != io.EOF {
-				return 0, err
+				return nil, err
 			}
 			break
 		}
@@ -834,16 +819,20 @@ loop:
 			break loop
 		}
 	}
-	return strconv.ParseUint(string(val), 0, 64)
+	ival, ok := mpa.NewInt(0).SetString(string(val), 0)
+	if !ok {
+		return nil, fmt.Errorf("malformed binary literal '%s'", string(val))
+	}
+	return ival, nil
 }
 
-func (l *Lexer) readOctalLiteral(val []rune) (uint64, error) {
+func (l *Lexer) readOctalLiteral(val []rune) (*mpa.Int, error) {
 loop:
 	for {
 		r, _, err := l.ReadRune()
 		if err != nil {
 			if err != io.EOF {
-				return 0, err
+				return nil, err
 			}
 			break
 		}
@@ -855,15 +844,19 @@ loop:
 			break loop
 		}
 	}
-	return strconv.ParseUint(string(val), 0, 64)
+	ival, ok := mpa.NewInt(0).SetString(string(val), 0)
+	if !ok {
+		return nil, fmt.Errorf("malformed octal literal '%s'", string(val))
+	}
+	return ival, nil
 }
 
-func (l *Lexer) readHexLiteral(val []rune) (uint64, *big.Int, error) {
+func (l *Lexer) readHexLiteral(val []rune) (*mpa.Int, error) {
 	for {
 		r, _, err := l.ReadRune()
 		if err != nil {
 			if err != io.EOF {
-				return 0, nil, err
+				return nil, err
 			}
 			break
 		}
@@ -874,21 +867,11 @@ func (l *Lexer) readHexLiteral(val []rune) (uint64, *big.Int, error) {
 			break
 		}
 	}
-	// 0xffffffffffffffff
-	if len(val) > 18 {
-		bigInt := new(big.Int)
-		_, ok := bigInt.SetString(string(val[2:]), 16)
-		if !ok {
-			return 0, nil, fmt.Errorf("malformed constant '%s'", string(val))
-		}
-		return 0, bigInt, nil
+	ival, ok := mpa.NewInt(0).SetString(string(val[2:]), 16)
+	if !ok {
+		return nil, fmt.Errorf("malformed hex literal '%s'", string(val))
 	}
-
-	ui64, err := strconv.ParseUint(string(val), 0, 64)
-	if err != nil {
-		return 0, nil, err
-	}
-	return ui64, nil, nil
+	return ival, nil
 }
 
 // Unget pushes the token back to the lexer input stream. The next

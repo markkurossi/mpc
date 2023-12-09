@@ -132,8 +132,8 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	var copied types.Size
 	if srcBits > dstBits {
-		fromConst := gen.Constant(int32(0), types.Uint32)
-		toConst := gen.Constant(int32(dstBits), types.Uint32)
+		fromConst := gen.Constant(int64(0), types.Undefined)
+		toConst := gen.Constant(int64(dstBits), types.Undefined)
 
 		tmp := gen.AnonVal(dst.Type)
 		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, tmp))
@@ -147,8 +147,8 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	lValue := gen.NewVal(baseName, baseType, baseScope)
 
-	fromConst := gen.Constant(int32(dstOffset), types.Uint32)
-	toConst := gen.Constant(int32(dstOffset+srcBits), types.Uint32)
+	fromConst := gen.Constant(int64(dstOffset), types.Undefined)
+	toConst := gen.Constant(int64(dstOffset+srcBits), types.Undefined)
 
 	block.AddInstr(ssa.NewAmovInstr(src, base, fromConst, toConst, lValue))
 	err := baseBindings.Set(lValue, nil)
@@ -156,7 +156,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		return nil, nil, ctx.Error(loc, err.Error())
 	}
 
-	v := gen.Constant(int32(copied), types.Int32)
+	v := gen.Constant(int64(copied), types.Undefined)
 	gen.AddConstant(v)
 
 	return block, []ssa.Value{v}, nil
@@ -191,7 +191,7 @@ func floorPow2Eval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	}
 	i >>= 1
 
-	return gen.Constant(int32(i), types.Int32), true, nil
+	return gen.Constant(int64(i), types.Undefined), true, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
@@ -215,7 +215,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			args[0].Type)
 	}
 
-	v := gen.Constant(int32(val), types.Int32)
+	v := gen.Constant(int64(val), types.Undefined)
 	gen.AddConstant(v)
 
 	return block, []ssa.Value{v}, nil
@@ -282,11 +282,11 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 		switch typeInfo.Type {
 		case types.TString:
-			return gen.Constant(int32(typeInfo.Bits/types.ByteBits),
-				types.Int32), true, nil
+			return gen.Constant(int64(typeInfo.Bits/types.ByteBits),
+				types.Undefined), true, nil
 
 		case types.TArray:
-			return gen.Constant(int32(typeInfo.ArraySize), types.Int32),
+			return gen.Constant(int64(typeInfo.ArraySize), types.Undefined),
 				true, nil
 
 		default:
@@ -408,7 +408,7 @@ func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			"invalid amount of arguments in call to size")
 	}
 
-	v := gen.Constant(int32(args[0].Type.Bits), types.Int32)
+	v := gen.Constant(int64(args[0].Type.Bits), types.Undefined)
 	gen.AddConstant(v)
 
 	return block, []ssa.Value{v}, nil
@@ -442,7 +442,7 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			return ssa.Undefined, false, ctx.Errorf(loc,
 				"undefined variable '%s'", arg.Name.String())
 		}
-		return gen.Constant(int32(b.Type.Bits), types.Int32), true, nil
+		return gen.Constant(int64(b.Type.Bits), types.Undefined), true, nil
 
 	default:
 		return ssa.Undefined, false, ctx.Errorf(loc,

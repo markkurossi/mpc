@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/types"
 )
 
@@ -118,14 +119,8 @@ func (v *Value) ConstInt() (types.Size, error) {
 		return 0, fmt.Errorf("value is not constant")
 	}
 	switch val := v.ConstValue.(type) {
-	case int:
-		return types.Size(val), nil
-	case int32:
-		return types.Size(val), nil
-	case int64:
-		return types.Size(val), nil
-	case uint64:
-		return types.Size(val), nil
+	case *mpa.Int:
+		return types.Size(val.Int64()), nil
 
 	default:
 		return 0, fmt.Errorf("cannot use %v as integer", val)
@@ -210,6 +205,12 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 		return (val & (1 << bit)) != 0
 
 	case *big.Int:
+		if bit > types.Size(val.BitLen()) {
+			return false
+		}
+		return val.Bit(int(bit)) != 0
+
+	case *mpa.Int:
 		if bit > types.Size(val.BitLen()) {
 			return false
 		}

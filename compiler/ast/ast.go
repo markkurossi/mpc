@@ -11,10 +11,10 @@ package ast
 import (
 	"fmt"
 	"io"
-	"math/big"
 	"strings"
 	"unicode"
 
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
@@ -636,7 +636,7 @@ type BinaryType int
 
 // Binary expression types.
 const (
-	BinaryMult BinaryType = iota
+	BinaryMul BinaryType = iota
 	BinaryDiv
 	BinaryMod
 	BinaryLshift
@@ -645,8 +645,8 @@ const (
 	BinaryBclear
 	BinaryBor
 	BinaryBxor
-	BinaryPlus
-	BinaryMinus
+	BinaryAdd
+	BinarySub
 	BinaryEq
 	BinaryNeq
 	BinaryLt
@@ -658,7 +658,7 @@ const (
 )
 
 var binaryTypes = map[BinaryType]string{
-	BinaryMult:   "*",
+	BinaryMul:    "*",
 	BinaryDiv:    "/",
 	BinaryMod:    "%",
 	BinaryLshift: "<<",
@@ -667,8 +667,8 @@ var binaryTypes = map[BinaryType]string{
 	BinaryBclear: "&^",
 	BinaryBor:    "|",
 	BinaryBxor:   "^",
-	BinaryPlus:   "+",
-	BinaryMinus:  "-",
+	BinaryAdd:    "+",
+	BinarySub:    "-",
 	BinaryEq:     "==",
 	BinaryNeq:    "!=",
 	BinaryLt:     "<",
@@ -797,7 +797,7 @@ func ConstantName(value interface{}) string {
 	switch val := value.(type) {
 	case int, uint, int32, uint32, int64, uint64:
 		return fmt.Sprintf("%d", val)
-	case *big.Int:
+	case *mpa.Int:
 		return fmt.Sprintf("%s", val)
 	case bool:
 		return fmt.Sprintf("%v", val)

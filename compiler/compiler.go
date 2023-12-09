@@ -130,6 +130,11 @@ func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
 
 	timing.Sample("Compile", nil)
 
+	if c.params.BenchmarkCompile {
+		fmt.Println("BenchmarkCompile")
+		return nil, nil, nil
+	}
+
 	if len(program.Inputs) != 2 {
 		return nil, nil,
 			fmt.Errorf("invalid program for 2-party computation: %d parties",

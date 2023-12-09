@@ -249,7 +249,7 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 	case types.TBool:
 		return false, nil
 	case types.TInt, types.TUint:
-		return int32(0), nil
+		return int64(0), nil
 	case types.TString:
 		return "", nil
 	case types.TStruct:
@@ -382,9 +382,10 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						lv.Name, b.Type, lv.Name.Name)
 				}
 
-				fromConst := gen.Constant(int32(field.Type.Offset), types.Int32)
-				toConst := gen.Constant(int32(field.Type.Offset+
-					field.Type.Bits), types.Int32)
+				fromConst := gen.Constant(int64(field.Type.Offset),
+					types.Undefined)
+				toConst := gen.Constant(int64(field.Type.Offset+
+					field.Type.Bits), types.Undefined)
 				lValue := gen.NewVal(dstName, dstType, dstScope)
 
 				block.AddInstr(ssa.NewAmovInstr(rv, b.Value(block, gen),
@@ -468,12 +469,11 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						index, arraySize)
 				}
 				basePtrInfo := lrv.BasePtrInfo()
-				from := int32(index*elementSize + basePtrInfo.Offset)
-				to := int32(from + int32(elementSize))
+				from := int64(index*elementSize + basePtrInfo.Offset)
+				to := int64(from + int64(elementSize))
 
-				indexType := types.Uint32
-				fromConst := gen.Constant(from, indexType)
-				toConst := gen.Constant(to, indexType)
+				fromConst := gen.Constant(from, types.Undefined)
+				toConst := gen.Constant(to, types.Undefined)
 
 				lValue := lrv.LValue()
 				block.AddInstr(ssa.NewAmovInstr(rv, lrv.BaseValue(),
@@ -525,10 +525,10 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					block.AddInstr(ssa.NewMovInstr(rv, lValue))
 				} else if v.Type.ElementType.CanAssignConst(rv.Type) {
 					// Pointer to element of value type.
-					from := int32(v.PtrInfo.Offset)
-					to := from + int32(v.Type.ElementType.Bits)
-					fromConst := gen.Constant(from, types.Int32)
-					toConst := gen.Constant(to, types.Int32)
+					from := int64(v.PtrInfo.Offset)
+					to := from + int64(v.Type.ElementType.Bits)
+					fromConst := gen.Constant(from, types.Undefined)
+					toConst := gen.Constant(to, types.Undefined)
 
 					bv := b.Value(block, gen)
 
@@ -1212,25 +1212,14 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 }
 
 func isPowerOf2(ast AST, env *Env, ctx *Codegen, gen *ssa.Generator) (
-	uint64, bool) {
+	int64, bool) {
 
 	v, ok, err := ast.Eval(env, ctx, gen)
 	if err != nil || !ok {
 		return 0, false
 	}
 	switch val := v.ConstValue.(type) {
-	case int32:
-		i := val
-		var count int
-		for i > 0 {
-			if i&1 == 1 {
-				count++
-			}
-			i >>= 1
-		}
-		return uint64(val), count <= 1
-
-	case uint64:
+	case int64:
 		i := val
 		var count int
 		for i > 0 {
@@ -1268,7 +1257,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	rPow2, rConst := isPowerOf2(ast.Right, env, ctx, gen)
 	if lConst || rConst {
 		switch ast.Op {
-		case BinaryMult:
+		case BinaryMul:
 			// Multiplication is commutative.
 			if rConst {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
@@ -1285,7 +1274,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				return ast.constMult(r, lPow2, block, ctx, gen)
 			}
 
-		case BinaryPlus:
+		case BinaryAdd:
 			if rConst && rPow2 == 0 {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
@@ -1301,7 +1290,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				return block, []ssa.Value{r}, nil
 			}
 
-		case BinaryMinus:
+		case BinarySub:
 			if rConst && rPow2 == 0 {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
 				if err != nil {
@@ -1337,8 +1326,8 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	// Resolve target type.
 	var resultType types.Info
 	switch ast.Op {
-	case BinaryMult, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
-		BinaryMinus, BinaryBor, BinaryBxor:
+	case BinaryMul, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
+		BinarySub, BinaryBor, BinaryBxor:
 		superType := l.TypeCompatible(r)
 		if superType == nil {
 			return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
@@ -1346,7 +1335,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		resultType = *superType
 
-	case BinaryPlus:
+	case BinaryAdd:
 		// Binary addition is handled separately since we must handle
 		// string and array concatenation.
 		if l.Type.Type == types.TString && r.Type.Type == types.TString {
@@ -1386,7 +1375,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	var instr ssa.Instr
 	switch ast.Op {
-	case BinaryMult:
+	case BinaryMul:
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryDiv:
 		instr, err = ssa.NewDivInstr(l.Type, l, r, t)
@@ -1405,9 +1394,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		instr, err = ssa.NewBandInstr(l, r, t)
 	case BinaryBclear:
 		instr, err = ssa.NewBclrInstr(l, r, t)
-	case BinaryPlus:
+	case BinaryAdd:
 		instr, err = ssa.NewAddInstr(l.Type, l, r, t)
-	case BinaryMinus:
+	case BinarySub:
 		instr, err = ssa.NewSubInstr(l.Type, l, r, t)
 	case BinaryBor:
 		instr, err = ssa.NewBorInstr(l, r, t)
@@ -1470,7 +1459,7 @@ func (ast *Binary) value(env *Env, val AST, block *ssa.Block, ctx *Codegen,
 	return block, arr[0], nil
 }
 
-func (ast *Binary) constMult(v ssa.Value, c uint64, block *ssa.Block,
+func (ast *Binary) constMult(v ssa.Value, c int64, block *ssa.Block,
 	ctx *Codegen, gen *ssa.Generator) (
 	*ssa.Block, []ssa.Value, error) {
 
@@ -1488,7 +1477,7 @@ func (ast *Binary) constMult(v ssa.Value, c uint64, block *ssa.Block,
 		c >>= 1
 	}
 
-	shift := gen.Constant(int32(count), types.Int32)
+	shift := gen.Constant(int64(count), types.Undefined)
 
 	t := gen.AnonVal(v.Type)
 	instr := ssa.NewLshiftInstr(v, shift, t)
@@ -1528,12 +1517,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		t := gen.AnonVal(expr.Type)
 		switch expr.Type.Type {
 		case types.TInt, types.TUint:
-			zero := gen.Constant(int32(0), types.Info{
-				Type:       types.TInt,
-				IsConcrete: true,
-				MinBits:    1,
-				Bits:       1,
-			})
+			zero := gen.Constant(int64(0), types.Undefined)
 			gen.AddConstant(zero)
 			instr, err := ssa.NewSubInstr(expr.Type, zero, expr, t)
 			if err != nil {
@@ -1764,8 +1748,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			from, to)
 	}
 
-	fromConst := gen.Constant(int32(from*elementSize), types.Uint32)
-	toConst := gen.Constant(int32(to*elementSize), types.Uint32)
+	fromConst := gen.Constant(int64(from*elementSize), types.Undefined)
+	toConst := gen.Constant(int64(to*elementSize), types.Undefined)
 
 	bits := (to - from) * elementSize
 
@@ -1871,11 +1855,11 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 				"invalid array index %d (out of bounds for %d-element string)",
 				index, length)
 		}
-		from := int32(index*types.ByteBits + ptrInfo.Offset)
-		to := int32((index+1)*types.ByteBits + ptrInfo.Offset)
+		from := int64(index*types.ByteBits + ptrInfo.Offset)
+		to := int64((index+1)*types.ByteBits + ptrInfo.Offset)
 
-		fromConst := gen.Constant(from, types.Uint32)
-		toConst := gen.Constant(to, types.Uint32)
+		fromConst := gen.Constant(from, types.Undefined)
+		toConst := gen.Constant(to, types.Undefined)
 
 		indexType := types.Info{
 			Type:       types.TUint,
@@ -1895,11 +1879,11 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 				"invalid array index %d (out of bounds for %d-element array)",
 				index, it.ArraySize)
 		}
-		from := int32(index*it.ElementType.Bits + ptrInfo.Offset)
-		to := int32((index+1)*it.ElementType.Bits + ptrInfo.Offset)
+		from := int64(index*it.ElementType.Bits + ptrInfo.Offset)
+		to := int64((index+1)*it.ElementType.Bits + ptrInfo.Offset)
 
-		fromConst := gen.Constant(from, types.Uint32)
-		toConst := gen.Constant(to, types.Uint32)
+		fromConst := gen.Constant(from, types.Undefined)
+		toConst := gen.Constant(to, types.Undefined)
 
 		t := gen.AnonVal(*it.ElementType)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
@@ -1933,7 +1917,7 @@ func (ast *Index) index(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	switch it.Type {
 	case types.TArray:
-		offset := gen.Constant(int32(ptrInfo.Offset), types.Uint32)
+		offset := gen.Constant(int64(ptrInfo.Offset), types.Undefined)
 		t := gen.AnonVal(*it.ElementType)
 		block.AddInstr(ssa.NewIndexInstr(expr, offset, index, t))
 		return block, []ssa.Value{t}, nil
