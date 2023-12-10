@@ -34,7 +34,7 @@ func (ast List) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				warn = false
 			}
 			if warn {
-				ctx.logger.Warningf(b.Location(), "unreachable code")
+				ctx.Warningf(b, "unreachable code")
 			}
 			break
 		}
@@ -742,11 +742,13 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		switch typeInfo.Type {
 		case types.TString:
 			switch cv.Type.Type {
-			case types.TUint:
-				if cv.Type.Bits != 8 {
-					break castTargetType
+			case types.TUint, types.TInt:
+				if cv.Type.MinBits > 8 {
+					ctx.Warningf(ast,
+						"cast from %v to %v truncates value of %v bits",
+						cv.Type, typeInfo.Type, cv.Type.MinBits)
 				}
-				typeInfo.Bits = cv.Type.Bits
+				typeInfo.Bits = 8
 				typeInfo.SetConcrete(true)
 
 			case types.TString:
