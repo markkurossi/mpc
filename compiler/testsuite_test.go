@@ -18,6 +18,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 const (
@@ -154,13 +155,20 @@ loop:
 				continue loop
 			}
 			for idx, result := range results {
+				out := circ.Outputs[idx]
+				bits := int(out.Type.Bits)
+				if out.Type.Type == types.TInt && result.Bit(bits-1) == 1 {
+					// Negative number.
+					tmp := new(big.Int)
+					tmp.SetBit(tmp, bits, 1)
+					result.Sub(tmp, result)
+					result.Neg(result)
+				}
 				if result.Cmp(outputs[idx]) != 0 {
 					t.Errorf("%s: result %d mismatch: got %v, expected %v",
 						file, idx, result.Text(base), outputs[idx].Text(base))
 				}
 			}
-
-			_ = results
 		}
 		if cpuprof {
 			pprof.StopCPUProfile()
