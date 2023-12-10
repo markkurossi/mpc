@@ -598,7 +598,7 @@ func (l *Lexer) Get() (*Token, error) {
 				return nil, l.errUnexpected(r)
 			}
 			token := l.Token(TConstant)
-			token.ConstVal = i32
+			token.ConstVal = int64(i32)
 			return token, nil
 
 		case '!':
