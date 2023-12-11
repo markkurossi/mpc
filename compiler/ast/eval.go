@@ -208,6 +208,12 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return ssa.Undefined, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval.
+func (ast *ArrayCast) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
+	return ssa.Undefined, false, nil
+}
+
 // Eval implements the compiler.ast.AST.Eval for return statements.
 func (ast *Return) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {

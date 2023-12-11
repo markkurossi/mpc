@@ -28,6 +28,7 @@ var (
 	_ AST = &Assign{}
 	_ AST = &If{}
 	_ AST = &Call{}
+	_ AST = &ArrayCast{}
 	_ AST = &Return{}
 	_ AST = &For{}
 	_ AST = &Binary{}
@@ -604,6 +605,17 @@ func (ast *Call) String() string {
 		str += fmt.Sprintf("%v", expr)
 	}
 	return str + ")"
+}
+
+// ArrayCast implements array cast expressions.
+type ArrayCast struct {
+	utils.Point
+	TypeInfo *TypeInfo
+	Expr     AST
+}
+
+func (ast *ArrayCast) String() string {
+	return fmt.Sprintf("%v(%v)", ast.TypeInfo, ast.Expr)
 }
 
 // Return implements an AST return statement.

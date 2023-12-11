@@ -723,74 +723,10 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.Exprs[0],
 				"multiple-value %s in single-value context", ast.Exprs[0])
 		}
-
-		// Convert value to type.
-
 		cv := callValues[0][0]
-		var t ssa.Value
 
-		if !typeInfo.Concrete() {
-			if !cv.Type.Concrete() {
-				return nil, nil, ctx.Errorf(ast.Ref,
-					"casting to non-concrete type %s", ast.Ref)
-			}
-			typeInfo.Bits = cv.Type.Bits
-			typeInfo.SetConcrete(true)
-		}
-
-	castTargetType:
-		switch typeInfo.Type {
-		case types.TString:
-			switch cv.Type.Type {
-			case types.TUint, types.TInt:
-				if cv.Type.MinBits > 8 {
-					ctx.Warningf(ast,
-						"cast from %v to %v truncates value of %v bits",
-						cv.Type, typeInfo.Type, cv.Type.MinBits)
-				}
-				typeInfo.Bits = 8
-				typeInfo.SetConcrete(true)
-
-			case types.TString:
-				typeInfo.Bits = cv.Type.Bits
-				typeInfo.SetConcrete(true)
-
-			case types.TArray:
-				switch cv.Type.ElementType.Type {
-				case types.TUint:
-					if cv.Type.ElementType.Bits != 8 {
-						break castTargetType
-					}
-					typeInfo.Bits = cv.Type.ElementType.Bits * cv.Type.ArraySize
-					typeInfo.SetConcrete(true)
-
-				default:
-					break castTargetType
-				}
-
-			default:
-				break castTargetType
-			}
-			t = gen.AnonVal(typeInfo)
-
-		default:
-			t = gen.AnonVal(typeInfo)
-		}
-		if t.Type.Undefined() {
-			return nil, nil, ctx.Errorf(ast.Exprs[0],
-				"cast from %v to %v", cv.Type, typeInfo)
-		}
-
-		if cv.Type.Type == types.TInt && typeInfo.Type == types.TInt &&
-			typeInfo.Bits > cv.Type.Bits {
-			// The src and dst are signed integers and we are casting
-			// to bigger bit size. Use sign-extension version smov.
-			block.AddInstr(ssa.NewSmovInstr(cv, t))
-		} else {
-			block.AddInstr(ssa.NewMovInstr(cv, t))
-		}
-
-		return block, []ssa.Value{t}, nil
+		// Cast value to type.
+		return ast.cast(block, ctx, gen, typeInfo, cv)
 	}
 
 	var args []ssa.Value
@@ -932,6 +868,75 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, returnValues, nil
 }
 
+func (ast *Call) cast(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	typeInfo types.Info, cv ssa.Value) (*ssa.Block, []ssa.Value, error) {
+
+	if !typeInfo.Concrete() {
+		if !cv.Type.Concrete() {
+			return nil, nil, ctx.Errorf(ast.Ref,
+				"casting to non-concrete type %s", ast.Ref)
+		}
+		typeInfo.Bits = cv.Type.Bits
+		typeInfo.SetConcrete(true)
+	}
+
+	var t ssa.Value
+
+castTargetType:
+	switch typeInfo.Type {
+	case types.TString:
+		switch cv.Type.Type {
+		case types.TUint, types.TInt:
+			if cv.Type.MinBits > 8 {
+				ctx.Warningf(ast,
+					"cast from %v to %v truncates value of %v bits",
+					cv.Type, typeInfo.Type, cv.Type.MinBits)
+			}
+			typeInfo.Bits = 8
+			typeInfo.SetConcrete(true)
+
+		case types.TString:
+			typeInfo.Bits = cv.Type.Bits
+			typeInfo.SetConcrete(true)
+
+		case types.TArray:
+			switch cv.Type.ElementType.Type {
+			case types.TUint:
+				if cv.Type.ElementType.Bits != 8 {
+					break castTargetType
+				}
+				typeInfo.Bits = cv.Type.ElementType.Bits * cv.Type.ArraySize
+				typeInfo.SetConcrete(true)
+
+			default:
+				break castTargetType
+			}
+
+		default:
+			break castTargetType
+		}
+		t = gen.AnonVal(typeInfo)
+
+	default:
+		t = gen.AnonVal(typeInfo)
+	}
+	if t.Type.Undefined() {
+		return nil, nil, ctx.Errorf(ast.Exprs[0], "cast from %v to %v",
+			cv.Type, typeInfo)
+	}
+
+	if cv.Type.Type == types.TInt && typeInfo.Type == types.TInt &&
+		typeInfo.Bits > cv.Type.Bits {
+		// The src and dst are signed integers and we are casting to
+		// bigger bit size. Use sign-extension version smov.
+		block.AddInstr(ssa.NewSmovInstr(cv, t))
+	} else {
+		block.AddInstr(ssa.NewMovInstr(cv, t))
+	}
+
+	return block, []ssa.Value{t}, nil
+}
+
 func (ast *Call) error(ctx *Codegen, message string, have [][]ssa.Value,
 	want []*Variable) error {
 
@@ -975,6 +980,87 @@ func (ast *Call) error(ctx *Codegen, message string, have [][]ssa.Value,
 		message += v.Type.String()
 	}
 	return ctx.Errorf(ast, "%s)", message)
+}
+
+// SSA implements the compiler.ast.AST.SSA.
+func (ast *ArrayCast) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+
+	// Value being cast.
+
+	var v []ssa.Value
+	var err error
+
+	env := NewEnv(block)
+	constVal, ok, err := ast.Expr.Eval(env, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ok {
+		gen.AddConstant(constVal)
+		v = []ssa.Value{constVal}
+	} else {
+		block, v, err = ast.Expr.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(v) == 0 {
+		return nil, nil, ctx.Errorf(ast.Expr, "%s used as value", ast.Expr)
+	}
+	if len(v) > 1 {
+		return nil, nil, ctx.Errorf(ast.Expr,
+			"multiple-value %s used in single-value context", ast.Expr)
+	}
+	cv := v[0]
+
+	// Type to cast.
+	typeInfo, err := ast.TypeInfo.Resolve(env, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if typeInfo.Type != types.TArray {
+		return nil, nil, ctx.Errorf(ast.Expr, "array cast to non-array type %v",
+			typeInfo)
+	}
+
+	var t ssa.Value
+
+	switch cv.Type.Type {
+	case types.TString:
+		if cv.Type.Bits%8 != 0 {
+			return nil, nil, ctx.Errorf(ast.Expr, "invalid string length %v",
+				cv.Type.Bits)
+		}
+		chars := cv.Type.Bits / 8
+		et := typeInfo.ElementType
+		if et.Bits != 8 || et.Type != types.TUint {
+			return nil, nil, ctx.Errorf(ast.Expr, "cast from %v to %v",
+				cv.Type, ast.TypeInfo)
+		}
+
+		if typeInfo.Concrete() {
+			if typeInfo.ArraySize != chars || typeInfo.Bits != cv.Type.Bits {
+				return nil, nil, ctx.Errorf(ast.Expr, "cast from %v to %v",
+					cv.Type, ast.TypeInfo)
+			}
+		} else {
+			typeInfo.Bits = cv.Type.Bits
+			typeInfo.MinBits = typeInfo.Bits
+			typeInfo.ArraySize = chars
+			typeInfo.SetConcrete(true)
+		}
+
+		t = gen.AnonVal(typeInfo)
+
+	default:
+		return nil, nil, ctx.Errorf(ast.Expr, "cast from %v to %v",
+			cv.Type, ast.TypeInfo)
+	}
+
+	block.AddInstr(ssa.NewMovInstr(cv, t))
+
+	return block, []ssa.Value{t}, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for return statements.

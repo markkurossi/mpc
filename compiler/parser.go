@@ -1443,7 +1443,7 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			return p.parseCompositeLit(typeInfo)
 
 		case '(':
-			return p.parseArrayCast(typeInfo)
+			return p.parseArrayCast(n.From, typeInfo)
 
 		default:
 			return nil, p.errf(n.From, "unexpected token '%s'", n.Type)
@@ -1466,7 +1466,8 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 	}
 }
 
-func (p *Parser) parseArrayCast(typeInfo *ast.TypeInfo) (ast.AST, error) {
+func (p *Parser) parseArrayCast(loc utils.Point, typeInfo *ast.TypeInfo) (
+	ast.AST, error) {
 	expr, err := p.parseExpr(false)
 	if err != nil {
 		return nil, err
@@ -1475,49 +1476,11 @@ func (p *Parser) parseArrayCast(typeInfo *ast.TypeInfo) (ast.AST, error) {
 	if err != nil {
 		return nil, err
 	}
-	if typeInfo.ElementType.Type == ast.TypeName {
-		switch typeInfo.ElementType.Name.Name {
-		case "byte":
-			bytes, err := p.toByteArray(expr)
-			if err != nil {
-				return nil, err
-			}
-			var value []ast.KeyedElement
-			for _, b := range bytes {
-				value = append(value, ast.KeyedElement{
-					Element: &ast.BasicLit{
-						Point: expr.Location(),
-						Value: b,
-					},
-				})
-			}
-			return &ast.CompositeLit{
-				Type:  typeInfo,
-				Value: value,
-			}, nil
-
-		case "rune":
-			runes, err := p.toRuneArray(expr)
-			if err != nil {
-				return nil, err
-			}
-			var value []ast.KeyedElement
-			for _, r := range runes {
-				value = append(value, ast.KeyedElement{
-					Element: &ast.BasicLit{
-						Point: expr.Location(),
-						Value: r,
-					},
-				})
-			}
-			return &ast.CompositeLit{
-				Type:  typeInfo,
-				Value: value,
-			}, nil
-		}
-	}
-	return nil, p.errf(expr.Location(), "cannot convert %s to type %s",
-		expr, typeInfo)
+	return &ast.ArrayCast{
+		Point:    loc,
+		TypeInfo: typeInfo,
+		Expr:     expr,
+	}, nil
 }
 
 func (p *Parser) toByteArray(expr ast.AST) ([]byte, error) {

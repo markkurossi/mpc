@@ -1,0 +1,8 @@
+// -*- go -*-
+
+package main
+
+func main(a []byte, b int) []byte {
+	str := string(a)
+	return []byte(str)
+}
