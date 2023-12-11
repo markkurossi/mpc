@@ -211,6 +211,60 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 // Eval implements the compiler.ast.AST.Eval.
 func (ast *ArrayCast) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
+
+	typeInfo, err := ast.TypeInfo.Resolve(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	if typeInfo.Type != types.TArray {
+		return ssa.Undefined, false,
+			ctx.Errorf(ast.Expr, "array cast to non-array type %v", typeInfo)
+	}
+
+	cv, ok, err := ast.Expr.Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	if !ok {
+		return ssa.Undefined, false, nil
+	}
+
+	switch cv.Type.Type {
+	case types.TString:
+		if cv.Type.Bits%8 != 0 {
+			return ssa.Undefined, false,
+				ctx.Errorf(ast.Expr, "invalid string length %v", cv.Type.Bits)
+		}
+		chars := cv.Type.Bits / 8
+		et := typeInfo.ElementType
+		if et.Bits != 8 || et.Type != types.TUint {
+			return ssa.Undefined, false,
+				ctx.Errorf(ast.Expr, "cast from %v to %v",
+					cv.Type, ast.TypeInfo)
+		}
+
+		if typeInfo.Concrete() {
+			if typeInfo.ArraySize != chars || typeInfo.Bits != cv.Type.Bits {
+				return ssa.Undefined, false,
+					ctx.Errorf(ast.Expr, "cast from %v to %v",
+						cv.Type, ast.TypeInfo)
+			}
+		} else {
+			typeInfo.Bits = cv.Type.Bits
+			typeInfo.ArraySize = chars
+			typeInfo.SetConcrete(true)
+		}
+		cast := cv
+		cast.Type = typeInfo
+		if cv.HashCode() != cast.HashCode() {
+			panic("const array cast changes value HashCode")
+		}
+		if !cv.Equal(&cast) {
+			panic("const array cast changes value equality")
+		}
+		return cast, true, nil
+	}
+
 	return ssa.Undefined, false, nil
 }
 
