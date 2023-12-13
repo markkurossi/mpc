@@ -280,6 +280,12 @@ func (ast *For) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return ssa.Undefined, false, nil
 }
 
+// Eval implements the compiler.ast.AST.Eval.
+func (ast *ForRange) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
+	return ssa.Undefined, false, nil
+}
+
 // Eval implements the compiler.ast.AST.Eval for binary expressions.
 func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
@@ -302,7 +308,7 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		rval, ok := r.ConstValue.(bool)
 		if !ok {
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"invalid types: %s %s %s", l, ast.Op, r)
+				"%s %v %s: invalid r-value %v (%T)", l, ast.Op, r, rval, rval)
 		}
 		switch ast.Op {
 		case BinaryEq:
@@ -313,9 +319,6 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval && rval, types.Bool), true, nil
 		case BinaryOr:
 			return gen.Constant(lval || rval, types.Bool), true, nil
-		default:
-			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval: '%v %v %v' not supported", l, ast.Op, r)
 		}
 
 	case *mpa.Int:
@@ -337,8 +340,20 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryLshift:
 			return gen.Constant(mpa.NewInt(0).Lsh(lval, uint(rval.Int64())),
 				l.Type), true, nil
+		case BinaryRshift:
+			return gen.Constant(mpa.NewInt(0).Rsh(lval, uint(rval.Int64())),
+				l.Type), true, nil
+		case BinaryBand:
+			return gen.Constant(mpa.NewInt(0).And(lval, rval), l.Type),
+				true, nil
+		case BinaryBclear:
+			return gen.Constant(mpa.NewInt(0).AndNot(lval, rval), l.Type),
+				true, nil
 		case BinaryBor:
 			return gen.Constant(mpa.NewInt(0).Or(lval, rval), l.Type),
+				true, nil
+		case BinaryBxor:
+			return gen.Constant(mpa.NewInt(0).Xor(lval, rval), l.Type),
 				true, nil
 		case BinaryAdd:
 			return gen.Constant(mpa.NewInt(0).Add(lval, rval), l.Type),
@@ -358,24 +373,23 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return gen.Constant(lval.Cmp(rval) == 1, types.Bool), true, nil
 		case BinaryGe:
 			return gen.Constant(lval.Cmp(rval) != -1, types.Bool), true, nil
-
-		default:
-			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"Binary.Eval: '%v %s %v' not implemented yet", l, ast.Op, r)
 		}
 
 	case string:
 		rval, ok := r.ConstValue.(string)
 		if !ok {
 			return ssa.Undefined, false, ctx.Errorf(ast.Right,
-				"invalid types: %s %s %s", l, ast.Op, r)
+				"%s %v %s: invalid r-value %v (%T)", l, ast.Op, r, rval, rval)
 		}
-		return gen.Constant(lval+rval, types.Undefined), true, nil
-
-	default:
-		return ssa.Undefined, false, ctx.Errorf(ast.Left,
-			"%s %v %s: invalid l-value %v (%T)", l, ast.Op, r, lval, lval)
+		switch ast.Op {
+		case BinaryAdd:
+			return gen.Constant(lval+rval, types.Undefined), true, nil
+		}
 	}
+
+	return ssa.Undefined, false, ctx.Errorf(ast.Right,
+		"invalid operation: operator %s not defined on %v (%v)",
+		ast.Op, l, l.Type)
 }
 
 // Eval implements the compiler.ast.AST.Eval for unary expressions.

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 
 	"github.com/markkurossi/mpc/compiler/ast"
@@ -115,8 +116,42 @@ func (p *Parser) Parse(pkg *ast.Package) (*ast.Package, error) {
 	return p.pkg, nil
 }
 
+var leaves = map[string]bool{
+	"errorLoc":      true,
+	"errf":          true,
+	"errUnexpected": true,
+	"needToken":     true,
+}
+
+func (p *Parser) errorLoc(msg string) {
+	if !p.compiler.params.MPCLCErrorLoc {
+		return
+	}
+	for i := 3; ; i++ {
+		pc, file, line, ok := runtime.Caller(i)
+		if !ok {
+			return
+		}
+		f := runtime.FuncForPC(pc)
+		if f != nil {
+			name := f.Name()
+			idx := strings.LastIndexByte(name, '.')
+			if idx >= 0 {
+				name = name[idx+1:]
+			}
+			if leaves[name] {
+				continue
+			}
+		}
+		fmt.Printf("%s:%d: MCPLC error:\n\u2514\u2574%s\n", file, line, msg)
+		return
+	}
+}
+
 func (p *Parser) errf(loc utils.Point, format string, a ...interface{}) error {
 	msg := fmt.Sprintf(format, a...)
+
+	p.errorLoc(msg)
 
 	p.lexer.FlushEOL()
 
@@ -841,6 +876,19 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			if err != nil {
 				return nil, err
 			}
+			forRange, ok := init.(*ast.ForRange)
+			if ok {
+				_, err := p.needToken('{')
+				if err != nil {
+					return nil, err
+				}
+				body, _, err := p.parseBlock()
+				if err != nil {
+					return nil, err
+				}
+				forRange.Body = body
+				return forRange, nil
+			}
 		}
 		_, err = p.needToken(';')
 		if err != nil {
@@ -886,6 +934,25 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}
 		switch t.Type {
 		case '=', TDefAssign:
+			n, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type == TSymRange {
+				expr, err := p.parseExpr(true)
+				if err != nil {
+					return nil, err
+				}
+				return &ast.ForRange{
+					Point:    t.From,
+					ExprList: lvalues,
+					Def:      t.Type == TDefAssign,
+					Expr:     expr,
+				}, nil
+			}
+
+			p.lexer.Unget(n)
+
 			values, err := p.parseExprList(needLBrace)
 			if err != nil {
 				return nil, err

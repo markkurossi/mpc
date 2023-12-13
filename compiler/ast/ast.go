@@ -31,6 +31,7 @@ var (
 	_ AST = &ArrayCast{}
 	_ AST = &Return{}
 	_ AST = &For{}
+	_ AST = &ForRange{}
 	_ AST = &Binary{}
 	_ AST = &Unary{}
 	_ AST = &Slice{}
@@ -641,6 +642,33 @@ type For struct {
 func (ast *For) String() string {
 	return fmt.Sprintf("for %s; %s; %s %s",
 		ast.Init, ast.Cond, ast.Inc, ast.Body)
+}
+
+// ForRange implements an AST for for-range statement.
+type ForRange struct {
+	utils.Point
+	ExprList []AST
+	Def      bool
+	Expr     AST
+	Body     List
+}
+
+func (ast *ForRange) String() string {
+	result := "for "
+	for idx, expr := range ast.ExprList {
+		if idx > 0 {
+			result += ", "
+		}
+		result += expr.String()
+	}
+	if ast.Def {
+		result += " := range "
+	} else {
+		result += " = range "
+	}
+	result += ast.Expr.String()
+
+	return result
 }
 
 // BinaryType defines binary expression types.

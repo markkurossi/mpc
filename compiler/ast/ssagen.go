@@ -1299,6 +1299,146 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, nil, nil
 }
 
+// SSA implements the compiler.ast.AST.SSA for for statements.
+func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+
+	if len(ast.ExprList) > 2 {
+		return nil, nil, ctx.Errorf(ast.ExprList[2],
+			"range clause permits at most two iteration variables")
+	}
+	var idxVar, valVar string
+	for idx, expr := range ast.ExprList {
+		ref, ok := expr.(*VariableRef)
+		if !ok {
+			return nil, nil, ctx.Errorf(expr,
+				"range clause supports only identifiers")
+		}
+		name := ref.Name.Name
+		if name == "_" {
+			name = ""
+		}
+		switch idx {
+		case 0:
+			idxVar = name
+		case 1:
+			valVar = name
+		}
+	}
+
+	var v []ssa.Value
+	var err error
+
+	block, v, err = ast.Expr.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(v) == 0 {
+		return nil, nil, ctx.Errorf(ast.Expr, "%s used as value", ast.Expr)
+	}
+	if len(v) > 1 {
+		return nil, nil, ctx.Errorf(ast.Expr,
+			"multiple-value %s used in single-value context", ast.Expr)
+	}
+	values := v[0]
+
+	var count int
+	var valueType types.Info
+
+	switch values.Type.Type {
+	case types.TArray:
+		count = int(values.Type.ArraySize)
+		valueType = *values.Type.ElementType
+	default:
+		return nil, nil, ctx.Errorf(ast.Expr,
+			"cannot range over %v (%v)", ast.Expr, values.Type)
+	}
+	if !valueType.Concrete() {
+		return nil, nil, ctx.Errorf(ast.Expr,
+			"cannot range over unspecified element type %v", valueType)
+	}
+
+	// Expand body for each value or until MaxLoopUnroll is reached.
+	for i := 0; i < count; i++ {
+		// Index variable
+		if len(idxVar) > 0 {
+			idxConst := gen.Constant(int64(i), types.Undefined)
+			var lValue ssa.Value
+			b, ok := block.Bindings.Get(idxVar)
+			if ast.Def {
+				if ok {
+					lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
+				} else {
+					lValue = gen.NewVal(idxVar, idxConst.Type, ctx.Scope())
+					block.Bindings.Define(lValue, nil)
+				}
+			} else {
+				if !ok {
+					return nil, nil, ctx.Errorf(ast.ExprList[0],
+						"undefined: %s", idxVar)
+				}
+				lValue = gen.NewVal(idxVar, idxConst.Type, ctx.Scope())
+			}
+			block.AddInstr(ssa.NewMovInstr(idxConst, lValue))
+			err = block.Bindings.Set(lValue, &idxConst)
+			if err != nil {
+				return nil, nil, ctx.Error(ast.ExprList[0], err.Error())
+			}
+		}
+
+		// Value variable.
+		if len(valVar) > 0 {
+			r := gen.AnonVal(valueType)
+
+			switch values.Type.Type {
+			case types.TArray:
+				from := int64(i * int(valueType.Bits))
+				to := int64((i + 1) * int(valueType.Bits))
+
+				fromConst := gen.Constant(from, types.Undefined)
+				toConst := gen.Constant(to, types.Undefined)
+
+				block.AddInstr(ssa.NewSliceInstr(values, fromConst, toConst, r))
+
+			default:
+				return nil, nil, ctx.Errorf(ast.Expr,
+					"cannot range over %v (%v)", ast.Expr, values.Type)
+			}
+
+			var lValue ssa.Value
+			b, ok := block.Bindings.Get(valVar)
+			if ast.Def {
+				if ok {
+					lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
+				} else {
+					lValue = gen.NewVal(valVar, r.Type, ctx.Scope())
+					block.Bindings.Define(lValue, nil)
+				}
+			} else {
+				if !ok {
+					return nil, nil, ctx.Errorf(ast.ExprList[1],
+						"undefined: %s", valVar)
+				}
+				lValue = gen.NewVal(valVar, r.Type, ctx.Scope())
+			}
+
+			block.AddInstr(ssa.NewMovInstr(r, lValue))
+			err = block.Bindings.Set(lValue, &r)
+			if err != nil {
+				return nil, nil, ctx.Error(ast.ExprList[1], err.Error())
+			}
+		}
+
+		// Expand block.
+		block, _, err = ast.Body.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return block, nil, nil
+}
+
 func isPowerOf2(ast AST, env *Env, ctx *Codegen, gen *ssa.Generator) (
 	int64, bool) {
 
