@@ -163,6 +163,18 @@ func (z *Int) And(x, y *Int) *Int {
 	return z
 }
 
+// AndNot sets z to x&^y and returns z.
+func (z *Int) AndNot(x, y *Int) *Int {
+	z.bits = max(x.bits, y.bits)
+	if x.small && y.small {
+		z.setSmall(x.i64 &^ y.i64)
+	} else {
+		z.values = big.NewInt(0).AndNot(x.big(), y.big())
+		z.small = false
+	}
+	return z
+}
+
 // Div sets z to x/y and returns z.
 func (z *Int) Div(x, y *Int) *Int {
 	if x.small && y.small {
