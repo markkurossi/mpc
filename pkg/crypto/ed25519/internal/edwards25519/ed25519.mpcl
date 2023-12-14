@@ -974,7 +974,7 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 
 	t.Zero()
 	var x PreComputedGroupElement
-	for i := 0; i < 8; i++ {
+	for i := int32(0); i < 8; i++ {
 		x = base[pos][i]
 		PreComputedGroupElementCMove(t, &x, equal(bAbs, i+1))
 	}
@@ -1014,7 +1014,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	h.Zero()
 	var t PreComputedGroupElement
 	var r CompletedGroupElement
-	for i := 1; i < 64; i += 2 {
+	for i := int32(1); i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
@@ -1031,7 +1031,7 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	s.Double(&r)
 	r.ToExtended(h)
 
-	for i := 0; i < 64; i += 2 {
+	for i := int32(0); i < 64; i += 2 {
 		selectPoint(&t, i/2, int32(e[i]))
 		geMixedAdd(&r, h, &t)
 		r.ToExtended(h)
