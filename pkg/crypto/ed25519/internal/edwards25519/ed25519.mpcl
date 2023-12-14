@@ -240,8 +240,8 @@ func FeIsNonZero(f *FieldElement) int32 {
 	var s [32]byte
 	FeToBytes(&s, f)
 	var x uint8
-	for i := 0; i < len(s); i++ {
-		x |= s[i]
+	for _, b := range s {
+		x |= b
 	}
 	x |= x >> 4
 	x |= x >> 2
@@ -769,8 +769,8 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 		FeMul(&p.X, &p.X, &SqrtM1)
 
 		FeToBytes(&tmpX, &p.X)
-		for i := 0; i < len(tmpX); i++ {
-			tmp2[31-i] = tmpX[i]
+		for i, v := range tmpX {
+			tmp2[31-i] = v
 		}
 	}
 
@@ -864,11 +864,11 @@ func geMixedSub(r *CompletedGroupElement, p *ExtendedGroupElement, q *PreCompute
 }
 
 func slide(r *[256]int8, a *[32]byte) {
-	for i := 0; i < len(r); i++ {
+	for i := range r {
 		r[i] = int8(1 & (a[i>>3] >> uint(i&7)))
 	}
 
-	for i := 0; i < len(r); i++ {
+	for i := range r {
 		if r[i] != 0 {
 			for b := 1; b <= 6 && i+b < 256; b++ {
 				if r[i+b] != 0 {
@@ -995,9 +995,9 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	var e [64]int8
 
-	for i := 0; i < len(a); i++ {
-		e[2*i] = int8(a[i] & 15)
-		e[2*i+1] = int8((a[i] >> 4) & 15)
+	for i, v := range a {
+		e[2*i] = int8(v & 15)
+		e[2*i+1] = int8((v >> 4) & 15)
 	}
 
 	// each e[i] is between 0 and 15 and e[63] is between 0 and 7.
