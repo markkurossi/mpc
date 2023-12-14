@@ -26,7 +26,7 @@ import (
 type fieldElement [10]int32
 
 func feZero(fe *fieldElement) {
-	for i := 0; i < len(fe); i++ {
+	for i := range fe {
 		fe[i] = 0
 	}
 }
@@ -37,19 +37,19 @@ func feOne(fe *fieldElement) {
 }
 
 func feAdd(dst, a, b *fieldElement) {
-	for i := 0; i < len(dst); i++ {
+	for i := range dst {
 		dst[i] = a[i] + b[i]
 	}
 }
 
 func feSub(dst, a, b *fieldElement) {
-	for i := 0; i < len(dst); i++ {
+	for i := range dst {
 		dst[i] = a[i] - b[i]
 	}
 }
 
 func feCopy(dst, src *fieldElement) {
-	for i := 0; i < len(dst); i++ {
+	for i := range dst {
 		dst[i] = src[i]
 	}
 }
@@ -60,7 +60,7 @@ func feCopy(dst, src *fieldElement) {
 func feCSwap(f, g *fieldElement, b int32) {
 	b = -b
 	var t int32
-	for i := 0; i < len(f); i++ {
+	for i := range f {
 		t = b & (f[i] ^ g[i])
 		f[i] ^= t
 		g[i] ^= t
