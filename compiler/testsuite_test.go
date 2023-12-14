@@ -43,7 +43,6 @@ func TestSuite(t *testing.T) {
 			if d.IsDir() {
 				return nil
 			}
-			fmt.Printf("WalkDir: %s\n", path)
 			testFile(t, compiler, path)
 			return nil
 		})
