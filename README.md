@@ -287,8 +287,6 @@ form assembly:
 
 # TODO
 
- - [ ] Shortlist
-   - [ ] `for in range`
  - [ ] Foundation
    - [x] Circuit & garbling:
      - [x] Oblivious transfer extensions
@@ -298,7 +296,7 @@ form assembly:
  - [ ] Compiler
    - [ ] Incremental compiler
      - [ ] Constant folding
-       - [ ] Implement arithmetics with `math.big` instead of int{32,64}
+       - [x] Implement arithmetics with `math.big` instead of int{32,64}
        - [ ] Implement using AST rewrite
        - [ ] binary expressions
        - [ ] if-blocks
@@ -320,7 +318,7 @@ form assembly:
      - [ ] Selecting struct members from struct pointer value
  - [ ] Streamer
    - [ ] Uninitialized variables produce unspecified values in stream mode
-   - [ ] The `compiler/ssa/wire_allocator.go` uses `Value.String()` as
+   - [x] The `compiler/ssa/wire_allocator.go` uses `Value.String()` as
          the wire map key. This causes unnecessary memory
          allocation. Should change to use `Value.HashCode()` and
          `Value.Equal()` to implement a custom hashtable. The wire
