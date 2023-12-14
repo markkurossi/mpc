@@ -1343,24 +1343,36 @@ func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	values := v[0]
 
 	var count int
-	var valueType types.Info
+	var it types.Info
+	var ptrInfo ssa.PtrInfo
+	if values.Type.Type == types.TPtr {
+		it = *values.Type.ElementType
+		ptrInfo = *values.PtrInfo
+		b, ok := ptrInfo.Bindings.Get(ptrInfo.Name)
+		if !ok {
+			return nil, nil, ctx.Errorf(ast.Expr, "undefined: %s", ptrInfo.Name)
+		}
+		values = b.Value(block, gen)
+	} else {
+		it = values.Type
+	}
 
-	switch values.Type.Type {
+	switch it.Type {
 	case types.TArray:
 		count = int(values.Type.ArraySize)
-		valueType = *values.Type.ElementType
+		it = *it.ElementType
 	default:
 		return nil, nil, ctx.Errorf(ast.Expr,
-			"cannot range over %v (%v)", ast.Expr, values.Type)
+			"cannot range over %v (%v)", ast.Expr, it)
 	}
-	if !valueType.Concrete() {
+	if !it.Concrete() {
 		return nil, nil, ctx.Errorf(ast.Expr,
-			"cannot range over unspecified element type %v", valueType)
+			"cannot range over unspecified element type %v", it)
 	}
 
-	// Expand body for each value or until MaxLoopUnroll is reached.
+	// Expand body for each element in value.
 	for i := 0; i < count; i++ {
-		// Index variable
+		// Index variable.
 		if len(idxVar) > 0 {
 			idxConst := gen.Constant(int64(i), types.Undefined)
 			var lValue ssa.Value
@@ -1388,12 +1400,12 @@ func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		// Value variable.
 		if len(valVar) > 0 {
-			r := gen.AnonVal(valueType)
+			r := gen.AnonVal(it)
 
 			switch values.Type.Type {
 			case types.TArray:
-				from := int64(i * int(valueType.Bits))
-				to := int64((i + 1) * int(valueType.Bits))
+				from := int64(types.Size(i)*it.Bits + ptrInfo.Offset)
+				to := int64(types.Size(i+1)*it.Bits + ptrInfo.Offset)
 
 				fromConst := gen.Constant(from, types.Undefined)
 				toConst := gen.Constant(to, types.Undefined)
