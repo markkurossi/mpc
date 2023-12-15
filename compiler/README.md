@@ -27,10 +27,9 @@ converted) to be or correct type.
 
 The unsized `uint` and `int` types can be used as function arguments
 and return values. Their sizes are resolved during compilation
-time. The only exception is the `main` function. Its arguments must
-use fixed type sizes. The following example shows a `MinMax` function
-that returns the minimum and maximum arguments. This function works
-for all argument sizes.
+time. The following example shows a `MinMax` function that returns the
+minimum and maximum arguments. This function works for all argument
+sizes.
 
 ```go
 func MinMax(a, b int) (int, int) {
@@ -87,7 +86,7 @@ The compiler creates the following SSA form assembly:
 	gc      b{1,0}i4
 	ret     %_{0,1}i4
 ```
-<img align="center" width="476" height="284" src="ifelse.png">
+<img align="center" width="476" height="284" src="../docs/ifelse.png">
 
 The SSA assembly (and logical circuit) form a Directed Acyclic Graph
 (DAG) without any mutable storage locations. This means that all
