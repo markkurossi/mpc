@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/p2p"
@@ -72,7 +73,7 @@ func bmrMode(file string, params *utils.Params, player int) error {
 		return err
 	}
 
-	printResults(result, circ.Outputs)
+	mpc.PrintResults(result, circ.Outputs)
 	return nil
 }
 
