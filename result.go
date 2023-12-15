@@ -123,30 +123,28 @@ func Result(result *big.Int, output circuit.IOArg) interface{} {
 			elementType = reflect.TypeOf("")
 
 		case types.TUint:
-			switch elSize {
-			case 8:
+			if elSize <= 8 {
 				elementType = reflect.TypeOf(uint8(0))
-			case 16:
+			} else if elSize <= 16 {
 				elementType = reflect.TypeOf(uint16(0))
-			case 32:
+			} else if elSize <= 32 {
 				elementType = reflect.TypeOf(uint32(0))
-			case 64:
+			} else if elSize <= 64 {
 				elementType = reflect.TypeOf(uint64(0))
-			default:
+			} else {
 				elementType = reflect.TypeOf((*big.Int)(nil))
 			}
 
 		case types.TInt:
-			switch elSize {
-			case 8:
+			if elSize <= 8 {
 				elementType = reflect.TypeOf(int8(0))
-			case 16:
+			} else if elSize <= 16 {
 				elementType = reflect.TypeOf(int16(0))
-			case 32:
+			} else if elSize <= 32 {
 				elementType = reflect.TypeOf(int32(0))
-			case 64:
+			} else if elSize <= 64 {
 				elementType = reflect.TypeOf(int64(0))
-			default:
+			} else {
 				elementType = reflect.TypeOf((*big.Int)(nil))
 			}
 
