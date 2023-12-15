@@ -1986,7 +1986,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ctx.Errorf(ast.To, "%s", err)
 		}
 	}
-	if from >= elementCount || from >= to {
+	if ast.From != nil && ast.To != nil &&
+		(from >= elementCount || from >= to) {
 		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}
@@ -2036,7 +2037,9 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		t = gen.AnonVal(ti)
 	}
-	block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+	if bits > 0 {
+		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+	}
 
 	return block, []ssa.Value{t}, nil
 }
