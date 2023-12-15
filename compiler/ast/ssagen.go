@@ -425,7 +425,14 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				}
 				lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
 			}
-			rv.Type = lValue.Type
+			if lValue.Type.Concrete() {
+				rv.Type = lValue.Type
+			} else if !rv.Type.Concrete() {
+				return nil, nil, ctx.Errorf(ast, "unspecified size for type %v",
+					rv.Type)
+			} else {
+				lValue.Type = rv.Type
+			}
 			block.AddInstr(ssa.NewMovInstr(rv, lValue))
 			err := block.Bindings.Set(lValue, &rv)
 			if err != nil {
