@@ -9,5 +9,4 @@ import (
 
 func main(a, b uint64) uint {
 	return a + b
-	//return math.AddUint64(a, b)
 }
