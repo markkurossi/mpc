@@ -31,12 +31,6 @@ func (ast *Func) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	return ssa.Undefined, false, nil
 }
 
-// Eval implements the compiler.ast.AST.Eval for constant definitions.
-func (ast *ConstantDef) Eval(env *Env, ctx *Codegen,
-	gen *ssa.Generator) (ssa.Value, bool, error) {
-	return ssa.Undefined, false, nil
-}
-
 // Eval implements the compiler.ast.AST.Eval for variable definitions.
 func (ast *VariableDef) Eval(env *Env, ctx *Codegen,
 	gen *ssa.Generator) (ssa.Value, bool, error) {

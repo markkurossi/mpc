@@ -226,6 +226,14 @@ func (pkg *Package) Init(packages map[string]*Package, block *ssa.Block,
 		}
 	}
 
+	// Define constants.
+	for _, def := range pkg.Constants {
+		err := pkg.defineConstant(def, ctx, gen)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Define types.
 	for _, typeDef := range pkg.Types {
 		err := pkg.defineType(typeDef, ctx, gen)
@@ -243,14 +251,6 @@ func (pkg *Package) Init(packages map[string]*Package, block *ssa.Block,
 
 	var err error
 
-	// Define constants.
-	for _, def := range pkg.Constants {
-		block, _, err = def.SSA(block, ctx, gen)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	// Define variables.
 	for _, def := range pkg.Variables {
 		block, _, err = def.SSA(block, ctx, gen)
@@ -262,6 +262,48 @@ func (pkg *Package) Init(packages map[string]*Package, block *ssa.Block,
 	pkg.Bindings = block.Bindings
 
 	return block, nil
+}
+
+func (pkg *Package) defineConstant(def *ConstantDef, ctx *Codegen,
+	gen *ssa.Generator) error {
+
+	env := &Env{
+		Bindings: pkg.Bindings,
+	}
+
+	typeInfo, err := def.Type.Resolve(env, ctx, gen)
+	if err != nil {
+		return err
+	}
+	constVal, ok, err := def.Init.Eval(env, ctx, gen)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ctx.Errorf(def.Init, "init value is not constant")
+	}
+	constVar := gen.Constant(constVal, typeInfo)
+	if typeInfo.Undefined() {
+		typeInfo.Type = constVar.Type.Type
+	}
+	if !typeInfo.Concrete() {
+		typeInfo.Bits = constVar.Type.Bits
+	}
+	if !typeInfo.CanAssignConst(constVar.Type) {
+		return ctx.Errorf(def.Init,
+			"invalid init value %s for type %s", constVar.Type, typeInfo)
+	}
+
+	_, ok = pkg.Bindings.Get(def.Name)
+	if ok {
+		return ctx.Errorf(def, "constant %s already defined", def.Name)
+	}
+	lValue := constVar
+	lValue.Name = def.Name
+	pkg.Bindings.Define(lValue, &constVar)
+	gen.AddConstant(constVal)
+
+	return nil
 }
 
 func (pkg *Package) defineType(def *TypeInfo, ctx *Codegen,

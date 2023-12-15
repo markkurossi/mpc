@@ -23,7 +23,6 @@ import (
 var (
 	_ AST = &List{}
 	_ AST = &Func{}
-	_ AST = &ConstantDef{}
 	_ AST = &VariableDef{}
 	_ AST = &Assign{}
 	_ AST = &If{}
@@ -304,6 +303,39 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 }
 
+// ConstantDef implements a constant definition.
+type ConstantDef struct {
+	utils.Point
+	Name        string
+	Type        *TypeInfo
+	Init        AST
+	Annotations Annotations
+}
+
+// Exported describes if the constant is exported from the package.
+func (ast *ConstantDef) Exported() bool {
+	return IsExported(ast.Name)
+}
+
+// IsExported describes if the name is exported from the package.
+func IsExported(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	return unicode.IsUpper([]rune(name)[0])
+}
+
+func (ast *ConstantDef) String() string {
+	result := fmt.Sprintf("const %s", ast.Name)
+	if ast.Type != nil {
+		result += fmt.Sprintf(" %s", ast.Type)
+	}
+	if ast.Init != nil {
+		result += fmt.Sprintf(" = %s", ast.Init)
+	}
+	return result
+}
+
 // Identifier implements an AST identifier.
 type Identifier struct {
 	Defined string
@@ -505,39 +537,6 @@ func (ast *Func) String() string {
 	}
 
 	return str
-}
-
-// ConstantDef implements an AST constant definition.
-type ConstantDef struct {
-	utils.Point
-	Name        string
-	Type        *TypeInfo
-	Init        AST
-	Annotations Annotations
-}
-
-// Exported describes if the constant is exported from the package.
-func (ast *ConstantDef) Exported() bool {
-	return IsExported(ast.Name)
-}
-
-// IsExported describes if the name is exported from the package.
-func IsExported(name string) bool {
-	if len(name) == 0 {
-		return false
-	}
-	return unicode.IsUpper([]rune(name)[0])
-}
-
-func (ast *ConstantDef) String() string {
-	result := fmt.Sprintf("const %s", ast.Name)
-	if ast.Type != nil {
-		result += fmt.Sprintf(" %s", ast.Type)
-	}
-	if ast.Init != nil {
-		result += fmt.Sprintf(" = %s", ast.Init)
-	}
-	return result
 }
 
 // VariableDef implements an AST variable definition.

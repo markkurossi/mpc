@@ -133,49 +133,6 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	return block, vars, nil
 }
 
-// SSA implements the compiler.ast.AST.SSA for constant definitions.
-func (ast *ConstantDef) SSA(block *ssa.Block, ctx *Codegen,
-	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
-
-	typeInfo, err := ast.Type.Resolve(NewEnv(block), ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	env := NewEnv(block)
-
-	constVal, ok, err := ast.Init.Eval(env, ctx, gen)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, ctx.Errorf(ast.Init, "init value is not constant")
-	}
-	constVar := gen.Constant(constVal, typeInfo)
-	if typeInfo.Undefined() {
-		typeInfo.Type = constVar.Type.Type
-	}
-	if !typeInfo.Concrete() {
-		typeInfo.Bits = constVar.Type.Bits
-	}
-	if !typeInfo.CanAssignConst(constVar.Type) {
-		return nil, nil, ctx.Errorf(ast.Init,
-			"invalid init value %s for type %s", constVar.Type, typeInfo)
-	}
-
-	_, ok = block.Bindings.Get(ast.Name)
-	if ok {
-		return nil, nil, ctx.Errorf(ast, "constant %s already defined",
-			ast.Name)
-	}
-	lValue := constVar
-	lValue.Name = ast.Name
-	block.Bindings.Define(lValue, &constVar)
-	gen.AddConstant(constVal)
-
-	return block, nil, nil
-}
-
 // SSA implements the compiler.ast.AST.SSA for variable definitions.
 func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
