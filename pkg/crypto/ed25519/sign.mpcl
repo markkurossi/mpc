@@ -32,14 +32,10 @@ const (
 )
 
 // PrivateKey defines the Ed25519 private key.
-//
-//	XXX type PrivateKey [PrivateKeySize]byte
-type PrivateKey [64]byte
+type PrivateKey [PrivateKeySize]byte
 
 // PublicKey defines the Ed25519 public key.
-//
-//	XXX type PublicKey [PublicKeySize]byte
-type PublicKey [32]byte
+type PublicKey [PublicKeySize]byte
 
 // Sign signs the message with privateKey and returns the signature.
 func Sign(privateKey PrivateKey, message []byte) []byte {
