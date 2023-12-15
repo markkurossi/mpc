@@ -318,9 +318,6 @@ form assembly:
    - [x] Parsing Ed25519 MPCL files
      - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
-   - [ ] SHA-512 message digest
-     - [ ] Empty arrays should be allowed, now unspecified length
-     - [ ] `block = 0` sets block's type to int32
 
 # Benchmarks and tests
 
