@@ -192,7 +192,8 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.Errorf(ast, "undefined variable")
 			}
 			if !typeInfo.Concrete() {
-				typeInfo.SetConcrete(true)
+				return nil, nil, ctx.Errorf(ast.Type,
+					"unspecified size for type %v", ast.Type)
 			}
 			initVal, err := initValue(typeInfo)
 			if err != nil {
@@ -228,7 +229,12 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 
 		if typeInfo.Undefined() {
 			typeInfo = init.Type
-		} else if !typeInfo.CanAssignConst(init.Type) {
+		}
+		if !typeInfo.Concrete() {
+			typeInfo.Bits = init.Type.Bits
+			typeInfo.SetConcrete(true)
+		}
+		if !typeInfo.CanAssignConst(init.Type) {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %s (type %s) as type %s in assignment",
 				init, init.Type, typeInfo)
