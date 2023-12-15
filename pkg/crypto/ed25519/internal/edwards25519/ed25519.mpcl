@@ -478,7 +478,7 @@ func feSquare(f *FieldElement) (h0, h1, h2, h3, h4, h5, h6, h7, h8, h9 int64) {
 	h8 = f0_2*f8 + f1_2*f7_2 + f2_2*f6 + f3_2*f5_2 + f4*f4 + f9*f9_38
 	h9 = f0_2*f9 + f1_2*f8 + f2_2*f7 + f3_2*f6 + f4_2*f5
 
-	return h0, h1, h2, h3, h4, h5, h6, h7, h8, h9
+	return
 }
 
 // FeSquare calculates h = f*f. Can overlap h with f.
