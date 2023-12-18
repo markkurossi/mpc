@@ -12,14 +12,15 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"runtime/pprof"
 	"strings"
 	"testing"
 
+	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
-	"github.com/markkurossi/mpc/types"
 )
 
 const (
@@ -100,7 +101,7 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 		}
 		parts := reWhitespace.Split(ann, -1)
 
-		var inputValues []string
+		var inputValues [][]string
 		var inputs []*big.Int
 		var outputs []*big.Int
 		var sep bool
@@ -111,26 +112,30 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 				sep = true
 				continue
 			}
-			v := new(big.Int)
-			if base == 16 && lsb {
-				part = reverse(part)
-			}
+			var iv []string
+			for _, input := range strings.Split(part, ",") {
+				v := new(big.Int)
+				if base == 16 && lsb {
+					input = reverse(input)
+				}
 
-			_, ok := v.SetString(part, 0)
-			if !ok {
-				t.Errorf("%s: invalid argument '%s'", file, part)
-				return
+				_, ok := v.SetString(input, 0)
+				if !ok {
+					t.Errorf("%s: invalid argument '%s'", file, input)
+					return
+				}
+				if sep {
+					outputs = append(outputs, v)
+				} else {
+					iv = append(iv, input)
+					inputs = append(inputs, v)
+				}
 			}
-			if sep {
-				outputs = append(outputs, v)
-			} else {
-				inputValues = append(inputValues, part)
-				inputs = append(inputs, v)
-			}
+			inputValues = append(inputValues, iv)
 		}
 		var inputSizes [][]int
 		for _, iv := range inputValues {
-			sizes, err := circuit.InputSizes([]string{iv})
+			sizes, err := circuit.InputSizes(iv)
 			if err != nil {
 				t.Errorf("%s: invalid inputs: %s", file, err)
 				return
@@ -154,19 +159,14 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 				file, results, outputs)
 			return
 		}
-		for idx, result := range results {
+		for idx := range results {
 			out := circ.Outputs[idx]
-			bits := int(out.Type.Bits)
-			if out.Type.Type == types.TInt && result.Bit(bits-1) == 1 {
-				// Negative number.
-				tmp := new(big.Int)
-				tmp.SetBit(tmp, bits, 1)
-				result.Sub(tmp, result)
-				result.Neg(result)
-			}
-			if result.Cmp(outputs[idx]) != 0 {
+			rr := mpc.Result(results[idx], out)
+			re := mpc.Result(outputs[idx], out)
+
+			if !reflect.DeepEqual(rr, re) {
 				t.Errorf("%s: result %d mismatch: got %v, expected %v",
-					file, idx, result.Text(base), outputs[idx].Text(base))
+					file, idx, rr, re)
 			}
 		}
 	}
