@@ -21,6 +21,7 @@ import (
 	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 const (
@@ -165,8 +166,15 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 			re := mpc.Result(outputs[idx], out)
 
 			if !reflect.DeepEqual(rr, re) {
-				t.Errorf("%s: result %d mismatch: got %v, expected %v",
-					file, idx, rr, re)
+				if out.Type.Type == types.TArray &&
+					out.Type.ElementType.Type == types.TUint &&
+					out.Type.ElementType.Bits == 8 {
+					t.Errorf("%s: result %d mismatch: got %x, expected %x",
+						file, idx, rr, re)
+				} else {
+					t.Errorf("%s: result %d mismatch: got %v, expected %v",
+						file, idx, rr, re)
+				}
 			}
 		}
 	}
