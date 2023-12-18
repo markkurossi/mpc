@@ -43,7 +43,19 @@ func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
 
 	// Auth data.
 	var x uint128 = 0
-	// XXX additionalData
+
+	// Add additionalData to auth data.
+	for i := 0; i < len(additionalData); i += aes.BlockSize {
+		for j := 0; j < aes.BlockSize; j++ {
+			if i+j < len(additionalData) {
+				block[j] = additionalData[i+j]
+			} else {
+				block[j] = 0
+			}
+		}
+		x ^= byteToUint128(block)
+		x = multGF2Pow128(x, h)
+	}
 
 	var cipher [len(plaintext) + 16]byte
 	var cipherBlock [aes.BlockSize]byte
@@ -51,19 +63,22 @@ func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
 	for i := 0; i < len(plaintext); i += aes.BlockSize {
 		counter = incr(counter)
 		block = aes.Block128(key, counter)
-		for j := 0; i+j < len(plaintext) && j < aes.BlockSize; j++ {
-			cipher[i+j] = plaintext[i+j] ^ block[j]
-			cipherBlock[j] = cipher[i+j]
+		for j := 0; j < aes.BlockSize; j++ {
+			if i+j < len(plaintext) {
+				cipher[i+j] = plaintext[i+j] ^ block[j]
+				cipherBlock[j] = cipher[i+j]
+			} else {
+				cipherBlock[j] = 0
+			}
 		}
-
 		// Auth data.
 		x ^= byteToUint128(cipherBlock)
 		x = multGF2Pow128(x, h)
 	}
 
 	// len(A) || len(C)
-	var l uint128 = 0
-	l |= uint128(0) << 64
+	var l uint128
+	l |= uint128(len(additionalData)*8) << 64
 	l |= uint128(len(plaintext) * 8)
 
 	x ^= l
@@ -101,11 +116,22 @@ func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
 
 	// Auth data.
 	var x uint128 = 0
-	// XXX additionalData
+
+	// Add additionalData to auth data.
+	for i := 0; i < len(additionalData); i += aes.BlockSize {
+		for j := 0; j < aes.BlockSize; j++ {
+			if i+j < len(additionalData) {
+				block[j] = additionalData[i+j]
+			} else {
+				block[j] = 0
+			}
+		}
+		x ^= byteToUint128(block)
+		x = multGF2Pow128(x, h)
+	}
 
 	if len(ciphertext) < TagSize {
-		// XXX should return []byte
-		return ciphertext, false
+		return ciphertext[:0], false
 	}
 	cipherLen := len(ciphertext) - TagSize
 	cipher := ciphertext[0:cipherLen]
@@ -117,9 +143,13 @@ func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
 	for i := 0; i < len(cipher); i += aes.BlockSize {
 		counter = incr(counter)
 		block = aes.Block128(key, counter)
-		for j := 0; i+j < len(cipher) && j < aes.BlockSize; j++ {
-			cipherBlock[j] = cipher[i+j]
-			plain[i+j] = cipher[i+j] ^ block[j]
+		for j := 0; j < aes.BlockSize; j++ {
+			if i+j < len(cipher) {
+				cipherBlock[j] = cipher[i+j]
+				plain[i+j] = cipher[i+j] ^ block[j]
+			} else {
+				cipherBlock[j] = 0
+			}
 		}
 
 		// Auth data.
@@ -129,7 +159,7 @@ func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
 
 	// len(A) || len(C)
 	var l uint128 = 0
-	l |= uint128(0) << 64
+	l |= uint128(len(additionalData)*8) << 64
 	l |= uint128(len(plain) * 8)
 
 	x ^= l
