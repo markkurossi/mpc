@@ -293,8 +293,15 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	if debugEval {
-		fmt.Printf("Binary.Eval: %v[%v] %v %v[%v]\n",
-			ast.Left, l.Type, ast.Op, ast.Right, r.Type)
+		fmt.Printf("%s: Binary.Eval: %v[%v:%v] %v %v[%v:%v]\n",
+			ast.Location().ShortString(),
+			ast.Left, l, l.Type, ast.Op, ast.Right, r, r.Type)
+	}
+
+	// Resolve result type.
+	rt, err := ast.resultType(ctx, l, r)
+	if err != nil {
+		return ssa.Undefined, false, err
 	}
 
 	switch lval := l.ConstValue.(type) {
@@ -323,37 +330,37 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		switch ast.Op {
 		case BinaryMul:
-			return gen.Constant(mpa.NewInt(0).Mul(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Mul(lval, rval), rt),
 				true, nil
 		case BinaryDiv:
-			return gen.Constant(mpa.NewInt(0).Div(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Div(lval, rval), rt),
 				true, nil
 		case BinaryMod:
-			return gen.Constant(mpa.NewInt(0).Mod(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Mod(lval, rval), rt),
 				true, nil
 		case BinaryLshift:
-			return gen.Constant(mpa.NewInt(0).Lsh(lval, uint(rval.Int64())),
-				l.Type), true, nil
+			return gen.Constant(mpa.New(rt.Bits).Lsh(lval, uint(rval.Int64())),
+				rt), true, nil
 		case BinaryRshift:
-			return gen.Constant(mpa.NewInt(0).Rsh(lval, uint(rval.Int64())),
-				l.Type), true, nil
+			return gen.Constant(mpa.New(rt.Bits).Rsh(lval, uint(rval.Int64())),
+				rt), true, nil
 		case BinaryBand:
-			return gen.Constant(mpa.NewInt(0).And(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).And(lval, rval), rt),
 				true, nil
 		case BinaryBclear:
-			return gen.Constant(mpa.NewInt(0).AndNot(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).AndNot(lval, rval), rt),
 				true, nil
 		case BinaryBor:
-			return gen.Constant(mpa.NewInt(0).Or(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Or(lval, rval), rt),
 				true, nil
 		case BinaryBxor:
-			return gen.Constant(mpa.NewInt(0).Xor(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Xor(lval, rval), rt),
 				true, nil
 		case BinaryAdd:
-			return gen.Constant(mpa.NewInt(0).Add(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Add(lval, rval), rt),
 				true, nil
 		case BinarySub:
-			return gen.Constant(mpa.NewInt(0).Sub(lval, rval), l.Type),
+			return gen.Constant(mpa.New(rt.Bits).Sub(lval, rval), rt),
 				true, nil
 		case BinaryEq:
 			return gen.Constant(lval.Cmp(rval) == 0, types.Bool), true, nil
@@ -402,7 +409,7 @@ func (ast *Unary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	case *mpa.Int:
 		switch ast.Type {
 		case UnaryMinus:
-			r := mpa.NewInt(0)
+			r := mpa.NewInt(0, expr.Type.Bits)
 			return gen.Constant(r.Sub(r, val), expr.Type), true, nil
 		}
 	}

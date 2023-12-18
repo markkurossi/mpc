@@ -212,8 +212,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			v.Type.Bits = bits
 		}
 		v.Type.MinBits = minBits
-		constVal := mpa.NewInt(val)
-		constVal.SetTypeSize(int32(v.Type.Bits))
+		constVal := mpa.NewInt(val, v.Type.Bits)
 		v.ConstValue = constVal
 
 	case *mpa.Int:
@@ -239,7 +238,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			panic(fmt.Sprintf("Constant(%v): Bits=%v, MinBits=%v",
 				value, v.Type.Bits, v.Type.MinBits))
 		}
-		val.SetTypeSize(int32(bits))
+		val.SetTypeSize(bits)
 		v.ConstValue = val
 
 	case bool:

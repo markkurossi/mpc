@@ -646,7 +646,7 @@ func (l *Lexer) Get() (*Token, error) {
 				}
 			}
 			if ival == nil {
-				ival = mpa.NewInt(0)
+				ival = mpa.NewInt(0, 0)
 			}
 			token := l.Token(TConstant)
 			token.ConstVal = ival
@@ -700,7 +700,7 @@ func (l *Lexer) Get() (*Token, error) {
 						break
 					}
 				}
-				ival, ok := mpa.NewInt(0).SetString(string(val), 10)
+				ival, ok := mpa.Parse(string(val), 10)
 				if !ok {
 					return nil, fmt.Errorf("invalid literal '%s'", string(val))
 				}
@@ -822,7 +822,7 @@ loop:
 			break loop
 		}
 	}
-	ival, ok := mpa.NewInt(0).SetString(string(val), 0)
+	ival, ok := mpa.Parse(string(val), 0)
 	if !ok {
 		return nil, fmt.Errorf("malformed binary literal '%s'", string(val))
 	}
@@ -847,7 +847,7 @@ loop:
 			break loop
 		}
 	}
-	ival, ok := mpa.NewInt(0).SetString(string(val), 0)
+	ival, ok := mpa.Parse(string(val), 0)
 	if !ok {
 		return nil, fmt.Errorf("malformed octal literal '%s'", string(val))
 	}
@@ -870,7 +870,7 @@ func (l *Lexer) readHexLiteral(val []rune) (*mpa.Int, error) {
 			break
 		}
 	}
-	ival, ok := mpa.NewInt(0).SetString(string(val[2:]), 16)
+	ival, ok := mpa.Parse(string(val[2:]), 16)
 	if !ok {
 		return nil, fmt.Errorf("malformed hex literal '%s'", string(val))
 	}

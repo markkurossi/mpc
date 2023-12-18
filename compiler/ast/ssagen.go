@@ -1537,52 +1537,9 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	// Resolve target type.
-	var resultType types.Info
-	switch ast.Op {
-	case BinaryMul, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
-		BinarySub, BinaryBor, BinaryBxor:
-		superType := l.TypeCompatible(r)
-		if superType == nil {
-			return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
-				l.Type, ast.Op, r.Type)
-		}
-		resultType = *superType
-
-	case BinaryAdd:
-		// Binary addition is handled separately since we must handle
-		// string and array concatenation.
-		if l.Type.Type == types.TString && r.Type.Type == types.TString {
-			resultType = l.Type
-			resultType.Bits += r.Type.Bits
-		} else if l.Type.Type == types.TArray && r.Type.Type == types.TArray &&
-			l.Type.ElementType.Equal(*r.Type.ElementType) {
-			resultType = l.Type
-			resultType.Bits += r.Type.Bits
-			resultType.ArraySize += r.Type.ArraySize
-		} else {
-			superType := l.TypeCompatible(r)
-			if superType == nil {
-				return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
-					l.Type, ast.Op, r.Type)
-			}
-			resultType = *superType
-		}
-
-	case BinaryLshift, BinaryRshift:
-		if !l.IntegerLike() || !r.IntegerLike() {
-			return nil, nil, ctx.Errorf(ast, "invalid types: %s %s %s",
-				l.Type, ast.Op, r.Type)
-		}
-		resultType = l.Type
-
-	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
-		BinaryAnd, BinaryOr:
-		resultType = types.Bool
-
-	default:
-		fmt.Printf("%s %s %s\n", l, ast.Op, r)
-		return nil, nil, ctx.Errorf(ast, "Binary.SSA: '%s' not implemented yet",
-			ast.Op)
+	resultType, err := ast.resultType(ctx, l, r)
+	if err != nil {
+		return nil, nil, err
 	}
 	t := gen.AnonVal(resultType)
 
@@ -1643,6 +1600,60 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	block.AddInstr(instr)
 
 	return block, []ssa.Value{t}, nil
+}
+
+func (ast *Binary) resultType(ctx *Codegen, l, r ssa.Value) (
+	types.Info, error) {
+
+	var resultType types.Info
+	switch ast.Op {
+	case BinaryMul, BinaryDiv, BinaryMod, BinaryBand, BinaryBclear,
+		BinarySub, BinaryBor, BinaryBxor:
+		superType := l.TypeCompatible(r)
+		if superType == nil {
+			return types.Undefined, ctx.Errorf(ast, "invalid types: %s %s %s",
+				l.Type, ast.Op, r.Type)
+		}
+		resultType = *superType
+
+	case BinaryAdd:
+		// Binary addition is handled separately since we must handle
+		// string and array concatenation.
+		if l.Type.Type == types.TString && r.Type.Type == types.TString {
+			resultType = l.Type
+			resultType.Bits += r.Type.Bits
+		} else if l.Type.Type == types.TArray && r.Type.Type == types.TArray &&
+			l.Type.ElementType.Equal(*r.Type.ElementType) {
+			resultType = l.Type
+			resultType.Bits += r.Type.Bits
+			resultType.ArraySize += r.Type.ArraySize
+		} else {
+			superType := l.TypeCompatible(r)
+			if superType == nil {
+				return types.Undefined,
+					ctx.Errorf(ast, "invalid types: %s %s %s",
+						l.Type, ast.Op, r.Type)
+			}
+			resultType = *superType
+		}
+
+	case BinaryLshift, BinaryRshift:
+		if !l.IntegerLike() || !r.IntegerLike() {
+			return types.Undefined, ctx.Errorf(ast, "invalid types: %s %s %s",
+				l.Type, ast.Op, r.Type)
+		}
+		resultType = l.Type
+
+	case BinaryLt, BinaryLe, BinaryGt, BinaryGe, BinaryEq, BinaryNeq,
+		BinaryAnd, BinaryOr:
+		resultType = types.Bool
+
+	default:
+		fmt.Printf("%s %s %s\n", l, ast.Op, r)
+		return types.Undefined,
+			ctx.Errorf(ast, "Binary.SSA: '%s' not implemented yet", ast.Op)
+	}
+	return resultType, nil
 }
 
 func (ast *Binary) value(env *Env, val AST, block *ssa.Block, ctx *Codegen,
