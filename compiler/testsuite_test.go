@@ -68,6 +68,7 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 	var prof *os.File
 	var lsb bool
 	base := 10
+	var testNumber int
 
 	for _, annotation := range main.Annotations {
 		ann := strings.TrimSpace(annotation)
@@ -115,15 +116,18 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 			}
 			var iv []string
 			for _, input := range strings.Split(part, ",") {
-				v := new(big.Int)
-				if base == 16 && lsb {
-					input = reverse(input)
-				}
+				var v *big.Int
+				if input != "_" {
+					v = new(big.Int)
+					if base == 16 && lsb {
+						input = reverse(input)
+					}
 
-				_, ok := v.SetString(input, 0)
-				if !ok {
-					t.Errorf("%s: invalid argument '%s'", file, input)
-					return
+					_, ok := v.SetString(input, 0)
+					if !ok {
+						t.Errorf("%s: invalid argument '%s'", file, input)
+						return
+					}
 				}
 				if sep {
 					outputs = append(outputs, v)
@@ -169,14 +173,15 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 				if out.Type.Type == types.TArray &&
 					out.Type.ElementType.Type == types.TUint &&
 					out.Type.ElementType.Bits == 8 {
-					t.Errorf("%s: result %d mismatch: got %x, expected %x",
-						file, idx, rr, re)
+					t.Errorf("%s/%v: result %d mismatch: got %x, expected %x",
+						file, testNumber, idx, rr, re)
 				} else {
-					t.Errorf("%s: result %d mismatch: got %v, expected %v",
-						file, idx, rr, re)
+					t.Errorf("%s/%v: result %d mismatch: got %v, expected %v",
+						file, testNumber, idx, rr, re)
 				}
 			}
 		}
+		testNumber++
 	}
 	if cpuprof {
 		pprof.StopCPUProfile()
