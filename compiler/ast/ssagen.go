@@ -1380,10 +1380,12 @@ func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				from := int64(types.Size(i)*it.Bits + ptrInfo.Offset)
 				to := int64(types.Size(i+1)*it.Bits + ptrInfo.Offset)
 
-				fromConst := gen.Constant(from, types.Undefined)
-				toConst := gen.Constant(to, types.Undefined)
-
-				block.AddInstr(ssa.NewSliceInstr(values, fromConst, toConst, r))
+				if to > from {
+					fromConst := gen.Constant(from, types.Undefined)
+					toConst := gen.Constant(to, types.Undefined)
+					block.AddInstr(ssa.NewSliceInstr(values, fromConst, toConst,
+						r))
+				}
 
 			default:
 				return nil, nil, ctx.Errorf(ast.Expr,
@@ -1968,13 +1970,10 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	}
 	if ast.From != nil && ast.To != nil &&
-		(from >= elementCount || from >= to) {
+		(from >= elementCount || from > to) {
 		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}
-
-	fromConst := gen.Constant(int64(from*elementSize), types.Undefined)
-	toConst := gen.Constant(int64(to*elementSize), types.Undefined)
 
 	bits := (to - from) * elementSize
 
@@ -2019,6 +2018,8 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		t = gen.AnonVal(ti)
 	}
 	if bits > 0 {
+		fromConst := gen.Constant(int64(from*elementSize), types.Undefined)
+		toConst := gen.Constant(int64(to*elementSize), types.Undefined)
 		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
 	}
 
@@ -2085,9 +2086,6 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		from := int64(index*types.ByteBits + ptrInfo.Offset)
 		to := int64((index+1)*types.ByteBits + ptrInfo.Offset)
 
-		fromConst := gen.Constant(from, types.Undefined)
-		toConst := gen.Constant(to, types.Undefined)
-
 		indexType := types.Info{
 			Type:       types.TUint,
 			IsConcrete: true,
@@ -2096,7 +2094,11 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		}
 
 		t := gen.AnonVal(indexType)
-		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+		if to > from {
+			fromConst := gen.Constant(from, types.Undefined)
+			toConst := gen.Constant(to, types.Undefined)
+			block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+		}
 
 		return block, []ssa.Value{t}, nil
 
@@ -2109,11 +2111,12 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		from := int64(index*it.ElementType.Bits + ptrInfo.Offset)
 		to := int64((index+1)*it.ElementType.Bits + ptrInfo.Offset)
 
-		fromConst := gen.Constant(from, types.Undefined)
-		toConst := gen.Constant(to, types.Undefined)
-
 		t := gen.AnonVal(*it.ElementType)
-		block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+		if to > from {
+			fromConst := gen.Constant(from, types.Undefined)
+			toConst := gen.Constant(to, types.Undefined)
+			block.AddInstr(ssa.NewSliceInstr(expr, fromConst, toConst, t))
+		}
 
 		return block, []ssa.Value{t}, nil
 

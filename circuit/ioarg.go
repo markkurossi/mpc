@@ -91,7 +91,8 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 		case types.TInt, types.TUint:
 			_, ok := result.SetString(inputs[0], 0)
 			if !ok {
-				return nil, fmt.Errorf("invalid input: %s", inputs[0])
+				return nil, fmt.Errorf("invalid input '%s' for %s",
+					inputs[0], io.Type)
 			}
 
 		case types.TBool:
@@ -106,11 +107,15 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 		case types.TArray:
 			count := int(io.Type.ArraySize)
 			elSize := int(io.Type.ElementType.Bits)
+			if count == 0 {
+				break
+			}
 
 			val := new(big.Int)
 			_, ok := val.SetString(inputs[0], 0)
 			if !ok {
-				return nil, fmt.Errorf("invalid input: %s", inputs[0])
+				return nil, fmt.Errorf("invalid input '%s' for %s",
+					inputs[0], io.Type)
 			}
 			var bitLen int
 			if strings.HasPrefix(inputs[0], "0x") {
@@ -179,6 +184,9 @@ func InputSizes(inputs []string) ([]int, error) {
 
 	for _, input := range inputs {
 		switch input {
+		case "_":
+			result = append(result, 0)
+
 		case "0", "f", "false", "1", "t", "true":
 			result = append(result, 1)
 

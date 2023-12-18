@@ -268,7 +268,7 @@ func (walloc *WireAllocator) GCWires(v Value) {
 		bits := types.Size(len(alloc.wires))
 		walloc.freeWires[bits] = append(walloc.freeWires[bits], alloc.wires)
 	}
-	if alloc.ids != nil {
+	if len(alloc.ids) > 0 {
 		if alloc.base == circuits.UnassignedID {
 			alloc.base = alloc.ids[0]
 		}
