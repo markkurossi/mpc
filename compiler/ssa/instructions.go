@@ -301,6 +301,17 @@ func NewSrshiftInstr(l, r, o Value) Instr {
 
 // NewSliceInstr creates a new Slice instruction.
 func NewSliceInstr(v, from, to, o Value) Instr {
+	f, err := from.ConstInt()
+	if err != nil {
+		panic(err)
+	}
+	t, err := from.ConstInt()
+	if err != nil {
+		panic(err)
+	}
+	if f > t {
+		panic(fmt.Sprintf("slice: %v:%v", f, t))
+	}
 	return Instr{
 		Op:  Slice,
 		In:  []Value{v, from, to},

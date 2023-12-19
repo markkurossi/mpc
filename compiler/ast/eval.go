@@ -449,42 +449,59 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return ssa.Undefined, false, ctx.Errorf(ast.To, err.Error())
 		}
 	}
-	if to <= from {
+	if to < from {
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"invalid slice range %d:%d", from, to)
 	}
-	switch val := expr.ConstValue.(type) {
-	case int32:
-		if to > 32 {
-			return ssa.Undefined, false, ctx.Errorf(ast.From,
-				"slice bounds out of range [%d:32]", to)
+	switch expr.Type.Type {
+	case types.TArray:
+		arr, err := expr.ConstArray()
+		if err != nil {
+			return ssa.Undefined, false, err
 		}
-		tmp := uint32(val)
-		tmp >>= from
-		tmp &^= 0xffffffff << (to - from)
-		return gen.Constant(int64(tmp), types.Undefined), true, nil
+		switch val := arr.(type) {
+		case []interface{}:
+			if to == math.MaxInt32 {
+				to = len(val)
+			}
+			if to > len(val) || from > to {
+				return ssa.Undefined, false, ctx.Errorf(ast.From,
+					"slice bounds out of range [%d:%d] in slice of length %v",
+					from, to, len(val))
+			}
+			ti := expr.Type
+			ti.ArraySize = types.Size(to - from)
+			// The gen.Constant will set the bit sizes.
 
-	case []interface{}:
-		if to == math.MaxInt32 {
-			to = len(val)
-		}
-		if to > len(val) {
-			return ssa.Undefined, false, ctx.Errorf(ast.From,
-				"slice bounds out of range [%d:%d]", to, len(val))
-		}
-		return gen.Constant(val[from:to], types.Undefined), true, nil
+			return gen.Constant(val[from:to], ti), true, nil
 
-	default:
-		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-			"Slice.Eval: expr %T not implemented yet", val)
+		case []byte:
+			if to == math.MaxInt32 {
+				to = len(val)
+			}
+			if to > len(val) || from > to {
+				return ssa.Undefined, false, ctx.Errorf(ast.From,
+					"slice bounds out of range [%d:%d] in slice of length %v",
+					from, to, len(val))
+			}
+			numItems := to - from
+			constVal := make([]interface{}, numItems)
+			for i := 0; i < numItems; i++ {
+				constVal[i] = int64(val[from+i])
+			}
+			ti := expr.Type
+			ti.ArraySize = types.Size(numItems)
+			// The gen.Constant will set the bit sizes.
+
+			return gen.Constant(constVal, ti), true, nil
+		}
 	}
+	return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+		"invalid operation: cannot slice %v (%v)", expr, expr.Type)
 }
 
 func intVal(val interface{}) (int, error) {
 	switch v := val.(type) {
-	case int32:
-		return int(v), nil
-
 	case *mpa.Int:
 		return int(v.Int64()), nil
 

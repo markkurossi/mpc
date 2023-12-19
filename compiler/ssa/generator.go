@@ -212,8 +212,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			v.Type.Bits = bits
 		}
 		v.Type.MinBits = minBits
-		constVal := mpa.NewInt(val, v.Type.Bits)
-		v.ConstValue = constVal
+		v.ConstValue = mpa.NewInt(val, v.Type.Bits)
 
 	case *mpa.Int:
 		v.Name = fmt.Sprintf("$%s", val.String())
@@ -293,7 +292,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		} else {
 			v.Type = ti
 			v.Type.Bits = ti.ArraySize * ti.ElementType.Bits
-			v.Type.MinBits = ti.Bits
+			v.Type.MinBits = v.Type.Bits
 		}
 
 	case types.Info:

@@ -7,11 +7,16 @@
 package ssa
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/types"
+)
+
+var (
+	errNotConstant = errors.New("value is not constant")
 )
 
 // Value implements SSA value binding.
@@ -116,7 +121,7 @@ func (v Value) String() string {
 // ConstInt returns the value as const integer.
 func (v *Value) ConstInt() (types.Size, error) {
 	if !v.Const {
-		return 0, fmt.Errorf("value is not constant")
+		return 0, errNotConstant
 	}
 	switch val := v.ConstValue.(type) {
 	case *mpa.Int:
@@ -124,6 +129,23 @@ func (v *Value) ConstInt() (types.Size, error) {
 
 	default:
 		return 0, fmt.Errorf("cannot use %v as integer", val)
+	}
+}
+
+// ConstArray returns the value as contant array.
+func (v *Value) ConstArray() (interface{}, error) {
+	if !v.Const {
+		return nil, errNotConstant
+	}
+	switch val := v.ConstValue.(type) {
+	case []interface{}:
+		return val, nil
+
+	case string:
+		return []byte(val), nil
+
+	default:
+		return nil, fmt.Errorf("cannot use %v as array", val)
 	}
 }
 
@@ -165,14 +187,34 @@ func (v *Value) Value(block *Block, gen *Generator) Value {
 func (v *Value) Bit(bit types.Size) bool {
 	arr, ok := v.ConstValue.([]interface{})
 	if ok {
+		var elType types.Info
+
+		switch v.Type.Type {
+		case types.TArray:
+			elType = *v.Type.ElementType
+		case types.TString:
+			elType = types.Byte
+		case types.TStruct:
+			for idx, sf := range v.Type.Struct {
+				if sf.Type.Bits > bit {
+					return isSet(arr[idx], sf.Type, bit)
+				}
+				bit -= sf.Type.Bits
+			}
+			panic("index out of struct size")
+
+		default:
+			panic(fmt.Sprintf("invalid array constant type %v", v.Type))
+		}
+
+		elBits := elType.Bits
 		length := types.Size(len(arr))
-		elBits := v.Type.Bits / length
 		idx := bit / elBits
 		ofs := bit % elBits
 		if idx >= length {
 			return false
 		}
-		return isSet(arr[idx], v.Type, ofs)
+		return isSet(arr[idx], elType, ofs)
 	}
 
 	return isSet(v.ConstValue, v.Type, bit)
