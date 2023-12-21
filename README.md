@@ -186,6 +186,7 @@ The MPCL runtime defines the following builtin functions:
    - [ ] TLS for garbler-evaluator protocol
    - [ ] BMR multi-party protocol
  - [ ] Compiler
+   - [ ] Check that `types.Rune` is used consistently.
    - [ ] Incremental compiler
      - [ ] Constant folding
        - [ ] Implement using AST rewrite
