@@ -144,8 +144,28 @@ func (v *Value) ConstArray() (interface{}, error) {
 	case string:
 		return []byte(val), nil
 
+	case nil:
+		return []interface{}(nil), nil
+
 	default:
 		return nil, fmt.Errorf("cannot use %v as array", val)
+	}
+}
+
+// ConstString returns the value as constant string.
+func (v *Value) ConstString() (string, error) {
+	if !v.Const {
+		return "", errNotConstant
+	}
+	switch val := v.ConstValue.(type) {
+	case []byte:
+		return string(val), nil
+
+	case string:
+		return val, nil
+
+	default:
+		return "", fmt.Errorf("cannot use %v as string", val)
 	}
 }
 

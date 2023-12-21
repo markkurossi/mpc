@@ -462,12 +462,12 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		switch val := arr.(type) {
 		case []interface{}:
 			if to == math.MaxInt32 {
-				to = len(val)
+				to = int(expr.Type.ArraySize)
 			}
-			if to > len(val) || from > to {
+			if to > int(expr.Type.ArraySize) || from > to {
 				return ssa.Undefined, false, ctx.Errorf(ast.From,
 					"slice bounds out of range [%d:%d] in slice of length %v",
-					from, to, len(val))
+					from, to, expr.Type.ArraySize)
 			}
 			ti := expr.Type
 			ti.ArraySize = types.Size(to - from)
@@ -534,28 +534,43 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, ctx.Errorf(ast.Index, err.Error())
 	}
 
-	switch val := expr.ConstValue.(type) {
-	case string:
-		bytes := []byte(val)
-		if index < 0 || index >= len(bytes) {
-			return ssa.Undefined, false, ctx.Errorf(ast.Index,
-				"invalid array index %d (out of bounds for %d-element string)",
-				index, len(bytes))
-		}
-		return gen.Constant(int64(bytes[index]), types.Undefined), true, nil
-
-	case []interface{}:
-		if index < 0 || index >= len(val) {
+	switch expr.Type.Type {
+	case types.TArray:
+		if index < 0 || index >= int(expr.Type.ArraySize) {
 			return ssa.Undefined, false, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
-				index, len(val))
+				index, expr.Type.ArraySize)
 		}
-		return gen.Constant(val[index], *expr.Type.ElementType), true, nil
+		arr, err := expr.ConstArray()
+		if err != nil {
+			return ssa.Undefined, false, err
+		}
+		switch val := arr.(type) {
+		case []interface{}:
+			return gen.Constant(val[index], *expr.Type.ElementType), true, nil
 
-	default:
-		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-			"Index.Eval: expr %T not implemented yet", val)
+		case []byte:
+			return gen.Constant(int64(val[index]), *expr.Type.ElementType),
+				true, nil
+		}
+
+	case types.TString:
+		numBytes := expr.Type.Bits / types.ByteBits
+		if index < 0 || index >= int(numBytes) {
+			return ssa.Undefined, false, ctx.Errorf(ast.Index,
+				"invalid array index %d (out of bounds for %d-element string)",
+				index, numBytes)
+		}
+		str, err := expr.ConstString()
+		if err != nil {
+			return ssa.Undefined, false, err
+		}
+		bytes := []byte(str)
+		return gen.Constant(int64(bytes[index]), types.Byte), true, nil
 	}
+
+	return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+		"invalid operation: cannot index %v (%v)", expr, expr.Type)
 }
 
 // Eval implements the compiler.ast.AST.Eval for variable references.
