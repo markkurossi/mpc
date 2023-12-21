@@ -244,6 +244,10 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		v.Name = fmt.Sprintf("$%v", val)
 		v.Type = types.Bool
 
+	case nil:
+		v.Name = "nil"
+		v.Type = types.Nil
+
 	case string:
 		v.Name = fmt.Sprintf("$%q", val)
 		bits = types.Size(len([]byte(val)) * types.ByteBits)

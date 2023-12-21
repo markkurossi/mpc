@@ -225,7 +225,7 @@ func (lrv *LRValue) ConstValue() (ssa.Value, bool, error) {
 		return lrv.value, false, nil
 
 	case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString,
-		types.TStruct, types.TArray:
+		types.TStruct, types.TArray, types.TNil:
 		return lrv.value, true, nil
 
 	default:

@@ -38,6 +38,7 @@ const (
 	TSymType
 	TSymFor
 	TSymRange
+	TSymNil
 	TDefAssign
 	TMultEq
 	TDivEq
@@ -79,6 +80,7 @@ var tokenTypes = map[TokenType]string{
 	TSymType:    "type",
 	TSymFor:     "for",
 	TSymRange:   "range",
+	TSymNil:     "nil",
 	TDefAssign:  ":=",
 	TMultEq:     "*=",
 	TDivEq:      "/=",
@@ -172,6 +174,7 @@ var symbols = map[string]TokenType{
 	"type":    TSymType,
 	"for":     TSymFor,
 	"range":   TSymRange,
+	"nil":     TSymNil,
 	"else":    TSymElse,
 	"func":    TSymFunc,
 	"if":      TSymIf,

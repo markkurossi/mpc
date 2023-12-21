@@ -210,6 +210,9 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	case types.TArray:
 		val = args[0].Type.ArraySize
 
+	case types.TNil:
+		val = 0
+
 	default:
 		return nil, nil, ctx.Errorf(loc, "invalid argument 1 (type %s) for len",
 			args[0].Type)

@@ -1446,6 +1446,11 @@ func (p *Parser) parseOperand(needLBrace bool) (ast.AST, error) {
 			Value: t.ConstVal,
 		}, nil
 
+	case TSymNil:
+		return &ast.BasicLit{
+			Point: t.From,
+		}, nil
+
 	case TIdentifier: // OperandName
 		n, err := p.lexer.Get()
 		if err != nil {

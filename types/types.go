@@ -53,6 +53,7 @@ const (
 	TStruct
 	TArray
 	TPtr
+	TNil
 )
 
 // Types define MPCL types and their names.
@@ -66,6 +67,7 @@ var Types = map[string]Type{
 	"struct":      TStruct,
 	"array":       TArray,
 	"ptr":         TPtr,
+	"nil":         TNil,
 }
 
 var shortTypes = map[Type]string{
@@ -78,6 +80,7 @@ var shortTypes = map[Type]string{
 	TStruct:    "struct",
 	TArray:     "arr",
 	TPtr:       "*",
+	TNil:       "nil",
 }
 
 // Info specifies information about a type.
@@ -96,6 +99,12 @@ type Info struct {
 // Undefined defines type info for undefined types.
 var Undefined = Info{
 	Type:       TUndefined,
+	IsConcrete: true,
+}
+
+// Nil defines type info for the nil value.
+var Nil = Info{
+	Type:       TNil,
 	IsConcrete: true,
 }
 
@@ -209,10 +218,22 @@ func (i *Info) SetConcrete(c bool) {
 }
 
 // Instantiate instantiates template type to match parameter type.
+// XXX change this to AssignFrom
 func (i *Info) Instantiate(o Info) bool {
 	if i.Type != o.Type {
 		switch i.Type {
 		case TArray:
+			if o.Type == TNil {
+				// nil instantiates an empty array
+				if !i.ElementType.Concrete() {
+					return false
+				}
+				i.IsConcrete = true
+				i.Bits = 0
+				i.MinBits = 0
+				i.ArraySize = 0
+				return true
+			}
 			if o.Type != TPtr || i.Type != o.ElementType.Type {
 				return false
 			}
@@ -364,6 +385,12 @@ func (i Info) CanAssignConst(o Info) bool {
 	switch i.Type {
 	case TInt, TUint:
 		return (o.Type == TInt || o.Type == TUint) && i.Bits >= o.MinBits
+
+	case TArray:
+		if o.Type == TNil {
+			return true
+		}
+		fallthrough
 
 	default:
 		return i.Type == o.Type && i.Bits >= o.MinBits
