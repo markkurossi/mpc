@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -458,7 +458,7 @@ func annotations(out Output, annotations ast.Annotations) error {
 	}
 	prefixLen, _ := wsPrefix(annotations[0])
 	var inPre bool
-	var lines []*text.Text
+	var lines []string
 
 	if err := out.Start("documentation"); err != nil {
 		return err
@@ -467,40 +467,76 @@ func annotations(out Output, annotations ast.Annotations) error {
 		plen, empty := wsPrefix(ann)
 		if plen > prefixLen {
 			if !inPre {
-				out.P(lines)
+				out.P(stringsToText(lines))
 				lines = nil
 				inPre = true
 			}
-			lines = append(lines, text.New().Plain(ann))
+			lines = append(lines, ann)
 		} else if empty {
 			if inPre {
-				lines = append(lines, text.New().Plain(ann))
+				lines = append(lines, ann)
 			} else {
-				out.P(lines)
+				out.P(stringsToText(lines))
 				lines = nil
 			}
 		} else {
 			if inPre {
-				out.Pre(lines)
+				out.Pre(trimWsPrefix(lines))
 				lines = nil
 				inPre = false
 			}
-			lines = append(lines, text.New().Plain(ann))
+			lines = append(lines, ann)
 		}
 	}
 	if inPre {
-		out.Pre(lines)
+		out.Pre(trimWsPrefix(lines))
 	} else {
-		out.P(lines)
+		out.P(stringsToText(lines))
 	}
 	return out.End("documentation")
 }
 
+func stringsToText(lines []string) []*text.Text {
+	var result []*text.Text
+	for _, line := range lines {
+		result = append(result, text.New().Plain(line))
+	}
+	return result
+}
+
+func trimWsPrefix(lines []string) []*text.Text {
+	l := -1
+	for _, line := range lines {
+		for idx, r := range line {
+			if !unicode.IsSpace(r) {
+				if l < 0 || idx < l {
+					l = idx
+				}
+				break
+			}
+		}
+	}
+	var result []*text.Text
+	for _, line := range lines {
+		if len(line) > l {
+			line = line[l:]
+		}
+		result = append(result, text.New().Plain(line))
+	}
+	return result
+}
+
 func wsPrefix(str string) (int, bool) {
 	runes := []rune(str)
-	for idx, r := range runes {
+	var idx int
+	for _, r := range runes {
 		if !unicode.IsSpace(r) {
 			return idx, false
+		}
+		if r == '\t' {
+			idx += 8 - idx%8
+		} else {
+			idx++
 		}
 	}
 	return len(runes), true
