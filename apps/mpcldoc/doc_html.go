@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021-2022 Markku Rossi
+// Copyright (c) 2021-2023 Markku Rossi
 //
 // All rights reserved.
 //
@@ -248,8 +248,8 @@ func header(out io.Writer) error {
 	_, err := fmt.Fprintf(out, `<!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="icon" href="favicon.png" />
-    <meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+    <link rel="icon" href="favicon.png">
+    <meta http-equiv="content-type" content="text/html;charset=UTF-8">
     <meta name="viewport" content="width=device-width">
 
     <title>MPCL</title>
@@ -262,7 +262,7 @@ func header(out io.Writer) error {
         <div class="left-column">
           <div style="text-align: center; display: inline-block;
                       padding: 10px;">
-            <img src="mpcl.png" width="64" align="middle"><br>MPCL
+            <img src="mpcl.png" alt="MPCL Logo" width="64"><br>MPCL
           </div>
           <ul>
             <li><a href="index.html">MPCL Documentation</a>
