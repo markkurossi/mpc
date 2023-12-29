@@ -235,7 +235,7 @@ func (lrv *LRValue) ConstValue() (ssa.Value, bool, error) {
 	}
 }
 
-// LookupVar resolved the named variable from the context.
+// LookupVar resolves the named variable from the context.
 func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 	bindings *ssa.Bindings, ref *VariableRef) (*LRValue, bool, error) {
 
