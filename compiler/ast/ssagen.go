@@ -403,9 +403,13 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			}
 			switch arr := lv.Expr.(type) {
 			case *VariableRef:
-				lrv, _, err := ctx.LookupVar(block, gen, block.Bindings, arr)
+				lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, arr)
 				if err != nil {
 					return nil, nil, err
+				}
+				if !ok {
+					return nil, nil,
+						ctx.Errorf(arr, "value %v not constant", arr)
 				}
 				valueType := lrv.ValueType()
 				if valueType.Type == types.TPtr {
@@ -1787,7 +1791,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				return nil, nil, err
 			}
 			if !ok {
-				return nil, nil, err
+				return nil, nil, ctx.Errorf(v, "value %v not constant", v)
 			}
 
 			valueType := lrv.ValueType()
@@ -1839,11 +1843,15 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	index *Index) (
 	lrv *LRValue, ptrType *types.Info, offset types.Size, err error) {
 
+	var ok bool
 	switch indexed := index.Expr.(type) {
 	case *VariableRef:
-		lrv, _, err = ctx.LookupVar(block, gen, block.Bindings,
-			indexed)
+		lrv, ok, err = ctx.LookupVar(block, gen, block.Bindings, indexed)
 		if err != nil {
+			return
+		}
+		if !ok {
+			err = ctx.Errorf(indexed, "value %v not constant", indexed)
 			return
 		}
 		vt := lrv.ValueType()
@@ -2163,9 +2171,12 @@ func (ast *Index) index(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	lrv, _, err := ctx.LookupVar(block, gen, block.Bindings, ast)
+	lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, ast)
 	if err != nil {
 		return nil, nil, err
+	}
+	if !ok {
+		return nil, nil, ctx.Errorf(ast, "value %v not constant", ast)
 	}
 
 	value := lrv.RValue()
