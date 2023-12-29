@@ -350,6 +350,11 @@ func (i Identifier) String() string {
 	return fmt.Sprintf("%s.%s", i.Package, i.Name)
 }
 
+// Qualified tells if the identifier has package part.
+func (i Identifier) Qualified() bool {
+	return len(i.Package) > 0
+}
+
 // AST implements abstract syntax tree nodes.
 type AST interface {
 	utils.Locator
