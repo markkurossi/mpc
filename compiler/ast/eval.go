@@ -577,9 +577,12 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 func (ast *VariableRef) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
 
-	lrv, ok, err := ctx.LookupVar(nil, gen, env.Bindings, ast)
-	if !ok || err != nil {
-		return ssa.Undefined, ok, err
+	lrv, ok, _, err := ctx.LookupVar(nil, gen, env.Bindings, ast)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Error(ast, err.Error())
+	}
+	if !ok {
+		return ssa.Undefined, ok, nil
 	}
 
 	return lrv.ConstValue()

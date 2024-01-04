@@ -280,120 +280,31 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		rv := values[idx]
 		switch lv := lvalue.(type) {
 		case *VariableRef:
-			// XXX can this be refactored to use Codegen.LookupVar?
-			// Three options:
-			//   1) struct.member
-			//   2) package.variable
-			//   3) variable
-
-			var dstBindings *ssa.Bindings
-
-			b, ok := block.Bindings.Get(lv.Name.Package)
-			if ok {
-				dstBindings = block.Bindings
-			} else {
-				b, ok = ctx.Package.Bindings.Get(lv.Name.Package)
-				if ok {
-					dstBindings = ctx.Package.Bindings
-				}
-			}
-
-			if ok {
-				var dstName string
-				var dstType types.Info
-				var dstScope ssa.Scope
-
-				switch b.Type.Type {
-				case types.TStruct:
-					dstName = b.Name
-					dstType = b.Type
-					dstScope = b.Scope
-
-				case types.TPtr:
-					v := b.Value(block, gen)
-					dstName = v.PtrInfo.Name
-					dstType = v.PtrInfo.ContainerType
-					dstScope = v.PtrInfo.Scope
-					dstBindings = v.PtrInfo.Bindings
-					b, ok = dstBindings.Get(dstName)
-					if !ok {
-						return nil, nil, ctx.Errorf(ast, "undefined: %s",
-							dstName)
-					}
-					if b.Type.Type != types.TStruct {
-						return nil, nil, ctx.Errorf(ast,
-							"%s undefined (%s has no field or method %s)",
-							lv.Name, b.Type, lv.Name.Name)
-					}
-
-				default:
-					return nil, nil, ctx.Errorf(ast,
-						"setting elements of non-struct %s", b.Type)
-				}
-
-				// Lookup struct field.
-				var field *types.StructField
-				for _, f := range b.Type.Struct {
-					if f.Name == lv.Name.Name {
-						field = &f
-						break
-					}
-				}
-				if field == nil {
-					return nil, nil, ctx.Errorf(ast,
-						"%s undefined (%s has no field or method %s)",
-						lv.Name, b.Type, lv.Name.Name)
-				}
-
-				fromConst := gen.Constant(int64(field.Type.Offset),
-					types.Undefined)
-				toConst := gen.Constant(int64(field.Type.Offset+
-					field.Type.Bits), types.Undefined)
-				lValue := gen.NewVal(dstName, dstType, dstScope)
-
-				block.AddInstr(ssa.NewAmovInstr(rv, b.Value(block, gen),
-					fromConst, toConst, lValue))
-				err := dstBindings.Set(lValue, nil)
-				if err != nil {
-					return nil, nil, ctx.Error(ast, err.Error())
-				}
-
-				return block, []ssa.Value{lValue}, nil
-			}
-
-			// Assigning a variable.
-
-			var lValue ssa.Value
-			b, ok = block.Bindings.Get(lv.Name.Name)
-			if ast.Define {
-				if ok {
-					lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
-				} else {
-					lValue = gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
-					if rv.Type.Type == types.TPtr {
-						lValue.PtrInfo = rv.PtrInfo
-					}
-					defined = true
-					block.Bindings.Define(lValue, nil)
-				}
-			} else {
-				if !ok {
-					return nil, nil, ctx.Errorf(ast, "undefined: %s", lv.Name)
-				}
-				lValue = gen.NewVal(b.Name, b.Type, ctx.Scope())
-			}
-			if lValue.Type.Concrete() {
-				rv.Type = lValue.Type
-			} else if !rv.Type.Concrete() {
-				return nil, nil, ctx.Errorf(ast, "unspecified size for type %v",
-					rv.Type)
-			} else {
-				lValue.Type = rv.Type
-			}
-			block.AddInstr(ssa.NewMovInstr(rv, lValue))
-			err := block.Bindings.Set(lValue, &rv)
+			lrv, _, df, err := ctx.LookupVar(block, gen, block.Bindings, lv)
 			if err != nil {
-				return nil, nil, ctx.Error(ast, err.Error())
+				if !ast.Define || !df {
+					// Not := or lvalue can't be defined.
+					return nil, nil, ctx.Errorf(lv,
+						"a non-name %s on left side of :=", lv)
+				}
+				// Defining lvalue.
+				if !rv.Type.Concrete() {
+					return nil, nil, ctx.Errorf(ast,
+						"unspecified size for type %v", rv.Type)
+				}
+				lValue := gen.NewVal(lv.Name.Name, rv.Type, ctx.Scope())
+				if rv.Type.Type == types.TPtr {
+					lValue.PtrInfo = rv.PtrInfo
+				}
+				defined = true
+				block.Bindings.Define(lValue, &rv)
+				block.AddInstr(ssa.NewMovInstr(rv, lValue))
+				continue
+			}
+
+			err = lrv.Set(rv)
+			if err != nil {
+				return nil, nil, ctx.Error(lvalue, err.Error())
 			}
 
 		case *Index:
@@ -403,13 +314,9 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 			}
 			switch arr := lv.Expr.(type) {
 			case *VariableRef:
-				lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, arr)
+				lrv, _, _, err := ctx.LookupVar(block, gen, block.Bindings, arr)
 				if err != nil {
-					return nil, nil, err
-				}
-				if !ok {
-					return nil, nil,
-						ctx.Errorf(arr, "value %v not constant", arr)
+					return nil, nil, ctx.Error(arr, err.Error())
 				}
 				valueType := lrv.ValueType()
 				if valueType.Type == types.TPtr {
@@ -456,8 +363,6 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				if err != nil {
 					return nil, nil, ctx.Error(ast, err.Error())
 				}
-
-				return block, []ssa.Value{lValue}, nil
 
 			default:
 				return nil, nil, ctx.Errorf(ast,
@@ -1786,14 +1691,10 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	case UnaryAddr:
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
-			lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, v)
+			lrv, _, _, err := ctx.LookupVar(block, gen, block.Bindings, v)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, ctx.Error(v, err.Error())
 			}
-			if !ok {
-				return nil, nil, ctx.Errorf(v, "value %v not constant", v)
-			}
-
 			valueType := lrv.ValueType()
 
 			t := gen.AnonVal(types.Info{
@@ -1843,15 +1744,11 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	index *Index) (
 	lrv *LRValue, ptrType *types.Info, offset types.Size, err error) {
 
-	var ok bool
 	switch indexed := index.Expr.(type) {
 	case *VariableRef:
-		lrv, ok, err = ctx.LookupVar(block, gen, block.Bindings, indexed)
+		lrv, _, _, err = ctx.LookupVar(block, gen, block.Bindings, indexed)
 		if err != nil {
-			return
-		}
-		if !ok {
-			err = ctx.Errorf(indexed, "value %v not constant", indexed)
+			err = ctx.Error(indexed, err.Error())
 			return
 		}
 		vt := lrv.ValueType()
@@ -2171,12 +2068,9 @@ func (ast *Index) index(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
 
-	lrv, ok, err := ctx.LookupVar(block, gen, block.Bindings, ast)
+	lrv, _, _, err := ctx.LookupVar(block, gen, block.Bindings, ast)
 	if err != nil {
-		return nil, nil, err
-	}
-	if !ok {
-		return nil, nil, ctx.Errorf(ast, "value %v not constant", ast)
+		return nil, nil, ctx.Error(ast, err.Error())
 	}
 
 	value := lrv.RValue()
