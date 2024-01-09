@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,9 +7,11 @@
 package bmr
 
 import (
+	"io"
 	"testing"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/p2p"
 )
 
 func Test3Party(t *testing.T) {
@@ -35,10 +37,18 @@ func Test3Party(t *testing.T) {
 
 	// Add peers to players.
 	for i := 0; i < n; i++ {
-		for j := 0; j < n; j++ {
-			if i != j {
-				players[i].AddPeer(players[j])
-			}
+		for j := i + 1; j < n; j++ {
+			inR, inW := io.Pipe()
+			outR, outW := io.Pipe()
+
+			players[i].AddPeer(j, p2p.NewConn(&pipe{
+				r: inR,
+				w: outW,
+			}))
+			players[j].AddPeer(i, p2p.NewConn(&pipe{
+				r: outR,
+				w: inW,
+			}))
 		}
 	}
 

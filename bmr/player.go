@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2023 Markku Rossi
+// Copyright (c) 2022-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,8 @@ import (
 	"math/big"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/text/superscript"
 )
 
 const (
@@ -24,27 +26,23 @@ type Player struct {
 	id         int
 	numPlayers int
 	r          Label
-	peers      []Peer
+	peers      []*p2p.Conn
 	c          *circuit.Circuit
 	lambda     *big.Int
 }
 
-// Peer is an interface to other multi-party players.
-type Peer interface {
-}
-
 // NewPlayer creates a new multi-party player.
 func NewPlayer(id, numPlayers int) (*Player, error) {
-	r, err := NewLabel()
-	if err != nil {
-		return nil, err
-	}
-
 	return &Player{
 		id:         id,
 		numPlayers: numPlayers,
-		r:          r,
+		peers:      make([]*p2p.Conn, numPlayers),
 	}, nil
+}
+
+// IDString returns the player ID as string.
+func (p *Player) IDString() string {
+	return superscript.Itoa(p.id)
 }
 
 // SetCircuit sets the circuit that is evaluated.
@@ -58,23 +56,34 @@ func (p *Player) SetCircuit(c *circuit.Circuit) error {
 }
 
 // AddPeer adds a peer.
-func (p *Player) AddPeer(peer Peer) {
-	p.peers = append(p.peers, peer)
+func (p *Player) AddPeer(idx int, peer *p2p.Conn) {
+	p.peers[idx] = peer
 }
 
 // offlinePhase implements the BMR Offline Phase (BMR Figure 2 - Page 6).
 func (p *Player) offlinePhase() error {
-	if len(p.peers) != p.numPlayers-1 {
+	var count int
+	for _, peer := range p.peers {
+		if peer != nil {
+			count++
+		}
+	}
+	if count != p.numPlayers-1 {
 		return fmt.Errorf("invalid number of peers: expected %d, got %d",
-			len(p.peers), p.numPlayers-1)
+			count, p.numPlayers-1)
 	}
 
-	fmt.Printf("R:\t%v\n", p.r)
+	// Step 1: each peer chooses a random key offset R^i.
+	r, err := NewLabel()
+	if err != nil {
+		return err
+	}
+	p.r = r
+	fmt.Printf("R%s:\t%v\n", p.IDString(), p.r)
 
 	// Step 2.a: create random permutation bits lambda. We set the
 	// bits initially for all wires but later reset the output bits of
 	// XOR gates.
-	var err error
 	p.lambda, err = rand.Int(rand.Reader,
 		big.NewInt(int64((1<<p.c.NumWires)-1)))
 	if err != nil {
