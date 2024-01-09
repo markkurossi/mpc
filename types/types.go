@@ -379,6 +379,43 @@ func (i Info) Equal(o Info) bool {
 	}
 }
 
+// Specializable tests if this type can be specialized with the
+// argument type.
+func (i Info) Specializable(o Info) bool {
+	if i.Type != o.Type {
+		return false
+	}
+	switch i.Type {
+	case TUndefined, TBool, TInt, TUint, TFloat, TString:
+		return !i.Concrete() || i.Bits == o.Bits
+
+	case TStruct:
+		if len(i.Struct) != len(o.Struct) ||
+			(i.Concrete() && i.Bits != o.Bits) {
+			return false
+		}
+		for idx, ie := range i.Struct {
+			if !ie.Type.Specializable(o.Struct[idx].Type) {
+				return false
+			}
+		}
+		return true
+
+	case TArray:
+		if i.Concrete() && (i.ArraySize != o.ArraySize || i.Bits != o.Bits) {
+			return false
+		}
+		return i.ElementType.Specializable(*o.ElementType)
+
+	case TPtr:
+		return i.ElementType.Specializable(*o.ElementType)
+
+	default:
+		panic(fmt.Sprintf("Info.Specializable called for %v (%T)",
+			i.Type, i.Type))
+	}
+}
+
 // CanAssignConst tests if the argument const type can be assigned to
 // this type.
 func (i Info) CanAssignConst(o Info) bool {

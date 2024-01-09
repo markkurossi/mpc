@@ -349,10 +349,13 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 	}
 }
 
-// LValueFor checks if the value `o` can be assigned for lvalue of type `l`.
+// LValueFor checks if the value o can be assigned for lvalue of type l.
 func LValueFor(l types.Info, o Value) bool {
 	if o.Const {
 		return l.CanAssignConst(o.Type)
+	}
+	if !l.Concrete() && o.Type.Concrete() {
+		return l.Specializable(o.Type)
 	}
 	return l.Equal(o.Type)
 }
