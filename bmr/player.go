@@ -9,10 +9,11 @@ package bmr
 import (
 	"crypto/rand"
 	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/text/superscript"
 	"github.com/markkurossi/text/symbols"
 )
@@ -24,21 +25,64 @@ const (
 
 // Player implements a multi-party player.
 type Player struct {
+	Verbose    bool
+	ot         ot.OT
 	id         int
 	numPlayers int
 	r          Label
-	peers      []*p2p.Conn
+	peers      []*Peer
 	c          *circuit.Circuit
 	lambda     *big.Int
+}
+
+// Peer contains information about a protocol peer.
+type Peer struct {
+	this *Player
+	id   int
+	conn ot.IO
+	ot   ot.OT
+}
+
+func (peer *Peer) consumer() {
+	peer.this.Debugf("consumer for peer%s\n", superscript.Itoa(peer.id))
+	for {
+		v, err := peer.conn.ReceiveByte()
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("consumer: %v\n", err)
+			}
+			return
+		}
+		op := Operand(v)
+		peer.this.Debugf("%s\n", op)
+		switch op {
+		case OpInit:
+			err = peer.ot.InitReceiver(peer.conn)
+			if err != nil {
+				fmt.Printf("%s: %s\n", op, err)
+				return
+			}
+		}
+	}
 }
 
 // NewPlayer creates a new multi-party player.
 func NewPlayer(id, numPlayers int) (*Player, error) {
 	return &Player{
 		id:         id,
+		ot:         ot.NewCO(),
 		numPlayers: numPlayers,
-		peers:      make([]*p2p.Conn, numPlayers),
+		peers:      make([]*Peer, numPlayers),
 	}, nil
+}
+
+// Debugf prints debugging message if Verbose debugging is enabled for
+// this Player.
+func (p *Player) Debugf(format string, a ...interface{}) {
+	if !p.Verbose {
+		return
+	}
+	fmt.Printf(format, a...)
 }
 
 // IDString returns the player ID as string.
@@ -57,8 +101,41 @@ func (p *Player) SetCircuit(c *circuit.Circuit) error {
 }
 
 // AddPeer adds a peer.
-func (p *Player) AddPeer(idx int, peer *p2p.Conn) {
-	p.peers[idx] = peer
+func (p *Player) AddPeer(idx int, peer ot.IO) {
+	p.peers[idx] = &Peer{
+		this: p,
+		id:   idx,
+		conn: peer,
+		ot:   ot.NewCO(),
+	}
+}
+
+// Play runs the protocol with the peers.
+func (p *Player) Play() error {
+	// Init peers.
+	for _, peer := range p.peers {
+		if peer != nil {
+			// Start consumer.
+			go peer.consumer()
+
+			// Init protocol.
+			err := peer.conn.SendByte(byte(OpInit))
+			if err != nil {
+				return err
+			}
+			err = p.ot.InitSender(peer.conn)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err := p.offlinePhase()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // offlinePhase implements the BMR Offline Phase (BMR Figure 2 - Page 6).
@@ -80,7 +157,7 @@ func (p *Player) offlinePhase() error {
 		return err
 	}
 	p.r = r
-	fmt.Printf("R%s:\t%v\n", p.IDString(), p.r)
+	p.Debugf("R%s:\t%v\n", p.IDString(), p.r)
 
 	// Step 2.a: create random permutation bits lambda. We set the
 	// bits initially for all wires but later reset the output bits of
@@ -119,10 +196,9 @@ func (p *Player) offlinePhase() error {
 	}
 
 	for i := 0; i < len(wires); i++ {
-		fmt.Printf("W%d:\t%v\n", i, wires[i])
+		p.Debugf("W%d:\t%v\n", i, wires[i])
 	}
-
-	fmt.Printf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
+	p.Debugf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
 
 	// Step 3: patch output wires and permutation bits for XOR output
 	// wires.
@@ -142,7 +218,7 @@ func (p *Player) offlinePhase() error {
 		lo := li0 ^ li1
 		p.lambda.SetBit(p.lambda, ow, lo)
 
-		fmt.Printf("%c[%d]: %v ^ %v = %v\n", symbols.Lambda, ow, li0, li1, lo)
+		p.Debugf("%c[%d]: %v ^ %v = %v\n", symbols.Lambda, ow, li0, li1, lo)
 
 		// 3.b: set garbled label on wire 0: k_{w,0} = k_{u,0} ⊕ k_{v,0}
 		wires[ow].L0 = wires[i0].L0
@@ -154,10 +230,10 @@ func (p *Player) offlinePhase() error {
 	}
 
 	for i := 0; i < len(wires); i++ {
-		fmt.Printf("W%d:\t%v\n", i, wires[i])
+		p.Debugf("W%d:\t%v\n", i, wires[i])
 	}
 
-	fmt.Printf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
+	p.Debugf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
 
 	return nil
 }

@@ -7,11 +7,10 @@
 package bmr
 
 import (
-	"io"
 	"testing"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/p2p"
+	"github.com/markkurossi/mpc/ot"
 )
 
 func Test3Party(t *testing.T) {
@@ -38,22 +37,22 @@ func Test3Party(t *testing.T) {
 	// Add peers to players.
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			inR, inW := io.Pipe()
-			outR, outW := io.Pipe()
+			this, other := ot.NewPipe()
 
-			players[i].AddPeer(j, p2p.NewConn(&pipe{
-				r: inR,
-				w: outW,
-			}))
-			players[j].AddPeer(i, p2p.NewConn(&pipe{
-				r: outR,
-				w: inW,
-			}))
+			players[i].AddPeer(j, this)
+			players[j].AddPeer(i, other)
 		}
 	}
 
-	err = players[0].offlinePhase()
+	// Start other peers.
+	for i := 1; i < n; i++ {
+		go players[i].Play()
+	}
+
+	// Play player 0.
+	players[0].Verbose = true
+	err = players[0].Play()
 	if err != nil {
-		t.Fatalf("offlinePhase: %v", err)
+		t.Fatalf("Play: %v", err)
 	}
 }

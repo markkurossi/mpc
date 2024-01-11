@@ -6,7 +6,13 @@
 
 package bmr
 
+// Operand defines protocol operands.
+//
+//go:generate stringer -type=Operand -trimprefix=Op
+type Operand byte
+
 // Network protocol messages.
 const (
-	OpFx byte = iota
+	OpInit Operand = iota
+	OpFx
 )

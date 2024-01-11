@@ -1,7 +1,7 @@
 //
 // pipe.go
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2024 Markku Rossi
 //
 // All rights reserved.
 
@@ -42,6 +42,20 @@ func NewPipe() (*Pipe, *Pipe) {
 		}
 }
 
+// SendByte sends a byte value.
+func (p *Pipe) SendByte(val byte) error {
+	p.wBuf[0] = val
+	_, err := p.w.Write(p.wBuf[:1])
+	return err
+}
+
+// SendUint32 sends an uint32 value.
+func (p *Pipe) SendUint32(val int) error {
+	bo.PutUint32(p.wBuf, uint32(val))
+	_, err := p.w.Write(p.wBuf[:4])
+	return err
+}
+
 // SendData sends binary data.
 func (p *Pipe) SendData(val []byte) error {
 	l := len(val)
@@ -51,13 +65,6 @@ func (p *Pipe) SendData(val []byte) error {
 		return fmt.Errorf("pipe buffer too short: %d > %d", l, len(p.wBuf))
 	}
 	_, err := p.w.Write(p.wBuf[:4+l])
-	return err
-}
-
-// SendUint32 sends an uint32 value.
-func (p *Pipe) SendUint32(val int) error {
-	bo.PutUint32(p.wBuf, uint32(val))
-	_, err := p.w.Write(p.wBuf[:4])
 	return err
 }
 
@@ -77,6 +84,24 @@ func (p *Pipe) Close() error {
 	return p.w.Close()
 }
 
+// ReceiveByte receives a byte value.
+func (p *Pipe) ReceiveByte() (byte, error) {
+	_, err := p.r.Read(p.rBuf[:1])
+	if err != nil {
+		return 0, err
+	}
+	return p.rBuf[0], nil
+}
+
+// ReceiveUint32 receives an uint32 value.
+func (p *Pipe) ReceiveUint32() (int, error) {
+	_, err := p.r.Read(p.rBuf[:4])
+	if err != nil {
+		return 0, err
+	}
+	return int(bo.Uint32(p.rBuf)), nil
+}
+
 // ReceiveData receives binary data.
 func (p *Pipe) ReceiveData() ([]byte, error) {
 	_, err := p.r.Read(p.rBuf[:4])
@@ -89,13 +114,4 @@ func (p *Pipe) ReceiveData() ([]byte, error) {
 	}
 	n, err := p.r.Read(p.rBuf[:])
 	return p.rBuf[:n], err
-}
-
-// ReceiveUint32 receives an uint32 value.
-func (p *Pipe) ReceiveUint32() (int, error) {
-	_, err := p.r.Read(p.rBuf[:4])
-	if err != nil {
-		return 0, err
-	}
-	return int(bo.Uint32(p.rBuf)), nil
 }
