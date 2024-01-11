@@ -14,6 +14,7 @@ import (
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/p2p"
 	"github.com/markkurossi/text/superscript"
+	"github.com/markkurossi/text/symbols"
 )
 
 const (
@@ -121,7 +122,7 @@ func (p *Player) offlinePhase() error {
 		fmt.Printf("W%d:\t%v\n", i, wires[i])
 	}
 
-	fmt.Printf("lambda: %v\n", p.lambda.Text(2))
+	fmt.Printf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
 
 	// Step 3: patch output wires and permutation bits for XOR output
 	// wires.
@@ -141,7 +142,7 @@ func (p *Player) offlinePhase() error {
 		lo := li0 ^ li1
 		p.lambda.SetBit(p.lambda, ow, lo)
 
-		fmt.Printf("l[%d]: %v ^ %v = %v\n", ow, li0, li1, lo)
+		fmt.Printf("%c[%d]: %v ^ %v = %v\n", symbols.Lambda, ow, li0, li1, lo)
 
 		// 3.b: set garbled label on wire 0: k_{w,0} = k_{u,0} ⊕ k_{v,0}
 		wires[ow].L0 = wires[i0].L0
@@ -156,7 +157,7 @@ func (p *Player) offlinePhase() error {
 		fmt.Printf("W%d:\t%v\n", i, wires[i])
 	}
 
-	fmt.Printf("lambda: %v\n", p.lambda.Text(2))
+	fmt.Printf("%c%s:\t%v\n", symbols.Lambda, p.IDString(), p.lambda.Text(2))
 
 	return nil
 }
