@@ -37,10 +37,11 @@ func Test3Party(t *testing.T) {
 	// Add peers to players.
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			this, other := ot.NewPipe()
+			clientFrom, clientTo := ot.NewPipe()
+			serverFrom, serverTo := ot.NewPipe()
 
-			players[i].AddPeer(j, this)
-			players[j].AddPeer(i, other)
+			players[i].AddPeer(j, clientFrom, serverTo)
+			players[j].AddPeer(i, serverFrom, clientTo)
 		}
 	}
 
