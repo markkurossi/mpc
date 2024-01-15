@@ -43,6 +43,10 @@ func testFx(t *testing.T, a, b uint) {
 		t.Fatal(xb)
 
 	case uint:
+		// f×(a,b) = (c,d) where c⊕d = a·b
+		if a*b != r^xb {
+			t.Errorf("Fx: %v*%v=%v != %v⊕%v=%v\n", a, b, a*b, r, xb, r^xb)
+		}
 		if b == 1 {
 			// b = 1 implies that xb = x1 = r⊕a
 			tst := r ^ a
@@ -113,6 +117,15 @@ func testFxk(t *testing.T, b uint) {
 		t.Fatal(xb)
 
 	case Label:
+		// f×κ(s, b) = (c,d) where c⊕d = s·b and where s ∈ {0,1}κ and
+		// b ∈ {0,1}.
+		sb := a
+		sb.Mul(b)
+		cd := r
+		cd.Xor(xb)
+		if !sb.Equal(cd) {
+			t.Errorf("Fx: %v*%v=%v != %v⊕%v=%v\n", a, b, sb, r, xb, cd)
+		}
 		if b == 1 {
 			// b = 1 implies that xb = x1 = r⊕a
 			tst := r

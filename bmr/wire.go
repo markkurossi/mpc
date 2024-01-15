@@ -55,6 +55,13 @@ func (l *Label) Xor(o Label) {
 	}
 }
 
+// Mul multiplies l with the bit b.
+func (l *Label) Mul(b uint) {
+	for i := 0; i < len(l); i++ {
+		l[i] *= byte(b)
+	}
+}
+
 // ToOT converts the label to ot.Label.
 func (l *Label) ToOT() ot.Label {
 	var label ot.Label
