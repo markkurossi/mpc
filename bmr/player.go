@@ -37,6 +37,12 @@ type Player struct {
 	c           *sync.Cond
 	completions int
 	luv         *big.Int
+
+	// The XOR shares luvw{0,1,2,3} matching λuvw, λuv̄w, λūvw, λūv̄w.
+	luvw0 *big.Int
+	luvw1 *big.Int
+	luvw2 *big.Int
+	luvw3 *big.Int
 }
 
 // NewPlayer creates a new multi-party player.
@@ -49,6 +55,10 @@ func NewPlayer(id, numPlayers int) (*Player, error) {
 		m:          m,
 		c:          sync.NewCond(m),
 		luv:        big.NewInt(0),
+		luvw0:      big.NewInt(0),
+		luvw1:      big.NewInt(0),
+		luvw2:      big.NewInt(0),
+		luvw3:      big.NewInt(0),
 	}, nil
 }
 
@@ -215,7 +225,6 @@ func (p *Player) fgc() (err error) {
 	luv := big.NewInt(0)
 	for i := 0; i < p.circ.NumGates; i++ {
 		gate := p.circ.Gates[i]
-		// fmt.Printf("Player%s: gate[%d]: %s\n", p.IDString(), i, gate)
 		switch gate.Op {
 		case circuit.AND:
 			lu := p.lambda.Bit(int(gate.Input0))
@@ -258,10 +267,45 @@ func (p *Player) fgc() (err error) {
 	}
 	p.m.Unlock()
 
-	fmt.Printf("Player%s: %cuv=%v\n", p.IDString(), symbols.Lambda,
+	fmt.Printf("Player%s: %cuv =%v\n", p.IDString(), symbols.Lambda,
 		lambda(p.luv, p.circ.NumGates))
 
 	// Step 2.
+	for i := 0; i < p.circ.NumGates; i++ {
+		gate := p.circ.Gates[i]
+		switch gate.Op {
+		case circuit.AND:
+			lu := p.lambda.Bit(int(gate.Input0))
+			lv := p.lambda.Bit(int(gate.Input1))
+			lw := p.lambda.Bit(int(gate.Output))
+
+			luv := p.luv.Bit(i)
+
+			// λuvw = λuv ⊕ λw
+			p.luvw0.SetBit(p.luvw0, i, luv^lw)
+
+			// λuv̄w = λuv ⊕ λu ⊕ λw
+			p.luvw1.SetBit(p.luvw1, i, luv^lu&lw)
+
+			// λūvw = λuv ⊕ λv ⊕ λw
+			p.luvw2.SetBit(p.luvw2, i, luv^lv&lw)
+
+			// λūv̄w = λuv ⊕ λu ⊕ λv ⊕ λw
+			p.luvw3.SetBit(p.luvw3, i, luv^lu^lv&lw)
+
+		default:
+			return fmt.Errorf("gate %v not implemented yet", gate.Op)
+		}
+	}
+
+	fmt.Printf("Player%s: %cuvw=%v\n", p.IDString(), symbols.Lambda,
+		lambda(p.luvw0, p.circ.NumGates))
+	fmt.Printf("Player%s: %cuv̄w=%v\n", p.IDString(), symbols.Lambda,
+		lambda(p.luvw1, p.circ.NumGates))
+	fmt.Printf("Player%s: %cūvw=%v\n", p.IDString(), symbols.Lambda,
+		lambda(p.luvw2, p.circ.NumGates))
+	fmt.Printf("Player%s: %cūv̄w=%v\n", p.IDString(), symbols.Lambda,
+		lambda(p.luvw3, p.circ.NumGates))
 
 	return nil
 }
