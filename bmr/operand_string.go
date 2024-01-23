@@ -9,12 +9,13 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[OpInit-0]
-	_ = x[OpFx-1]
+	_ = x[OpFxLambda-1]
+	_ = x[OpFxR-2]
 }
 
-const _Operand_name = "InitFx"
+const _Operand_name = "InitFxLambdaFxR"
 
-var _Operand_index = [...]uint8{0, 4, 6}
+var _Operand_index = [...]uint8{0, 4, 12, 15}
 
 func (i Operand) String() string {
 	if i >= Operand(len(_Operand_index)-1) {

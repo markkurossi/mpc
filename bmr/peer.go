@@ -9,7 +9,9 @@ package bmr
 import (
 	"fmt"
 	"io"
+	"math/big"
 
+	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/text/superscript"
 )
@@ -83,12 +85,12 @@ func (peer *Peer) consumerMsgLoop(id string) error {
 			if err != nil {
 				return err
 			}
-		case OpFx:
+		case OpFxLambda:
 			gid, err := peer.from.ReceiveUint32()
 			if err != nil {
 				return err
 			}
-			peer.this.Debugf("%s: %s: id=%v\n", id, op, gid)
+			peer.this.Debugf("%s: %s: gid=%v\n", id, op, gid)
 			gate := peer.this.circ.Gates[gid]
 			lv := peer.this.lambda.Bit(int(gate.Input1))
 
@@ -101,13 +103,50 @@ func (peer *Peer) consumerMsgLoop(id string) error {
 			v ^= xb
 			peer.this.luv.SetBit(peer.this.luv, gid, v)
 			peer.this.completions++
-			if peer.this.completions == peer.this.circ.NumGates {
+			if peer.this.completions == peer.this.syncBarrier(1) {
+				peer.this.c.Signal()
+			}
+			peer.this.m.Unlock()
+
+		case OpFxR:
+			gid, err := peer.from.ReceiveUint32()
+			if err != nil {
+				return err
+			}
+			peer.this.Debugf("%s: %s: gid=%v\n", id, op, gid)
+			gate := peer.this.circ.Gates[gid]
+			luvws := []*big.Int{
+				peer.this.luvw0,
+				peer.this.luvw1,
+				peer.this.luvw2,
+				peer.this.luvw3,
+			}
+			// XXX patch luvws based on gate.Op
+			switch gate.Op {
+			case circuit.AND:
+			default:
+				return fmt.Errorf("gate %v not implemented yet", gate.Op)
+			}
+			var xbs []Label
+			for _, luvw := range luvws {
+				xb, err := FxkReceive(peer.otReceiver, luvw.Bit(gid))
+				if err != nil {
+					return err
+				}
+				xbs = append(xbs, xb)
+			}
+			peer.this.m.Lock()
+			for i := 0; i < len(xbs); i++ {
+				peer.this.rj[gid][i].Xor(xbs[i])
+			}
+			peer.this.completions++
+			if peer.this.completions == peer.this.syncBarrier(2) {
 				peer.this.c.Signal()
 			}
 			peer.this.m.Unlock()
 
 		default:
-			return fmt.Errorf("%s: %s: not implemented\n", id, op)
+			return fmt.Errorf("%s: %s: not implemented", id, op)
 		}
 
 		peer.to.Flush()

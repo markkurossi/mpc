@@ -14,5 +14,6 @@ type Operand byte
 // Network protocol messages.
 const (
 	OpInit Operand = iota
-	OpFx
+	OpFxLambda
+	OpFxR
 )

@@ -43,6 +43,9 @@ type Player struct {
 	luvw1 *big.Int
 	luvw2 *big.Int
 	luvw3 *big.Int
+
+	// The XOR shares of Rj matching ρij,α,β
+	rj [][]Label
 }
 
 // NewPlayer creates a new multi-party player.
@@ -97,6 +100,17 @@ func (p *Player) Play() error {
 	if count != p.numPlayers-1 {
 		return fmt.Errorf("invalid number of peers: expected %d, got %d",
 			count, p.numPlayers-1)
+	}
+
+	// Init circuit-dependent fields.
+	p.rj = make([][]Label, p.circ.NumGates)
+	for i := 0; i < p.circ.NumGates; i++ {
+		switch p.circ.Gates[i].Op {
+		case circuit.AND:
+			p.rj[i] = make([]Label, 4)
+		default:
+			return fmt.Errorf("gate %v not implemented yet", p.circ.Gates[i].Op)
+		}
 	}
 
 	p.Debugf("BMR: #gates=%v\n", p.circ.NumGates)
@@ -216,6 +230,10 @@ func (p *Player) offlinePhase() error {
 	return nil
 }
 
+func (p *Player) syncBarrier(nth int) int {
+	return p.circ.NumGates * (len(p.peers) - 1) * nth
+}
+
 // fgc computes the multiparty garbled circuit (3.1.2 The Protocol for
 // Fgc - Page 7).
 func (p *Player) fgc() (err error) {
@@ -238,7 +256,7 @@ func (p *Player) fgc() (err error) {
 				if peer == nil {
 					continue
 				}
-				err = peer.to.SendByte(byte(OpFx))
+				err = peer.to.SendByte(byte(OpFxLambda))
 				if err != nil {
 					return err
 				}
@@ -261,8 +279,7 @@ func (p *Player) fgc() (err error) {
 
 	p.m.Lock()
 	p.luv.Xor(p.luv, luv)
-
-	for p.completions < p.circ.NumGates {
+	for p.completions < p.syncBarrier(1) {
 		p.c.Wait()
 	}
 	p.m.Unlock()
@@ -297,7 +314,6 @@ func (p *Player) fgc() (err error) {
 			return fmt.Errorf("gate %v not implemented yet", gate.Op)
 		}
 	}
-
 	fmt.Printf("Player%s: %cuvw=%v\n", p.IDString(), symbols.Lambda,
 		lambda(p.luvw0, p.circ.NumGates))
 	fmt.Printf("Player%s: %cuv̄w=%v\n", p.IDString(), symbols.Lambda,
@@ -306,6 +322,48 @@ func (p *Player) fgc() (err error) {
 		lambda(p.luvw2, p.circ.NumGates))
 	fmt.Printf("Player%s: %cūv̄w=%v\n", p.IDString(), symbols.Lambda,
 		lambda(p.luvw3, p.circ.NumGates))
+
+	// Step 3: for i!=j, run Fxk(R,luvw)
+	for gid := 0; gid < p.circ.NumGates; gid++ {
+		for _, peer := range p.peers {
+			if peer == nil {
+				continue
+			}
+			err = peer.to.SendByte(byte(OpFxR))
+			if err != nil {
+				return err
+			}
+			err = peer.to.SendUint32(gid)
+			if err != nil {
+				return err
+			}
+			for n := 0; n < len(p.rj[gid]); n++ {
+				r, err := FxkSend(peer.otSender, p.r)
+				if err != nil {
+					return err
+				}
+				p.m.Lock()
+				p.rj[gid][n].Xor(r)
+				p.m.Unlock()
+			}
+		}
+	}
+	p.m.Lock()
+	for p.completions < p.syncBarrier(2) {
+		p.c.Wait()
+	}
+	p.m.Unlock()
+
+	for gid := 0; gid < p.circ.NumGates; gid++ {
+		p.Debugf("Player%s: rj[%v]:\t", p.IDString(), gid)
+		for idx, l := range p.rj[gid] {
+			if idx > 0 {
+				p.Debugf(" ")
+			}
+			p.Debugf("%v", l)
+		}
+		p.Debugf("\n")
+	}
 
 	return nil
 }
