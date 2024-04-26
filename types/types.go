@@ -1,7 +1,7 @@
 //
 // types.go
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -326,7 +326,7 @@ func (i *Info) InstantiateWithSizes(sizes []int) error {
 		i.Bits = structBits
 
 	case TArray:
-		if i.ElementType == nil {
+		if !i.ElementType.Concrete() {
 			return fmt.Errorf("array element type unspecified: %v", i)
 		}
 		if !i.Concrete() {
