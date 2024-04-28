@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"io"
 	"os"
 	"path"
@@ -38,7 +39,7 @@ func NewHTMLDoc(dir string) (*HTMLDoc, error) {
 
 // New implements Documenter.New.
 func (doc *HTMLDoc) New(name string) (Output, error) {
-	file := path.Join(doc.dir, fmt.Sprintf("pkg_%s.html", name))
+	file := path.Join(doc.dir, fmt.Sprintf("%s.html", name))
 	f, err := os.Create(file)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (doc *HTMLDoc) New(name string) (Output, error) {
 }
 
 // Index implements Documenter.Index.
-func (doc *HTMLDoc) Index(pkgs []*Package) error {
+func (doc *HTMLDoc) Index(pkgs, mains []*Package) error {
 	file := path.Join(doc.dir, "apidoc.html")
 	f, err := os.Create(file)
 	if err != nil {
@@ -64,7 +65,7 @@ func (doc *HTMLDoc) Index(pkgs []*Package) error {
 	}
 	defer f.Close()
 
-	err = index(f, pkgs)
+	err = index(f, pkgs, mains)
 	if err != nil {
 		os.Remove(file)
 		return err
@@ -72,7 +73,7 @@ func (doc *HTMLDoc) Index(pkgs []*Package) error {
 	return nil
 }
 
-func index(out io.Writer, pkgs []*Package) error {
+func index(out io.Writer, pkgs, mains []*Package) error {
 	err := header(out)
 	if err != nil {
 		return err
@@ -85,19 +86,44 @@ func index(out io.Writer, pkgs []*Package) error {
 	if err != nil {
 		return err
 	}
-
 	for _, pkg := range pkgs {
 		first := pkg.Annotations.FirstSentence()
 		_, err := fmt.Fprintf(out, `<div class="index">
 <a href="%s">Package %s</a>
 </div>
 `,
-			fmt.Sprintf("pkg_%s.html", pkg.Name), pkg.Name)
+			fmt.Sprintf("pkg_%s.html", pkg.Docfile()),
+			html.EscapeString(pkg.Name))
 		if err != nil {
 			return err
 		}
 		if len(first) > 0 {
-			_, err = fmt.Fprintf(out, "<p>%s</p>\n", first)
+			_, err = fmt.Fprintf(out, "<p>%s</p>\n", html.EscapeString(first))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	_, err = fmt.Fprintf(out, `
+<h2>Programs</h2>
+`)
+	if err != nil {
+		return err
+	}
+	for _, pkg := range mains {
+		first := pkg.Annotations.FirstSentence()
+		_, err := fmt.Fprintf(out, `<div class="index">
+<a href="%s">%s</a>
+</div>
+`,
+			fmt.Sprintf("prg_%s.html", pkg.Docfile()),
+			html.EscapeString(pkg.Name))
+		if err != nil {
+			return err
+		}
+		if len(first) > 0 {
+			_, err = fmt.Fprintf(out, "<p>%s</p>\n", html.EscapeString(first))
 			if err != nil {
 				return err
 			}

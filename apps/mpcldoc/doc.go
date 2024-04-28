@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,6 +9,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -38,7 +39,7 @@ type Documenter interface {
 	New(name string) (Output, error)
 
 	// Index creates an index page for the documentation.
-	Index(pkgs []*Package) error
+	Index(pkgs, mains []*Package) error
 }
 
 // Output implements document output
@@ -84,12 +85,14 @@ type Output interface {
 
 var packages = make(map[string]*Package)
 var typeDefs = make(map[string]*Package)
+var mains = make(map[string]*Package)
 
 func documentation(files []string, doc Documenter) error {
 	err := parseInputs(files)
 	if err != nil {
 		return err
 	}
+
 	var pkgs []*Package
 	for _, pkg := range packages {
 		pkgs = append(pkgs, pkg)
@@ -103,14 +106,35 @@ func documentation(files []string, doc Documenter) error {
 		return pkgs[i].Name < pkgs[j].Name
 	})
 
-	doc.Index(pkgs)
+	var mns []*Package
+	for _, pkg := range mains {
+		mns = append(mns, pkg)
+	}
+	sort.Slice(mns, func(i, j int) bool {
+		return mns[i].Name < mns[j].Name
+	})
+
+	doc.Index(pkgs, mns)
 
 	for _, pkg := range pkgs {
-		out, err := doc.New(pkg.Name)
+		out, err := doc.New("pkg_" + pkg.Docfile())
 		if err != nil {
 			return err
 		}
-		if err := documentPackage(out, pkg); err != nil {
+		if err := documentPackage("Package", out, pkg); err != nil {
+			out.Close()
+			return err
+		}
+		if err := out.Close(); err != nil {
+			return err
+		}
+	}
+	for _, pkg := range mns {
+		out, err := doc.New("prg_" + pkg.Docfile())
+		if err != nil {
+			return err
+		}
+		if err := documentPackage("Program", out, pkg); err != nil {
 			out.Close()
 			return err
 		}
@@ -166,12 +190,26 @@ func parseFile(name string) error {
 	if err != nil {
 		return err
 	}
-	p, ok := packages[pkg.Name]
-	if !ok {
-		p = &Package{
-			Name: pkg.Name,
+
+	var p *Package
+	var ok bool
+	if pkg.Name == "main" {
+		p, ok = mains[pkg.Source]
+		if ok {
+			return fmt.Errorf("file '%v' already processed", name)
 		}
-		packages[pkg.Name] = p
+		p = &Package{
+			Name: pkg.Source,
+		}
+		mains[pkg.Source] = p
+	} else {
+		p, ok = packages[pkg.Name]
+		if !ok {
+			p = &Package{
+				Name: pkg.Name,
+			}
+			packages[pkg.Name] = p
+		}
 	}
 	p.Annotations = append(p.Annotations, pkg.Annotations...)
 	p.Constants = append(p.Constants, pkg.Constants...)
@@ -185,10 +223,10 @@ func parseFile(name string) error {
 	return nil
 }
 
-func documentPackage(out Output, pkg *Package) error {
+func documentPackage(kind string, out Output, pkg *Package) error {
 	builtin := pkg.Name == "builtin"
 
-	if err := out.H1(text.New().Plainf("Package %s", pkg.Name)); err != nil {
+	if err := out.H1(text.New().Plainf("%s %s", kind, pkg.Name)); err != nil {
 		return nil
 	}
 	err := annotations(out, pkg.Annotations)
@@ -550,4 +588,9 @@ type Package struct {
 	Variables   []*ast.VariableDef
 	Functions   []*ast.Func
 	Types       []*ast.TypeInfo
+}
+
+// Docfile returns the package's documentation filename.
+func (pkg *Package) Docfile() string {
+	return strings.ReplaceAll(pkg.Name, "/", "_")
 }
