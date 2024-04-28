@@ -33,7 +33,6 @@
 // The result signature is:
 //
 //	Result[0]: f43c1cf1755345852211942af0838414334eec9cbf36e26a9f9e8d4bb720deb145ffbeec82249c875116757441206bcdc56b501e750f1f590917d772dfee980f
-
 package main
 
 import (
