@@ -17,8 +17,8 @@
 //
 // Run garbler and evaluator as follows:
 //
-//	$ ./garbled -e -v -i 9 examples/rsa.mpcl
-//	$ ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsa.mpcl
+//	./garbled -e -v -i 9 examples/rsa.mpcl
+//	./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsa.mpcl
 package main
 
 import (

@@ -1,14 +1,15 @@
 // -*- go -*-
 //
 
+// RSA encryption with Montgomery modular multiplication.
+//
+//	./garbled -e -v -i 0x321af130 examples/montgomery.mpcl
+//	./garbled -v -i 0x6d7472,9,0xd60b2b09,0x10001 examples/montgomery.mpcl
 package main
 
 import (
 	"math"
 )
-
-// $ ./garbled -e -v -i 0x321af130 examples/montgomery.mpcl
-// $ ./garbled -v -i 0x6d7472,9,0xd60b2b09,0x10001 examples/montgomery.mpcl
 
 type Size = uint64
 

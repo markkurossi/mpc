@@ -23,12 +23,12 @@
 //
 // Run the Evaluator with one input: the Evaluator's private key share:
 //
-//	$ ./garbled -e -v -stream -i 0x89e33ec1376664974cf65e81a3f965f782ac496fe36a3cc1f49c2d66afa5319c9fde48df1796d784c5d175151fb717b9c68ec3f23ebffc854256393e969cf8ed
+//	./garbled -e -v -stream -i 0x89e33ec1376664974cf65e81a3f965f782ac496fe36a3cc1f49c2d66afa5319c9fde48df1796d784c5d175151fb717b9c68ec3f23ebffc854256393e969cf8ed
 //
 // The Garbler takes two inputs: the message to sign, and the
 // Garbler's private key share:
 //
-//	$ ./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0xa66e6bb15b6ad6b19bacf163573d0179de7f62bafcd6aba521d525a0d7b79f7e153801bc47f6d566a274e370f615f140f20202ab80ec88fdd611b726b8526726 examples/ed25519/sign.mpcl
+//	./garbled -stream -v -i 0x4d61726b6b7520526f737369203c6d747240696b692e66693e2068747470733a2f2f7777772e6d61726b6b75726f7373692e636f6d2f,0xa66e6bb15b6ad6b19bacf163573d0179de7f62bafcd6aba521d525a0d7b79f7e153801bc47f6d566a274e370f615f140f20202ab80ec88fdd611b726b8526726 examples/ed25519/sign.mpcl
 //
 // The result signature is:
 //

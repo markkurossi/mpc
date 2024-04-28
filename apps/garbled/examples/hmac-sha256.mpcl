@@ -29,12 +29,12 @@
 // Now we can run the MPC computation as follows. First, run the
 // evaluator with one input: the evaluator's key share:
 //
-//	$ ./garbled -e -v -i 0xf87a00ef89c2396de32f6ac0748f6fa1b641013d46f74ce25cc625904215a67501c0c7196a2602f6516527958a82271847933c35d170d98bfdb04d2ddf3bb197 examples/hmac-sha256.mpcl
+//	./garbled -e -v -i 0xf87a00ef89c2396de32f6ac0748f6fa1b641013d46f74ce25cc625904215a67501c0c7196a2602f6516527958a82271847933c35d170d98bfdb04d2ddf3bb197 examples/hmac-sha256.mpcl
 //
 // The garbler takes two inputs: the message and the garbler's key
 // share:
 //
-//	$ ./garbled -v -i 0x48656c6c6f2c20776f726c64212e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e,0x4de216d2fdc9301e5b9c78486f7109a05670d200d9e2f275ec0aad08ec42af47fcb59bf460d50b01333a748f3a9efb13e08036d49a26c21ba2e33a5f8a2cf0e7 examples/hmac-sha256.mpcl
+//	./garbled -v -i 0x48656c6c6f2c20776f726c64212e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e,0x4de216d2fdc9301e5b9c78486f7109a05670d200d9e2f275ec0aad08ec42af47fcb59bf460d50b01333a748f3a9efb13e08036d49a26c21ba2e33a5f8a2cf0e7 examples/hmac-sha256.mpcl
 //
 // The MCP computation providers the expected HMAC result:
 //
