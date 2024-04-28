@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -31,6 +31,9 @@ const (
 	TSymFunc
 	TSymIf
 	TSymElse
+	TSymBreak
+	TSymContinue
+	TSymGoto
 	TSymReturn
 	TSymStruct
 	TSymVar
@@ -66,45 +69,48 @@ const (
 )
 
 var tokenTypes = map[TokenType]string{
-	TIdentifier: "identifier",
-	TConstant:   "constant",
-	TSymPackage: "package",
-	TSymImport:  "import",
-	TSymFunc:    "func",
-	TSymIf:      "if",
-	TSymElse:    "else",
-	TSymReturn:  "return",
-	TSymStruct:  "struct",
-	TSymVar:     "var",
-	TSymConst:   "const",
-	TSymType:    "type",
-	TSymFor:     "for",
-	TSymRange:   "range",
-	TSymNil:     "nil",
-	TDefAssign:  ":=",
-	TMultEq:     "*=",
-	TDivEq:      "/=",
-	TLshiftEq:   "<<=",
-	TLshift:     "<<",
-	TRshiftEq:   ">>=",
-	TRshift:     ">>",
-	TPlusPlus:   "++",
-	TPlusEq:     "+=",
-	TMinusMinus: "--",
-	TMinusEq:    "-=",
-	TOrEq:       "|=",
-	TXorEq:      "^=",
-	TAndEq:      "&=",
-	TLt:         "<",
-	TLe:         "<=",
-	TGt:         ">",
-	TGe:         ">=",
-	TEq:         "==",
-	TNeq:        "!=",
-	TAnd:        "&&",
-	TOr:         "||",
-	TBitClear:   "&^",
-	TSend:       "<-",
+	TIdentifier:  "identifier",
+	TConstant:    "constant",
+	TSymPackage:  "package",
+	TSymImport:   "import",
+	TSymFunc:     "func",
+	TSymIf:       "if",
+	TSymElse:     "else",
+	TSymBreak:    "break",
+	TSymContinue: "continue",
+	TSymGoto:     "goto",
+	TSymReturn:   "return",
+	TSymStruct:   "struct",
+	TSymVar:      "var",
+	TSymConst:    "const",
+	TSymType:     "type",
+	TSymFor:      "for",
+	TSymRange:    "range",
+	TSymNil:      "nil",
+	TDefAssign:   ":=",
+	TMultEq:      "*=",
+	TDivEq:       "/=",
+	TLshiftEq:    "<<=",
+	TLshift:      "<<",
+	TRshiftEq:    ">>=",
+	TRshift:      ">>",
+	TPlusPlus:    "++",
+	TPlusEq:      "+=",
+	TMinusMinus:  "--",
+	TMinusEq:     "-=",
+	TOrEq:        "|=",
+	TXorEq:       "^=",
+	TAndEq:       "&=",
+	TLt:          "<",
+	TLe:          "<=",
+	TGt:          ">",
+	TGe:          ">=",
+	TEq:          "==",
+	TNeq:         "!=",
+	TAnd:         "&&",
+	TOr:          "||",
+	TBitClear:    "&^",
+	TSend:        "<-",
 }
 
 func (t TokenType) String() string {
@@ -169,19 +175,22 @@ func (t TokenType) UnaryType() ast.UnaryType {
 }
 
 var symbols = map[string]TokenType{
-	"import":  TSymImport,
-	"const":   TSymConst,
-	"type":    TSymType,
-	"for":     TSymFor,
-	"range":   TSymRange,
-	"nil":     TSymNil,
-	"else":    TSymElse,
-	"func":    TSymFunc,
-	"if":      TSymIf,
-	"package": TSymPackage,
-	"return":  TSymReturn,
-	"struct":  TSymStruct,
-	"var":     TSymVar,
+	"import":   TSymImport,
+	"const":    TSymConst,
+	"type":     TSymType,
+	"for":      TSymFor,
+	"range":    TSymRange,
+	"nil":      TSymNil,
+	"else":     TSymElse,
+	"break":    TSymBreak,
+	"continue": TSymContinue,
+	"goto":     TSymGoto,
+	"func":     TSymFunc,
+	"if":       TSymIf,
+	"package":  TSymPackage,
+	"return":   TSymReturn,
+	"struct":   TSymStruct,
+	"var":      TSymVar,
 }
 
 // Token specifies an input token.
