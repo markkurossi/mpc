@@ -290,7 +290,7 @@ func documentPackage(kind string, out Output, pkg *Package) error {
 		return pkg.Functions[i].Name < pkg.Functions[j].Name
 	})
 	for _, f := range pkg.Functions {
-		if !builtin && !ast.IsExported(f.Name) {
+		if !builtin && f.Name != "main" && !ast.IsExported(f.Name) {
 			continue
 		}
 		if err := out.Signature(text.New().Plain(f.Name)); err != nil {
