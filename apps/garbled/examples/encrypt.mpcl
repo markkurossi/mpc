@@ -1,14 +1,15 @@
 // -*- go -*-
 
+// Example how to encrypt fixed sized data with AES-128-GCM.
+//
 // Run the Evaluator with two inputs: evaluator's key and nonce shares:
 //
-//   $ ./garbled -e -i 0x8cd98b88adab08d6d60fe57c8b8a33f3,0xfd5e0f8f155e7102aa526ad0 examples/encrypt.mpcl
+//	$ ./garbled -e -i 0x8cd98b88adab08d6d60fe57c8b8a33f3,0xfd5e0f8f155e7102aa526ad0 examples/encrypt.mpcl
 //
 // The Garbler takes three arguments: the message to encrypt, and its
 // key and nonce shares:
 //
-//   $ ./garbled -i 0x48656c6c6f2c20776f726c6421,0xed800b17b0c9d2334b249332155ddef5,0xa300751458c775a08762c2cd examples/encrypt.mpcl
-
+//	$ ./garbled -i 0x48656c6c6f2c20776f726c6421,0xed800b17b0c9d2334b249332155ddef5,0xa300751458c775a08762c2cd examples/encrypt.mpcl
 package main
 
 import (

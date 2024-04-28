@@ -1,24 +1,29 @@
 // -*- go -*-
 //
 
+// RSA signature with Size bits.
+//
+// The key parameters are:
+//
+//	d: 0x321af139
+//	n: 0xd60b2b09
+//	e: 0x10001
+//
+//	private: d, n
+//	public:  e, n
+//
+//	msg: 0x6d7472
+//	signature: 0x55a83b79
+//
+// Run garbler and evaluator as follows:
+//
+//	./garbled -e -v -i 9 examples/rsasign.mpcl
+//	./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsasign.mpcl
 package main
 
 import (
 	"crypto/rsa"
 )
-
-// d: 0x321af139
-// n: 0xd60b2b09
-// e: 0x10001
-//
-// private: d, n
-// public:  e, n
-
-// msg: 0x6d7472
-// signature: 0x55a83b79
-
-//  ./garbled -e -v -i 9 examples/rsasign.mpcl
-//  ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsasign.mpcl
 
 type Size = uint512
 

@@ -1,6 +1,7 @@
 // -*- go -*-
 //
 
+// Yao's Millionaires' problem with int64 values.
 package main
 
 func main(a, b int64) bool {

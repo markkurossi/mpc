@@ -1,24 +1,29 @@
 // -*- go -*-
 //
 
+// 32-bit RSA encryption and decryption.
+//
+// The key parameters are:
+//
+//	d: 0x321af139
+//	n: 0xd60b2b09
+//	e: 0x10001
+//
+//	private: d, n
+//	public:  e, n
+//
+//	msg: 0x6d7472
+//	cipher: 0x61f9ef88
+//
+// Run garbler and evaluator as follows:
+//
+//	$ ./garbled -e -v -i 9 examples/rsa.mpcl
+//	$ ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsa.mpcl
 package main
 
 import (
 	"crypto/rsa"
 )
-
-// d: 0x321af139
-// n: 0xd60b2b09
-// e: 0x10001
-//
-// private: d, n
-// public:  e, n
-
-// msg: 0x6d7472
-// cipher: 0x61f9ef88
-
-// $ ./garbled -e -v -i 9 examples/rsa.mpcl
-// $ ./garbled -v -i 0x6d7472,0x321af130,0xd60b2b09,0x10001 examples/rsa.mpcl
 
 type Size = uint32
 
