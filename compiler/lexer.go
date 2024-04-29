@@ -175,22 +175,22 @@ func (t TokenType) UnaryType() ast.UnaryType {
 }
 
 var symbols = map[string]TokenType{
-	"import":   TSymImport,
-	"const":    TSymConst,
-	"type":     TSymType,
-	"for":      TSymFor,
-	"range":    TSymRange,
-	"nil":      TSymNil,
-	"else":     TSymElse,
-	"break":    TSymBreak,
-	"continue": TSymContinue,
-	"goto":     TSymGoto,
-	"func":     TSymFunc,
-	"if":       TSymIf,
-	"package":  TSymPackage,
-	"return":   TSymReturn,
-	"struct":   TSymStruct,
-	"var":      TSymVar,
+	"import": TSymImport,
+	"const":  TSymConst,
+	"type":   TSymType,
+	"for":    TSymFor,
+	"range":  TSymRange,
+	"nil":    TSymNil,
+	"else":   TSymElse,
+	// "break":    TSymBreak,
+	// "continue": TSymContinue,
+	// "goto":     TSymGoto,
+	"func":    TSymFunc,
+	"if":      TSymIf,
+	"package": TSymPackage,
+	"return":  TSymReturn,
+	"struct":  TSymStruct,
+	"var":     TSymVar,
 }
 
 // Token specifies an input token.
