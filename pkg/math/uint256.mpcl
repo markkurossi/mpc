@@ -1,0 +1,160 @@
+// -*- go -*-
+
+package math
+
+import (
+	"bits"
+	"encoding/binary"
+)
+
+// Uint256 is represented as an array of 4 uint64, in little-endian order,
+// so that Int[3] is the most significant, and Int[0] is the least significant
+type Uint256 [4]uint64
+
+func NewUint256(in [32]byte) Uint256 {
+	var z Uint256
+	z[3] = binary.GetUint64(in[0:8])
+	z[2] = binary.GetUint64(in[8:16])
+	z[1] = binary.GetUint64(in[16:24])
+	z[0] = binary.GetUint64(in[24:32])
+
+	return z
+}
+
+// Clear sets z to 0
+func NewZero() Uint256 {
+	var z Uint256
+	z[3] = 0
+	z[2] = 0
+	z[1] = 0
+	z[0] = 0
+
+	return z
+}
+
+// Clone creates a new Int identical to z
+func Clone(z Uint256) Uint256 {
+	var c Uint256
+	c[0] = z[0]
+	c[1] = z[1]
+	c[2] = z[2]
+	c[3] = z[3]
+
+	return c
+}
+
+// IsZero returns true if z == 0
+func IsZero(z Uint256) bool {
+	return (z[0] | z[1] | z[2] | z[3]) == 0
+}
+
+// IsEqual returns true if z == y
+func IsEqual(x, y Uint256) bool {
+	return (x[0] == y[0] &&
+		x[1] == y[1] &&
+		x[2] == y[2] &&
+		x[3] == y[3])
+}
+
+// AddOverflow returns the sum x+y, and returns z and whether overflow occurred
+func AddOverflow(x Uint256, y Uint256) (Uint256, bool) {
+	var z Uint256
+	var carry uint64
+	z[0], carry = bits.Add64(x[0], y[0], 0)
+	z[1], carry = bits.Add64(x[1], y[1], carry)
+	z[2], carry = bits.Add64(x[2], y[2], carry)
+	z[3], carry = bits.Add64(x[3], y[3], carry)
+	return z, carry != 0
+}
+
+// SubBurrow returns the difference of x, y.
+func SubBurrow(x Uint256, y Uint256, borrow bool) Uint256 {
+	var z Uint256
+	var carry uint64
+	if borrow {
+		// carry = 1
+	}
+	z[0], carry = bits.Sub64(x[0], y[0], carry)
+	z[1], carry = bits.Sub64(x[1], y[1], carry)
+	z[2], carry = bits.Sub64(x[2], y[2], carry)
+	z[3], carry = bits.Sub64(x[3], y[3], carry)
+
+	return z
+}
+
+// LessThan returns true if z < x
+func LessThan(x Uint256, y Uint256) bool {
+	if x[3] < y[3] {
+		return true
+	} else if x[3] > y[3] {
+		return false
+	} else {
+		if x[2] < y[2] {
+			return true
+		} else if x[2] > y[2] {
+			return false
+		} else {
+			if x[1] < y[1] {
+				return true
+			} else if x[1] > y[1] {
+				return false
+			} else {
+				if x[0] < y[0] {
+					return true
+				} else if x[0] > y[0] {
+					return false
+				} else {
+					return false
+				}
+			}
+		}
+	}
+}
+
+// AddMod returns the sum ( x+y ) mod m.
+
+// Case 1
+//   0x29d9048e6f8e7d0b8ae00c99180aa1f973d068b7d186c3b9776353d442127322
+// + 0x57675a30368f86be2cd6b21556fc2e482758b33c3e68a8c9021abf8fb00e487f
+// = 0x81405ebea61e03c9b7b6beae6f06d0419b291bf40fef6c82797e1363f220bba1
+//
+//   0x81405ebea61e03c9b7b6beae6f06d0419b291bf40fef6c82797e1363f220bba1
+// % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 (q)
+// = 0x81405ebea61e03c9b7b6beae6f06d0419b291bf40fef6c82797e1363f220bba1
+
+// Case 2
+//   0x538c7f96b164bf1b97bb9f4bb472e89f5b1484f25209c9d9343e92ba09dd9d52
+// + 0xdfd79b4d76429b617a0c9f9f0d3ba55b0cc0d6144c888535841acbe0709b0758
+// = 0x133641ae427a75a7d11c83eeac1ae8dfa67d55b069e924f0eb8595e9a7a78a4aa (overflow)
+//
+//   0x133641ae427a75a7d11c83eeac1ae8dfa67d55b069e924f0eb8595e9a7a78a4aa
+// % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 (q)
+// = 0x33641ae427a75a7d11c83eeac1ae8dfbad267e1fef49aed2f887000daa426369
+
+// Case 3
+//   0x71e796a2dc2dc25a5b74b2e129705e273f05c92326828e2b056e3817658e1061
+// + 0x498947fdf344410ed4c116023fa8e3576b6fed27ff8974bac0cafd9ad05692b1
+// = 0xbb70dea0cf7203693035c8e36919417eaa75b64b260c02e5c63935b235e4a312
+//
+//   0xbb70dea0cf7203693035c8e36919417eaa75b64b260c02e5c63935b235e4a312
+// % 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 (q)
+// = 0xbb70dea0cf7203693035c8e36919417eaa75b64b260c02e5c63935b235e4a312
+
+func AddMod(x Uint256, y Uint256, m Uint256) Uint256 {
+	z, overflow := AddOverflow(x, y)
+
+	if overflow || !LessThan(z, m) {
+		return SubBurrow(z, m, overflow)
+	}
+	return z
+}
+
+func Bytes32(z Uint256) [32]byte {
+	var b [32]byte
+
+	binary.PutUint64(b[0:8], 0, z[3])
+	binary.PutUint64(b[8:16], 0, z[2])
+	binary.PutUint64(b[16:24], 0, z[1])
+	binary.PutUint64(b[24:32], 0, z[0])
+	return b
+}
