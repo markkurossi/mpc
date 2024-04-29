@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -46,10 +46,11 @@ func (i *input) Set(value string) error {
 	return nil
 }
 
-var inputFlag input
+var inputFlag, peerFlag input
 
 func init() {
 	flag.Var(&inputFlag, "i", "comma-separated list of circuit inputs")
+	flag.Var(&peerFlag, "pi", "comma-separated list of peer's circuit inputs")
 }
 
 func main() {
@@ -106,8 +107,25 @@ func main() {
 	}
 
 	if *compile || *ssa {
-		err := compileFiles(flag.Args(), params, *compile, *ssa, *dot, *svg,
-			*circFormat)
+		inputSizes := make([][]int, 2)
+		iSizes, err := circuit.InputSizes(inputFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pSizes, err := circuit.InputSizes(peerFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if *evaluator {
+			inputSizes[0] = pSizes
+			inputSizes[1] = iSizes
+		} else {
+			inputSizes[0] = iSizes
+			inputSizes[1] = pSizes
+		}
+
+		err = compileFiles(flag.Args(), params, inputSizes,
+			*compile, *ssa, *dot, *svg, *circFormat)
 		if err != nil {
 			log.Fatalf("compile failed: %s", err)
 		}
