@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,6 +44,7 @@ func (prog *Program) CompileCircuit(params *utils.Params) (
 		fmt.Printf("Compiling circuit...\n")
 	}
 	cc.ConstPropagate()
+	cc.Rewrite()
 	cc.ShortCircuitXORZero()
 	if params.OptPruneGates {
 		orig := float64(len(cc.Gates))
