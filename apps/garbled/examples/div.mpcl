@@ -3,6 +3,6 @@
 
 package main
 
-func main(a, b uint8) uint {
+func main(a, b int64) int {
 	return a / b
 }
