@@ -687,4 +687,5 @@ Optimized circuits from [pkg/math/](pkg/math/):
 | MPCL a+b       |       251 |  80.2 |         63 |  100.0 |
 | MPCL a-b       |       252 |  80.5 |         65 |   51.6 |
 | MPCL a*b       |      8261 |  85.7 |       4007 |   99.4 |
-| MPCL a/b       |     24515 |  98.8 |       8194 |  160.4 |
+| MPCL int a/b   |     25274 | 101.8 |       8574 |  167.8 |
+| MPCL uint a/b  |     24515 |  98.8 |       8194 |  160.4 |

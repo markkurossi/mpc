@@ -1,13 +1,14 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
 
 package circuits
 
-// NewDivider creates a division circuit computing r=a/b, q=a%b.
-func NewDivider(cc *Compiler, a, b, q, r []*Wire) error {
+// NewUDivider creates an unsigned integer division circuit computing
+// r=a/b, q=a%b.
+func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
 	a, b = cc.ZeroPad(a, b)
 
 	rIn := make([]*Wire, len(b)+1)
@@ -83,4 +84,100 @@ func NewDivider(cc *Compiler, a, b, q, r []*Wire) error {
 	}
 
 	return nil
+}
+
+// NewIDivider creates a signed integer division circuit computing
+// r=a/b, q=a%b.
+func NewIDivider(cc *Compiler, a, b, q, r []*Wire) error {
+	a, b = cc.ZeroPad(a, b)
+
+	zero := []*Wire{cc.ZeroWire()}
+	neg0 := cc.ZeroWire()
+
+	// If a is negative, set neg=!neg, a=-a.
+
+	neg1 := cc.Calloc.Wire()
+	cc.INV(neg0, neg1)
+
+	a1 := make([]*Wire, len(a))
+	for i := 0; i < len(a1); i++ {
+		a1[i] = cc.Calloc.Wire()
+	}
+	err := NewSubtractor(cc, zero, a, a1)
+	if err != nil {
+		return err
+	}
+
+	neg2 := cc.Calloc.Wire()
+	err = NewMUX(cc, a[len(a)-1:], []*Wire{neg1}, []*Wire{neg0}, []*Wire{neg2})
+	if err != nil {
+		return err
+	}
+
+	a2 := make([]*Wire, len(a))
+	for i := 0; i < len(a2); i++ {
+		a2[i] = cc.Calloc.Wire()
+	}
+
+	err = NewMUX(cc, a[len(a)-1:], a1, a, a2)
+	if err != nil {
+		return err
+	}
+
+	// If b is negative, set neg=!neg, b=-b.
+
+	neg3 := cc.Calloc.Wire()
+	cc.INV(neg2, neg3)
+
+	b1 := make([]*Wire, len(b))
+	for i := 0; i < len(b1); i++ {
+		b1[i] = cc.Calloc.Wire()
+	}
+	err = NewSubtractor(cc, zero, b, b1)
+	if err != nil {
+		return err
+	}
+
+	neg4 := cc.Calloc.Wire()
+	err = NewMUX(cc, b[len(b)-1:], []*Wire{neg3}, []*Wire{neg2}, []*Wire{neg4})
+	if err != nil {
+		return err
+	}
+
+	b2 := make([]*Wire, len(b))
+	for i := 0; i < len(a2); i++ {
+		b2[i] = cc.Calloc.Wire()
+	}
+
+	err = NewMUX(cc, b[len(b)-1:], b1, b, b2)
+	if err != nil {
+		return err
+	}
+
+	if len(q) == 0 {
+		// Modulo operation.
+		return NewUDivider(cc, a2, b2, q, r)
+	}
+
+	// If neg is set, set q=-q
+
+	q0 := make([]*Wire, len(q))
+	for i := 0; i < len(q0); i++ {
+		q0[i] = cc.Calloc.Wire()
+	}
+	err = NewUDivider(cc, a2, b2, q0, r)
+	if err != nil {
+		return err
+	}
+
+	q1 := make([]*Wire, len(q))
+	for i := 0; i < len(q1); i++ {
+		q1[i] = cc.Calloc.Wire()
+	}
+	err = NewSubtractor(cc, zero, q0, q1)
+	if err != nil {
+		return err
+	}
+
+	return NewMUX(cc, []*Wire{neg4}, q1, q0, q)
 }
