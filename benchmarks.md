@@ -678,14 +678,18 @@ BenchmarkGarbleINV-8              	14924721	        77.97 ns/op
 
 Optimized circuits from [pkg/math/](pkg/math/):
 
-| Implementation | XOR gates | XOR % | !XOR gates | !XOR % |
-|:---------------|----------:|------:|-----------:|-------:|
-| add64.circ     |       313 |       |         63 |        |
-| sub64.circ     |       313 |       |        126 |        |
-| mul64.circ     |      9642 |       |       4033 |        |
-| div64.circ     |     24817 |       |       5109 |        |
-| MPCL a+b       |       251 |  80.2 |         63 |  100.0 |
-| MPCL a-b       |       252 |  80.5 |         65 |   51.6 |
-| MPCL a*b       |      8261 |  85.7 |       4007 |   99.4 |
-| MPCL int a/b   |     25274 | 101.8 |       8574 |  167.8 |
-| MPCL uint a/b  |     24515 |  98.8 |       8194 |  160.4 |
+| Implementation  | XOR gates | XOR % | !XOR gates | !XOR % |
+|:----------------|----------:|------:|-----------:|-------:|
+| add64.circ      |       313 |       |         63 |        |
+| sub64.circ      |       313 |       |        126 |        |
+| mul64.circ      |      9642 |       |       4033 |        |
+| div64.circ      |     24817 |       |       5109 |        |
+| MPCL a+b        |       251 |  80.2 |         63 |  100.0 |
+| MPCL a-b        |       252 |  80.5 |         65 |   51.6 |
+| MPCL a*b        |      8261 |  85.7 |       4007 |   99.4 |
+| MPCL R int a/b  |     33273 | 134.1 |      10463 |  204.8 |
+| MPCL R uint a/b |     32133 | 129.5 |      10084 |  197.4 |
+| MPCL A int a/b  |     25655 | 103.4 |       8574 |  167.8 |
+| MPCL A uint a/b |     24515 |  98.8 |       8194 |  160.4 |
+| MPCL L int a/b  |     25209 | 101.6 |       8447 |  165.3 |
+| MPCL L uint a/b |     24069 |  97.0 |       8068 |  160.0 |

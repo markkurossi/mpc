@@ -6,6 +6,58 @@
 
 package circuits
 
+// NewUDividerLong creates an unsigned integer division circuit
+// computing r=a/b, q=a%b. This function uses Long Division algorithm.
+func NewUDividerLong(cc *Compiler, a, b, q, rret []*Wire) error {
+	a, b = cc.ZeroPad(a, b)
+
+	r := make([]*Wire, len(a))
+	for i := 0; i < len(r); i++ {
+		r[i] = cc.ZeroWire()
+	}
+
+	for i := len(a) - 1; i >= 0; i-- {
+		// r << 1
+		for j := len(r) - 1; j > 0; j-- {
+			r[j] = r[j-1]
+		}
+		r[0] = a[i]
+
+		// r-d, overlow: r < d
+		diff := make([]*Wire, len(r)+1)
+		for j := 0; j < len(diff); j++ {
+			diff[j] = cc.Calloc.Wire()
+		}
+		err := NewSubtractor(cc, r, b, diff)
+		if err != nil {
+			return err
+		}
+		if i < len(q) {
+			err = NewMUX(cc, diff[len(diff)-1:], []*Wire{cc.ZeroWire()},
+				[]*Wire{cc.OneWire()}, q[i:i+1])
+			if err != nil {
+				return err
+			}
+		}
+		nr := make([]*Wire, len(r))
+		for j := 0; j < len(nr); j++ {
+			if i == 0 && j < len(rret) {
+				nr[j] = rret[j]
+			} else {
+				nr[j] = cc.Calloc.Wire()
+			}
+		}
+
+		err = NewMUX(cc, diff[len(diff)-1:], r, diff[:len(diff)-1], nr)
+		if err != nil {
+			return err
+		}
+		r = nr
+	}
+
+	return nil
+}
+
 // NewUDividerRestoring creates an unsigned integer division circuit
 // computing r=a/b, q=a%b. This function uses Restoring Division
 // algorithm.
@@ -154,7 +206,7 @@ func NewUDividerArray(cc *Compiler, a, b, q, r []*Wire) error {
 // NewUDivider creates an unsigned integer division circuit computing
 // r=a/b, q=a%b.
 func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
-	return NewUDividerArray(cc, a, b, q, r)
+	return NewUDividerLong(cc, a, b, q, r)
 }
 
 // NewIDivider creates a signed integer division circuit computing
