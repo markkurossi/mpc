@@ -3,6 +3,12 @@
 
 package main
 
-func main(a, b uint8) uint {
+import (
+	"math"
+)
+
+func main(a, b uint64) uint {
 	return a / b
+
+	//return int64(math.DivUint64(uint64(a), uint64(b)))
 }

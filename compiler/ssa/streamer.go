@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -860,14 +860,24 @@ func newMultiplier(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 		in[0], in[1], out)
 }
 
-func newDivider(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+func newIDivider(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 	out []*circuits.Wire) (bool, error) {
-	return true, circuits.NewDivider(cc, in[0], in[1], out, nil)
+	return true, circuits.NewIDivider(cc, in[0], in[1], out, nil)
 }
 
-func newModulo(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+func newUDivider(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
 	out []*circuits.Wire) (bool, error) {
-	return true, circuits.NewDivider(cc, in[0], in[1], nil, out)
+	return true, circuits.NewUDivider(cc, in[0], in[1], out, nil)
+}
+
+func newIModulo(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+	out []*circuits.Wire) (bool, error) {
+	return true, circuits.NewIDivider(cc, in[0], in[1], nil, out)
+}
+
+func newUModulo(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
+	out []*circuits.Wire) (bool, error) {
+	return true, circuits.NewUDivider(cc, in[0], in[1], nil, out)
 }
 
 func newIndex(cc *circuits.Compiler, instr Instr, in [][]*circuits.Wire,
@@ -896,10 +906,10 @@ var circuitGenerators = map[Operand]NewCircuit{
 	Usub:  newBinary(circuits.NewSubtractor),
 	Imult: newMultiplier,
 	Umult: newMultiplier,
-	Idiv:  newDivider,
-	Udiv:  newDivider,
-	Imod:  newModulo,
-	Umod:  newModulo,
+	Idiv:  newIDivider,
+	Udiv:  newUDivider,
+	Imod:  newIModulo,
+	Umod:  newUModulo,
 	Index: newIndex,
 	Ilt:   newBinary(circuits.NewLtComparator),
 	Ult:   newBinary(circuits.NewLtComparator),
