@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -257,7 +257,7 @@ func (z *Int) Div(x, y *Int) *Int {
 		panic(err)
 	}
 
-	err = circuits.NewDivider(cc, i0w, i1w, o0w, o1w)
+	err = circuits.NewIDivider(cc, i0w, i1w, o0w, o1w)
 	if err != nil {
 		panic(err)
 	}
@@ -337,7 +337,7 @@ func (z *Int) Mod(x, y *Int) *Int {
 		panic(err)
 	}
 
-	err = circuits.NewDivider(cc, i0w, i1w, o0w, o1w)
+	err = circuits.NewIDivider(cc, i0w, i1w, o0w, o1w)
 	if err != nil {
 		panic(err)
 	}

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -145,24 +145,46 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
-		case Idiv, Udiv:
+		case Idiv:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
 
-			err = circuits.NewDivider(cc, wires[0], wires[1], o, nil)
+			err = circuits.NewIDivider(cc, wires[0], wires[1], o, nil)
 			if err != nil {
 				return err
 			}
 
-		case Imod, Umod:
+		case Udiv:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
 
-			err = circuits.NewDivider(cc, wires[0], wires[1], nil, o)
+			err = circuits.NewUDivider(cc, wires[0], wires[1], o, nil)
+			if err != nil {
+				return err
+			}
+
+		case Imod:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+
+			err = circuits.NewIDivider(cc, wires[0], wires[1], nil, o)
+			if err != nil {
+				return err
+			}
+
+		case Umod:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+
+			err = circuits.NewUDivider(cc, wires[0], wires[1], nil, o)
 			if err != nil {
 				return err
 			}

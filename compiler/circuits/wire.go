@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -159,7 +159,7 @@ func (w *Wire) SetInput(gate *Gate) {
 			w.gates = append(w.gates, gate)
 		} else {
 			if w.gates[0] != nil {
-				panic("Input gate already set")
+				panic("wire input gate already set")
 			}
 			w.gates[0] = gate
 		}
