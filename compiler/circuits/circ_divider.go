@@ -6,9 +6,74 @@
 
 package circuits
 
-// NewUDivider creates an unsigned integer division circuit computing
-// r=a/b, q=a%b.
-func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
+// NewUDividerRestoring creates an unsigned integer division circuit
+// computing r=a/b, q=a%b. This function uses Restoring Division
+// algorithm.
+func NewUDividerRestoring(cc *Compiler, a, b, q, rret []*Wire) error {
+	a, b = cc.ZeroPad(a, b)
+
+	r := make([]*Wire, len(a)*2)
+	for i := 0; i < len(r); i++ {
+		if i < len(a) {
+			r[i] = a[i]
+		} else {
+			r[i] = cc.ZeroWire()
+		}
+	}
+	d := make([]*Wire, len(b)*2)
+	for i := 0; i < len(d); i++ {
+		if i < len(b) {
+			d[i] = cc.ZeroWire()
+		} else {
+			d[i] = b[i-len(b)]
+		}
+	}
+
+	for i := len(a) - 1; i >= 0; i-- {
+		// r << 1
+		for j := len(r) - 1; j > 0; j-- {
+			r[j] = r[j-1]
+		}
+		r[0] = cc.ZeroWire()
+
+		// r-d, overlow: r < d
+		diff := make([]*Wire, len(r)+1)
+		for j := 0; j < len(diff); j++ {
+			diff[j] = cc.Calloc.Wire()
+		}
+		err := NewSubtractor(cc, r, d, diff)
+		if err != nil {
+			return err
+		}
+		if i < len(q) {
+			err = NewMUX(cc, diff[len(diff)-1:], []*Wire{cc.ZeroWire()},
+				[]*Wire{cc.OneWire()}, q[i:i+1])
+			if err != nil {
+				return err
+			}
+		}
+		nr := make([]*Wire, len(r))
+		for j := 0; j < len(nr); j++ {
+			if i == 0 && j >= len(a) && j-len(a) < len(rret) {
+				nr[j] = rret[j-len(a)]
+			} else {
+				nr[j] = cc.Calloc.Wire()
+			}
+		}
+
+		err = NewMUX(cc, diff[len(diff)-1:], r, diff[:len(diff)-1], nr)
+		if err != nil {
+			return err
+		}
+		r = nr
+	}
+
+	return nil
+}
+
+// NewUDividerArray creates an unsigned integer division circuit
+// computing r=a/b, q=a%b. This function uses Array Divider algorithm.
+func NewUDividerArray(cc *Compiler, a, b, q, r []*Wire) error {
 	a, b = cc.ZeroPad(a, b)
 
 	rIn := make([]*Wire, len(b)+1)
@@ -86,8 +151,17 @@ func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
 	return nil
 }
 
-// NewIDivider creates a signed integer division circuit computing
+// NewUDivider creates an unsigned integer division circuit computing
 // r=a/b, q=a%b.
+func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
+	return NewUDividerArray(cc, a, b, q, r)
+}
+
+// NewIDivider creates a signed integer division circuit computing
+// r=a/b, q=a%b. The function converts negative a and b to positive
+// values before doing the divmod with NewUDivider. If a or b was
+// negative, the funtion converts the result quotient to negative
+// value.
 func NewIDivider(cc *Compiler, a, b, q, r []*Wire) error {
 	a, b = cc.ZeroPad(a, b)
 
