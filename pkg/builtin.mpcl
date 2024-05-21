@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -55,3 +55,10 @@ func native(name string) []Type {}
 // The size built-in function returns the size of the argument value
 // in bits. The argument value can be of any type.
 func size(v Type) int32 {}
+
+// The panic built-in function terminates the compilation with an
+// error message. The first argument is used as a format string and
+// the remaining arguments are positional arguments for the formatted
+// message. Any extra arguments are appended to the result string,
+// separated by a space character.
+func panic(args any) {}
