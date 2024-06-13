@@ -26,7 +26,7 @@ func EncryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 		tail = aes.BlockSize
 	}
 	if numBlocks < 2 {
-		panic("ctx.EncryptAES128: input must be at least 2 block")
+		panic("cts.EncryptAES128: input must be at least 2 block")
 	}
 	var block [aes.BlockSize]byte
 	block = memcpy(block, 0, iv, 0)
@@ -62,6 +62,63 @@ func EncryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 	cipher = memcpy(cipher, (numBlocks-2)*aes.BlockSize, block, 0)
 
 	return cipher
+}
+
+// DecryptAES128 decrypts the data that is encrypted in AES-CTS
+// mode. The key specifies the AES encryption key and iv is the random
+// initialization vector used in encryption.
+func DecryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
+	numBlocks := len(data) / aes.BlockSize
+	tail := len(data) % aes.BlockSize
+
+	if tail != 0 {
+		numBlocks++
+	} else {
+		tail = aes.BlockSize
+	}
+
+	if numBlocks < 2 {
+		panic("cts.DecryptAES128: input must be at least 2 blocks")
+	}
+	var block [aes.BlockSize]byte
+	var cipher [aes.BlockSize]byte
+	var tmp2 [aes.BlockSize]byte
+	var plain [len(data)]byte
+
+	// Standard CBC for the first numBlocks-2 blocks.
+	for i := 0; i < numBlocks-2; i++ {
+		cipher = memcpy(cipher, 0, data, i*aes.Blocks)
+		block = aes.DecryptBlock(key, cipher)
+		for j := 0; j < aes.BlockSize; j++ {
+			block[j] ^= iv[j]
+		}
+		plain = memcpy(plain, i*aes.BlockSize, block, 0)
+		iv = memcpy(iv, 0, cipher, 0)
+	}
+
+	// Decrypt second-to-last cipher block.
+	cipher = memcpy(cipher, 0, data, (numBlocks-2)*aes.BlockSize)
+	tmp := aes.DecryptBlock(key, cipher)
+
+	// Create padded last cipher block.
+	tmp2 = memcpy(tmp2, 0, data, (numBlocks-1)*aes.BlockSize)
+	tmp2 = memcpy(tmp2, tail, tmp, tail)
+
+	// Decrypt second-to-last block.
+	block = aes.DecryptBlock(key, tmp2)
+	for j := 0; j < aes.BlockSize; j++ {
+		block[j] ^= iv[j]
+	}
+	plain = memcpy(plain, (numBlocks-2)*aes.BlockSize, block, 0)
+	iv = memcpy(iv, 0, tmp2, 0)
+
+	// Finalize last block.
+	for j := 0; j < aes.BlockSize; j++ {
+		tmp[j] ^= iv[j]
+	}
+	plain = memcpy(plain, (numBlocks-1)*aes.BlockSize, tmp, 0)
+
+	return plain
 }
 
 func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
