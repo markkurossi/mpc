@@ -35,7 +35,6 @@ var (
 func TestSuite(t *testing.T) {
 	params := utils.NewParams()
 	params.MPCLCErrorLoc = true
-	compiler := compiler.New(params)
 
 	filepath.WalkDir(testsuite,
 		func(path string, d fs.DirEntry, err error) error {
@@ -45,16 +44,16 @@ func TestSuite(t *testing.T) {
 			if d.IsDir() {
 				return nil
 			}
-			testFile(t, compiler, path)
+			testFile(t, compiler.New(params), path)
 			return nil
 		})
 }
 
-func testFile(t *testing.T, compiler *compiler.Compiler, file string) {
+func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 	if !strings.HasSuffix(file, ".mpcl") {
 		return
 	}
-	pkg, err := compiler.ParseFile(file)
+	pkg, err := cc.ParseFile(file)
 	if err != nil {
 		t.Errorf("failed to parse '%s': %s", file, err)
 		return
@@ -147,7 +146,7 @@ func testFile(t *testing.T, compiler *compiler.Compiler, file string) {
 			}
 			inputSizes = append(inputSizes, sizes)
 		}
-		circ, _, err := compiler.CompileFile(file, inputSizes)
+		circ, _, err := cc.CompileFile(file, inputSizes)
 		if err != nil {
 			t.Errorf("failed to compile '%s': %s", file, err)
 			return
