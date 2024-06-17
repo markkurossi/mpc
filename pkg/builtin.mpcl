@@ -1,12 +1,12 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
 
-// Package builtin defines MPCL builtin functions and types. This
-// package is always imported and the functions and types can be used
+// Package builtin defines MPCL built-in functions and types. This
+// package is always imported, and the functions and types can be used
 // in all programs.
 package builtin
 
@@ -43,9 +43,9 @@ func floorPow2(v int) int {}
 //	String: the number of bytes in the string
 func len(v Type) int32 {}
 
-// The native built-in function loads native circuit from the named
-// file. The circuit must be located in the same directory as the
-// calling MPCL script. The native built-in function supports the
+// The native built-in function loads the native circuit from the
+// named file. The circuit must be located in the same directory as
+// the calling MPCL program. The native built-in function supports the
 // following circuit formats:
 //
 //	.circ   Bristol circuit format
@@ -55,3 +55,21 @@ func native(name string) []Type {}
 // The size built-in function returns the size of the argument value
 // in bits. The argument value can be of any type.
 func size(v Type) int32 {}
+
+// The panic built-in function terminates the compilation with an
+// error message. The first argument is used as a format string, and
+// the remaining arguments are positional arguments for the formatted
+// message. Any extra arguments are appended to the result string,
+// separated by a space character. The panic built-in function is a
+// compile-time call. If any of the live execution paths contains a
+// panic call, it will be triggered during the compilation phase and
+// terminate the compilation. The panic function is usually used in
+// parametrized functions to assert pre-conditions:
+//
+//	func CryptBlocks(data []byte) []byte {
+//	    if len(data)%blockSize != 0 {
+//	        panic("input not full blocks")
+//	    }
+//	    ...
+//	}
+func panic(args any) {}

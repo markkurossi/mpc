@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -46,6 +46,10 @@ var builtins = map[string]Builtin{
 	},
 	"native": {
 		SSA: nativeSSA,
+	},
+	"panic": {
+		SSA:  panicSSA,
+		Eval: panicEval,
 	},
 	"size": {
 		SSA:  sizeSSA,
@@ -401,6 +405,69 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	block.AddInstr(ssa.NewCircInstr(args, circ, result))
 
 	return block, result, nil
+}
+
+func panicSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
+
+	var arr []string
+	for _, arg := range args {
+		var str string
+		if arg.Const {
+			str = fmt.Sprintf("%v", arg.ConstValue)
+		} else {
+			str = arg.String()
+		}
+		arr = append(arr, str)
+	}
+
+	return nil, nil, ctx.Errorf(loc, "panic: %v", panicMessage(arr))
+}
+
+func panicEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (ssa.Value, bool, error) {
+
+	var arr []string
+	for _, arg := range args {
+		arr = append(arr, arg.String())
+	}
+
+	return ssa.Undefined, false, ctx.Errorf(loc, "panic: %v", panicMessage(arr))
+}
+
+func panicMessage(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	format := args[0]
+	args = args[1:]
+
+	var result string
+
+	for i := 0; i < len(format); i++ {
+		if format[i] != '%' || i+1 >= len(format) {
+			result += string(format[i])
+			continue
+		}
+		i++
+		if len(args) == 0 {
+			result += fmt.Sprintf("%%!%c(MISSING)", format[i])
+			continue
+		}
+		switch format[i] {
+		case 'v':
+			result += args[0]
+		default:
+			result += fmt.Sprintf("%%!%c(%v)", format[i], args[0])
+		}
+		args = args[1:]
+	}
+
+	for _, arg := range args {
+		result += " " + arg
+	}
+
+	return result
 }
 
 func sizeSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,

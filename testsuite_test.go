@@ -1,10 +1,10 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
 
-package compiler
+package mpc
 
 import (
 	"fmt"
@@ -18,14 +18,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 )
 
 const (
-	testsuite = "tests"
+	testsuite = "testsuite"
 )
 
 var (
@@ -35,7 +35,6 @@ var (
 func TestSuite(t *testing.T) {
 	params := utils.NewParams()
 	params.MPCLCErrorLoc = true
-	compiler := New(params)
 
 	filepath.WalkDir(testsuite,
 		func(path string, d fs.DirEntry, err error) error {
@@ -45,16 +44,16 @@ func TestSuite(t *testing.T) {
 			if d.IsDir() {
 				return nil
 			}
-			testFile(t, compiler, path)
+			testFile(t, compiler.New(params), path)
 			return nil
 		})
 }
 
-func testFile(t *testing.T, compiler *Compiler, file string) {
+func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 	if !strings.HasSuffix(file, ".mpcl") {
 		return
 	}
-	pkg, err := compiler.ParseFile(file)
+	pkg, err := cc.ParseFile(file)
 	if err != nil {
 		t.Errorf("failed to parse '%s': %s", file, err)
 		return
@@ -147,7 +146,7 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 			}
 			inputSizes = append(inputSizes, sizes)
 		}
-		circ, _, err := compiler.CompileFile(file, inputSizes)
+		circ, _, err := cc.CompileFile(file, inputSizes)
 		if err != nil {
 			t.Errorf("failed to compile '%s': %s", file, err)
 			return
@@ -166,8 +165,8 @@ func testFile(t *testing.T, compiler *Compiler, file string) {
 		}
 		for idx := range results {
 			out := circ.Outputs[idx]
-			rr := mpc.Result(results[idx], out)
-			re := mpc.Result(outputs[idx], out)
+			rr := Result(results[idx], out)
+			re := Result(outputs[idx], out)
 
 			if !reflect.DeepEqual(rr, re) {
 				if out.Type.Type == types.TArray &&
