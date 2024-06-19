@@ -216,10 +216,10 @@ The MPCL runtime defines the following builtin functions:
 
 Optimizations from [stevengoldfeder.com](http://stevengoldfeder.com/projects/circuits/sha2circuit.html):
 
-| File            | No. ANDs        | No. XORs | No. INVs |         |
-| :-------------- | :-------------- | -------: | -------: | ------: |
-| Our circuit     | sha256Final.txt | 22,272   | 91,780   | 2,194   |
-| Bristol circuit | sha-256.txt     | 90,825   | 42,029   | 103,258 |
+| Description     | File            | No. ANDs | No. XORs | No. INVs |
+| :-------------- | :-------------- | -------: | -------: | ------:  |
+| Our circuit     | sha256Final.txt | 22,272   | 91,780   | 2,194    |
+| Bristol circuit | sha-256.txt     | 90,825   | 42,029   | 103,258  |
 
 # Benchmarks and tests
 
