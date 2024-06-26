@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -864,6 +864,8 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			Exprs: exprs,
 		}, nil
 
+		// ForStmt = "for" [ Condition | ForClause | RangeClause ] Block .
+		// Condition = Expression .
 	case TSymFor:
 		var init ast.AST
 		n, err := p.lexer.Get()
@@ -872,12 +874,14 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 		}
 		p.lexer.Unget(n)
 		if n.Type != ';' {
-			init, err = p.parseStatement(false)
+			// init | Condition | RangeClause
+			init, err = p.parseStatement(true)
 			if err != nil {
 				return nil, err
 			}
 			forRange, ok := init.(*ast.ForRange)
 			if ok {
+				// for RangeClause
 				_, err := p.needToken('{')
 				if err != nil {
 					return nil, err
@@ -889,6 +893,30 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				forRange.Body = body
 				return forRange, nil
 			}
+			// init | Condition
+			n, err := p.lexer.Get()
+			if err != nil {
+				return nil, err
+			}
+			if n.Type == '{' {
+				// for Condition
+				list, ok := init.(ast.List)
+				if !ok || len(list) != 1 {
+					return nil, p.errf(init.Location(),
+						"unexpected condition: %v", init)
+				}
+
+				body, _, err := p.parseBlock()
+				if err != nil {
+					return nil, err
+				}
+				return &ast.For{
+					Point: tStmt.From,
+					Cond:  list[0],
+					Body:  body,
+				}, nil
+			}
+			p.lexer.Unget(n)
 		}
 		_, err = p.needToken(';')
 		if err != nil {
