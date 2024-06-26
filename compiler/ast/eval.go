@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -459,40 +459,31 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return ssa.Undefined, false, err
 		}
+		if to == math.MaxInt32 {
+			to = int(expr.Type.ArraySize)
+		}
+		if to > int(expr.Type.ArraySize) || from > to {
+			return ssa.Undefined, false, ctx.Errorf(ast.From,
+				"slice bounds out of range [%d:%d] in slice of length %v",
+				from, to, expr.Type.ArraySize)
+		}
+		numElements := to - from
+
 		switch val := arr.(type) {
 		case []interface{}:
-			if to == math.MaxInt32 {
-				to = int(expr.Type.ArraySize)
-			}
-			if to > int(expr.Type.ArraySize) || from > to {
-				return ssa.Undefined, false, ctx.Errorf(ast.From,
-					"slice bounds out of range [%d:%d] in slice of length %v",
-					from, to, expr.Type.ArraySize)
-			}
 			ti := expr.Type
-			ti.ArraySize = types.Size(to - from)
+			ti.ArraySize = types.Size(numElements)
 			// The gen.Constant will set the bit sizes.
-
 			return gen.Constant(val[from:to], ti), true, nil
 
 		case []byte:
-			if to == math.MaxInt32 {
-				to = len(val)
-			}
-			if to > len(val) || from > to {
-				return ssa.Undefined, false, ctx.Errorf(ast.From,
-					"slice bounds out of range [%d:%d] in slice of length %v",
-					from, to, len(val))
-			}
-			numItems := to - from
-			constVal := make([]interface{}, numItems)
-			for i := 0; i < numItems; i++ {
+			constVal := make([]interface{}, numElements)
+			for i := 0; i < numElements; i++ {
 				constVal[i] = int64(val[from+i])
 			}
 			ti := expr.Type
-			ti.ArraySize = types.Size(numItems)
+			ti.ArraySize = types.Size(numElements)
 			// The gen.Constant will set the bit sizes.
-
 			return gen.Constant(constVal, ti), true, nil
 		}
 	}
