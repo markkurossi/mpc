@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -1167,14 +1167,17 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 
 		// Increment.
-		env = NewEnv(block)
-		_, ok, err = ast.Inc.Eval(env, ctx, gen)
-		if err != nil {
-			return nil, nil, err
-		}
-		if !ok {
-			return nil, nil, ctx.Errorf(ast.Init,
-				"increment statement is not compile-time constant: %s", ast.Inc)
+		if ast.Inc != nil {
+			env = NewEnv(block)
+			_, ok, err = ast.Inc.Eval(env, ctx, gen)
+			if err != nil {
+				return nil, nil, err
+			}
+			if !ok {
+				return nil, nil, ctx.Errorf(ast.Init,
+					"increment statement is not compile-time constant: %s",
+					ast.Inc)
+			}
 		}
 	}
 
