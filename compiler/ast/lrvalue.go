@@ -98,15 +98,34 @@ func (lrv LRValue) Set(rv ssa.Value) error {
 		return lrv.baseInfo.Bindings.Set(lValue, nil)
 	}
 
-	if lValue.Type.Concrete() {
-		rv.Type = lValue.Type
-	} else if !rv.Type.Concrete() {
-		return fmt.Errorf("unspecified size for type %v", rv.Type)
-	} else {
+	if rv.Const && rv.IntegerLike() {
+		// Type coersions rules for const int r-values.
+		if lValue.Type.Concrete() {
+			rv.Type = lValue.Type
+		} else if rv.Type.Concrete() {
+			lValue.Type = rv.Type
+		} else {
+			return fmt.Errorf("unspecified size for type %v", rv.Type)
+		}
+	} else if rv.Type.Concrete() {
+		// Specifying the value of an unspecified variable, or
+		// specializing it (assining arrays with values of different
+		// size).
 		lValue.Type = rv.Type
+	} else if lValue.Type.Concrete() {
+		// Specializing r-value.
+		rv.Type = lValue.Type
+	} else {
+		return fmt.Errorf("unspecified size for type %v", rv.Type)
 	}
 	lrv.block.AddInstr(ssa.NewMovInstr(rv, lValue))
-	return lrv.block.Bindings.Set(lValue, &rv)
+
+	// The l-value and r-value types are now resolved. Let's define
+	// the variable with correct type and value information,
+	// overriding any old values.
+	lrv.block.Bindings.Define(lValue, &rv)
+
+	return nil
 }
 
 // LValue returns the l-value of the LRValue.
