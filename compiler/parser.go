@@ -669,6 +669,7 @@ func (p *Parser) parseFunc(annotations ast.Annotations) (*ast.Func, error) {
 					})
 				}
 				namedReturnValues = true
+				identifiers = nil
 			}
 			n, err = p.lexer.Get()
 			if err != nil {
