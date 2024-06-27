@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -424,6 +424,13 @@ type Variable struct {
 	utils.Point
 	Name string
 	Type *TypeInfo
+}
+
+func (v Variable) String() string {
+	if v.Type == nil {
+		return v.Name
+	}
+	return fmt.Sprintf("%s %s", v.Name, v.Type)
 }
 
 // Func implements an AST function.
