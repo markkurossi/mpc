@@ -337,7 +337,7 @@ func (p *Parser) addMethod(ti *ast.TypeInfo, f *ast.Func) error {
 		}
 	}
 
-	return p.errf(f.This.Location(), "type %s.%s not found", p.pkg.Name, t.Name)
+	return p.errf(ti.Location(), "type %s.%s not found", p.pkg.Name, t.Name)
 }
 
 func (p *Parser) parseGlobalVar(isConst bool,
