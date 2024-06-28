@@ -28,3 +28,4 @@ apps/objdump/objdump
 apps/ot/ot
 docs/ref/ecdh/ecdh
 docs/ref/ed25519/ed25519
+docs/ref/sha1/sha1
