@@ -2097,7 +2097,7 @@ func (ast *BasicLit) SSA(block *ssa.Block, ctx *Codegen,
 // SSA implements the compiler.ast.AST.SSA for constant values.
 func (ast *CompositeLit) SSA(block *ssa.Block, ctx *Codegen,
 	gen *ssa.Generator) (*ssa.Block, []ssa.Value, error) {
-	return nil, nil, fmt.Errorf("CompositeLit.SSA not implemented yet")
+	return nil, nil, ctx.Errorf(ast, "CompositeLit.SSA not implemented yet")
 }
 
 // SSA implements the compiler.ast.AST.SSA for the builtin function make.

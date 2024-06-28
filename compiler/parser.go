@@ -1607,11 +1607,15 @@ func (p *Parser) toRuneArray(expr ast.AST) ([]rune, error) {
 }
 
 func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
+	n, err := p.lexer.Get()
+	p.lexer.Unget(n)
+
 	value, err := p.parseCompositeLitValue(typeInfo)
 	if err != nil {
 		return nil, err
 	}
 	return &ast.CompositeLit{
+		Point: n.From,
 		Type:  typeInfo,
 		Value: value,
 	}, nil
@@ -1640,6 +1644,7 @@ func (p *Parser) parseCompositeLitValue(typeInfo *ast.TypeInfo) (
 			}
 			value = append(value, ast.KeyedElement{
 				Element: &ast.CompositeLit{
+					Point: n.From,
 					Type:  typeInfo.ElementType,
 					Value: v,
 				},
