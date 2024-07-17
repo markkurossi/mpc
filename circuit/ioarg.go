@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -104,10 +104,11 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 				return nil, fmt.Errorf("invalid bool constant: %s", inputs[0])
 			}
 
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			count := int(io.Type.ArraySize)
 			elSize := int(io.Type.ElementType.Bits)
-			if count == 0 {
+			if io.Type.Type == types.TArray && count == 0 {
+				// Handle empty types.TArray arguments.
 				break
 			}
 
@@ -127,6 +128,10 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 			valElCount := bitLen / elSize
 			if bitLen%elSize != 0 {
 				valElCount++
+			}
+			if io.Type.Type == types.TSlice {
+				// Set the count=valElCount for types.TSlice arguments.
+				count = valElCount
 			}
 			if valElCount > count {
 				return nil, fmt.Errorf("too many values for input: %s",

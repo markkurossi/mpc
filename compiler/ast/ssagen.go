@@ -225,7 +225,7 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 			init = append(init, fieldInit)
 		}
 		return init, nil
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		elInit, err := initValue(*typeInfo.ElementType)
 		if err != nil {
 			return nil, err
@@ -323,7 +323,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					valueType = *valueType.ElementType
 				}
 
-				if valueType.Type != types.TArray {
+				if !valueType.Type.Array() {
 					return nil, nil, ctx.Errorf(ast,
 						"setting elements of non-array %s (%s)",
 						arr, lrv.ValueType())
@@ -778,7 +778,7 @@ castTargetType:
 			typeInfo.Bits = cv.Type.Bits
 			typeInfo.SetConcrete(true)
 
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			switch cv.Type.ElementType.Type {
 			case types.TUint:
 				if cv.Type.ElementType.Bits != 8 {
@@ -898,7 +898,7 @@ func (ast *ArrayCast) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, nil, err
 	}
-	if typeInfo.Type != types.TArray {
+	if !typeInfo.Type.Array() {
 		return nil, nil, ctx.Errorf(ast.Expr, "array cast to non-array type %v",
 			typeInfo)
 	}
@@ -1243,7 +1243,7 @@ func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch it.Type {
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		count = int(values.Type.ArraySize)
 		it = *it.ElementType
 	default:
@@ -1288,7 +1288,7 @@ func (ast *ForRange) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			r := gen.AnonVal(it)
 
 			switch values.Type.Type {
-			case types.TArray:
+			case types.TArray, types.TSlice:
 				from := int64(types.Size(i)*it.Bits + ptrInfo.Offset)
 				to := int64(types.Size(i+1)*it.Bits + ptrInfo.Offset)
 
@@ -1536,9 +1536,13 @@ func (ast *Binary) resultType(ctx *Codegen, l, r ssa.Value) (
 		if l.Type.Type == types.TString && r.Type.Type == types.TString {
 			resultType = l.Type
 			resultType.Bits += r.Type.Bits
-		} else if l.Type.Type == types.TArray && r.Type.Type == types.TArray &&
+		} else if l.Type.Type.Array() && r.Type.Type.Array() &&
 			l.Type.ElementType.Equal(*r.Type.ElementType) {
-			resultType = l.Type
+			if r.Type.Type == types.TSlice {
+				resultType = r.Type
+			} else {
+				resultType = l.Type
+			}
 			resultType.Bits += r.Type.Bits
 			resultType.ArraySize += r.Type.ArraySize
 		} else {
@@ -1755,7 +1759,7 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			return
 		}
 		vt := lrv.ValueType()
-		if vt.Type != types.TArray {
+		if !vt.Type.Array() {
 			return nil, nil, 0, ctx.Errorf(indexed,
 				"invalid operation: %s (type %s does not support indexing)",
 				index, ptrType)
@@ -1835,7 +1839,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		elementSize = 1
 		elementCount = elementType.Bits
 
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		elementSize = elementType.ElementType.Bits
 		elementCount = elementType.ArraySize
 
@@ -1888,7 +1892,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var t ssa.Value
 
 	if expr.Type.Type == types.TPtr {
-		if elementType.Type == types.TArray {
+		if elementType.Type.Array() {
 
 			// Take a copy of the PtrInfo and adjust its offset.
 			ptrInfo := *expr.PtrInfo
@@ -1918,7 +1922,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			Bits:       bits,
 			MinBits:    bits,
 		}
-		if elementType.Type == types.TArray {
+		if elementType.Type.Array() {
 			ti.ElementType = elementType.ElementType
 			ti.ArraySize = ti.Bits / ti.ElementType.Bits
 		}
@@ -2010,7 +2014,7 @@ func (ast *Index) constIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 		return block, []ssa.Value{t}, nil
 
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		if index < 0 || index >= it.ArraySize {
 			return nil, nil, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
@@ -2054,7 +2058,7 @@ func (ast *Index) index(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 
 	switch it.Type {
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		offset := gen.Constant(int64(ptrInfo.Offset), types.Undefined)
 		t := gen.AnonVal(*it.ElementType)
 		block.AddInstr(ssa.NewIndexInstr(expr, offset, index, t))
@@ -2113,9 +2117,9 @@ func (ast *Make) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, nil, ctx.Errorf(ast.Type, "%s is not a type", ast.Type)
 	}
-	if typeInfo.Type != types.TArray {
+	if !typeInfo.Type.Array() {
 		return nil, nil, ctx.Errorf(ast.Type,
-			"cant' make instance of type %s", typeInfo)
+			"can't make instance of type %s", typeInfo)
 	}
 	if typeInfo.Bits != 0 {
 		return nil, nil, ctx.Errorf(ast.Type,

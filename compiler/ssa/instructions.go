@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -177,7 +177,7 @@ func NewAddInstr(t types.Info, l, r, o Value) (Instr, error) {
 		op = Uadd
 	case types.TFloat:
 		op = Fadd
-	case types.TString, types.TArray:
+	case types.TString, types.TArray, types.TSlice:
 		op = Concat
 	default:
 		fmt.Printf("%v + %v (%v)\n", l, r, t)

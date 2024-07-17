@@ -1,7 +1,7 @@
 //
 // parse.go
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	reArr   = regexp.MustCompilePOSIX(`^\[([[:digit:]]+)\](.+)$`)
-	reSized = regexp.MustCompilePOSIX(`^([[:^digit:]]+)([[:digit:]]*)$`)
+	reArr   = regexp.MustCompilePOSIX(`^\[([[:digit:]]*)\](.+)$`)
+	reSized = regexp.MustCompilePOSIX(`^([[:alpha:]]+)([[:digit:]]*)$`)
 )
 
 // Parse parses type definition and returns its type information.
@@ -80,12 +80,16 @@ func Parse(val string) (info Info, err error) {
 	if err != nil {
 		return
 	}
-	ival, err = strconv.ParseInt(m[1], 10, 32)
-	if err != nil {
-		return
+	if len(m[1]) > 0 {
+		ival, err = strconv.ParseInt(m[1], 10, 32)
+		if err != nil {
+			return
+		}
+		info.Type = TArray
+	} else {
+		info.Type = TSlice
 	}
 
-	info.Type = TArray
 	info.IsConcrete = true
 	info.Bits = Size(ival) * elType.Bits
 	info.MinBits = info.Bits

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -106,7 +106,7 @@ func Result(result *big.Int, output circuit.IOArg) interface{} {
 	case types.TBool:
 		return result.Uint64() != 0
 
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		count := int(output.Type.ArraySize)
 		elSize := int(output.Type.ElementType.Bits)
 

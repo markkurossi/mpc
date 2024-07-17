@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -481,6 +481,10 @@ func receiveArgument(conn *p2p.Conn) (arg IOArg, err error) {
 		return arg, err
 	}
 	arg.Type.Bits = types.Size(size)
+
+	if arg.Type.Type == types.TSlice {
+		arg.Type.ArraySize = arg.Type.Bits / arg.Type.ElementType.Bits
+	}
 
 	count, err := conn.ReceiveUint32()
 	if err != nil {

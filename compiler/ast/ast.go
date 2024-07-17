@@ -280,7 +280,7 @@ func (ti *TypeInfo) Resolve(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		// Bits and ArraySize are left uninitialized and they must be
 		// defined when type is instantiated.
 		return types.Info{
-			Type:        types.TArray,
+			Type:        types.TSlice,
 			ElementType: &elInfo,
 		}, nil
 

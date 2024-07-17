@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -77,6 +77,22 @@ var parseTests = []struct {
 				MinBits:    8,
 			},
 			ArraySize: 8,
+		},
+	},
+	{
+		input: "[]byte",
+		info: Info{
+			Type:       TSlice,
+			IsConcrete: true,
+			Bits:       0,
+			MinBits:    0,
+			ElementType: &Info{
+				Type:       TUint,
+				IsConcrete: true,
+				Bits:       8,
+				MinBits:    8,
+			},
+			ArraySize: 0,
 		},
 	},
 }

@@ -39,6 +39,11 @@ func (t Type) ShortString() string {
 	return t.String()
 }
 
+// Array tests if the type is an Array or a Slice.
+func (t Type) Array() bool {
+	return t == TArray || t == TSlice
+}
+
 // ByteBits defines the byte size in bits.
 const ByteBits = 8
 
@@ -52,6 +57,7 @@ const (
 	TString
 	TStruct
 	TArray
+	TSlice
 	TPtr
 	TNil
 )
@@ -66,6 +72,7 @@ var Types = map[string]Type{
 	"string":      TString,
 	"struct":      TStruct,
 	"array":       TArray,
+	"slice":       TSlice,
 	"ptr":         TPtr,
 	"nil":         TNil,
 }
@@ -79,6 +86,7 @@ var shortTypes = map[Type]string{
 	TString:    "str",
 	TStruct:    "struct",
 	TArray:     "arr",
+	TSlice:     "slice",
 	TPtr:       "*",
 	TNil:       "nil",
 }
@@ -172,6 +180,9 @@ func (i Info) String() string {
 	case TArray:
 		return fmt.Sprintf("[%d]%s", i.ArraySize, i.ElementType)
 
+	case TSlice:
+		return fmt.Sprintf("[]%s", i.ElementType)
+
 	case TPtr:
 		return fmt.Sprintf("*%s", i.ElementType)
 
@@ -218,12 +229,12 @@ func (i *Info) SetConcrete(c bool) {
 }
 
 // Instantiate instantiates template type to match parameter type.
-// XXX change this to AssignFrom
 func (i *Info) Instantiate(o Info) bool {
 	if i.Type != o.Type {
 		switch i.Type {
 		case TArray:
-			if o.Type == TNil {
+			switch o.Type {
+			case TNil:
 				// nil instantiates an empty array
 				if !i.ElementType.Concrete() {
 					return false
@@ -233,13 +244,45 @@ func (i *Info) Instantiate(o Info) bool {
 				i.MinBits = 0
 				i.ArraySize = 0
 				return true
-			}
-			if o.Type != TPtr || i.Type != o.ElementType.Type {
+
+			case TPtr:
+				if o.ElementType.Type != TArray {
+					return false
+				}
+				// Instantiating array from pointer to array
+				// i.e. continue below.
+				i.Type = TPtr
+				i.ElementType = o.ElementType
+
+			default:
 				return false
 			}
-			// Instantiating array from pointer to array i.e. continue below.
-			i.Type = TPtr
-			i.ElementType = o.ElementType
+
+		case TSlice:
+			switch o.Type {
+			case TNil:
+				// nil instantiates an empty slice
+				i.IsConcrete = true
+				i.Bits = 0
+				i.MinBits = 0
+				i.ArraySize = 0
+				return true
+
+			case TArray:
+				// Instantiating slice from an array. Continue below.
+
+			case TPtr:
+				if o.ElementType.Type != TArray {
+					return false
+				}
+				// Instantiating slice from pointer to array
+				// i.e. continue below.
+				i.Type = TPtr
+				i.ElementType = o.ElementType
+
+			default:
+				return false
+			}
 
 		case TInt:
 			switch o.Type {
@@ -267,7 +310,7 @@ func (i *Info) Instantiate(o Info) bool {
 	case TStruct:
 		return false
 
-	case TArray:
+	case TArray, TSlice:
 		if !i.ElementType.Concrete() &&
 			!i.ElementType.Instantiate(*o.ElementType) {
 			return false
@@ -337,6 +380,16 @@ func (i *Info) InstantiateWithSizes(sizes []int) error {
 			i.Bits = i.ArraySize * i.ElementType.Bits
 		}
 
+	case TSlice:
+		if !i.ElementType.Concrete() {
+			return fmt.Errorf("slice element type unspecified: %v", i)
+		}
+		i.ArraySize = Size(sizes[0]) / i.ElementType.Bits
+		if Size(sizes[0])%i.ElementType.Bits != 0 {
+			i.ArraySize++
+		}
+		i.Bits = i.ArraySize * i.ElementType.Bits
+
 	default:
 		return fmt.Errorf("can't specify %v", i)
 	}
@@ -365,7 +418,7 @@ func (i Info) Equal(o Info) bool {
 		}
 		return true
 
-	case TArray:
+	case TArray, TSlice:
 		if i.ArraySize != o.ArraySize || i.Bits != o.Bits {
 			return false
 		}
@@ -407,6 +460,9 @@ func (i Info) Specializable(o Info) bool {
 		}
 		return i.ElementType.Specializable(*o.ElementType)
 
+	case TSlice:
+		return i.ElementType.Specializable(*o.ElementType)
+
 	case TPtr:
 		return i.ElementType.Specializable(*o.ElementType)
 
@@ -423,11 +479,17 @@ func (i Info) CanAssignConst(o Info) bool {
 	case TInt, TUint:
 		return (o.Type == TInt || o.Type == TUint) && i.Bits >= o.MinBits
 
+	case TSlice:
+		return o.Type.Array() && i.ElementType.Equal(*o.ElementType)
+
 	case TArray:
 		if o.Type == TNil {
 			return true
 		}
-		fallthrough
+		if !o.Type.Array() || !i.ElementType.Equal(*o.ElementType) {
+			return false
+		}
+		return i.Bits >= o.MinBits
 
 	default:
 		return i.Type == o.Type && i.Bits >= o.MinBits

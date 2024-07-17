@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -264,7 +264,7 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		var elementType types.Info
 
 		if len(val) > 0 {
-			if ti.Type == types.TArray {
+			if ti.Type.Array() {
 				elementType = *ti.ElementType
 			} else {
 				ev := gen.Constant(val[0], types.Undefined)

@@ -77,7 +77,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	var elementType types.Info
 
 	switch dst.Type.Type {
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		baseName = dst.Name
 		baseType = dst.Type
 		baseScope = dst.Scope
@@ -89,9 +89,8 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	case types.TPtr:
 		elementType = *dst.Type.ElementType
-		if elementType.Type != types.TArray {
-			return nil, nil, ctx.Errorf(loc,
-				"setting elements of non-array %s",
+		if !elementType.Type.Array() {
+			return nil, nil, ctx.Errorf(loc, "setting elements of non-array %s",
 				elementType)
 		}
 		baseName = dst.PtrInfo.Name
@@ -121,7 +120,7 @@ func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 		srcType = src.Type
 	}
 
-	if srcType.Type != types.TArray {
+	if !srcType.Type.Array() {
 		return nil, nil, ctx.Errorf(loc,
 			"second argument to copy should be slice or array (%v)", src.Type)
 	}
@@ -211,7 +210,7 @@ func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	case types.TString:
 		val = args[0].Type.Bits / types.ByteBits
 
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		val = args[0].Type.ArraySize
 
 	case types.TNil:
@@ -292,7 +291,7 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 			return gen.Constant(int64(typeInfo.Bits/types.ByteBits),
 				types.Undefined), true, nil
 
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			return gen.Constant(int64(typeInfo.ArraySize), types.Undefined),
 				true, nil
 

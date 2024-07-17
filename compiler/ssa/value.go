@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -210,7 +210,7 @@ func (v *Value) Bit(bit types.Size) bool {
 		var elType types.Info
 
 		switch v.Type.Type {
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			elType = *v.Type.ElementType
 		case types.TString:
 			elType = types.Byte
@@ -292,7 +292,7 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 		case types.TBool, types.TInt, types.TUint, types.TFloat, types.TString:
 			return isSet(val.ConstValue, val.Type, bit)
 
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			elType := val.Type.ElementType
 			idx := bit / elType.Bits
 			mod := bit % elType.Bits
@@ -331,7 +331,7 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 			}
 			panic(fmt.Sprintf("ssa.isSet: bit overflow for %v", vt))
 
-		case types.TArray:
+		case types.TArray, types.TSlice:
 			elType := vt.ElementType
 			idx := bit / elType.Bits
 			mod := bit % elType.Bits
@@ -350,12 +350,33 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 }
 
 // LValueFor checks if the value o can be assigned for lvalue of type l.
+// XXX change this to AssignFrom
 func LValueFor(l types.Info, o Value) bool {
 	if o.Const {
 		return l.CanAssignConst(o.Type)
 	}
 	if !l.Concrete() && o.Type.Concrete() {
 		return l.Specializable(o.Type)
+	}
+	if l.Type == types.TArray {
+		// [N]Type = []Type - check rvalue has corrent amount of elements
+		ot := o.Type
+		if ot.Type == types.TPtr {
+			// Dereference pointer argument.
+			ot = *ot.ElementType
+		}
+		return ot.Type.Array() &&
+			l.ArraySize == ot.ArraySize &&
+			l.ElementType.Equal(*ot.ElementType)
+	}
+	if l.Type == types.TSlice {
+		// []Type = [N]Type ok,
+		ot := o.Type
+		if ot.Type == types.TPtr {
+			// Dereference pointer argument.
+			ot = *ot.ElementType
+		}
+		return ot.Type.Array() && l.ElementType.Equal(*ot.ElementType)
 	}
 	return l.Equal(o.Type)
 }

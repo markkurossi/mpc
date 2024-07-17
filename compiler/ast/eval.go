@@ -210,7 +210,7 @@ func (ast *ArrayCast) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return ssa.Undefined, false, err
 	}
-	if typeInfo.Type != types.TArray {
+	if !typeInfo.Type.Array() {
 		return ssa.Undefined, false,
 			ctx.Errorf(ast.Expr, "array cast to non-array type %v", typeInfo)
 	}
@@ -454,7 +454,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			"invalid slice range %d:%d", from, to)
 	}
 	switch expr.Type.Type {
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		arr, err := expr.ConstArray()
 		if err != nil {
 			return ssa.Undefined, false, err
@@ -526,7 +526,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	switch expr.Type.Type {
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		if index < 0 || index >= int(expr.Type.ArraySize) {
 			return ssa.Undefined, false, ctx.Errorf(ast.Index,
 				"invalid array index %d (out of bounds for %d-element array)",
@@ -612,7 +612,7 @@ func (ast *CompositeLit) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		return gen.Constant(values, typeInfo), true, nil
 
-	case types.TArray:
+	case types.TArray, types.TSlice:
 		// Check if all elements are constants.
 		var values []interface{}
 		for _, el := range ast.Value {
@@ -649,7 +649,7 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, ctx.Errorf(ast.Type, "%s is not a type",
 			ast.Type)
 	}
-	if typeInfo.Type == types.TArray {
+	if typeInfo.Type.Array() {
 		// Arrays are made in Make.SSA.
 		return ssa.Undefined, false, nil
 	}

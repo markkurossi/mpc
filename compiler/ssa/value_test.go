@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -8,6 +8,10 @@ package ssa
 
 import (
 	"testing"
+
+	"github.com/markkurossi/mpc/compiler/mpa"
+	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/types"
 )
 
 var inputs = []string{
@@ -31,5 +35,89 @@ func TestHashCode(t *testing.T) {
 		if v > 1 {
 			t.Errorf("HashCode %v: count=%v\n", k, v)
 		}
+	}
+}
+
+var intTypes = []types.Info{
+	types.Byte,
+	types.Rune,
+	types.Int32,
+	types.Uint32,
+	types.Uint64,
+}
+
+func TestAssignFrom(t *testing.T) {
+	gen := NewGenerator(utils.NewParams())
+
+	testConstIntAssign(t, gen.Constant(int64(0), types.Int32))
+	testConstIntAssign(t, gen.Constant(int64(0), types.Uint32))
+	testConstIntAssign(t, gen.Constant(int64(0), types.Uint64))
+	testConstIntAssign(t, gen.Constant(mpa.NewInt(0, 0), types.Int32))
+	testConstIntAssign(t, gen.Constant(mpa.NewInt(0, 0), types.Uint32))
+	testConstIntAssign(t, gen.Constant(mpa.NewInt(0, 0), types.Uint64))
+
+	// Array assignment.
+
+	at10 := types.Info{
+		Type:        types.TArray,
+		IsConcrete:  true,
+		Bits:        10 * 8,
+		MinBits:     10 * 8,
+		ElementType: &types.Byte,
+		ArraySize:   10,
+	}
+	testLValueFor(t, at10, Value{
+		Type: at10,
+	}, true)
+	at9 := types.Info{
+		Type:        types.TArray,
+		IsConcrete:  true,
+		Bits:        9 * 8,
+		MinBits:     9 * 8,
+		ElementType: &types.Byte,
+		ArraySize:   9,
+	}
+	testLValueFor(t, at10, Value{
+		Type: at9,
+	}, false)
+
+	at10Ptr := types.Info{
+		Type:        types.TPtr,
+		IsConcrete:  true,
+		ElementType: &at10,
+	}
+	at10PtrValue := Value{
+		Type: at10Ptr,
+		PtrInfo: &PtrInfo{
+			ContainerType: at10,
+		},
+	}
+	testLValueFor(t, at10, at10PtrValue, true)
+
+	// Slice assignment.
+	st := types.Info{
+		Type:        types.TSlice,
+		IsConcrete:  true,
+		ElementType: &types.Byte,
+	}
+	testLValueFor(t, st, Value{
+		Type: at10,
+	}, true)
+	testLValueFor(t, st, Value{
+		Type: at9,
+	}, true)
+	testLValueFor(t, st, at10PtrValue, true)
+}
+
+func testConstIntAssign(t *testing.T, v Value) {
+	for _, ti := range intTypes {
+		testLValueFor(t, ti, v, true)
+	}
+}
+
+func testLValueFor(t *testing.T, ti types.Info, v Value, expected bool) {
+	result := LValueFor(ti, v)
+	if result != expected {
+		t.Errorf("LValueFor(%v, %v)=%v != %v", ti, v, result, expected)
 	}
 }
