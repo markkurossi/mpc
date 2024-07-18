@@ -1893,29 +1893,29 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var t ssa.Value
 
 	if expr.Type.Type == types.TPtr {
-		if elementType.Type.Array() {
-
-			// Take a copy of the PtrInfo and adjust its offset.
-			ptrInfo := *expr.PtrInfo
-			ptrInfo.Offset += from * elementSize
-
-			et := elementType
-			et.ID = 0
-			et.ArraySize = to - from
-
-			ti := types.Info{
-				Type:        types.TPtr,
-				IsConcrete:  true,
-				Bits:        bits,
-				MinBits:     bits,
-				ElementType: &et,
-			}
-			t = gen.AnonVal(ti)
-			t.PtrInfo = &ptrInfo
-		} else {
+		if !elementType.Type.Array() {
 			return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
 				expr.Type)
 		}
+
+		// Take a copy of the PtrInfo and adjust its offset.
+		ptrInfo := *expr.PtrInfo
+		ptrInfo.Offset += from * elementSize
+
+		et := elementType
+		et.Type = types.TSlice
+		et.ID = 0
+		et.ArraySize = to - from
+
+		ti := types.Info{
+			Type:        types.TPtr,
+			IsConcrete:  true,
+			Bits:        bits,
+			MinBits:     bits,
+			ElementType: &et,
+		}
+		t = gen.AnonVal(ti)
+		t.PtrInfo = &ptrInfo
 	} else {
 		ti := types.Info{
 			Type:       elementType.Type,
@@ -1924,6 +1924,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			MinBits:    bits,
 		}
 		if elementType.Type.Array() {
+			ti.Type = types.TSlice
 			ti.ElementType = elementType.ElementType
 			ti.ArraySize = ti.Bits / ti.ElementType.Bits
 		}
