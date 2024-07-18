@@ -1158,13 +1158,14 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			// Loop completed.
 			break
 		}
-		block.Bindings = env.Bindings
 
 		// Expand block.
+		block.Bindings = env.Bindings
 		block, _, err = ast.Body.SSA(block, ctx, gen)
 		if err != nil {
 			return nil, nil, err
 		}
+		env.Bindings = block.Bindings
 
 		// Increment.
 		if ast.Inc != nil {
