@@ -10,11 +10,13 @@ import (
 
 func main() {
 	data := []byte("This page intentionally left blank.")
+	fmt.Printf("%x =>\n", data)
 	fmt.Printf("%x\n", sha1.SumGo(data))
 	fmt.Printf("%x\n", sha1.Sum(data))
 	fmt.Println()
 
 	data = []byte("----------------------------------------------------------------+!!")
+	fmt.Printf("%x =>\n", data)
 	fmt.Printf("%x\n", sha1.SumGo(data))
 	fmt.Printf("%x\n", sha1.Sum(data))
 	fmt.Println()
