@@ -16,6 +16,19 @@ import (
 
 // EncryptAES128 encrypts the data in AES-CTS mode. The key specifies
 // the AES encryption key and iv is a random initialization vector.
+//
+//	key := []byte{
+//		0x63, 0x68, 0x69, 0x63, 0x6b, 0x65, 0x6e, 0x20,
+//		0x74, 0x65, 0x72, 0x69, 0x79, 0x61, 0x6b, 0x69,
+//	}
+//	var iv [16]byte
+//	data := []byte{
+//		0x49, 0x20, 0x77, 0x6f, 0x75, 0x6c, 0x64, 0x20,
+//		0x6c, 0x69, 0x6b, 0x65, 0x20, 0x74, 0x68, 0x65,
+//		0x20,
+//	}
+//	cipher := cts.EncryptAES128(key, iv, data)
+//	=> c6353568f2bf8cb4d8a580362da7ff7f97
 func EncryptAES128(key [16]byte, iv [aes.BlockSize]byte, data []byte) []byte {
 	numBlocks := len(data) / aes.BlockSize
 	tail := len(data) % aes.BlockSize
