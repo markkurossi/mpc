@@ -1182,6 +1182,9 @@ func (ast *For) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 	}
 
+	// Store env bindings to block after for-loop unroll.
+	block.Bindings = env.Bindings
+
 	return block, nil, nil
 }
 
