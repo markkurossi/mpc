@@ -66,7 +66,7 @@ func TestAssignFrom(t *testing.T) {
 		ElementType: &types.Byte,
 		ArraySize:   10,
 	}
-	testLValueFor(t, at10, Value{
+	testCanAssign(t, at10, Value{
 		Type: at10,
 	}, true)
 	at9 := types.Info{
@@ -77,7 +77,7 @@ func TestAssignFrom(t *testing.T) {
 		ElementType: &types.Byte,
 		ArraySize:   9,
 	}
-	testLValueFor(t, at10, Value{
+	testCanAssign(t, at10, Value{
 		Type: at9,
 	}, false)
 
@@ -92,7 +92,7 @@ func TestAssignFrom(t *testing.T) {
 			ContainerType: at10,
 		},
 	}
-	testLValueFor(t, at10, at10PtrValue, true)
+	testCanAssign(t, at10, at10PtrValue, true)
 
 	// Slice assignment.
 	st := types.Info{
@@ -100,23 +100,23 @@ func TestAssignFrom(t *testing.T) {
 		IsConcrete:  true,
 		ElementType: &types.Byte,
 	}
-	testLValueFor(t, st, Value{
+	testCanAssign(t, st, Value{
 		Type: at10,
 	}, true)
-	testLValueFor(t, st, Value{
+	testCanAssign(t, st, Value{
 		Type: at9,
 	}, true)
-	testLValueFor(t, st, at10PtrValue, true)
+	testCanAssign(t, st, at10PtrValue, true)
 }
 
 func testConstIntAssign(t *testing.T, v Value) {
 	for _, ti := range intTypes {
-		testLValueFor(t, ti, v, true)
+		testCanAssign(t, ti, v, true)
 	}
 }
 
-func testLValueFor(t *testing.T, ti types.Info, v Value, expected bool) {
-	result := LValueFor(ti, v)
+func testCanAssign(t *testing.T, ti types.Info, v Value, expected bool) {
+	result := CanAssign(ti, v)
 	if result != expected {
 		t.Errorf("LValueFor(%v, %v)=%v != %v", ti, v, result, expected)
 	}

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -133,7 +133,7 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		if returnVars[idx].Type.Undefined() {
 			returnVars[idx].Type.Type = typeInfo.Type
 		}
-		if !ssa.LValueFor(typeInfo, returnVars[idx]) {
+		if !ssa.CanAssign(typeInfo, returnVars[idx]) {
 			return nil, nil,
 				ctx.Errorf(main, "invalid value %v for return value %d of %s",
 					returnVars[idx].Type, idx, main)

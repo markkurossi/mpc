@@ -663,7 +663,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
 		}
-		if !ssa.LValueFor(typeInfo, args[idx]) {
+		if !ssa.CanAssign(typeInfo, args[idx]) {
 			return nil, nil, ctx.Errorf(ast,
 				"cannot use %v as type %s in argument to %s",
 				args[idx].Type, typeInfo, called.Name)
@@ -1053,7 +1053,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			result[idx].Type.Type = typeInfo.Type
 		}
 
-		if !ssa.LValueFor(typeInfo, result[idx]) {
+		if !ssa.CanAssign(typeInfo, result[idx]) {
 			return nil, nil, ctx.Errorf(ast,
 				"invalid value %v for return value %v",
 				result[idx].Type, v.Type)

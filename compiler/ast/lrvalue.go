@@ -81,7 +81,7 @@ func (lrv *LRValue) BasePtrInfo() *ssa.PtrInfo {
 
 // Set sets the l-value to rv.
 func (lrv LRValue) Set(rv ssa.Value) error {
-	if !ssa.LValueFor(lrv.valueType, rv) {
+	if !ssa.CanAssign(lrv.valueType, rv) {
 		return fmt.Errorf("cannot assing %v to variable of type %v",
 			rv.Type, lrv.valueType)
 	}

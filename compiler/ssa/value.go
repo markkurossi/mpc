@@ -349,36 +349,35 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 	}
 }
 
-// LValueFor checks if the value o can be assigned for lvalue of type l.
-// XXX change this to AssignFrom
-func LValueFor(l types.Info, o Value) bool {
-	if o.Const {
-		return l.CanAssignConst(o.Type)
+// CanAssign checks if the value v can be assigned for lvalue l.
+func CanAssign(l types.Info, v Value) bool {
+	if v.Const {
+		return l.CanAssignConst(v.Type)
 	}
-	if !l.Concrete() && o.Type.Concrete() {
-		return l.Specializable(o.Type)
+	if !l.Concrete() && v.Type.Concrete() {
+		return l.Specializable(v.Type)
 	}
 	if l.Type == types.TArray {
 		// [N]Type = []Type - check rvalue has corrent amount of elements
-		ot := o.Type
-		if ot.Type == types.TPtr {
+		vt := v.Type
+		if vt.Type == types.TPtr {
 			// Dereference pointer argument.
-			ot = *ot.ElementType
+			vt = *vt.ElementType
 		}
-		return ot.Type.Array() &&
-			l.ArraySize == ot.ArraySize &&
-			l.ElementType.Equal(*ot.ElementType)
+		return vt.Type.Array() &&
+			l.ArraySize == vt.ArraySize &&
+			l.ElementType.Equal(*vt.ElementType)
 	}
 	if l.Type == types.TSlice {
 		// []Type = [N]Type ok,
-		ot := o.Type
-		if ot.Type == types.TPtr {
+		vt := v.Type
+		if vt.Type == types.TPtr {
 			// Dereference pointer argument.
-			ot = *ot.ElementType
+			vt = *vt.ElementType
 		}
-		return ot.Type.Array() && l.ElementType.Equal(*ot.ElementType)
+		return vt.Type.Array() && l.ElementType.Equal(*vt.ElementType)
 	}
-	return l.Equal(o.Type)
+	return l.Equal(v.Type)
 }
 
 // TypeCompatible tests if the argument value is type compatible with
