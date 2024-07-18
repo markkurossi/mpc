@@ -25,8 +25,7 @@ const (
 	_K3 = 0xCA62C1D6
 )
 
-// Block is a portable, pure Go version of the SHA-1 block step.  It's
-// used by sha1block_generic.go and tests.
+// Block implements the SHA-1 block step.
 func Block(p []byte, state [5]uint32) [5]uint32 {
 	var w [16]uint32
 
