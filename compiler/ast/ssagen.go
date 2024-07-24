@@ -1833,7 +1833,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 	expr := exprs[0]
-	elementType := expr.ElementType()
+	elementType := expr.Deref()
 	if !elementType.Type.Array() {
 		return nil, nil, ctx.Errorf(ast, "invalid operation: cannot slice %v",
 			expr.Type.Type)

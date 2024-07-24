@@ -75,9 +75,9 @@ func (v Value) Check() {
 	}
 }
 
-// ElementType returns the pointer element type of the value. For
+// Deref returns the pointer element type of the value. For
 // non-pointer values, this returns the value type itself.
-func (v Value) ElementType() types.Info {
+func (v Value) Deref() types.Info {
 	if v.Type.Type == types.TPtr {
 		return *v.Type.ElementType
 	}
