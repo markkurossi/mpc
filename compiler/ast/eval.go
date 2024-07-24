@@ -453,42 +453,45 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"invalid slice range %d:%d", from, to)
 	}
-	switch expr.Type.Type {
-	case types.TArray, types.TSlice:
-		arr, err := expr.ConstArray()
-		if err != nil {
-			return ssa.Undefined, false, err
-		}
-		if to == math.MaxInt32 {
-			to = int(expr.Type.ArraySize)
-		}
-		if to > int(expr.Type.ArraySize) || from > to {
-			return ssa.Undefined, false, ctx.Errorf(ast.From,
-				"slice bounds out of range [%d:%d] in slice of length %v",
-				from, to, expr.Type.ArraySize)
-		}
-		numElements := to - from
-
-		switch val := arr.(type) {
-		case []interface{}:
-			ti := expr.Type
-			ti.ArraySize = types.Size(numElements)
-			// The gen.Constant will set the bit sizes.
-			return gen.Constant(val[from:to], ti), true, nil
-
-		case []byte:
-			constVal := make([]interface{}, numElements)
-			for i := 0; i < numElements; i++ {
-				constVal[i] = int64(val[from+i])
-			}
-			ti := expr.Type
-			ti.ArraySize = types.Size(numElements)
-			// The gen.Constant will set the bit sizes.
-			return gen.Constant(constVal, ti), true, nil
-		}
+	if !expr.Type.Type.Array() {
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+			"invalid operation: cannot slice %v (%v)", expr, expr.Type)
 	}
-	return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-		"invalid operation: cannot slice %v (%v)", expr, expr.Type)
+	arr, err := expr.ConstArray()
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	if to == math.MaxInt32 {
+		to = int(expr.Type.ArraySize)
+	}
+	if to > int(expr.Type.ArraySize) || from > to {
+		return ssa.Undefined, false, ctx.Errorf(ast.From,
+			"slice bounds out of range [%d:%d] in slice of length %v",
+			from, to, expr.Type.ArraySize)
+	}
+	numElements := to - from
+
+	switch val := arr.(type) {
+	case []interface{}:
+		ti := expr.Type
+		ti.ArraySize = types.Size(numElements)
+		// The gen.Constant will set the bit sizes.
+		return gen.Constant(val[from:to], ti), true, nil
+
+	case []byte:
+		constVal := make([]interface{}, numElements)
+		for i := 0; i < numElements; i++ {
+			constVal[i] = int64(val[from+i])
+		}
+		ti := expr.Type
+		ti.ArraySize = types.Size(numElements)
+		// The gen.Constant will set the bit sizes.
+		return gen.Constant(constVal, ti), true, nil
+
+	default:
+		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
+			"invalid operation: cannot slice %T array", arr)
+	}
 }
 
 func intVal(val interface{}) (int, error) {
