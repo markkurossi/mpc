@@ -1834,61 +1834,16 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	expr := exprs[0]
 	elementType := expr.ElementType()
-
-	var elementSize types.Size
-	var elementCount types.Size
-
-	switch elementType.Type {
-	case types.TInt, types.TUint:
-		elementSize = 1
-		elementCount = elementType.Bits
-
-	case types.TArray, types.TSlice:
-		elementSize = elementType.ElementType.Bits
-		elementCount = elementType.ArraySize
-
-	default:
-		return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
+	if !elementType.Type.Array() {
+		return nil, nil, ctx.Errorf(ast, "invalid operation: cannot slice %v",
 			expr.Type.Type)
 	}
+	elementSize := elementType.ElementType.Bits
 
-	var val []ssa.Value
-	var from types.Size
-	if ast.From == nil {
-		from = 0
-	} else {
-		block, val, err = ast.From.SSA(block, ctx, gen)
-		if err != nil {
-			return nil, nil, err
-		}
-		if len(val) != 1 {
-			return nil, nil, ctx.Errorf(ast.From, "invalid from index")
-		}
-		from, err = val[0].ConstInt()
-		if err != nil {
-			return nil, nil, ctx.Errorf(ast.From, "%s", err)
-		}
-	}
-	var to types.Size
-	if ast.To == nil {
-		to = elementCount
-	} else {
-		block, val, err = ast.To.SSA(block, ctx, gen)
-		if err != nil {
-			return nil, nil, err
-		}
-		if len(val) != 1 {
-			return nil, nil, ctx.Errorf(ast.To, "invalid to index")
-		}
-		to, err = val[0].ConstInt()
-		if err != nil {
-			return nil, nil, ctx.Errorf(ast.To, "%s", err)
-		}
-	}
-	if ast.From != nil && ast.To != nil &&
-		(from >= elementCount || from > to) {
-		return nil, nil, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
-			from, to)
+	var from, to types.Size
+	block, from, to, err = ast.limitsSSA(block, ctx, gen, elementType)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	bits := (to - from) * elementSize
@@ -1941,6 +1896,55 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	return block, []ssa.Value{t}, nil
+}
+
+func (ast *Slice) limitsSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	t types.Info) (*ssa.Block, types.Size, types.Size, error) {
+
+	elementCount := t.ArraySize
+
+	var err error
+	var val []ssa.Value
+	var from types.Size
+
+	if ast.From == nil {
+		from = 0
+	} else {
+		block, val, err = ast.From.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		if len(val) != 1 {
+			return nil, 0, 0, ctx.Errorf(ast.From, "invalid from index")
+		}
+		from, err = val[0].ConstInt()
+		if err != nil {
+			return nil, 0, 0, ctx.Errorf(ast.From, "%s", err)
+		}
+	}
+	var to types.Size
+	if ast.To == nil {
+		to = elementCount
+	} else {
+		block, val, err = ast.To.SSA(block, ctx, gen)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		if len(val) != 1 {
+			return nil, 0, 0, ctx.Errorf(ast.To, "invalid to index")
+		}
+		to, err = val[0].ConstInt()
+		if err != nil {
+			return nil, 0, 0, ctx.Errorf(ast.To, "%s", err)
+		}
+	}
+	if ast.From != nil && ast.To != nil &&
+		(from >= elementCount || from > to) {
+		return nil, 0, 0, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
+			from, to)
+	}
+
+	return block, from, to, nil
 }
 
 // SSA implements the compiler.ast.AST.SSA for index expressions.
@@ -2168,6 +2172,8 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	var lrv *LRValue
 	var err error
+	var dst ssa.Value
+	var dstTo, dstFrom types.Size
 
 	// Resolve destination.
 	switch lv := ast.Dst.(type) {
@@ -2176,18 +2182,37 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Error(ast.Dst, err.Error())
 		}
+		dst = lrv.RValue()
+		if !dst.Type.Type.Array() {
+			return nil, nil, ast.errf(ctx, ast.Dst, "got %v", dst.Type)
+		}
+		dstFrom = 0
+		dstTo = dst.Type.ArraySize
+
+	case *Slice:
+		// Slice specifies the copy limits for the
+		// destination. Slice's expr must be a variable reference.
+		sexpr, ok := lv.Expr.(*VariableRef)
+		if !ok {
+			return nil, nil, ast.errf(ctx, ast.Dst, "got %T", lv.Expr)
+		}
+		lrv, _, _, err = ctx.LookupVar(block, gen, block.Bindings, sexpr)
+		if err != nil {
+			return nil, nil, ctx.Error(ast.Dst, err.Error())
+		}
+		dst = lrv.RValue()
+		if !dst.Type.Type.Array() {
+			return nil, nil, ast.errf(ctx, ast.Dst, "got %v", dst.Type)
+		}
+
+		block, dstFrom, dstTo, err = lv.limitsSSA(block, ctx, gen, dst.Type)
+		if err != nil {
+			return nil, nil, ctx.Error(ast.Dst, err.Error())
+		}
 
 	default:
-		return nil, nil, ctx.Errorf(ast.Dst,
-			"invalid argument: copy expects slice arguments: got %T", ast.Dst)
+		return nil, nil, ast.errf(ctx, ast.Dst, "got %T", ast.Dst)
 	}
-	dst := lrv.RValue()
-	if !dst.Type.Type.Array() {
-		return nil, nil, ctx.Errorf(ast.Dst,
-			"invalid argument: copy expects slice arguments: got %v", dst.Type)
-	}
-	dstFrom := types.Size(0)
-	dstTo := dst.Type.ArraySize
 	dstCount := dstTo - dstFrom
 	elSize := dst.Type.ElementType.Bits
 
@@ -2197,9 +2222,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, err
 	}
 	if len(v) != 1 {
-		return nil, nil, ctx.Errorf(ast.Src,
-			"invalid argument: copy expects slice arguments: got multivalue %T",
-			ast.Src)
+		return nil, nil, ast.errf(ctx, ast.Src, "got multivalue %T", ast.Src)
 	}
 	src := v[0]
 	var srcType types.Info
@@ -2209,8 +2232,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		srcType = src.Type
 	}
 	if !srcType.Type.Array() {
-		return nil, nil, ctx.Errorf(ast.Src,
-			"invalid argument: copy expects slice arguments: got %T", src.Type)
+		return nil, nil, ast.errf(ctx, ast.Src, "got %v", src.Type)
 	}
 	if !dst.Type.ElementType.Equal(*srcType.ElementType) {
 		return nil, nil, ctx.Errorf(ast,
@@ -2218,9 +2240,6 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			dst.Type.ElementType, src.Type.ElementType)
 	}
 	srcCount := src.Type.ArraySize
-
-	fmt.Printf("copy(%v[%d-%d], %v[0-%d])\n",
-		dst, dstFrom, dstTo, src, srcCount)
 
 	var ret ssa.Value
 
@@ -2271,4 +2290,11 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 
 	return block, []ssa.Value{ret}, nil
+}
+
+func (ast *Copy) errf(ctx *Codegen, offending AST, format string,
+	a ...interface{}) error {
+	msg := fmt.Sprintf(format, a...)
+	return ctx.Errorf(offending,
+		"invalid argument: copy expects slice arguments: %s", msg)
 }
