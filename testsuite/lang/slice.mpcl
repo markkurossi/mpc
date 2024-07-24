@@ -1,9 +1,0 @@
-// -*- go -*-
-//
-
-package main
-
-// @Test 4294967295 0 = 255
-func main(a, b uint64) uint {
-	return (a + b)[:8]
-}
