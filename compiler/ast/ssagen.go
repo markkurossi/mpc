@@ -2161,3 +2161,114 @@ func (ast *Make) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	return block, []ssa.Value{v}, nil
 }
+
+// SSA implements the compiler.ast.AST.SSA for the builtin function copy.
+func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+
+	var lrv *LRValue
+	var err error
+
+	// Resolve destination.
+	switch lv := ast.Dst.(type) {
+	case *VariableRef:
+		lrv, _, _, err = ctx.LookupVar(block, gen, block.Bindings, lv)
+		if err != nil {
+			return nil, nil, ctx.Error(ast.Dst, err.Error())
+		}
+
+	default:
+		return nil, nil, ctx.Errorf(ast.Dst,
+			"invalid argument: copy expects slice arguments: got %T", ast.Dst)
+	}
+	dst := lrv.RValue()
+	if !dst.Type.Type.Array() {
+		return nil, nil, ctx.Errorf(ast.Dst,
+			"invalid argument: copy expects slice arguments: got %v", dst.Type)
+	}
+	dstFrom := types.Size(0)
+	dstTo := dst.Type.ArraySize
+	dstCount := dstTo - dstFrom
+	elSize := dst.Type.ElementType.Bits
+
+	// Resolve source.
+	block, v, err := ast.Src.SSA(block, ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(v) != 1 {
+		return nil, nil, ctx.Errorf(ast.Src,
+			"invalid argument: copy expects slice arguments: got multivalue %T",
+			ast.Src)
+	}
+	src := v[0]
+	var srcType types.Info
+	if src.Type.Type == types.TPtr {
+		srcType = *src.Type.ElementType
+	} else {
+		srcType = src.Type
+	}
+	if !srcType.Type.Array() {
+		return nil, nil, ctx.Errorf(ast.Src,
+			"invalid argument: copy expects slice arguments: got %T", src.Type)
+	}
+	if !dst.Type.ElementType.Equal(*srcType.ElementType) {
+		return nil, nil, ctx.Errorf(ast,
+			"arguments to copy have different element types: %s and %s",
+			dst.Type.ElementType, src.Type.ElementType)
+	}
+	srcCount := src.Type.ArraySize
+
+	fmt.Printf("copy(%v[%d-%d], %v[0-%d])\n",
+		dst, dstFrom, dstTo, src, srcCount)
+
+	var ret ssa.Value
+
+	if dstFrom == 0 && srcCount >= dstCount {
+		// Src overwrites dst fully.
+		bits := dstCount * elSize
+		ti := types.Info{
+			Type:        dst.Type.Type,
+			IsConcrete:  true,
+			Bits:        bits,
+			MinBits:     bits,
+			ElementType: dst.Type.ElementType,
+			ArraySize:   dstCount,
+		}
+		fromConst := gen.Constant(int64(0), types.Undefined)
+		toConst := gen.Constant(int64(dstCount*elSize), types.Undefined)
+		ret = gen.Constant(int64(dstCount), types.Undefined)
+
+		tmp := gen.AnonVal(ti)
+		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, tmp))
+		err := lrv.Set(tmp)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		// Src overwrites part of dst.
+		tmp := gen.AnonVal(dst.Type)
+		block.AddInstr(ssa.NewMovInstr(dst, tmp))
+
+		count := srcCount
+		if count > dstCount {
+			count = dstCount
+		}
+		ret = gen.Constant(int64(count), types.Undefined)
+
+		// The amov sets tmp[from:to]=src i.e. it automatically slices
+		// src to to-from bits.
+
+		tmp2 := gen.AnonVal(dst.Type)
+		fromConst := gen.Constant(int64(dstFrom*elSize), types.Undefined)
+		toConst := gen.Constant(int64((dstFrom+count)*elSize), types.Undefined)
+		block.AddInstr(ssa.NewAmovInstr(src, tmp, fromConst, toConst, tmp2))
+
+		err := lrv.Set(tmp2)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	return block, []ssa.Value{ret}, nil
+}

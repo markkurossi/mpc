@@ -22,7 +22,7 @@ const (
 // Eval implements the compiler.ast.AST.Eval for list statements.
 func (ast List) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
-	return ssa.Undefined, false, fmt.Errorf("List.Eval not implemented yet")
+	return ssa.Undefined, false, ctx.Errorf(ast, "List.Eval not implemented")
 }
 
 // Eval implements the compiler.ast.AST.Eval for function definitions.
@@ -672,4 +672,10 @@ func (ast *Make) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 
 	// Create typeref constant.
 	return gen.Constant(typeInfo, types.Undefined), true, nil
+}
+
+// Eval implements the compiler.ast.AST.Eval for the builtin function copy.
+func (ast *Copy) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
+	return ssa.Undefined, false, nil
 }

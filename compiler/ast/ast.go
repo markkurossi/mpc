@@ -39,6 +39,7 @@ var (
 	_ AST = &BasicLit{}
 	_ AST = &CompositeLit{}
 	_ AST = &Make{}
+	_ AST = &Copy{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -903,4 +904,15 @@ func (ast *Make) String() string {
 		str += expr.String()
 	}
 	return str + ")"
+}
+
+// Copy implements the builtin function copy.
+type Copy struct {
+	utils.Point
+	Dst AST
+	Src AST
+}
+
+func (ast *Copy) String() string {
+	return fmt.Sprintf("copy(%v, %v)", ast.Dst, ast.Src)
 }
