@@ -79,6 +79,38 @@ func (lrv *LRValue) BasePtrInfo() *ssa.PtrInfo {
 	return lrv.baseInfo
 }
 
+// Indirect returns LRValue for the value that lrv points to. If lrv
+// is not a pointer, Indirect returns lrv.
+func (lrv *LRValue) Indirect() *LRValue {
+	v := lrv.RValue()
+	if v.Type.Type != types.TPtr {
+		return lrv
+	}
+
+	ret := *lrv
+	ret.valueType = *lrv.valueType.ElementType
+	ret.value.PtrInfo = nil
+
+	if lrv.baseInfo.ContainerType.Type == types.TStruct {
+		ret.value.Type = types.Undefined
+
+		// Lookup struct field.
+		ret.structField = nil
+		for _, f := range lrv.baseValue.Type.Struct {
+			if f.Type.Offset == lrv.baseInfo.Offset {
+				ret.structField = &f
+			}
+		}
+		if ret.structField == nil {
+			panic("LRValue.Indirect: could not find struct field")
+		}
+	} else {
+		ret.value.Type = *lrv.value.Type.ElementType
+	}
+
+	return &ret
+}
+
 // Set sets the l-value to rv.
 func (lrv LRValue) Set(rv ssa.Value) error {
 	if !ssa.CanAssign(lrv.valueType, rv) {
@@ -123,7 +155,7 @@ func (lrv LRValue) Set(rv ssa.Value) error {
 	// The l-value and r-value types are now resolved. Let's define
 	// the variable with correct type and value information,
 	// overriding any old values.
-	lrv.block.Bindings.Define(lValue, &rv)
+	lrv.baseInfo.Bindings.Define(lValue, &rv)
 
 	return nil
 }

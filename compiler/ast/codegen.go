@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -11,6 +11,7 @@ package ast
 import (
 	"fmt"
 	"runtime"
+	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ssa"
@@ -53,12 +54,19 @@ func (ctx *Codegen) errorLoc(err error) error {
 	if !ctx.Params.MPCLCErrorLoc {
 		return err
 	}
-	_, file, line, ok := runtime.Caller(2)
-	if !ok {
+
+	for skip := 2; ; skip++ {
+		pc, file, line, ok := runtime.Caller(skip)
+		if !ok {
+			return err
+		}
+		f := runtime.FuncForPC(pc)
+		if f != nil && strings.HasSuffix(f.Name(), ".errf") {
+			continue
+		}
+		fmt.Printf("%s:%d: MCPLC error:\n\u2514\u2574%s\n", file, line, err)
 		return err
 	}
-	fmt.Printf("%s:%d: MCPLC error:\n\u2514\u2574%s\n", file, line, err)
-	return err
 }
 
 // Error logs an error message.

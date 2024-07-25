@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // Ed25519 key generation in MPCL. This file is derived from Go's
 // crypto/ed25519 package. The original copyright notice follows:
@@ -27,14 +27,14 @@ func NewKeyFromSeed(seed [SeedSize]byte) (PublicKey, PrivateKey) {
 
 	var A edwards25519.ExtendedGroupElement
 	var hBytes [32]byte
-	hBytes = memcpy(hBytes, 0, digest, 0)
+	copy(hBytes, digest)
 	edwards25519.GeScalarMultBase(&A, &hBytes)
 	var publicKeyBytes [32]byte
 	A.ToBytes(&publicKeyBytes)
 
 	var privateKey [64]byte
-	privateKey = memcpy(privateKey, 0, seed, 0)
-	privateKey = memcpy(privateKey, 32, publicKeyBytes, 0)
+	copy(privateKey, seed)
+	copy(privateKey[32:], publicKeyBytes)
 
 	return publicKeyBytes, privateKey
 }

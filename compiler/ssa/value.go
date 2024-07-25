@@ -75,9 +75,9 @@ func (v Value) Check() {
 	}
 }
 
-// ElementType returns the pointer element type of the value. For
-// non-pointer values, this returns the value type itself.
-func (v Value) ElementType() types.Info {
+// IndirectType returns the type that v points to. If v is not a
+// pointer, IndirectType returns the type of v.
+func (v Value) IndirectType() types.Info {
 	if v.Type.Type == types.TPtr {
 		return *v.Type.ElementType
 	}

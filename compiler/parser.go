@@ -1431,6 +1431,17 @@ primary:
 					Type:  ti,
 					Exprs: arguments,
 				}
+			} else if vr.String() == "copy" {
+				if len(arguments) != 2 {
+					return nil, p.errf(primary.Location(),
+						"invalid arguments for copy (expected 2, found %v)",
+						len(arguments))
+				}
+				primary = &ast.Copy{
+					Point: primary.Location(),
+					Dst:   arguments[0],
+					Src:   arguments[1],
+				}
 			} else {
 				primary = &ast.Call{
 					Point: primary.Location(),
