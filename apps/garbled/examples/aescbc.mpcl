@@ -7,18 +7,21 @@ import (
 )
 
 // Case #1: Encrypting 16 bytes (1 block) using AES-CBC with 128-bit key
-// Key       : 0x06a9214036b8a15b512e03d534120006
-// IV        : 0x3dafba429d9eb430b422da802c9fac41
-// Plaintext : "Single block msg"
-// Ciphertext: 0xe353779c1079aeb82708942dbe77181a
+//
+//	Key       : 0x06a9214036b8a15b512e03d534120006
+//	IV        : 0x3dafba429d9eb430b422da802c9fac41
+//	Plaintext : "Single block msg"
+//	Ciphertext: 0xe353779c1079aeb82708942dbe77181a
 //
 // Case #2: Encrypting 32 bytes (2 blocks) using AES-CBC with 128-bit key
-// Key       : 0xc286696d887c9aa0611bbb3e2025a45a
-// IV        : 0x562e17996d093d28ddb3ba695a2e6f58
-// Plaintext : 0x000102030405060708090a0b0c0d0e0f
-//               101112131415161718191a1b1c1d1e1f
-// Ciphertext: 0xd296cd94c2cccf8a3a863028b5e1dc0a
-//               7586602d253cfff91b8266bea6d61ab1
+//
+//	Key       : 0xc286696d887c9aa0611bbb3e2025a45a
+//	IV        : 0x562e17996d093d28ddb3ba695a2e6f58
+//	Plaintext : 0x000102030405060708090a0b0c0d0e0f
+//	            101112131415161718191a1b1c1d1e1f
+//	Ciphertext: 0xd296cd94c2cccf8a3a863028b5e1dc0a
+//
+//	7586602d253cfff91b8266bea6d61ab1
 func main(g, e [16]byte) []byte {
 	key := []byte{
 		0x06, 0xa9, 0x21, 0x40, 0x36, 0xb8, 0xa1, 0x5b,
