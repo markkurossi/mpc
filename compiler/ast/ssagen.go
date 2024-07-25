@@ -1833,7 +1833,7 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 	expr := exprs[0]
-	elementType := expr.Deref()
+	elementType := expr.IndirectType()
 	if !elementType.Type.Array() {
 		return nil, nil, ctx.Errorf(ast, "invalid operation: cannot slice %v",
 			expr.Type.Type)
@@ -2182,6 +2182,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Error(ast.Dst, err.Error())
 		}
+		lrv = lrv.Indirect()
 		dst = lrv.RValue()
 		if !dst.Type.Type.Array() {
 			return nil, nil, ast.errf(ctx, ast.Dst, "got %v", dst.Type)
@@ -2200,6 +2201,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		if err != nil {
 			return nil, nil, ctx.Error(ast.Dst, err.Error())
 		}
+		lrv = lrv.Indirect()
 		dst = lrv.RValue()
 		if !dst.Type.Type.Array() {
 			return nil, nil, ast.errf(ctx, ast.Dst, "got %v", dst.Type)
@@ -2225,12 +2227,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ast.errf(ctx, ast.Src, "got multivalue %T", ast.Src)
 	}
 	src := v[0]
-	var srcType types.Info
-	if src.Type.Type == types.TPtr {
-		srcType = *src.Type.ElementType
-	} else {
-		srcType = src.Type
-	}
+	srcType := src.IndirectType()
 	if !srcType.Type.Array() {
 		return nil, nil, ast.errf(ctx, ast.Src, "got %v", src.Type)
 	}
@@ -2262,7 +2259,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, tmp))
 		err := lrv.Set(tmp)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, ctx.Error(ast, err.Error())
 		}
 	} else {
 		// Src overwrites part of dst.
@@ -2285,7 +2282,7 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		err := lrv.Set(tmp2)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, ctx.Error(ast, err.Error())
 		}
 	}
 
