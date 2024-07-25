@@ -48,6 +48,19 @@ func floorPow2(v int) int {}
 //	String: the number of bytes in the string
 func len(v Type) int32 {}
 
+// The make built-in function creates arrays or concrete type
+// instances. The arrays are created by specifying a concrete array
+// type as the Type argument:
+//
+//	buf := make([]byte, 10)
+//
+// The concrete type instances are created by specifying an inconcrete
+// type as the Type argument, and type bit size as the Size argument:
+//
+//	i1024 := make(int, 1024)
+//	var x i1024
+func make(t Type, s Size) {}
+
 // The native built-in function loads the native circuit from the
 // named file. The circuit must be located in the same directory as
 // the calling MPCL program. The native built-in function supports the
