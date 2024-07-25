@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -21,8 +21,8 @@ func SumSHA256(data, key []byte) [sha256.Size]byte {
 	var ipad [sha256.BlockSize]byte
 	var opad [sha256.BlockSize]byte
 
-	ipad = memcpy(ipad, 0, key, 0)
-	opad = memcpy(opad, 0, key, 0)
+	copy(ipad, key)
+	copy(opad, key)
 
 	for i := 0; i < len(ipad); i++ {
 		ipad[i] ^= 0x36
@@ -32,21 +32,14 @@ func SumSHA256(data, key []byte) [sha256.Size]byte {
 	}
 
 	var idata [len(ipad) + len(data)]byte
-	idata = memcpy(idata, 0, ipad, 0)
-	idata = memcpy(idata, len(ipad), data, 0)
+	copy(idata, ipad)
+	copy(idata[len(ipad):], data)
 
 	idigest := sha256.Sum256(idata[:])
 
 	var odata [len(opad) + len(idigest)]byte
-	odata = memcpy(odata, 0, opad, 0)
-	odata = memcpy(odata, len(opad), idigest, 0)
+	copy(odata, opad)
+	copy(odata[len(opad):], idigest)
 
 	return sha256.Sum256(odata[:])
-}
-
-func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
-	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
-		dst[dstOfs+i] = src[srcOfs+i]
-	}
-	return dst
 }

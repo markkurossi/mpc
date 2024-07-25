@@ -21,8 +21,8 @@ func SumSHA1(data, key []byte) [sha1.Size]byte {
 	var ipad [sha1.BlockSize]byte
 	var opad [sha1.BlockSize]byte
 
-	ipad = memcpy(ipad, 0, key, 0)
-	opad = memcpy(opad, 0, key, 0)
+	copy(ipad, key)
+	copy(opad, key)
 
 	for i := 0; i < len(ipad); i++ {
 		ipad[i] ^= 0x36
@@ -32,14 +32,14 @@ func SumSHA1(data, key []byte) [sha1.Size]byte {
 	}
 
 	var idata [len(ipad) + len(data)]byte
-	idata = memcpy(idata, 0, ipad, 0)
-	idata = memcpy(idata, len(ipad), data, 0)
+	copy(idata, ipad)
+	copy(idata[len(ipad):], data)
 
 	idigest := sha1.Sum(idata[:])
 
 	var odata [len(opad) + len(idigest)]byte
-	odata = memcpy(odata, 0, opad, 0)
-	odata = memcpy(odata, len(opad), idigest, 0)
+	copy(odata, opad)
+	copy(odata[len(opad):], idigest)
 
 	return sha1.Sum(odata[:])
 }

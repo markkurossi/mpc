@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // Ed25519 signature computation in MPCL. This file is derived from
 // Go's crypto/ed25519 package. The original copyright notice follows:
@@ -43,14 +43,14 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 	digest1 := sha512.Sum512(privateKey[0:32])
 
 	var expandedSecretKey [32]byte
-	expandedSecretKey = memcpy(expandedSecretKey, 0, digest1, 0)
+	copy(expandedSecretKey, digest1)
 	expandedSecretKey[0] &= 248
 	expandedSecretKey[31] &= 63
 	expandedSecretKey[31] |= 64
 
 	buf := make([]byte, 32+len(message))
-	buf = memcpy(buf, 0, digest1, 32)
-	buf = memcpy(buf, 32, message, 0)
+	copy(buf, digest1[32:])
+	copy(buf[32:], message)
 	messageDigest := sha512.Sum512(buf)
 
 	var messageDigestReduced [32]byte
@@ -62,9 +62,9 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 	R.ToBytes(&encodedR)
 
 	buf2 := make([]byte, 64+len(message))
-	buf2 = memcpy(buf2, 0, encodedR, 0)
-	buf2 = memcpy(buf2, 32, privateKey, 32)
-	buf2 = memcpy(buf2, 64, message, 0)
+	copy(buf2, encodedR)
+	copy(buf2[32:], privateKey[32:])
+	copy(buf2[64:], message)
 	hramDigest := sha512.Sum512(buf2)
 
 	var hramDigestReduced [32]byte
@@ -75,15 +75,8 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 		messageDigestReduced)
 
 	var signature [SignatureSize]byte
-	signature = memcpy(signature, 0, encodedR, 0)
-	signature = memcpy(signature, 32, s, 0)
+	copy(signature, encodedR)
+	copy(signature[32:], s)
 
 	return signature
-}
-
-func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
-	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
-		dst[dstOfs+i] = src[srcOfs+i]
-	}
-	return dst
 }
