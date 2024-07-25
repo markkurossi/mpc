@@ -30,6 +30,10 @@ type uintSize uint
 // stringSize defines Size-bit long string.
 type stringSize string
 
+// The copy built-in function copies elements from a source slice into
+// a destination slice. The source and destination slices may
+// overlap. The function returns the number of elements copied, which
+// will be the minimum of len(src) and len(dst).
 func copy(dst, src []Type) int32 {}
 
 // The floorPow2 built-in function returns the power of 2 number that
@@ -40,6 +44,7 @@ func floorPow2(v int) int {}
 // according to its type:
 //
 //	Array:  the number of elements in the array
+//	Slice:  the number of elements in the slice
 //	String: the number of bytes in the string
 func len(v Type) int32 {}
 
@@ -48,8 +53,9 @@ func len(v Type) int32 {}
 // the calling MPCL program. The native built-in function supports the
 // following circuit formats:
 //
-//	.circ   Bristol circuit format
-//	.mpclc  compiled MPCL circuit format
+//	.circ    Bristol circuit format
+//	.bristol Bristol circuit format
+//	.mpclc   compiled MPCL circuit format
 func native(name string) []Type {}
 
 // The size built-in function returns the size of the argument value
