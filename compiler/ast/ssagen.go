@@ -149,8 +149,13 @@ func (ast *VariableDef) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.Errorf(ast, "undefined variable")
 			}
 			if !typeInfo.Concrete() {
-				return nil, nil, ctx.Errorf(ast.Type,
-					"unspecified size for type %v", ast.Type)
+				if typeInfo.Type != types.TSlice {
+					return nil, nil, ctx.Errorf(ast.Type,
+						"unspecified size for type %v", ast.Type)
+				}
+				// Empty slices can be instantiated in variable
+				// declaration time.
+				typeInfo.SetConcrete(true)
 			}
 			initVal, err := initValue(typeInfo)
 			if err != nil {
