@@ -198,7 +198,7 @@ The MPCL runtime defines the following builtin functions:
        - [ ] SSA aliasing is 1:1 but `amov` has 2:1 relation
        - [ ] variable liveness analysis for templates
      - [ ] BitShift
-   - [ ] `copy()` does not work on arrays which have been `make()`:ed
+   - [x] `copy()` does not work on arrays which have been `make()`:ed
    - [ ] `&base[pos][i]` returns the address of the first element
    - [ ] reading from `*[32]int32` returns invalid values
    - [x] Pointer handling

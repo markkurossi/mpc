@@ -33,9 +33,6 @@ type Eval func(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 
 // Predeclared identifiers.
 var builtins = map[string]Builtin{
-	"copy": {
-		SSA: copySSA,
-	},
 	"floorPow2": {
 		SSA:  floorPow2SSA,
 		Eval: floorPow2Eval,
@@ -55,114 +52,6 @@ var builtins = map[string]Builtin{
 		SSA:  sizeSSA,
 		Eval: sizeEval,
 	},
-}
-
-func copySSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
-	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
-
-	if len(args) != 2 {
-		return nil, nil, ctx.Errorf(loc,
-			"invalid amount of arguments in call to copy")
-	}
-	dst := args[0]
-	src := args[1]
-
-	var baseName string
-	var baseType types.Info
-	var baseScope ssa.Scope
-	var baseBindings *ssa.Bindings
-	var base ssa.Value
-
-	var dstOffset types.Size
-	var elementType types.Info
-
-	switch dst.Type.Type {
-	case types.TArray, types.TSlice:
-		baseName = dst.Name
-		baseType = dst.Type
-		baseScope = dst.Scope
-		baseBindings = block.Bindings
-
-		dstOffset = 0
-		elementType = *dst.Type.ElementType
-		base = dst
-
-	case types.TPtr:
-		elementType = *dst.Type.ElementType
-		if !elementType.Type.Array() {
-			return nil, nil, ctx.Errorf(loc, "setting elements of non-array %s",
-				elementType)
-		}
-		baseName = dst.PtrInfo.Name
-		baseType = dst.PtrInfo.ContainerType
-		baseScope = dst.PtrInfo.Scope
-		baseBindings = dst.PtrInfo.Bindings
-
-		dstOffset = dst.PtrInfo.Offset
-		elementType = *elementType.ElementType
-
-		b, ok := baseBindings.Get(baseName)
-		if !ok {
-			return nil, nil, ctx.Errorf(loc, "undefined: %s", baseName)
-		}
-		base = b.Value(block, gen)
-
-	default:
-		return nil, nil, ctx.Errorf(loc,
-			"arguments to copy must be slices; have %s, %s",
-			dst.Type.Type, src.Type.Type)
-	}
-
-	var srcType types.Info
-	if src.Type.Type == types.TPtr {
-		srcType = *src.Type.ElementType
-	} else {
-		srcType = src.Type
-	}
-
-	if !srcType.Type.Array() {
-		return nil, nil, ctx.Errorf(loc,
-			"second argument to copy should be slice or array (%v)", src.Type)
-	}
-	if !elementType.Equal(*srcType.ElementType) {
-		return nil, nil, ctx.Errorf(loc,
-			"arguments to copy have different element types: %s and %s",
-			baseType.ElementType, src.Type.ElementType)
-	}
-
-	dstBits := dst.Type.Bits
-	srcBits := src.Type.Bits
-
-	var copied types.Size
-	if srcBits > dstBits {
-		fromConst := gen.Constant(int64(0), types.Undefined)
-		toConst := gen.Constant(int64(dstBits), types.Undefined)
-
-		tmp := gen.AnonVal(dst.Type)
-		block.AddInstr(ssa.NewSliceInstr(src, fromConst, toConst, tmp))
-		src = tmp
-		srcBits = dstBits
-
-		copied = dst.Type.ArraySize
-	} else {
-		copied = src.Type.ArraySize
-	}
-
-	lValue := gen.NewVal(baseName, baseType, baseScope)
-
-	fromConst := gen.Constant(int64(dstOffset), types.Undefined)
-	toConst := gen.Constant(int64(dstOffset+srcBits), types.Undefined)
-
-	block.AddInstr(ssa.NewAmovInstr(src, base, fromConst, toConst, lValue))
-	err := baseBindings.Set(lValue, nil)
-	if err != nil {
-		return nil, nil, ctx.Error(loc, err.Error())
-	}
-
-	v := gen.Constant(int64(copied), types.Undefined)
-	gen.AddConstant(v)
-
-	return block, []ssa.Value{v}, nil
 }
 
 func floorPow2SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
