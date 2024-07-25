@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -31,7 +31,7 @@ func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
 
 	var counter [aes.BlockSize]byte
 
-	counter = memcpy(counter, 0, nonce, 0)
+	copy(counter, nonce)
 	counter = incr(counter)
 
 	e0 := byteToUint128(aes.Block128(key, counter))
@@ -104,7 +104,7 @@ func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
 
 	var counter [aes.BlockSize]byte
 
-	counter = memcpy(counter, 0, nonce, 0)
+	copy(counter, nonce)
 	counter = incr(counter)
 
 	e0 := byteToUint128(aes.Block128(key, counter))
@@ -228,11 +228,4 @@ func multGF2Pow128(x, y uint128) uint128 {
 		}
 	}
 	return z
-}
-
-func memcpy(dst []byte, dstOfs int, src []byte, srcOfs int) []byte {
-	for i := 0; srcOfs+i < len(src) && dstOfs+i < len(dst); i++ {
-		dst[dstOfs+i] = src[srcOfs+i]
-	}
-	return dst
 }
