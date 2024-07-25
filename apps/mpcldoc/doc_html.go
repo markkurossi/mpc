@@ -113,16 +113,16 @@ func index(out io.Writer, pkgs, mains []*Package) error {
 	}
 	for _, pkg := range mains {
 		first := pkg.Annotations.FirstSentence()
-		_, err := fmt.Fprintf(out, `<div class="index">
+		if len(first) > 0 {
+			_, err := fmt.Fprintf(out, `<div class="index">
 <a href="%s">%s</a>
 </div>
 `,
-			fmt.Sprintf("prg_%s.html", pkg.Docfile()),
-			html.EscapeString(pkg.Name))
-		if err != nil {
-			return err
-		}
-		if len(first) > 0 {
+				fmt.Sprintf("prg_%s.html", pkg.Docfile()),
+				html.EscapeString(pkg.Name))
+			if err != nil {
+				return err
+			}
 			_, err = fmt.Fprintf(out, "<p>%s</p>\n", html.EscapeString(first))
 			if err != nil {
 				return err
