@@ -9,6 +9,7 @@ package ast
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
@@ -317,61 +318,80 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 				return nil, nil, ctx.Errorf(ast,
 					"a non-name %s on left side of :=", lv)
 			}
-			switch arr := lv.Expr.(type) {
-			case *VariableRef:
-				lrv, _, _, err := ctx.LookupVar(block, gen, block.Bindings, arr)
-				if err != nil {
-					return nil, nil, ctx.Error(arr, err.Error())
-				}
-				valueType := lrv.ValueType()
-				if valueType.Type == types.TPtr {
-					valueType = *valueType.ElementType
-				}
+			var err error
+			var v []ssa.Value
+			var indices []arrayIndex
+			var lrv *LRValue
+			idx := lv
 
-				if !valueType.Type.Array() {
-					return nil, nil, ctx.Errorf(ast,
-						"setting elements of non-array %s (%s)",
-						arr, lrv.ValueType())
-				}
-				arraySize := valueType.ArraySize
-				elementSize := valueType.ElementType.Bits
-
-				block, val, err := lv.Index.SSA(block, ctx, gen)
+			for lrv == nil {
+				block, v, err = idx.Index.SSA(block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
-				if len(val) != 1 {
-					return nil, nil, ctx.Errorf(lv.Index, "invalid index")
+				if len(v) != 1 {
+					return nil, nil, ctx.Errorf(idx.Index, "invalid index")
 				}
-				index, err := val[0].ConstInt()
+				index, err := v[0].ConstInt()
 				if err != nil {
-					return nil, nil, ctx.Errorf(lv.Index, "%s", err)
+					return nil, nil, ctx.Error(idx.Index, err.Error())
 				}
+				indices = append(indices, arrayIndex{
+					i:   index,
+					ast: idx.Index,
+				})
+				switch i := idx.Expr.(type) {
+				case *Index:
+					idx = i
 
-				// Convert index to bit range.
-				if index >= arraySize {
-					return nil, nil, ctx.Errorf(lv.Index,
+				case *VariableRef:
+					lrv, _, _, err = ctx.LookupVar(block, gen,
+						block.Bindings, i)
+					if err != nil {
+						return nil, nil, err
+					}
+
+				default:
+					return nil, nil, ctx.Errorf(idx.Expr,
+						"invalid operation: cannot index %v (%T)",
+						idx.Expr, idx.Expr)
+
+				}
+			}
+			slices.Reverse(indices)
+
+			lrv = lrv.Indirect()
+			t := lrv.ValueType()
+			var offset types.Size
+
+			for _, index := range indices {
+				if !t.Type.Array() {
+					return nil, nil, ctx.Errorf(index.ast,
+						"setting elements of non-array %s (%s)", lv.Expr, t)
+				}
+				if index.i >= t.ArraySize {
+					return nil, nil, ctx.Errorf(index.ast,
 						"invalid array index %d (out of bounds for %d-element array)",
-						index, arraySize)
+						index.i, t.ArraySize)
 				}
-				basePtrInfo := lrv.BasePtrInfo()
-				from := int64(index*elementSize + basePtrInfo.Offset)
-				to := int64(from + int64(elementSize))
+				offset += index.i * t.ElementType.Bits
+				t = *t.ElementType
+			}
 
-				fromConst := gen.Constant(from, types.Undefined)
-				toConst := gen.Constant(to, types.Undefined)
+			if !ssa.CanAssign(t, rv) {
+				return nil, nil, ctx.Errorf(lvalue,
+					"cannot assign %v to variable of type %v", rv.Type, t)
+			}
 
-				lValue := lrv.LValue()
-				block.AddInstr(ssa.NewAmovInstr(rv, lrv.BaseValue(),
-					fromConst, toConst, lValue))
-				err = basePtrInfo.Bindings.Set(lValue, nil)
-				if err != nil {
-					return nil, nil, ctx.Error(ast, err.Error())
-				}
+			val := gen.AnonVal(lrv.ValueType())
+			fromConst := gen.Constant(int64(offset), types.Undefined)
+			toConst := gen.Constant(int64(offset+t.Bits), types.Undefined)
+			block.AddInstr(ssa.NewAmovInstr(rv, lrv.RValue(), fromConst,
+				toConst, val))
 
-			default:
-				return nil, nil, ctx.Errorf(ast,
-					"array expression not supported: %T", arr)
+			err = lrv.Set(val)
+			if err != nil {
+				return nil, nil, ctx.Error(lvalue, err.Error())
 			}
 
 		case *Unary:
@@ -442,6 +462,15 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	return block, values, nil
+}
+
+type arrayIndex struct {
+	i   types.Size
+	ast AST
+}
+
+func (i arrayIndex) String() string {
+	return fmt.Sprintf("%d", i.i)
 }
 
 // SSA implements the compiler.ast.AST.SSA for if statements.

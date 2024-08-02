@@ -59,9 +59,10 @@ type LRValue struct {
 
 func (lrv LRValue) String() string {
 	offset := lrv.baseInfo.Offset + lrv.valueType.Offset
-	return fmt.Sprintf("%s[%d-%d]@%s{%d}%s",
+	return fmt.Sprintf("%s[%d-%d]@%s{%d}%s/%v",
 		lrv.valueType, offset, offset+lrv.valueType.Bits,
-		lrv.baseInfo.Name, lrv.baseInfo.Scope, lrv.baseInfo.ContainerType)
+		lrv.baseInfo.Name, lrv.baseInfo.Scope, lrv.baseInfo.ContainerType,
+		lrv.baseInfo.ContainerType.Bits)
 }
 
 // BaseType returns the base type of the LRValue.
@@ -92,13 +93,15 @@ func (lrv *LRValue) Indirect() *LRValue {
 	ret.value.PtrInfo = nil
 
 	if lrv.baseInfo.ContainerType.Type == types.TStruct {
+		// Set value to undefined so RValue() can regenerate it.
 		ret.value.Type = types.Undefined
 
 		// Lookup struct field.
 		ret.structField = nil
-		for _, f := range lrv.baseValue.Type.Struct {
+		for idx, f := range lrv.baseValue.Type.Struct {
 			if f.Type.Offset == lrv.baseInfo.Offset {
-				ret.structField = &f
+				ret.structField = &lrv.baseValue.Type.Struct[idx]
+				break
 			}
 		}
 		if ret.structField == nil {
@@ -106,6 +109,7 @@ func (lrv *LRValue) Indirect() *LRValue {
 		}
 	} else {
 		ret.value.Type = *lrv.value.Type.ElementType
+		ret.value = lrv.baseValue
 	}
 
 	return &ret

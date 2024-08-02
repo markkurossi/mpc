@@ -188,7 +188,7 @@ func uint128ToByte(x uint128) [16]byte {
 	var r [16]byte
 
 	for i := 0; i < 16; i++ {
-		r[15-i] = x & 0xff
+		r[15-i] = byte(x & 0xff)
 		x >>= 8
 	}
 	return r
@@ -203,7 +203,7 @@ func incr(counter [aes.BlockSize]byte) [aes.BlockSize]byte {
 	}
 	c++
 	for i := 0; i < 4; i++ {
-		counter[15-i] = c & 0xff
+		counter[15-i] = byte(c & 0xff)
 		c >>= 8
 	}
 	return counter

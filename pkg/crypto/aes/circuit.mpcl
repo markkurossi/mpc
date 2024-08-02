@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2021 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -24,7 +24,7 @@ func Block128(key [16]byte, data [16]byte) [16]byte {
 	c := block128(k, d)
 	var cipher [16]byte
 	for i := len(cipher) - 1; i >= 0; i-- {
-		cipher[i] = c & 0xff
+		cipher[i] = byte(c & 0xff)
 		c >>= 8
 	}
 	return cipher
