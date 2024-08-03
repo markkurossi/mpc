@@ -15,6 +15,10 @@ func FeOne(fe *FieldElement) {
 	fe[0] = 1
 }
 
+func FeCopy(dst, src *FieldElement) {
+	copy(dst[:], src[:])
+}
+
 type ProjectiveGroupElement struct {
 	X, Y, Z FieldElement
 }
@@ -31,5 +35,8 @@ func main(a, b int32) int {
 
 	pge.Zero()
 
-	return pge.X[0] + pge.Y[0] + pge.Z[0]
+	var y FieldElement
+	FeCopy(&y, &pge.Y)
+
+	return pge.X[0] + y[0] + pge.Z[0]
 }
