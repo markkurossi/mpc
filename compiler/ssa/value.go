@@ -84,6 +84,35 @@ func (v Value) IndirectType() types.Info {
 	return v.Type
 }
 
+// Indirect returns Value that v points to. If v is not a pointer,
+// Indirect returns v.
+func (v Value) Indirect(block *Block, gen *Generator) Value {
+	if v.Type.Type != types.TPtr {
+		return v
+	}
+
+	// Get container value.
+	b, ok := v.PtrInfo.Bindings.Get(v.PtrInfo.Name)
+	if !ok {
+		panic("Value.Indirect: could not find pointer target")
+	}
+	cv := b.Value(block, gen)
+
+	if v.PtrInfo.ContainerType.Type != types.TStruct {
+		return cv
+	}
+
+	// Get struct field value.
+	elType := *v.Type.ElementType
+	ev := gen.AnonVal(elType)
+	fromConst := gen.Constant(int64(v.PtrInfo.Offset), types.Undefined)
+	toConst := gen.Constant(int64(v.PtrInfo.Offset+elType.Bits),
+		types.Undefined)
+	block.AddInstr(NewSliceInstr(cv, fromConst, toConst, ev))
+
+	return ev
+}
+
 // ContainerType returs the pointer container type of the value. For
 // non-pointer values, this returns the value type itself.
 func (v Value) ContainerType() types.Info {

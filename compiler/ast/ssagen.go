@@ -2261,11 +2261,11 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ast.errf(ctx, ast.Src, "got multivalue %T", ast.Src)
 	}
 	src := v[0]
-	srcType := src.IndirectType()
-	if !srcType.Type.Array() {
+	src = src.Indirect(block, gen)
+	if !src.Type.Type.Array() {
 		return nil, nil, ast.errf(ctx, ast.Src, "got %v", src.Type)
 	}
-	if !dst.Type.ElementType.Equal(*srcType.ElementType) {
+	if !dst.Type.ElementType.Equal(*src.Type.ElementType) {
 		return nil, nil, ctx.Errorf(ast,
 			"arguments to copy have different element types: %s and %s",
 			dst.Type.ElementType, src.Type.ElementType)

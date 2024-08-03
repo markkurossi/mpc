@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2024 Markku Rossi
 //
 // Ed25519 signature algorithm in MPCL. This file is derived from the
 // crypto/ed25519/internal/edwards25519 package of Go 1.16.9. The
@@ -24,9 +24,7 @@ type FieldElement [10]int32
 var zero FieldElement
 
 func FeZero(fe *FieldElement) {
-	for i := 0; i < len(fe); i++ {
-		fe[i] = zero[i]
-	}
+	copy(fe[:], zero[:])
 }
 
 func FeOne(fe *FieldElement) {
@@ -61,9 +59,7 @@ func FeSub(dst, a, b *FieldElement) {
 }
 
 func FeCopy(dst, src *FieldElement) {
-	for i := 0; i < len(dst); i++ {
-		dst[i] = src[i]
-	}
+	copy(dst[:], src[:])
 }
 
 // Replace (f,g) with (g,g) if b == 1;
