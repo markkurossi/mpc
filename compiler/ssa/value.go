@@ -97,13 +97,14 @@ func (v Value) Indirect(block *Block, gen *Generator) Value {
 		panic("Value.Indirect: could not find pointer target")
 	}
 	cv := b.Value(block, gen)
+	elType := *v.Type.ElementType
 
-	if v.PtrInfo.ContainerType.Type != types.TStruct {
+	if v.PtrInfo.ContainerType.Equal(elType) {
 		return cv
 	}
 
-	// Get struct field value.
-	elType := *v.Type.ElementType
+	// The pointed value is part of container value. Let's return that
+	// slice.
 	ev := gen.AnonVal(elType)
 	fromConst := gen.Constant(int64(v.PtrInfo.Offset), types.Undefined)
 	toConst := gen.Constant(int64(v.PtrInfo.Offset+elType.Bits),
