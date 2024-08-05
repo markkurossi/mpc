@@ -1867,15 +1867,15 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return nil, nil, ctx.Errorf(ast, "invalid expression")
 	}
 	expr := exprs[0]
-	elementType := expr.IndirectType()
-	if !elementType.Type.Array() {
+	arrayType := expr.IndirectType()
+	if !arrayType.Type.Array() {
 		return nil, nil, ctx.Errorf(ast, "invalid operation: cannot slice %v",
 			expr.Type.Type)
 	}
-	elementSize := elementType.ElementType.Bits
+	elementSize := arrayType.ElementType.Bits
 
 	var from, to types.Size
-	block, from, to, err = ast.limitsSSA(block, ctx, gen, elementType)
+	block, from, to, err = ast.limitsSSA(block, ctx, gen, arrayType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1885,16 +1885,11 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var t ssa.Value
 
 	if expr.Type.Type == types.TPtr {
-		if !elementType.Type.Array() {
-			return nil, nil, ctx.Errorf(ast, "slice of %s not supported",
-				expr.Type)
-		}
-
 		// Take a copy of the PtrInfo and adjust its offset.
 		ptrInfo := *expr.PtrInfo
 		ptrInfo.Offset += from * elementSize
 
-		et := elementType
+		et := arrayType
 		et.Type = types.TSlice
 		et.ID = 0
 		et.ArraySize = to - from
@@ -1910,16 +1905,14 @@ func (ast *Slice) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		t.PtrInfo = &ptrInfo
 	} else {
 		ti := types.Info{
-			Type:       elementType.Type,
+			Type:       arrayType.Type,
 			IsConcrete: true,
 			Bits:       bits,
 			MinBits:    bits,
 		}
-		if elementType.Type.Array() {
-			ti.Type = types.TSlice
-			ti.ElementType = elementType.ElementType
-			ti.ArraySize = ti.Bits / ti.ElementType.Bits
-		}
+		ti.Type = types.TSlice
+		ti.ElementType = arrayType.ElementType
+		ti.ArraySize = ti.Bits / ti.ElementType.Bits
 
 		t = gen.AnonVal(ti)
 	}
