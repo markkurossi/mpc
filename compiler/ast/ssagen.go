@@ -12,7 +12,6 @@ import (
 	"slices"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
-	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 	"github.com/markkurossi/tabulate"
 )
@@ -1832,27 +1831,6 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			ival, ptrType.ArraySize)
 	}
 	return lrv, ptrType.ElementType, offset + ival*ptrType.ElementType.Bits, nil
-}
-
-func lookupElement(ctx *Codegen, loc utils.Locator, t types.Info, name string) (
-	types.Info, types.Size, error) {
-
-	switch t.Type {
-	case types.TStruct:
-		var offset types.Size
-		for _, field := range t.Struct {
-			if field.Name == name {
-				return field.Type, offset, nil
-			}
-			offset += field.Type.Bits
-		}
-		return types.Undefined, 0, ctx.Errorf(loc,
-			"%s undefined (%s has no field of method %s)", name, t, name)
-
-	default:
-		return types.Undefined, 0, ctx.Errorf(loc,
-			"%s undefined (%s has no field of method %s)", name, t, name)
-	}
 }
 
 // SSA implements the compiler.ast.AST.SSA for slice expressions.
