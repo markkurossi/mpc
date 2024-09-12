@@ -45,7 +45,7 @@ type PtrInfo struct {
 }
 
 func (ptr PtrInfo) String() string {
-	return fmt.Sprintf("*%s@%d", ptr.Name, ptr.Scope)
+	return fmt.Sprintf("*%s{%d}%s", ptr.Name, ptr.Scope, ptr.ContainerType)
 }
 
 // Equal tests if this PtrInfo is equal to the argument PtrInfo.

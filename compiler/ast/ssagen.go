@@ -12,6 +12,7 @@ import (
 	"slices"
 
 	"github.com/markkurossi/mpc/compiler/ssa"
+	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 	"github.com/markkurossi/tabulate"
 )
@@ -318,20 +319,20 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					"a non-name %s on left side of :=", lv)
 			}
 			var err error
-			var v []ssa.Value
+			var values []ssa.Value
 			var indices []arrayIndex
 			var lrv *LRValue
 			idx := lv
 
 			for lrv == nil {
-				block, v, err = idx.Index.SSA(block, ctx, gen)
+				block, values, err = idx.Index.SSA(block, ctx, gen)
 				if err != nil {
 					return nil, nil, err
 				}
-				if len(v) != 1 {
+				if len(values) != 1 {
 					return nil, nil, ctx.Errorf(idx.Index, "invalid index")
 				}
-				index, err := v[0].ConstInt()
+				index, err := values[0].ConstInt()
 				if err != nil {
 					return nil, nil, ctx.Error(idx.Index, err.Error())
 				}
@@ -1681,6 +1682,8 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return block, []ssa.Value{constVal}, nil
 	}
 
+	utils.Tracef("Unary.SSA\n")
+
 	switch ast.Type {
 	case UnaryMinus:
 		block, exprs, err := ast.Expr.SSA(block, ctx, gen)
@@ -1733,6 +1736,7 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		return block, []ssa.Value{t}, nil
 
 	case UnaryAddr:
+		utils.Tracef("UnaryAddr: %T", ast.Expr)
 		switch v := ast.Expr.(type) {
 		case *VariableRef:
 			lrv, _, _, err := ctx.LookupVar(block, gen, block.Bindings, v)
@@ -1759,19 +1763,30 @@ func (ast *Unary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return block, []ssa.Value{t}, nil
 
 		case *Index:
-			lrv, ptrType, offset, err := ast.addrIndex(block, ctx, gen, v)
+			var lrv *LRValue
+			var baseType, elType types.Info
+			var offset types.Size
+
+			block, lrv, baseType, elType, offset, err = indexOfs(v, block, ctx,
+				gen)
 			if err != nil {
 				return nil, nil, err
 			}
+			utils.Tracef(" - Index: offset=%v, base=%v, el=%v\n",
+				offset, baseType, elType)
+
 			t := gen.AnonVal(types.Info{
 				Type:        types.TPtr,
 				IsConcrete:  true,
-				Bits:        ptrType.Bits,
-				MinBits:     ptrType.Bits,
-				ElementType: ptrType,
+				Bits:        elType.Bits,
+				MinBits:     elType.Bits,
+				ElementType: &elType,
 			})
 			t.PtrInfo = lrv.BasePtrInfo()
 			t.PtrInfo.Offset += offset
+
+			utils.Tracef(" => %v\n", t)
+
 			return block, []ssa.Value{t}, nil
 
 		default:
@@ -2095,6 +2110,7 @@ func (ast *VariableRef) SSA(block *ssa.Block, ctx *Codegen,
 	}
 
 	value := lrv.RValue()
+	fmt.Printf(" => value=%v\n", value)
 	if value.Const {
 		gen.AddConstant(value)
 	}

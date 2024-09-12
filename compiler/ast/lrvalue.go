@@ -45,6 +45,12 @@ import (
 //   - structField is nil
 //   - valueType is the type of Name
 //   - value is the value of Name
+//
+// 4. Array element:
+//   - baseInfo points to the containing variable
+//   - baseValue is the value of the containing variable
+//   - valueType is the type of the array element
+//   - value is the value of the array element
 type LRValue struct {
 	ctx         *Codegen
 	ast         AST
@@ -176,10 +182,15 @@ func (lrv *LRValue) RValue() ssa.Value {
 		fieldType := lrv.valueType
 		fieldType.Offset = 0
 
+		fmt.Printf("*** RValue: fieldType=%v\n", fieldType)
+		fmt.Printf(" - valueType=%v: [%d-%d[\n", lrv.valueType,
+			lrv.valueType.Offset, lrv.valueType.Offset+lrv.valueType.Bits)
+		fmt.Printf(" - baseInfo.Offset=%v\n", lrv.baseInfo.Offset)
+
 		lrv.value = lrv.gen.AnonVal(fieldType)
 
-		from := int64(lrv.valueType.Offset)
-		to := int64(lrv.valueType.Offset + lrv.valueType.Bits)
+		from := int64(lrv.baseInfo.Offset + lrv.valueType.Offset)
+		to := from + int64(lrv.valueType.Bits)
 
 		if to > from {
 			fromConst := lrv.gen.Constant(from, types.Undefined)
@@ -262,13 +273,18 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 				lrv.baseValue = *v
 			}
 
+			// XXX must keep the base value intact
+			var structType types.Info
+
 			if lrv.baseValue.Type.Type == types.TPtr {
+				structType = *lrv.baseValue.Type.ElementType
 				lrv.baseInfo = lrv.baseValue.PtrInfo
 				lrv.baseValue, err = lrv.ptrBaseValue()
 				if err != nil {
-					return nil, false, false, err
+					return nil, false, false, nil
 				}
 			} else {
+				structType = lrv.baseValue.Type
 				lrv.baseInfo = &ssa.PtrInfo{
 					Name:          ref.Name.Package,
 					Bindings:      env,
@@ -277,11 +293,13 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 				}
 			}
 
-			if lrv.baseValue.Type.Type != types.TStruct {
+			// fmt.Printf(" => structType=%v\n", structType)
+
+			if structType.Type != types.TStruct {
 				return nil, false, false, fmt.Errorf("%s undefined", ref.Name)
 			}
 
-			for _, f := range lrv.baseValue.Type.Struct {
+			for _, f := range structType.Struct {
 				if f.Name == ref.Name.Name {
 					lrv.structField = &f
 					break
@@ -293,6 +311,12 @@ func (ctx *Codegen) LookupVar(block *ssa.Block, gen *ssa.Generator,
 					ref.Name, lrv.baseValue.Type, ref.Name.Name)
 			}
 			lrv.valueType = lrv.structField.Type
+			lrv.value.Type = types.Undefined
+			lrv.value.PtrInfo = nil
+
+			fmt.Printf(" => valueType=%v@%d, baseInfo.Offset=%d\n",
+				lrv.valueType,
+				lrv.valueType.Offset, lrv.baseInfo.Offset)
 
 			return lrv, true, false, nil
 		}

@@ -971,6 +971,7 @@ func selectPoint(t *PreComputedGroupElement, pos int32, b int32) {
 	t.Zero()
 	var x PreComputedGroupElement
 	for i := int32(0); i < 8; i++ {
+		// PreComputedGroupElementCMove(t, &base[pos][i], equal(bAbs, i+1))
 		x = base[pos][i]
 		PreComputedGroupElementCMove(t, &x, equal(bAbs, i+1))
 	}
