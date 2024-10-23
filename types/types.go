@@ -246,7 +246,7 @@ func (i *Info) Instantiate(o Info) bool {
 				return true
 
 			case TPtr:
-				if o.ElementType.Type != TArray {
+				if !o.ElementType.Type.Array() {
 					return false
 				}
 				// Instantiating array from pointer to array
@@ -272,7 +272,7 @@ func (i *Info) Instantiate(o Info) bool {
 				// Instantiating slice from an array. Continue below.
 
 			case TPtr:
-				if o.ElementType.Type != TArray {
+				if !o.ElementType.Type.Array() {
 					return false
 				}
 				// Instantiating slice from pointer to array
