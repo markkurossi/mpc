@@ -1,7 +1,7 @@
 //
 // label.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2024 Markku Rossi
 //
 // All rights reserved.
 //
@@ -18,6 +18,10 @@ import (
 type Wire struct {
 	L0 Label
 	L1 Label
+}
+
+func (w Wire) String() string {
+	return fmt.Sprintf("%s/%s", w.L0, w.L1)
 }
 
 // Label implements a 128 bit wire label.
