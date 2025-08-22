@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -436,7 +436,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		from, err = intVal(val)
 		if err != nil {
-			return ssa.Undefined, false, ctx.Errorf(ast.From, err.Error())
+			return ssa.Undefined, false, ctx.Error(ast.From, err.Error())
 		}
 	}
 	if ast.To != nil {
@@ -446,7 +446,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		}
 		to, err = intVal(val)
 		if err != nil {
-			return ssa.Undefined, false, ctx.Errorf(ast.To, err.Error())
+			return ssa.Undefined, false, ctx.Error(ast.To, err.Error())
 		}
 	}
 	if to < from {
@@ -525,7 +525,7 @@ func (ast *Index) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	index, err := intVal(val)
 	if err != nil {
-		return ssa.Undefined, false, ctx.Errorf(ast.Index, err.Error())
+		return ssa.Undefined, false, ctx.Error(ast.Index, err.Error())
 	}
 
 	switch expr.Type.Type {

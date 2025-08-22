@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -61,8 +61,7 @@ func benchmarkGate(b *testing.B, g *Gate) {
 	var data ot.LabelData
 	var table [4]ot.Label
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var buf [128]byte
 		var bufpos int
 
@@ -349,7 +348,7 @@ func encode7var5(b []byte, v uint32) {
 func BenchmarkTimeDuration(b *testing.B) {
 	var total time.Duration
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		start := time.Now()
 		total += time.Now().Sub(start)
 	}
