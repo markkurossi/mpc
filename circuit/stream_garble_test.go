@@ -51,7 +51,7 @@ func benchmarkGate(b *testing.B, g *Gate) {
 	if err != nil {
 		b.Fatalf("failed to init streaming: %s", err)
 	}
-	stream.wires = []ot.Wire{{}, {}, {}}
+	stream.wires[0] = []ot.Wire{{}, {}, {}}
 	stream.in = inputs
 	stream.out = outputs
 	stream.firstTmp = 2

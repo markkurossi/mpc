@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021, 2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -29,7 +29,7 @@ type Streaming struct {
 	key      []byte
 	alg      cipher.Block
 	r        ot.Label
-	wires    []ot.Wire
+	wires    [][]ot.Wire
 	tmp      []ot.Wire
 	in       []Wire
 	out      []Wire
@@ -67,10 +67,18 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 		if err != nil {
 			return nil, err
 		}
-		stream.wires[inputs[i]] = w
+		stream.setWire(inputs[i], w)
 	}
 
 	return stream, nil
+}
+
+func (stream *Streaming) wire(w Wire) ot.Wire {
+	return stream.wires[w>>16][w&0xffff]
+}
+
+func (stream *Streaming) setWire(w Wire, otw ot.Wire) {
+	stream.wires[w>>16][w&0xffff] = otw
 }
 
 func maxWire(max Wire, wires []Wire) Wire {
@@ -84,13 +92,8 @@ func maxWire(max Wire, wires []Wire) Wire {
 
 func (stream *Streaming) ensureWires(max Wire) {
 	// Verify that wires is big enough.
-	if len(stream.wires) <= int(max) {
-		var i int
-		for i = 65536; i <= int(max); i <<= 1 {
-		}
-		n := make([]ot.Wire, i)
-		copy(n, stream.wires)
-		stream.wires = n
+	for len(stream.wires)*0x10000 <= int(max) {
+		stream.wires = append(stream.wires, make([]ot.Wire, 0x10000))
 	}
 }
 
@@ -110,22 +113,26 @@ func (stream *Streaming) initCircuit(c *Circuit, in, out []Wire) {
 
 // GetInput gets the value of the input wire.
 func (stream *Streaming) GetInput(w Wire) ot.Wire {
-	return stream.wires[w]
+	return stream.wire(w)
 }
 
 // GetInputs gets the specified input wire range.
 func (stream *Streaming) GetInputs(offset, count int) []ot.Wire {
-	return stream.wires[offset : offset+count]
+	result := make([]ot.Wire, count)
+	for i := 0; i < count; i++ {
+		result[i] = stream.wire(Wire(offset + i))
+	}
+	return result
 }
 
 // Get gets the value of the wire.
 func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
 	if w < stream.firstTmp {
 		index := stream.in[w]
-		return stream.wires[index], index, false
+		return stream.wire(index), index, false
 	} else if w >= stream.firstOut {
 		index := stream.out[w-stream.firstOut]
-		return stream.wires[index], index, false
+		return stream.wire(index), index, false
 	} else {
 		return stream.tmp[w], w, true
 	}
@@ -135,10 +142,10 @@ func (stream *Streaming) Get(w Wire) (ot.Wire, Wire, bool) {
 func (stream *Streaming) Set(w Wire, val ot.Wire) (index Wire, tmp bool) {
 	if w < stream.firstTmp {
 		index = stream.in[w]
-		stream.wires[index] = val
+		stream.setWire(index, val)
 	} else if w >= stream.firstOut {
 		index = stream.out[w-stream.firstOut]
-		stream.wires[index] = val
+		stream.setWire(index, val)
 	} else {
 		index = w
 		tmp = true
@@ -369,10 +376,10 @@ func (stream *Streaming) garbleGate(g *Gate, idp *uint32,
 
 	if g.Output < stream.firstTmp {
 		cIndex = stream.in[g.Output]
-		stream.wires[cIndex] = c
+		stream.setWire(cIndex, c)
 	} else if g.Output >= stream.firstOut {
 		cIndex = stream.out[g.Output-stream.firstOut]
-		stream.wires[cIndex] = c
+		stream.setWire(cIndex, c)
 	} else {
 		cIndex = g.Output
 		cTmp = true
