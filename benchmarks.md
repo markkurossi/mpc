@@ -617,6 +617,34 @@ Max permanent wires: 53913890, cached circuits: 25
           4119990272  peak memory footprint
 ```
 
+Optimized stream garbler and evaluator permanent file allocation:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   2.168279103s │   3.32% │        │
+│ Init         │     1.155399ms │   0.00% │     8B │
+│ OT Init      │        8.667µs │   0.00% │   16kB │
+│ Peer Inputs  │    45.275464ms │   0.07% │   57kB │
+│ Stream       │ 1m3.048559635s │  96.61% │   15GB │
+│ ├╴InstrInit  │   1.605912018s │   2.55% │        │
+│ ├╴CircComp   │    13.741677ms │   0.02% │        │
+│ ├╴StreamInit │   108.190472ms │   0.17% │        │
+│ ╰╴Garble     │ 1m0.536558004s │  96.02% │        │
+│ Result       │      158.736µs │   0.00% │    8kB │
+│ Total        │ 1m5.263437004s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 235345 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 69663266, cached circuits: 23
+#gates=844183998 (XOR=542126152 XNOR=29103361 AND=272350024 OR=496562 INV=107899 xor=571229513 !xor=272954485 levels=10548 width=1796) #w=868191256
+       65.38 real        68.91 user         5.60 sys
+          1263144960  maximum resident set size
+          1534406656  peak memory footprint
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```

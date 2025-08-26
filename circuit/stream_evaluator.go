@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -29,7 +29,7 @@ const (
 type StreamEval struct {
 	key   []byte
 	alg   cipher.Block
-	wires []ot.Label
+	wires [][]ot.Label
 	tmp   []ot.Label
 }
 
@@ -39,50 +39,62 @@ func NewStreamEval(key []byte, numInputs, numOutputs int) (*StreamEval, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StreamEval{
-		key:   key,
-		alg:   alg,
-		wires: make([]ot.Label, numInputs+numOutputs),
-	}, nil
+	stream := &StreamEval{
+		key: key,
+		alg: alg,
+	}
+
+	stream.ensureWires(numInputs + numOutputs)
+
+	return stream, nil
+}
+
+func (stream *StreamEval) wire(w Wire) ot.Label {
+	return stream.wires[w>>16][w&0xffff]
+}
+
+func (stream *StreamEval) setWire(w Wire, label ot.Label) {
+	stream.wires[w>>16][w&0xffff] = label
 }
 
 // Get gets the value of the wire.
-func (stream *StreamEval) Get(tmp bool, w int) ot.Label {
+func (stream *StreamEval) Get(tmp bool, w Wire) ot.Label {
 	if tmp {
 		return stream.tmp[w]
 	}
-	return stream.wires[w]
+	return stream.wire(w)
 }
 
-// GetInputs gets the specified input wire range.
-func (stream *StreamEval) GetInputs(offset, count int) []ot.Label {
-	return stream.wires[offset : offset+count]
+// SetInputs sets the specified input wire range.
+func (stream *StreamEval) SetInputs(offset int, inputs []ot.Label) {
+	for i := 0; i < len(inputs); i++ {
+		stream.setWire(Wire(offset+i), inputs[i])
+	}
 }
 
 // Set sets the value of the wire.
-func (stream *StreamEval) Set(tmp bool, w int, label ot.Label) {
+func (stream *StreamEval) Set(tmp bool, w Wire, label ot.Label) {
 	if tmp {
 		stream.tmp[w] = label
 	} else {
-		stream.wires[w] = label
+		stream.setWire(w, label)
 	}
 }
 
 // InitCircuit initializes the stream evaluator with wires.
 func (stream *StreamEval) InitCircuit(numWires, numTmpWires int) {
-	if numWires > len(stream.wires) {
-		var size int
-		for size = 1024; size < numWires; size *= 2 {
-		}
-		n := make([]ot.Label, size)
-		copy(n, stream.wires)
-		stream.wires = n
-	}
+	stream.ensureWires(numWires)
 	if numTmpWires > len(stream.tmp) {
 		var size int
 		for size = 1024; size < numTmpWires; size *= 2 {
 		}
 		stream.tmp = make([]ot.Label, size)
+	}
+}
+
+func (stream *StreamEval) ensureWires(max int) {
+	for len(stream.wires)*0x10000 <= max {
+		stream.wires = append(stream.wires, make([]ot.Label, 0x10000))
 	}
 }
 
@@ -151,7 +163,7 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	// Receive peer inputs.
 	var label ot.Label
 	var labelData ot.LabelData
-	for w := 0; w < int(in1.Type.Bits); w++ {
+	for w := Wire(0); w < Wire(in1.Type.Bits); w++ {
 		err := conn.ReceiveLabel(&label, &labelData)
 		if err != nil {
 			return nil, nil, err
@@ -177,10 +189,12 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 			flags[i] = true
 		}
 	}
-	inputLabels := streaming.GetInputs(int(in1.Type.Bits), int(in2.Type.Bits))
+	inputLabels := make([]ot.Label, int(in2.Type.Bits))
 	if err := oti.Receive(flags, inputLabels); err != nil {
 		return nil, nil, err
 	}
+	streaming.SetInputs(int(in1.Type.Bits), inputLabels)
+
 	xfer := conn.Stats.Sum() - ioStats
 	ioStats = conn.Stats.Sum()
 	timing.Sample("Inputs", []string{FileSize(xfer).String()})
@@ -331,15 +345,15 @@ loop:
 							ws(aIndex, aTmp), ws(bIndex, bTmp),
 							Operation(gop), ws(cIndex, cTmp))
 					}
-					a = streaming.Get(aTmp, aIndex)
-					b = streaming.Get(bTmp, bIndex)
+					a = streaming.Get(aTmp, Wire(aIndex))
+					b = streaming.Get(bTmp, Wire(bIndex))
 
 				case INV:
 					if StreamDebug {
 						fmt.Printf("Gate%d:\t %s %s %s\n", i,
 							ws(aIndex, aTmp), Operation(gop), ws(bIndex, bTmp))
 					}
-					a = streaming.Get(aTmp, aIndex)
+					a = streaming.Get(aTmp, Wire(aIndex))
 				}
 
 				var output ot.Label
@@ -408,7 +422,7 @@ loop:
 					output = decrypt(alg, a, b, id, c, &labelData)
 					id++
 				}
-				streaming.Set(cTmp, cIndex, output)
+				streaming.Set(cTmp, Wire(cIndex), output)
 			}
 
 		case OpReturn:
@@ -422,7 +436,7 @@ loop:
 				if err != nil {
 					return nil, nil, err
 				}
-				label := streaming.Get(false, id)
+				label := streaming.Get(false, Wire(id))
 				labels = append(labels, label)
 			}
 
