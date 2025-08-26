@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -139,7 +139,8 @@ func main() {
 
 	if *stream {
 		if *evaluator {
-			err = streamEvaluatorMode(oti, inputFlag, len(*cpuprofile) > 0)
+			err = streamEvaluatorMode(oti, inputFlag,
+				len(*cpuprofile) > 0 || len(*memprofile) > 0)
 		} else {
 			err = streamGarblerMode(params, oti, inputFlag, flag.Args())
 		}
