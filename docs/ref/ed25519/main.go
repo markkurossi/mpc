@@ -3,11 +3,13 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha512"
 	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/markkurossi/mpc/docs/ref/ed25519/edwards25519"
 )
@@ -28,6 +30,13 @@ func main() {
 	case "sign":
 		err = sign()
 
+	case "verify":
+		if len(flag.Args()) != 4 {
+			usage()
+			os.Exit(1)
+		}
+		err = verify(flag.Args()[1], flag.Args()[2], flag.Args()[3])
+
 	default:
 		usage()
 		os.Exit(1)
@@ -39,7 +48,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Printf("usage: ed25519 {keygen,sign,verify PUB MSG}\n")
+	fmt.Printf("usage: ed25519 {keygen,sign,verify PUB MSG SIG}\n")
 }
 
 const (
@@ -160,6 +169,26 @@ func sign() error {
 	return nil
 }
 
+func verify(pubStr, msgStr, sigStr string) error {
+	pub, err := hex.DecodeString(pubStr)
+	if err != nil {
+		return err
+	}
+	msg, err := hex.DecodeString(msgStr)
+	if err != nil {
+		return err
+	}
+	sig, err := hex.DecodeString(sigStr)
+	if err != nil {
+		return err
+	}
+	if !Verify(pub, msg, sig) {
+		return fmt.Errorf("signature verification failed")
+	}
+	fmt.Printf("signature verification success\n")
+	return nil
+}
+
 // NewKeyFromSeed calculates a private key and a public key from a
 // seed. RFC 8032's private keys correspond to seeds in this package.
 func NewKeyFromSeed(seed [SeedSize]byte) (PublicKey, PrivateKey) {
@@ -235,4 +264,51 @@ func Sign(privateKey PrivateKey, message []byte) []byte {
 	copy(signature[32:], s[:])
 
 	return signature[:]
+}
+
+// Verify reports whether sig is a valid signature of message by publicKey. It
+// will panic if len(publicKey) is not PublicKeySize.
+func Verify(publicKey, message, sig []byte) bool {
+	if l := len(publicKey); l != PublicKeySize {
+		panic("ed25519: bad public key length: " + strconv.Itoa(l))
+	}
+
+	if len(sig) != SignatureSize || sig[63]&224 != 0 {
+		return false
+	}
+
+	var A edwards25519.ExtendedGroupElement
+	var publicKeyBytes [32]byte
+	copy(publicKeyBytes[:], publicKey)
+	if !A.FromBytes(&publicKeyBytes) {
+		return false
+	}
+	edwards25519.FeNeg(&A.X, &A.X)
+	edwards25519.FeNeg(&A.T, &A.T)
+
+	h := sha512.New()
+	h.Write(sig[:32])
+	h.Write(publicKey[:])
+	h.Write(message)
+	var digest [64]byte
+	h.Sum(digest[:0])
+
+	var hReduced [32]byte
+	edwards25519.ScReduce(&hReduced, &digest)
+
+	var R edwards25519.ProjectiveGroupElement
+	var s [32]byte
+	copy(s[:], sig[32:])
+
+	// https://tools.ietf.org/html/rfc8032#section-5.1.7 requires that s be in
+	// the range [0, order) in order to prevent signature malleability.
+	if !edwards25519.ScMinimal(&s) {
+		return false
+	}
+
+	edwards25519.GeDoubleScalarMultVartime(&R, &hReduced, &A, &s)
+
+	var checkR [32]byte
+	R.ToBytes(&checkR)
+	return bytes.Equal(sig[:32], checkR[:])
 }
