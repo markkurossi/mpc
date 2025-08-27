@@ -1,9 +1,10 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2024 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // Ed25519 signature computation in MPCL. This file is derived from
-// Go's crypto/ed25519 package. The original copyright notice follows:
+// the crypto/ed25519 package of Go 1.16.9. The original copyright
+// notice follows:
 //
 // Copyright 2016 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
