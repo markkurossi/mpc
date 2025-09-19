@@ -1,7 +1,7 @@
 //
 // ast.go
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -40,6 +40,7 @@ var (
 	_ AST = &CompositeLit{}
 	_ AST = &Make{}
 	_ AST = &Copy{}
+	_ AST = &Intern{}
 )
 
 func indent(w io.Writer, indent int) {
@@ -915,4 +916,10 @@ type Copy struct {
 
 func (ast *Copy) String() string {
 	return fmt.Sprintf("copy(%v, %v)", ast.Dst, ast.Src)
+}
+
+// Intern implements the builtin function intern.
+type Intern struct {
+	utils.Point
+	Expr AST
 }

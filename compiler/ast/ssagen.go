@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -2299,4 +2299,30 @@ func (ast *Copy) errf(ctx *Codegen, offending AST, format string,
 	msg := fmt.Sprintf(format, a...)
 	return ctx.Errorf(offending,
 		"invalid argument: copy expects slice arguments: %s", msg)
+}
+
+// SSA implements the compiler.ast.AST.SSA for the builtin function intern.
+func (ast *Intern) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
+	*ssa.Block, []ssa.Value, error) {
+
+	v, err := ast.intern(ctx, gen)
+	if err != nil {
+		return nil, nil, err
+	}
+	return block, []ssa.Value{v}, nil
+}
+
+func (ast *Intern) intern(ctx *Codegen, gen *ssa.Generator) (ssa.Value, error) {
+	name := ast.Expr.String()
+	id, ok := ctx.Params.SymbolIDs[name]
+
+	if !ok {
+		id = len(ctx.Params.SymbolIDs)
+		ctx.Params.SymbolIDs[name] = id
+	}
+
+	val := gen.Constant(int64(id), types.Undefined)
+	gen.AddConstant(val)
+
+	return val, nil
 }

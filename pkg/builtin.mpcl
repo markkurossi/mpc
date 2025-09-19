@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -92,3 +92,9 @@ func size(v Type) int32 {}
 //	    ...
 //	}
 func panic(args any) {}
+
+// The intern built-in function interns the textual representation of
+// v and returns an unique integer identifier for that value. Any
+// subsequent intern call with the same textual value v will return
+// the same integer identifier.
+func intern(v any) int {}

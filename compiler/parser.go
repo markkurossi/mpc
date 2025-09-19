@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -1441,6 +1441,16 @@ primary:
 					Point: primary.Location(),
 					Dst:   arguments[0],
 					Src:   arguments[1],
+				}
+			} else if vr.String() == "intern" {
+				if len(arguments) != 1 {
+					return nil, p.errf(primary.Location(),
+						"invalid arguments for intern (expected 1, found %v)",
+						len(arguments))
+				}
+				primary = &ast.Intern{
+					Point: primary.Location(),
+					Expr:  arguments[0],
 				}
 			} else {
 				primary = &ast.Call{

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -39,6 +39,8 @@ type Params struct {
 	OptPruneGates bool
 
 	BenchmarkCompile bool
+
+	SymbolIDs map[string]int
 }
 
 // NewParams returns new compiler params object, initialized with the
@@ -47,6 +49,7 @@ func NewParams() *Params {
 	return &Params{
 		MaxVarBits:    0x20000,
 		MaxLoopUnroll: 0x20000,
+		SymbolIDs:     make(map[string]int),
 	}
 }
 

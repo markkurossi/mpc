@@ -682,3 +682,14 @@ func (ast *Copy) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	ssa.Value, bool, error) {
 	return ssa.Undefined, false, nil
 }
+
+// Eval implements the compiler.ast.AST.Eval for the builtin function intern.
+func (ast *Intern) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
+	ssa.Value, bool, error) {
+
+	v, err := ast.intern(ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, err
+	}
+	return v, true, nil
+}
