@@ -22,9 +22,6 @@ type Params struct {
 	// packages.
 	PkgPath []string
 
-	// MaxVarBits specifies the maximum variable width in bits.
-	MaxVarBits int
-
 	// MaxLoopUnroll specifies the upper limit for loop unrolling.
 	MaxLoopUnroll int
 
@@ -47,7 +44,6 @@ type Params struct {
 // default values.
 func NewParams() *Params {
 	return &Params{
-		MaxVarBits:    0x20000,
 		MaxLoopUnroll: 0x20000,
 		SymbolIDs:     make(map[string]int),
 	}
