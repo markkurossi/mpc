@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,10 +9,12 @@ package ssa
 import (
 	"fmt"
 	"math"
+	"os"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
 	"github.com/markkurossi/mpc/types"
+	"github.com/markkurossi/tabulate"
 )
 
 // WireAllocator implements wire allocation using Value.HashCode to
@@ -359,8 +361,18 @@ func (walloc *WireAllocator) Debug() {
 
 	if false {
 		fmt.Printf("Max bucket:\n")
+
+		tab := tabulate.New(tabulate.CompactUnicodeLight)
+		tab.Header("Key")
+		tab.Header("Wires")
+		tab.Header("IDs")
+
 		for alloc := walloc.hash[maxIndex]; alloc != nil; alloc = alloc.next {
-			fmt.Printf(" %v: %v\n", alloc.key.String(), len(alloc.wires))
+			row := tab.Row()
+			row.Column(alloc.key.String())
+			row.Column(fmt.Sprintf("%d", len(alloc.wires)))
+			row.Column(fmt.Sprintf("%d", len(alloc.ids)))
 		}
+		tab.Print(os.Stdout)
 	}
 }

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -641,6 +641,8 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 			}
 		}
 		tab.Print(os.Stdout)
+
+		prog.walloc.Debug()
 	}
 
 	return prog.Outputs, prog.Outputs.Split(result), nil
