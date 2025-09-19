@@ -37,6 +37,10 @@ type Params struct {
 
 	BenchmarkCompile bool
 
+	// SymbolIDs contain the mappings from the interned symbols to
+	// their values. You must persist these in the application code if
+	// you want to maintain the mappings across different compiler
+	// invocations.
 	SymbolIDs map[string]int
 }
 
