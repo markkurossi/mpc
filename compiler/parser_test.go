@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,10 +13,6 @@ import (
 	"testing"
 
 	"github.com/markkurossi/mpc/compiler/utils"
-)
-
-const (
-	verbose = false
 )
 
 var parserTests = []string{

@@ -222,7 +222,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 		if params.Verbose && circuit.StreamDebug {
 			fmt.Printf("%05d: %s\n", idx, instr.String())
 		}
-		dInstrInit += time.Now().Sub(dStart)
+		dInstrInit += time.Since(dStart)
 
 		switch instr.Op {
 
@@ -503,7 +503,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
 				circ.AssignLevels()
-				dCircCompile += time.Now().Sub(startTime)
+				dCircCompile += time.Since(startTime)
 			}
 			if false {
 				circ.Dump()
@@ -517,13 +517,9 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 			iIDs = iIDs[:0]
 			oIDs = oIDs[:0]
 			for _, vars := range wires {
-				for _, w := range vars {
-					iIDs = append(iIDs, w)
-				}
+				iIDs = append(iIDs, vars...)
 			}
-			for _, w := range out {
-				oIDs = append(oIDs, w)
-			}
+			oIDs = append(oIDs, out...)
 
 			err = prog.garble(conn, streaming, idx, circ, iIDs, oIDs)
 			if err != nil {

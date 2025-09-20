@@ -204,11 +204,11 @@ func (p *Parser) sameLine(current utils.Point) bool {
 }
 
 func (p *Parser) parsePackage() (string, ast.Annotations, error) {
-	t, err := p.needToken(TSymPackage)
+	_, err := p.needToken(TSymPackage)
 	if err != nil {
 		return "", nil, err
 	}
-	t, err = p.needToken(TIdentifier)
+	t, err := p.needToken(TIdentifier)
 	if err != nil {
 		return "", nil, err
 	}
@@ -1629,6 +1629,9 @@ func (p *Parser) toRuneArray(expr ast.AST) ([]rune, error) {
 
 func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
 	n, err := p.lexer.Get()
+	if err != nil {
+		return nil, err
+	}
 	p.lexer.Unget(n)
 
 	value, err := p.parseCompositeLitValue(typeInfo)

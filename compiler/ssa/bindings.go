@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -39,7 +39,7 @@ func (bindings *Bindings) Count() int {
 }
 
 // Clone makes a copy of the bindings.
-func (bindings Bindings) Clone() *Bindings {
+func (bindings *Bindings) Clone() *Bindings {
 	result := &Bindings{
 		shared: true,
 		Values: bindings.Values,

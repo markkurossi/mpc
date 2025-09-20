@@ -205,35 +205,6 @@ func BenchmarkEncodeWire7var(b *testing.B) {
 	}
 }
 
-func encode7var(b []byte, v uint32) int {
-	if v <= 0b01111111 {
-		b[0] = byte(v)
-		return 1
-	} else if v <= 0b01111111_1111111 {
-		b[0] = byte(v >> 7)
-		b[1] = byte(v)
-		return 2
-	} else if v <= 0b01111111_1111111_1111111 {
-		b[0] = byte(v >> 14)
-		b[1] = byte(v >> 7)
-		b[2] = byte(v)
-		return 3
-	} else if v <= 0b01111111_1111111_1111111_1111111 {
-		b[0] = byte(v >> 21)
-		b[1] = byte(v >> 14)
-		b[2] = byte(v >> 7)
-		b[3] = byte(v)
-		return 4
-	} else {
-		b[0] = byte(v >> 28)
-		b[1] = byte(v >> 21)
-		b[2] = byte(v >> 14)
-		b[3] = byte(v >> 7)
-		b[4] = byte(v)
-		return 5
-	}
-}
-
 func encode7varRev(b []byte, v uint32) int {
 	if v > 0b01111111_1111111_1111111_1111111 {
 		b[0] = byte(v >> 28)

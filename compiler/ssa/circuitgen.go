@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -191,9 +191,7 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 
 		case Concat:
 			o := make([]*circuits.Wire, instr.Out.Type.Bits)
-			for i := 0; i < len(wires[0]); i++ {
-				o[i] = wires[0][i]
-			}
+			copy(o, wires[0])
 			for i := 0; i < len(wires[1]); i++ {
 				o[len(wires[0])+i] = wires[1][i]
 			}

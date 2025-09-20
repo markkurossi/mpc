@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -128,13 +128,13 @@ func (nw *Network) acceptLoop() {
 
 func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 	nw.m.Lock()
-	peer, ok := nw.Peers[id]
+	_, ok := nw.Peers[id]
 	if ok {
 		nw.m.Unlock()
 		log.Printf("NW %d: peer %d already connected\n", nw.ID, id)
 		return conn.Close()
 	}
-	peer = &Peer{
+	peer := &Peer{
 		id:     id,
 		conn:   conn,
 		client: client,

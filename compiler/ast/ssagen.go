@@ -1805,6 +1805,10 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 
 	case *Index:
 		lrv, ptrType, offset, err = ast.addrIndex(block, ctx, gen, indexed)
+		if err != nil {
+			err = ctx.Error(indexed, err.Error())
+			return
+		}
 
 	default:
 		return nil, nil, 0,
@@ -1812,7 +1816,7 @@ func (ast *Unary) addrIndex(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 	}
 
 	var indices []ssa.Value
-	block, indices, err = index.Index.SSA(block, ctx, gen)
+	_, indices, err = index.Index.SSA(block, ctx, gen)
 	if err != nil {
 		return
 	}
