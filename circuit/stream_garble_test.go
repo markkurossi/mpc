@@ -350,6 +350,6 @@ func BenchmarkTimeDuration(b *testing.B) {
 
 	for b.Loop() {
 		start := time.Now()
-		total += time.Now().Sub(start)
+		total += time.Since(start)
 	}
 }

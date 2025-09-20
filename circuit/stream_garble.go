@@ -186,7 +186,7 @@ func (stream *Streaming) Garble(c *Circuit, in, out []Wire) (
 			return 0, 0, err
 		}
 	}
-	return mid.Sub(start), time.Now().Sub(mid), nil
+	return mid.Sub(start), time.Since(mid), nil
 }
 
 // GarbleGate garbles the gate and streams it to the stream.

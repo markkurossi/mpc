@@ -1,7 +1,7 @@
 //
 // pipe_test.go
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -63,7 +63,7 @@ func TestPipe(t *testing.T) {
 					pipe.Close()
 					return
 				}
-				if bytes.Compare(data, v) != 0 {
+				if !bytes.Equal(data, v) {
 					done <- fmt.Errorf("ReceiveData: mismatch: %x != %x",
 						data, v)
 					pipe.Close()

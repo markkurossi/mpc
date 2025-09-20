@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -66,7 +66,7 @@ func (t *Timing) Print(stats p2p.IOStats) {
 		row.Column(sample.Label)
 
 		duration := sample.End.Sub(sample.Start)
-		row.Column(fmt.Sprintf("%s", duration.String()))
+		row.Column(duration.String())
 		row.Column(fmt.Sprintf("%.2f%%",
 			float64(duration)/float64(total)*100))
 

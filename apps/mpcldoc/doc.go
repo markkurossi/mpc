@@ -1,7 +1,7 @@
 //
 // doc.go
 //
-// Copyright (c) 2021-2024 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -27,8 +26,6 @@ import (
 var (
 	_ Documenter = &HTMLDoc{}
 	_ Output     = &HTMLOutput{}
-
-	reSized = regexp.MustCompilePOSIX(`^([[:^digit:]]+)([[:digit:]]*)$`)
 
 	emptySection = "This section is empty."
 )
@@ -194,7 +191,7 @@ func parseFile(name string) error {
 	var p *Package
 	var ok bool
 	if pkg.Name == "main" {
-		p, ok = mains[pkg.Source]
+		_, ok = mains[pkg.Source]
 		if ok {
 			return fmt.Errorf("file '%v' already processed", name)
 		}

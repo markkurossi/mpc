@@ -1,7 +1,7 @@
 //
 // evaluator.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,10 +14,6 @@ import (
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
-)
-
-var (
-	debug = false
 )
 
 // Evaluator runs the evaluator on the P2P network.

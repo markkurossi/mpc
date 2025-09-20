@@ -10,7 +10,6 @@ package ast
 
 import (
 	"fmt"
-	"io"
 	"strings"
 	"unicode"
 
@@ -42,12 +41,6 @@ var (
 	_ AST = &Copy{}
 	_ AST = &Intern{}
 )
-
-func indent(w io.Writer, indent int) {
-	for i := 0; i < indent; i++ {
-		fmt.Fprint(w, " ")
-	}
-}
 
 // Type specifies AST types.
 type Type int
@@ -542,7 +535,7 @@ func (ast *Func) String() string {
 				if idx > 0 {
 					str += ", "
 				}
-				str += fmt.Sprintf("%s", ret.Type)
+				str += ret.Type.String()
 			}
 			str += ")"
 		} else {
@@ -851,7 +844,7 @@ func ConstantName(value interface{}) string {
 	case int, uint, int32, uint32, int64, uint64:
 		return fmt.Sprintf("%d", val)
 	case *mpa.Int:
-		return fmt.Sprintf("%s", val)
+		return val.String()
 	case bool:
 		return fmt.Sprintf("%v", val)
 	case string:

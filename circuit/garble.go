@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,10 +14,6 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/ot"
-)
-
-var (
-	verbose = false
 )
 
 func idxUnary(l0 ot.Label) int {

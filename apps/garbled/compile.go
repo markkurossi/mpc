@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -73,7 +73,7 @@ func compileFiles(files []string, params *utils.Params, inputSizes [][]int,
 					}
 				}
 			}
-			circ, _, err = compiler.New(params).CompileFile(file, inputSizes)
+			_, _, err = compiler.New(params).CompileFile(file, inputSizes)
 			if err != nil {
 				return err
 			}

@@ -243,7 +243,7 @@ loop:
 				now := time.Now()
 				if now.Sub(lastReport) > time.Second*5 {
 					lastReport = now
-					elapsed := time.Now().Sub(start)
+					elapsed := time.Since(start)
 					done := float64(step) / float64(numSteps)
 					if done > 0 {
 						total := time.Duration(float64(elapsed) / done)
