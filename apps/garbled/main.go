@@ -73,6 +73,7 @@ func main() {
 		"print MPCLC error locations")
 	benchmarkCompile := flag.Bool("benchmark-compile", false,
 		"benchmark MPCL compilation")
+	sids := flag.String("sids", "", "store symbol IDs `file`")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -106,6 +107,13 @@ func main() {
 		params.NoCircCompile = true
 	}
 
+	if len(*sids) > 0 {
+		err := params.LoadSymbolIDs(*sids)
+		if err != nil {
+			log.Fatalf("failed to load symbol IDs: %v", err)
+		}
+	}
+
 	if *compile || *ssa {
 		inputSizes := make([][]int, 2)
 		iSizes, err := circuit.InputSizes(inputFlag)
@@ -130,6 +138,13 @@ func main() {
 			log.Fatalf("compile failed: %s", err)
 		}
 		memProfile(*memprofile)
+
+		if len(*sids) > 0 {
+			err = params.SaveSymbolIDs("main", *sids)
+			if err != nil {
+				log.Fatalf("failed to save symbol IDs: %v", err)
+			}
+		}
 		return
 	}
 
