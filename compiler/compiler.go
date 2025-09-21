@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -308,7 +308,11 @@ func (c *Compiler) tryParsePkg(pkg *ast.Package, prefix, name string) (
 		fp := path.Join(dir, mpcl)
 
 		if c.params.Verbose {
-			fmt.Printf(" - parsing @%v\n", fp[len(c.pkgPath):])
+			dirSym := '@'
+			if prefix != c.pkgPath {
+				dirSym = '+'
+			}
+			fmt.Printf(" - parsing %c%v\n", dirSym, fp[len(prefix):])
 		}
 
 		f, err := os.Open(fp)

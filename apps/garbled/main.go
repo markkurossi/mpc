@@ -46,11 +46,26 @@ func (i *input) Set(value string) error {
 	return nil
 }
 
+type pkgPath []string
+
+func (pkg *pkgPath) String() string {
+	return fmt.Sprint(*pkg)
+}
+
+func (pkg *pkgPath) Set(value string) error {
+	for _, v := range strings.Split(value, ":") {
+		*pkg = append(*pkg, v)
+	}
+	return nil
+}
+
 var inputFlag, peerFlag input
+var pkgPathFlag pkgPath
 
 func init() {
 	flag.Var(&inputFlag, "i", "comma-separated list of circuit inputs")
 	flag.Var(&peerFlag, "pi", "comma-separated list of peer's circuit inputs")
+	flag.Var(&pkgPathFlag, "pkgpath", "colon-separated list of pkg directories")
 }
 
 func main() {
@@ -98,6 +113,7 @@ func main() {
 	params.Verbose = *fVerbose
 	params.Diagnostics = *fDiagnostics
 	params.MPCLCErrorLoc = *mpclcErrLoc
+	params.PkgPath = pkgPathFlag
 	params.BenchmarkCompile = *benchmarkCompile
 
 	if *optimize > 0 {
