@@ -285,6 +285,11 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 		rv := values[idx]
 		switch lv := lvalue.(type) {
 		case *VariableRef:
+			if lv.Name.Name == "_" {
+				// Assigning to _, ignore the value
+				continue
+			}
+
 			lrv, _, df, err := ctx.LookupVar(block, gen, block.Bindings, lv)
 			if err != nil {
 				if !ast.Define || !df {
