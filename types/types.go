@@ -1,7 +1,7 @@
 //
 // types.go
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -318,6 +318,10 @@ func (i *Info) Instantiate(o Info) bool {
 		if i.ElementType.Type != o.ElementType.Type {
 			return false
 		}
+
+		// Instantiation makes it a concreate array.
+		i.Type = TArray
+
 		i.IsConcrete = true
 		i.Bits = o.Bits
 		i.ArraySize = o.ArraySize
