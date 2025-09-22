@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -119,27 +119,33 @@ func (pkg *Package) Compile(ctx *Codegen) (*ssa.Program, Annotations, error) {
 		if idx >= len(returnVars) {
 			return nil, nil, fmt.Errorf("too few values for %s", main)
 		}
+		v := returnVars[idx]
+
 		typeInfo, err := rt.Type.Resolve(NewEnv(ctx.Start()), ctx, gen)
 		if err != nil {
 			return nil, nil, ctx.Errorf(rt, "invalid return type: %s", err)
 		}
 		// Instantiate result values for template functions.
-		if !typeInfo.Concrete() && !typeInfo.Instantiate(returnVars[idx].Type) {
+		if !typeInfo.Concrete() && !typeInfo.Instantiate(v.Type) {
 			return nil, nil, ctx.Errorf(main,
-				"invalid value %v for return value %d of %s",
-				returnVars[idx].Type, idx, main)
+				"invalid value %v for return value %d of %s", v.Type, idx, main)
+		}
+		if v.Type.Type == types.TSlice {
+			// Convert slices into arrays as return values. The return
+			// values set the signature of the compiled circuits and
+			// we must report the actual array dimensions.
+			v.Type.Type = types.TArray
 		}
 		// The native() returns undefined values.
-		if returnVars[idx].Type.Undefined() {
-			returnVars[idx].Type.Type = typeInfo.Type
+		if v.Type.Undefined() {
+			v.Type.Type = typeInfo.Type
 		}
-		if !ssa.CanAssign(typeInfo, returnVars[idx]) {
+		if !ssa.CanAssign(typeInfo, v) {
 			return nil, nil,
 				ctx.Errorf(main, "invalid value %v for return value %d of %s",
-					returnVars[idx].Type, idx, main)
+					v.Type, idx, main)
 		}
 
-		v := returnVars[idx]
 		outputs = append(outputs, circuit.IOArg{
 			Name: v.String(),
 			Type: v.Type,

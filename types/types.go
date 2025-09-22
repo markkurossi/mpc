@@ -319,9 +319,6 @@ func (i *Info) Instantiate(o Info) bool {
 			return false
 		}
 
-		// Instantiation makes it a concreate array.
-		i.Type = TArray
-
 		i.IsConcrete = true
 		i.Bits = o.Bits
 		i.ArraySize = o.ArraySize
