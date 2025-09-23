@@ -481,6 +481,9 @@ func (i Info) CanAssignConst(o Info) bool {
 		return (o.Type == TInt || o.Type == TUint) && i.Bits >= o.MinBits
 
 	case TSlice:
+		if o.Type == TNil {
+			return true
+		}
 		return o.Type.Array() && i.ElementType.Equal(*o.ElementType)
 
 	case TArray:
