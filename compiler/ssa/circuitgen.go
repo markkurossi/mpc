@@ -296,42 +296,82 @@ func (prog *Program) Circuit(cc *circuits.Compiler) error {
 				return err
 			}
 
-		case Ilt, Ult:
+		case Ilt:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewLtComparator(cc, wires[0], wires[1], o)
+			err = circuits.NewIntLtComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
 
-		case Ile, Ule:
+		case Ult:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewLeComparator(cc, wires[0], wires[1], o)
+			err = circuits.NewUintLtComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
 
-		case Igt, Ugt:
+		case Ile:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewGtComparator(cc, wires[0], wires[1], o)
+			err = circuits.NewIntLeComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}
 
-		case Ige, Uge:
+		case Ule:
 			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
 			if err != nil {
 				return err
 			}
-			err = circuits.NewGeComparator(cc, wires[0], wires[1], o)
+			err = circuits.NewUintLeComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Igt:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewIntGtComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Ugt:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewUintGtComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Ige:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewIntGeComparator(cc, wires[0], wires[1], o)
+			if err != nil {
+				return err
+			}
+
+		case Uge:
+			o, err := prog.walloc.Wires(*instr.Out, instr.Out.Type.Bits)
+			if err != nil {
+				return err
+			}
+			err = circuits.NewUintGeComparator(cc, wires[0], wires[1], o)
 			if err != nil {
 				return err
 			}

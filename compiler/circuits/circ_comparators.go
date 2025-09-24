@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,11 +13,51 @@ import (
 	"github.com/markkurossi/mpc/types"
 )
 
-// comparator tests if x>y if cin=0, and x>=y if cin=1.
-func comparator(cc *Compiler, cin *Wire, x, y, r []*Wire) error {
+// intComparator tests if x>y if cin=0, and x>=y if cin=1.
+func intComparator(cc *Compiler, cin *Wire, x, y, r []*Wire) error {
+	x, y = cc.ZeroPad(x, y)
+	if len(x) == 0 {
+		return fmt.Errorf("invalid int comparator arguments: len(x)=%d", len(x))
+	}
+	if len(r) != 1 {
+		return fmt.Errorf("invalid int comparator arguments: len(r)=%d", len(r))
+	}
+
+	// Comparision when x and y have the same sign.
+
+	var cout *Wire
+	for i := 0; i < len(x); i++ {
+		w1 := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR, cin, y[i], w1))
+		w2 := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, cin, x[i], w2))
+		w3 := cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, w1, w2, w3))
+
+		cout = cc.Calloc.Wire()
+
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, cin, w3, cout))
+		cin = cout
+	}
+
+	// If x and y have different sign, x is bigger if y is negative.
+
+	signBit := len(y) - 1
+	negBit := y[signBit]
+
+	// Test if x and y have different sign i.e. x[signBig]^y[signBig]=1
+	cond := cc.Calloc.Wire()
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[signBit], y[signBit], cond))
+
+	// Result is negBit/cout based on cond=1/0
+	return NewMUX(cc, []*Wire{cond}, []*Wire{negBit}, []*Wire{cout}, r)
+}
+
+// uintComparator tests if x>y if cin=0, and x>=y if cin=1.
+func uintComparator(cc *Compiler, cin *Wire, x, y, r []*Wire) error {
 	x, y = cc.ZeroPad(x, y)
 	if len(r) != 1 {
-		return fmt.Errorf("invalid lt comparator arguments: r=%d", len(r))
+		return fmt.Errorf("invalid uint comparator arguments: r=%d", len(r))
 	}
 
 	for i := 0; i < len(x); i++ {
@@ -40,24 +80,44 @@ func comparator(cc *Compiler, cin *Wire, x, y, r []*Wire) error {
 	return nil
 }
 
-// NewGtComparator tests if x>y.
-func NewGtComparator(cc *Compiler, x, y, r []*Wire) error {
-	return comparator(cc, cc.ZeroWire(), x, y, r)
+// NewIntGtComparator tests if x>y.
+func NewIntGtComparator(cc *Compiler, x, y, r []*Wire) error {
+	return intComparator(cc, cc.ZeroWire(), x, y, r)
 }
 
-// NewGeComparator tests if x>=y.
-func NewGeComparator(cc *Compiler, x, y, r []*Wire) error {
-	return comparator(cc, cc.OneWire(), x, y, r)
+// NewUintGtComparator tests if x>y.
+func NewUintGtComparator(cc *Compiler, x, y, r []*Wire) error {
+	return uintComparator(cc, cc.ZeroWire(), x, y, r)
 }
 
-// NewLtComparator tests if x<y.
-func NewLtComparator(cc *Compiler, x, y, r []*Wire) error {
-	return comparator(cc, cc.ZeroWire(), y, x, r)
+// NewIntGeComparator tests if x>=y.
+func NewIntGeComparator(cc *Compiler, x, y, r []*Wire) error {
+	return intComparator(cc, cc.OneWire(), x, y, r)
 }
 
-// NewLeComparator tests if x<=y.
-func NewLeComparator(cc *Compiler, x, y, r []*Wire) error {
-	return comparator(cc, cc.OneWire(), y, x, r)
+// NewUintGeComparator tests if x>=y.
+func NewUintGeComparator(cc *Compiler, x, y, r []*Wire) error {
+	return uintComparator(cc, cc.OneWire(), x, y, r)
+}
+
+// NewIntLtComparator tests if x<y.
+func NewIntLtComparator(cc *Compiler, x, y, r []*Wire) error {
+	return intComparator(cc, cc.ZeroWire(), y, x, r)
+}
+
+// NewUintLtComparator tests if x<y.
+func NewUintLtComparator(cc *Compiler, x, y, r []*Wire) error {
+	return uintComparator(cc, cc.ZeroWire(), y, x, r)
+}
+
+// NewIntLeComparator tests if x<=y.
+func NewIntLeComparator(cc *Compiler, x, y, r []*Wire) error {
+	return intComparator(cc, cc.OneWire(), y, x, r)
+}
+
+// NewUintLeComparator tests if x<=y.
+func NewUintLeComparator(cc *Compiler, x, y, r []*Wire) error {
+	return uintComparator(cc, cc.OneWire(), y, x, r)
 }
 
 // NewNeqComparator tewsts if x!=y.
