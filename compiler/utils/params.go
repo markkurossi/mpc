@@ -110,11 +110,11 @@ func (p *Params) LoadSymbolIDs(file string) error {
 		if inConstBlock {
 			m := reConst.FindStringSubmatch(line)
 			if m != nil {
-				val, err := strconv.ParseInt(m[2], 0, 64)
+				val, err := strconv.Atoi(m[2])
 				if err != nil {
 					return err
 				}
-				p.SymbolIDs[m[1]] = int(val)
+				p.SymbolIDs[m[1]] = val
 			} else {
 				m = reConstEnd.FindStringSubmatch(line)
 				if m != nil {
