@@ -118,9 +118,9 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 		}
 		row := tab.Row()
-		row.Column("\u2514\u2574Returns").SetFormat(tabulate.FmtBold)
+		row.Column("\u2514\u2574Returns")
 		for _, bits := range maxBits {
-			row.Column(fmt.Sprintf("%v", bits)).SetFormat(tabulate.FmtBold)
+			row.Column(fmt.Sprintf("%v", bits))
 		}
 		tab.Print(os.Stdout)
 	}
