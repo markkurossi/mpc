@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -74,6 +74,14 @@ func (io IOArg) String() string {
 		return io.Name + ":" + io.Type.String()
 	}
 	return io.Type.String()
+}
+
+// Len returns the number of values the IOArg takes.
+func (io IOArg) Len() int {
+	if len(io.Compound) == 0 {
+		return 1
+	}
+	return len(io.Compound)
 }
 
 // Parse parses the I/O argument from the input string values.
