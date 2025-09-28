@@ -84,8 +84,8 @@ var packages = make(map[string]*Package)
 var typeDefs = make(map[string]*Package)
 var mains = make(map[string]*Package)
 
-func documentation(files []string, doc Documenter) error {
-	err := parseInputs(files)
+func documentation(params *utils.Params, files []string, doc Documenter) error {
+	err := parseInputs(params, files)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func documentation(files []string, doc Documenter) error {
 	return nil
 }
 
-func parseInputs(files []string) error {
+func parseInputs(params *utils.Params, files []string) error {
 	// Parse inputs.
 	for _, file := range files {
 		fi, err := os.Stat(file)
@@ -161,12 +161,12 @@ func parseInputs(files []string) error {
 				}
 				files = append(files, path.Join(file, e.Name()))
 			}
-			err = parseInputs(files)
+			err = parseInputs(params, files)
 			if err != nil {
 				return err
 			}
 		} else {
-			err = parseFile(file)
+			err = parseFile(params, file)
 			if err != nil {
 				return err
 			}
@@ -175,13 +175,10 @@ func parseInputs(files []string) error {
 	return nil
 }
 
-func parseFile(name string) error {
+func parseFile(params *utils.Params, name string) error {
 	if !strings.HasSuffix(name, ".mpcl") {
 		return nil
 	}
-
-	params := utils.NewParams()
-	params.NoCircCompile = true
 
 	pkg, err := compiler.New(params).ParseFile(name)
 	if err != nil {

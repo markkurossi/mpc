@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,7 +13,29 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+
+	"github.com/markkurossi/mpc/compiler/utils"
 )
+
+type pkgPath []string
+
+func (pkg *pkgPath) String() string {
+	return fmt.Sprint(*pkg)
+}
+
+func (pkg *pkgPath) Set(value string) error {
+	for _, v := range strings.Split(value, ":") {
+		*pkg = append(*pkg, v)
+	}
+	return nil
+}
+
+var pkgPathFlag pkgPath
+
+func init() {
+	flag.Var(&pkgPathFlag, "pkgpath", "colon-separated list of pkg directories")
+}
 
 func main() {
 	dir := flag.String("dir", ",apidoc",
@@ -27,11 +49,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	params := utils.NewParams()
+	params.NoCircCompile = true
+	params.PkgPath = pkgPathFlag
+
 	doc, err := NewHTMLDoc(*dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = documentation(flag.Args(), doc)
+	err = documentation(params, flag.Args(), doc)
 	if err != nil {
 		log.Fatal(err)
 	}
