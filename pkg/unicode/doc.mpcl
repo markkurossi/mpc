@@ -1,0 +1,10 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package unicode provides functions for handling and testing Unicode
+// code points.
+package unicode

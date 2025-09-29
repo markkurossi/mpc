@@ -1,0 +1,25 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package sort implements array sorting functions.
+package unicode
+
+// IsSpace tests if the rune is a space character.
+func IsSpace(r rune) bool {
+	return r == '\t' || r == '\n' || r == '\v' || r == '\f' ||
+		r == '\r' || r == 0x85 ||
+		// Zs - Space Separator
+		r == ' ' || r == 0x00A ||
+		r == 0x1680 || r == 0x2000 || r == 0x2001 || r == 0x2002 ||
+		r == 0x2003 || r == 0x2004 || r == 0x2005 || r == 0x2006 ||
+		r == 0x2007 || r == 0x2008 || r == 0x2009 || r == 0x200A ||
+		r == 0x202F || r == 0x205F || r == 0x3000 ||
+		// Zl - Line Separator
+		r == 0x2028 ||
+		// Zp - Paragraph Separator
+		r == 0x2029
+}
