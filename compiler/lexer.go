@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -243,7 +243,7 @@ func NewLexer(source string, in io.Reader) *Lexer {
 		point: utils.Point{
 			Source: source,
 			Line:   1,
-			Col:    0,
+			Col:    1,
 		},
 		history: make(map[int][]rune),
 	}
@@ -271,7 +271,7 @@ func (l *Lexer) ReadRune() (rune, int, error) {
 	l.unreadPoint = l.point
 	if r == '\n' {
 		l.point.Line++
-		l.point.Col = 0
+		l.point.Col = 1
 	} else {
 		l.point.Col++
 		l.history[l.point.Line] = append(l.history[l.point.Line], r)
