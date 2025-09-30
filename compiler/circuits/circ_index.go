@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2021-2023 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,7 +10,12 @@ import (
 	"fmt"
 )
 
-// NewIndex creates a new array element selection (index) circuit.
+// NewIndex creates a new array element selection (index) circuit. The
+// circuit uses n low-order bits from index to select the array
+// value. The n is selected so that 2^n >= len(array)/size i.e. the
+// circuit uses the minimum amount of bits from index that is needed
+// to cover all array elements. The higher order bits are ignored
+// i.e. the index is index % 2^n.
 func NewIndex(cc *Compiler, size int, array, index, out []*Wire) error {
 	if len(array)%size != 0 {
 		return fmt.Errorf("array width %d must be multiple of element size %d",
@@ -35,17 +40,17 @@ func NewIndex(cc *Compiler, size int, array, index, out []*Wire) error {
 		bits++
 	}
 
-	return newIndex(cc, bits-1, length, size, array, index, out)
-}
-
-func newIndex(cc *Compiler, bit, length, size int,
-	array, index, out []*Wire) error {
-
 	// Default "not found" value.
 	def := make([]*Wire, size)
 	for i := 0; i < size; i++ {
 		def[i] = cc.ZeroWire()
 	}
+
+	return newIndex(cc, bits-1, length, size, array, index, def, out)
+}
+
+func newIndex(cc *Compiler, bit, length, size int,
+	array, index, def, out []*Wire) error {
 
 	n := len(array) / size
 
@@ -70,14 +75,14 @@ func newIndex(cc *Compiler, bit, length, size int,
 	if bit >= len(index) {
 		// Not enough bits to select upper half so just select from
 		// the lower half.
-		return newIndex(cc, bit-1, length, size, fArray, index, out)
+		return newIndex(cc, bit-1, length, size, fArray, index, def, out)
 	}
 
 	fVal := make([]*Wire, size)
 	for i := 0; i < size; i++ {
 		fVal[i] = cc.Calloc.Wire()
 	}
-	err := newIndex(cc, bit-1, length, size, fArray, index, fVal)
+	err := newIndex(cc, bit-1, length, size, fArray, index, def, fVal)
 	if err != nil {
 		return err
 	}
@@ -89,7 +94,7 @@ func newIndex(cc *Compiler, bit, length, size int,
 			tVal[i] = cc.Calloc.Wire()
 		}
 		err = newIndex(cc, bit-1, length, size,
-			array[length*size:], index, tVal)
+			array[length*size:], index, def, tVal)
 		if err != nil {
 			return err
 		}
