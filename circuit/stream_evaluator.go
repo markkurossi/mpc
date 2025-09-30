@@ -146,10 +146,12 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 		return nil, nil, err
 	}
 
-	fmt.Printf(" - In1: %s\n", in1)
-	fmt.Printf(" + In2: %s\n", in2)
-	fmt.Printf(" - Out: %s\n", outputs)
-	fmt.Printf(" -  In: %s\n", inputFlag)
+	if verbose {
+		fmt.Printf(" - In1: %s\n", in1)
+		fmt.Printf(" + In2: %s\n", in2)
+		fmt.Printf(" - Out: %s\n", outputs)
+		fmt.Printf(" -  In: %s\n", inputFlag)
+	}
 
 	streaming, err := NewStreamEval(key, int(in1.Type.Bits+in2.Type.Bits),
 		outputs.Size())

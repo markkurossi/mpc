@@ -151,10 +151,12 @@ func (c *Compiler) Stream(conn *p2p.Conn, oti ot.OT, source string,
 		return nil, nil, ctx.Errorf(main.Location(), "%s: %v", main.Name, err)
 	}
 
-	fmt.Printf(" + In1: %s\n", program.Inputs[0])
-	fmt.Printf(" - In2: %s\n", program.Inputs[1])
-	fmt.Printf(" - Out: %s\n", program.Outputs)
-	fmt.Printf(" -  In: %s\n", inputFlag)
+	if c.params.Verbose {
+		fmt.Printf(" + In1: %s\n", program.Inputs[0])
+		fmt.Printf(" - In2: %s\n", program.Inputs[1])
+		fmt.Printf(" - Out: %s\n", program.Outputs)
+		fmt.Printf(" -  In: %s\n", inputFlag)
+	}
 
 	out, bits, err := program.Stream(conn, oti, c.params, input, timing)
 	if err != nil {

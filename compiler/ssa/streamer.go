@@ -590,12 +590,11 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 
 	if params.Verbose {
 		timing.Print(conn.Stats)
+		fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
+			prog.walloc.NextWireID(), len(cache))
+		fmt.Printf("#gates=%d (%s) #w=%d\n", prog.stats.Count(), prog.stats,
+			prog.numWires)
 	}
-
-	fmt.Printf("Max permanent wires: %d, cached circuits: %d\n",
-		prog.walloc.NextWireID(), len(cache))
-	fmt.Printf("#gates=%d (%s) #w=%d\n", prog.stats.Count(), prog.stats,
-		prog.numWires)
 
 	if params.Diagnostics {
 		tab := tabulate.New(tabulate.CompactUnicodeLight)
