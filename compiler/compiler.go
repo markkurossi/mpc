@@ -106,10 +106,12 @@ func (c *Compiler) StreamFile(conn *p2p.Conn, oti ot.OT, file string,
 		return nil, nil, err
 	}
 	defer f.Close()
-	return c.stream(conn, oti, file, f, input, inputSizes)
+	return c.Stream(conn, oti, file, f, input, inputSizes)
 }
 
-func (c *Compiler) stream(conn *p2p.Conn, oti ot.OT, source string,
+// Stream compiles the input in and uses the streaming mode to garble
+// and stream the circuit to the evaluator node.
+func (c *Compiler) Stream(conn *p2p.Conn, oti ot.OT, source string,
 	in io.Reader, inputFlag []string, inputSizes [][]int) (
 	circuit.IO, []*big.Int, error) {
 
