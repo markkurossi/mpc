@@ -2286,19 +2286,27 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		}
 		ret = gen.Constant(int64(count), types.Undefined)
 
-		// The amov sets tmp[from:to]=src i.e. it automatically slices
-		// src to to-from bits.
-
 		tmp2 := gen.AnonVal(dst.Type)
-		fromConst := gen.Constant(int64(dstFrom*elSize), types.Undefined)
-		toConst := gen.Constant(int64((dstFrom+count)*elSize), types.Undefined)
-		block.AddInstr(ssa.NewAmovInstr(src, tmp, fromConst, toConst, tmp2))
+		if count > 0 {
+			// The amov sets tmp[from:to]=src i.e. it automatically
+			// slices src to to-from bits.
+			fromConst := gen.Constant(int64(dstFrom*elSize), types.Undefined)
+			toConst := gen.Constant(int64((dstFrom+count)*elSize),
+				types.Undefined)
+			block.AddInstr(ssa.NewAmovInstr(src, tmp, fromConst, toConst, tmp2))
+		} else {
+			block.AddInstr(ssa.NewMovInstr(tmp, tmp2))
+		}
 
 		err := lrv.Set(tmp2)
 		if err != nil {
 			return nil, nil, ctx.Error(ast, err.Error())
 		}
 	}
+	if !ret.Const {
+		return nil, nil, ctx.Errorf(ast, "copy retval not constant: %v", ret)
+	}
+	gen.AddConstant(ret)
 
 	return block, []ssa.Value{ret}, nil
 }
