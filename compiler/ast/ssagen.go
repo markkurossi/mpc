@@ -1491,12 +1491,27 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if err != nil {
 		return nil, nil, err
 	}
-
 	// Resolve target type.
 	resultType, err := ast.resultType(ctx, l, r)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Some functions (copy) operate on dynamic data but their return
+	// value is const.
+	if l.Const && r.Const {
+		t, ok, err := ast.evalConst(ctx, gen, l, r)
+		if err != nil {
+			return nil, nil, err
+		}
+		if ok {
+			return block, []ssa.Value{t}, nil
+		}
+	}
+
+	// Binary operation on dynamic values. Create the result value t
+	// and create SSA for the binary operation.
+
 	t := gen.AnonVal(resultType)
 
 	var instr ssa.Instr

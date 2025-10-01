@@ -292,8 +292,14 @@ func (ast *Binary) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 		return ssa.Undefined, ok, err
 	}
 
+	return ast.evalConst(ctx, gen, l, r)
+}
+
+func (ast *Binary) evalConst(ctx *Codegen, gen *ssa.Generator, l, r ssa.Value) (
+	ssa.Value, bool, error) {
+
 	if debugEval {
-		fmt.Printf("%s: Binary.Eval: %v[%v:%v] %v %v[%v:%v]\n",
+		fmt.Printf("%s: Binary.evalConst: %v[%v:%v] %v %v[%v:%v]\n",
 			ast.Location().ShortString(),
 			ast.Left, l, l.Type, ast.Op, ast.Right, r, r.Type)
 	}
