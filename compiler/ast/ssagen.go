@@ -444,7 +444,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 						bv, fromConst, toConst, lValue))
 				} else {
 					return nil, nil, ctx.Errorf(ast,
-						"can't assign %s with value of type %s",
+						"cannot assign %s with value of type %s",
 						lValue.Type.ElementType, rv.Type)
 				}
 				err := dstBindings.Set(lValue, nil)
@@ -712,7 +712,7 @@ func (ast *Call) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 		block.AddInstr(ssa.NewMovInstr(args[idx], a))
 	}
-	// This for method calls.
+	// The member This is set for method calls.
 	if called.This != nil {
 		typeInfo, err := called.This.Type.Resolve(env, ctx, gen)
 		if err != nil {
@@ -1039,7 +1039,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ast.error(ctx, "not enough arguments to return",
 				rValues, f.Return)
 		} else if len(rValues[0]) > len(f.Return) {
-			return nil, nil, ast.error(ctx, "too many aruments to return",
+			return nil, nil, ast.error(ctx, "too many arguments to return",
 				rValues, f.Return)
 		}
 		result = rValues[0]
@@ -1048,7 +1048,7 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			return nil, nil, ast.error(ctx, "not enough arguments to return",
 				rValues, f.Return)
 		} else if len(rValues) > len(f.Return) {
-			return nil, nil, ast.error(ctx, "too many aruments to return",
+			return nil, nil, ast.error(ctx, "too many arguments to return",
 				rValues, f.Return)
 		} else {
 			if len(exprs) != len(rValues) {
@@ -2157,11 +2157,11 @@ func (ast *Make) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	if !typeInfo.Type.Array() {
 		return nil, nil, ctx.Errorf(ast.Type,
-			"can't make instance of type %s", typeInfo)
+			"cannot make instance of type %s", typeInfo)
 	}
 	if typeInfo.Bits != 0 {
 		return nil, nil, ctx.Errorf(ast.Type,
-			"can't make specified type %s", typeInfo)
+			"cannot make specified type %s", typeInfo)
 	}
 	constVal, _, err := ast.Exprs[0].Eval(env, ctx, gen)
 	if err != nil {
