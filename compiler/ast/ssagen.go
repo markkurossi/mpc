@@ -1471,7 +1471,11 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		case BinaryLshift, BinaryRshift:
 
 		default:
+			// Other power-of-2-optimizations:
+			//  - division by power of 2 -> right shift
+			//  - modulo by power of 2 -> bitwise AND
 			if false {
+				fmt.Printf("Power-of-2-Optimizations: %v\n", ast.Op)
 				if lConst {
 					fmt.Printf(" - %v %s\n", lPow2, ast.Op)
 				}
