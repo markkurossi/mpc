@@ -596,7 +596,7 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 	for _, i := range i.In {
 		result += " "
 		if typesOnly {
-			result += i.Type.String()
+			result += typeString(i.Type)
 		} else {
 			result += i.String()
 		}
@@ -604,7 +604,7 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 	if i.Out != nil {
 		result += " "
 		if typesOnly {
-			result += i.Out.Type.String()
+			result += typeString(i.Out.Type)
 		} else {
 			result += i.Out.String()
 		}
@@ -625,6 +625,17 @@ func (i Instr) string(maxLen int, typesOnly bool) string {
 		result += r.String()
 	}
 	return result
+}
+
+// typeString returns a string representation of the argument
+// type. This works like t.String() but it converts slices to
+// arrays. This makes slices concrete allowing them to be used as
+// instruction cache keys in streaming.
+func typeString(t types.Info) string {
+	if t.Type == types.TSlice {
+		t.Type = types.TArray
+	}
+	return t.String()
 }
 
 // PP pretty-prints instruction to the specified io.Writer.
