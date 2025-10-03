@@ -21,6 +21,13 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+// IsFilename tests if the argument file is a potential MPCL source
+// filename.
+func IsFilename(file string) bool {
+	return strings.HasSuffix(file, ".mpcl") ||
+		strings.HasSuffix(file, ".dmpcl")
+}
+
 // Compiler implements MPCL compiler.
 type Compiler struct {
 	params   *utils.Params
@@ -300,7 +307,7 @@ func (c *Compiler) tryParsePkg(pkg *ast.Package, prefix, name string) (
 	}
 	var mpcls []string
 	for _, f := range files {
-		if strings.HasSuffix(f, ".mpcl") {
+		if IsFilename(f) {
 			mpcls = append(mpcls, f)
 		}
 	}

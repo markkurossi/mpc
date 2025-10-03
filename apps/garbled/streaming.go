@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 
 	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
@@ -78,7 +77,7 @@ func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	}
 	inputSizes[0] = sizes
 
-	if len(args) != 1 || !strings.HasSuffix(args[0], ".mpcl") {
+	if len(args) != 1 || !compiler.IsFilename(args[0]) {
 		return fmt.Errorf("streaming mode takes single MPCL file")
 	}
 	nc, err := net.Dial("tcp", port)

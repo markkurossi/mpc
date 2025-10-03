@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -50,7 +50,7 @@ func TestSuite(t *testing.T) {
 }
 
 func testFile(t *testing.T, cc *compiler.Compiler, file string) {
-	if !strings.HasSuffix(file, ".mpcl") {
+	if !compiler.IsFilename(file) {
 		return
 	}
 	pkg, err := cc.ParseFile(file)

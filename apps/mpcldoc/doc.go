@@ -176,7 +176,7 @@ func parseInputs(params *utils.Params, files []string) error {
 }
 
 func parseFile(params *utils.Params, name string) error {
-	if !strings.HasSuffix(name, ".mpcl") {
+	if !compiler.IsFilename(name) {
 		return nil
 	}
 

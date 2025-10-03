@@ -21,18 +21,17 @@ import (
 )
 
 func compileFiles(files []string, params *utils.Params, inputSizes [][]int,
-	compile, ssa, dot, svg bool, circFormat string) error {
+	compile, ssa, dot, svg bool, circSuffix string) error {
 
 	var circ *circuit.Circuit
 	var err error
 
 	for _, file := range files {
 		if compile {
-			params.CircOut, err = makeOutput(file, circFormat)
+			params.CircOut, err = makeOutput(file, circSuffix)
 			if err != nil {
 				return err
 			}
-			params.CircFormat = circFormat
 			if dot {
 				params.CircDotOut, err = makeOutput(file, "circ.dot")
 				if err != nil {
@@ -60,7 +59,7 @@ func compileFiles(files []string, params *utils.Params, inputSizes [][]int,
 					return err
 				}
 			}
-		} else if strings.HasSuffix(file, ".mpcl") {
+		} else if compiler.IsFilename(file) {
 			if ssa {
 				params.SSAOut, err = makeOutput(file, "ssa")
 				if err != nil {

@@ -74,6 +74,7 @@ func main() {
 	compile := flag.Bool("circ", false, "compile MPCL to circuit")
 	circFormat := flag.String("format", "mpclc",
 		"circuit format: mpclc, bristol")
+	circSuffix := flag.String("suffix", "", "alternative circuit file suffix")
 	ssa := flag.Bool("ssa", false, "compile MPCL to SSA assembly")
 	dot := flag.Bool("dot", false, "create Graphviz DOT output")
 	svg := flag.Bool("svg", false, "create SVG output")
@@ -147,9 +148,15 @@ func main() {
 			inputSizes[0] = iSizes
 			inputSizes[1] = pSizes
 		}
+		params.CircFormat = *circFormat
+
+		suffix := *circSuffix
+		if len(suffix) == 0 {
+			suffix = *circFormat
+		}
 
 		err = compileFiles(flag.Args(), params, inputSizes,
-			*compile, *ssa, *dot, *svg, *circFormat)
+			*compile, *ssa, *dot, *svg, suffix)
 		if err != nil {
 			log.Fatalf("compile failed: %s", err)
 		}
@@ -216,7 +223,7 @@ func loadCircuit(file string, params *utils.Params, inputSizes [][]int) (
 		if err != nil {
 			return nil, err
 		}
-	} else if strings.HasSuffix(file, ".mpcl") {
+	} else if compiler.IsFilename(file) {
 		circ, _, err = compiler.New(params).CompileFile(file, inputSizes)
 		if err != nil {
 			return nil, err
