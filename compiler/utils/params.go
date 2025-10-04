@@ -23,6 +23,7 @@ type Params struct {
 	SSAOut        io.WriteCloser
 	SSADotOut     io.WriteCloser
 	MPCLCErrorLoc bool
+	Warn          *Warnings
 
 	// PkgPath defines additional directories to search for imported
 	// packages.
@@ -55,6 +56,7 @@ type Params struct {
 func NewParams() *Params {
 	return &Params{
 		MaxLoopUnroll: 0x20000,
+		Warn:          NewWarnings(),
 		SymbolIDs:     make(map[string]int),
 	}
 }
@@ -81,6 +83,28 @@ func (p *Params) Close() {
 		p.CircSvgOut.Close()
 		p.CircSvgOut = nil
 	}
+}
+
+// Warnings define compiler warnings.
+type Warnings struct {
+	ReturnDiff  bool
+	Unreachable bool
+}
+
+func (w *Warnings) SetAll() {
+	w.ReturnDiff = true
+	w.Unreachable = true
+}
+
+func (w *Warnings) ClearAll() {
+	w.ReturnDiff = false
+	w.Unreachable = false
+}
+
+func NewWarnings() *Warnings {
+	w := new(Warnings)
+	w.SetAll()
+	return w
 }
 
 var (
