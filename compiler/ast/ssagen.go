@@ -1970,8 +1970,7 @@ func (ast *Slice) limitsSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
 			return nil, 0, 0, ctx.Errorf(ast.To, "%s", err)
 		}
 	}
-	if ast.From != nil && ast.To != nil &&
-		(from >= elementCount || from > to) {
+	if from < 0 || to > elementCount || from > to {
 		return nil, 0, 0, ctx.Errorf(ast, "slice bounds out of range [%d:%d]",
 			from, to)
 	}

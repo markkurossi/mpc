@@ -455,10 +455,6 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 			return ssa.Undefined, false, ctx.Error(ast.To, err.Error())
 		}
 	}
-	if to < from {
-		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
-			"invalid slice range %d:%d", from, to)
-	}
 	if !expr.Type.Type.Array() {
 		return ssa.Undefined, false, ctx.Errorf(ast.Expr,
 			"invalid operation: cannot slice %v (%v)", expr, expr.Type)
@@ -470,7 +466,7 @@ func (ast *Slice) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	if to == math.MaxInt32 {
 		to = int(expr.Type.ArraySize)
 	}
-	if to > int(expr.Type.ArraySize) || from > to {
+	if from < 0 || to > int(expr.Type.ArraySize) || from > to {
 		return ssa.Undefined, false, ctx.Errorf(ast.From,
 			"slice bounds out of range [%d:%d] in slice of length %v",
 			from, to, expr.Type.ArraySize)

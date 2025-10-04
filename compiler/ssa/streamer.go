@@ -306,7 +306,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 					fmt.Errorf("%s: unsupported index type %T: %s",
 						instr.Op, instr.In[2], err)
 			}
-			if from >= to {
+			if from < 0 || from >= to {
 				return nil, nil, fmt.Errorf("%s: bounds out of range [%d:%d]",
 					instr.Op, from, to)
 			}
