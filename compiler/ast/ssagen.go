@@ -96,7 +96,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	if diff && gen.Params.Warn.ReturnDiff {
 		ctx.Warningf(ast, "function %s returns different sized values",
 			ast.Name)
-		tab := tabulate.New(tabulate.Plain)
+		tab := tabulate.New(tabulate.CompactPlain)
 		tab.Header("Return").SetAlign(tabulate.ML)
 		for idx, r := range ast.Return {
 			name := r.Name
@@ -108,8 +108,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 		maxBits := make([]types.Size, len(ast.Return))
 		for _, r := range ast.Returns {
 			row := tab.Row()
-			row.Column(fmt.Sprintf("\u251C\u2574%s",
-				r.Return.Location().ShortString()))
+			row.Column(r.Return.Location().ShortString())
 			for idx, t := range r.Types {
 				row.Column(fmt.Sprintf("%v", t.Bits))
 				if t.Bits > maxBits[idx] {
@@ -118,7 +117,7 @@ func (ast *Func) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 			}
 		}
 		row := tab.Row()
-		row.Column("\u2514\u2574Returns")
+		row.Column("Returns")
 		for _, bits := range maxBits {
 			row.Column(fmt.Sprintf("%v", bits))
 		}
