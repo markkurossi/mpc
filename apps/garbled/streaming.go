@@ -77,8 +77,11 @@ func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	}
 	inputSizes[0] = sizes
 
-	if len(args) != 1 || !compiler.IsFilename(args[0]) {
+	if len(args) != 1 {
 		return fmt.Errorf("streaming mode takes single MPCL file")
+	}
+	if !compiler.IsFilename(args[0]) {
+		return fmt.Errorf("unsupported file for streaming: %v", args[0])
 	}
 	nc, err := net.Dial("tcp", port)
 	if err != nil {
