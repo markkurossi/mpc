@@ -831,6 +831,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 			p.lexer.Unget(t)
 		}
 		return &ast.If{
+			Point: tStmt.From,
 			Expr:  expr,
 			True:  b1,
 			False: b2,
