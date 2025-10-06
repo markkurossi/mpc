@@ -54,6 +54,13 @@ func NewIOStats() IOStats {
 	}
 }
 
+// Clear clears the I/O statistics.
+func (stats IOStats) Clear() {
+	stats.Sent.Store(0)
+	stats.Recvd.Store(0)
+	stats.Flushed.Store(0)
+}
+
 // Add adds the argument stats to this IOStats and returns the sum.
 func (stats IOStats) Add(o IOStats) IOStats {
 	sent := new(atomic.Uint64)
