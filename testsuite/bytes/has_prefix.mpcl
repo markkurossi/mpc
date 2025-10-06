@@ -1,0 +1,17 @@
+// -*- go -*-
+
+package main
+
+import (
+	"bytes"
+)
+
+// @Hex
+// @LSB
+// @Test 0x1010 0x2020 = 0
+// @Test 0x1010 0x1010 = 1
+// @Test 0x1010 0x10 = 1
+// @Test 0x101010 0x20 = 0
+func main(a, b []byte) bool {
+	return bytes.HasPrefix(a, b)
+}
