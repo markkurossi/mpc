@@ -145,8 +145,11 @@ func (ast *Call) Eval(env *Env, ctx *Codegen, gen *ssa.Generator) (
 	}
 	// Check builtin functions.
 	bi, ok := builtins[ast.Ref.Name.Name]
-	if ok && bi.Eval != nil {
-		return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
+	if ok {
+		if bi.Eval != nil {
+			return bi.Eval(ast.Exprs, env, ctx, gen, ast.Location())
+		}
+		return ssa.Undefined, false, nil
 	}
 
 	// Resolve name as type.
