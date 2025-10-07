@@ -40,6 +40,10 @@ func copy(dst, src []Type) int32 {}
 // is smaller than or equal to the argument value.
 func floorPow2(v int) int {}
 
+// The base10Digits built-in function returns the number of decimal
+// digits needed to represent the n-bit integer number.
+func base10Digits(n bits) int {}
+
 // The len built-in function returns the length of the argument value,
 // according to its type:
 //
