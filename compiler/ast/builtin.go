@@ -8,6 +8,7 @@ package ast
 
 import (
 	"fmt"
+	"math"
 	"path"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -36,6 +37,10 @@ var builtins = map[string]Builtin{
 	"floorPow2": {
 		SSA:  floorPow2SSA,
 		Eval: floorPow2Eval,
+	},
+	"base10Digits": {
+		SSA:  base10DigitsSSA,
+		Eval: base10DigitsEval,
 	},
 	"len": {
 		SSA:  lenSSA,
@@ -84,6 +89,35 @@ func floorPow2Eval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	i >>= 1
 
 	return gen.Constant(int64(i), types.Undefined), true, nil
+}
+
+func base10DigitsSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
+	return nil, nil, ctx.Errorf(loc, "base10DigitsSSA not implemented")
+}
+
+func base10DigitsEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (ssa.Value, bool, error) {
+
+	if len(args) != 1 {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"invalid amount of arguments in call to base10Digits")
+	}
+
+	constVal, _, err := args[0].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc, "%s", err)
+	}
+
+	val, err := constVal.ConstInt()
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"non-integer (%T) argument in %s: %s", constVal, args[0], err)
+	}
+
+	digits := int(float64(val)*math.Log10(2)) + 1
+
+	return gen.Constant(int64(digits), types.Undefined), true, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
