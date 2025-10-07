@@ -1000,6 +1000,8 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	var rValues [][]ssa.Value
 	var result []ssa.Value
 	var v []ssa.Value
+	var constVal ssa.Value
+	var ok bool
 	var err error
 
 	// Compute return values.
@@ -1012,20 +1014,45 @@ func (ast *Return) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 				},
 			}
 			exprs = append(exprs, expr)
-			block, v, err = expr.SSA(block, ctx, gen)
+
+			// Check if init value is constant.
+			env := NewEnv(block)
+			constVal, ok, err = expr.Eval(env, ctx, gen)
 			if err != nil {
 				return nil, nil, err
 			}
-			rValues = append(rValues, v)
+			if ok {
+				gen.AddConstant(constVal)
+				rValues = append(rValues, []ssa.Value{constVal})
+			} else {
+				block, v, err = expr.SSA(block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+
+				}
+				rValues = append(rValues, v)
+			}
 		}
 	} else {
 		for _, expr := range ast.Exprs {
 			exprs = append(exprs, expr)
-			block, v, err = expr.SSA(block, ctx, gen)
+
+			// Check if init value is constant.
+			env := NewEnv(block)
+			constVal, ok, err = expr.Eval(env, ctx, gen)
 			if err != nil {
 				return nil, nil, err
 			}
-			rValues = append(rValues, v)
+			if ok {
+				gen.AddConstant(constVal)
+				rValues = append(rValues, []ssa.Value{constVal})
+			} else {
+				block, v, err = expr.SSA(block, ctx, gen)
+				if err != nil {
+					return nil, nil, err
+				}
+				rValues = append(rValues, v)
+			}
 		}
 	}
 	if len(rValues) == 0 {
