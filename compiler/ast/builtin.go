@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -183,6 +183,9 @@ func lenEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		case types.TArray, types.TSlice:
 			return gen.Constant(int64(typeInfo.ArraySize), types.Undefined),
 				true, nil
+
+		case types.TNil:
+			return gen.Constant(int64(0), types.Undefined), true, nil
 
 		default:
 			return ssa.Undefined, false, ctx.Errorf(loc,
