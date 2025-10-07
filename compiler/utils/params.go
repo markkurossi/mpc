@@ -91,19 +91,22 @@ type Warnings struct {
 	Unreachable bool
 }
 
-func (w *Warnings) SetAll() {
+// EnableAll enables all warnings.
+func (w *Warnings) EnableAll() {
 	w.ReturnDiff = true
 	w.Unreachable = true
 }
 
-func (w *Warnings) ClearAll() {
+// DisableAll disables all warnings.
+func (w *Warnings) DisableAll() {
 	w.ReturnDiff = false
 	w.Unreachable = false
 }
 
+// NewWarnings creates a new warnings instance.
 func NewWarnings() *Warnings {
 	w := new(Warnings)
-	w.SetAll()
+	w.EnableAll()
 	return w
 }
 

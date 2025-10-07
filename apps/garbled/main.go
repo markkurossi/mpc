@@ -90,6 +90,7 @@ func main() {
 	benchmarkCompile := flag.Bool("benchmark-compile", false,
 		"benchmark MPCL compilation")
 	sids := flag.String("sids", "", "store symbol IDs `file`")
+	wNone := flag.Bool("Wnone", false, "disable all warnings")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -122,6 +123,9 @@ func main() {
 	}
 	if *ssa && !*compile {
 		params.NoCircCompile = true
+	}
+	if *wNone {
+		params.Warn.DisableAll()
 	}
 
 	if len(*sids) > 0 {
