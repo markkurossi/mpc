@@ -1,0 +1,24 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package strconv
+
+// Atoi converts the string to an integer number. The second return
+// value describes if the input was a valid number or not.
+func Atoi(s string) (int32, bool) {
+	bytes := []byte(s)
+	var result int32
+
+	for _, b := range bytes {
+		if b < '0' || b > '9' {
+			return result, false
+		}
+		result *= 10
+		result += int32(b - '0')
+	}
+	return result, true
+}
