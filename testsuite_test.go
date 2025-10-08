@@ -17,6 +17,7 @@ import (
 	"runtime/pprof"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler"
@@ -44,19 +45,23 @@ func TestSuite(t *testing.T) {
 			if d.IsDir() {
 				return nil
 			}
-			testFile(t, compiler.New(params), path)
+			start := time.Now()
+			if testFile(t, compiler.New(params), path) {
+				elapsed := time.Since(start)
+				t.Logf("%-33s\t%s\n", path, elapsed)
+			}
 			return nil
 		})
 }
 
-func testFile(t *testing.T, cc *compiler.Compiler, file string) {
+func testFile(t *testing.T, cc *compiler.Compiler, file string) bool {
 	if !compiler.IsFilename(file) {
-		return
+		return false
 	}
 	pkg, err := cc.ParseFile(file)
 	if err != nil {
 		t.Errorf("failed to parse '%s': %s", file, err)
-		return
+		return false
 	}
 	main, ok := pkg.Functions["main"]
 	if !ok {
@@ -73,19 +78,19 @@ func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 		ann := strings.TrimSpace(annotation)
 		if strings.HasPrefix(ann, "@heavy") && testing.Short() {
 			fmt.Printf("Skipping heavy test %s\n", file)
-			return
+			return false
 		}
 		if strings.HasPrefix(ann, "@pprof") {
 			cpuprof = true
 			prof, err = os.Create(fmt.Sprintf("%s.cpu.prof", file))
 			if err != nil {
 				t.Errorf("%s: failed to create cpu.prof: %s", file, err)
-				return
+				return false
 			}
 			err = pprof.StartCPUProfile(prof)
 			if err != nil {
 				t.Errorf("%s: failed to start CPU profile: %s", file, err)
-				return
+				return false
 			}
 			continue
 		}
@@ -125,7 +130,7 @@ func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 					_, ok := v.SetString(input, 0)
 					if !ok {
 						t.Errorf("%s: invalid argument '%s'", file, input)
-						return
+						return false
 					}
 				}
 				if sep {
@@ -142,26 +147,26 @@ func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 			sizes, err := circuit.InputSizes(iv)
 			if err != nil {
 				t.Errorf("%s: invalid inputs: %s", file, err)
-				return
+				return false
 			}
 			inputSizes = append(inputSizes, sizes)
 		}
 		circ, _, err := cc.CompileFile(file, inputSizes)
 		if err != nil {
 			t.Errorf("failed to compile '%s': %s", file, err)
-			return
+			return false
 		}
 
 		results, err := circ.Compute(inputs)
 		if err != nil {
 			t.Errorf("%s: compute failed: %s", file, err)
-			return
+			return false
 		}
 
 		if len(results) != len(outputs) {
 			t.Errorf("%s: unexpected return values: got %v, expected %v",
 				file, results, outputs)
-			return
+			return false
 		}
 		for idx := range results {
 			out := circ.Outputs[idx]
@@ -186,6 +191,8 @@ func testFile(t *testing.T, cc *compiler.Compiler, file string) {
 		pprof.StopCPUProfile()
 		prof.Close()
 	}
+
+	return true
 }
 
 func reverse(val string) string {
