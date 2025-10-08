@@ -1,0 +1,89 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package strconv
+
+// Itoa converts the integer val to its string representation.
+func Itoa(val int) string {
+	digits := base10Digits(size(val))
+
+	maskType := make(int, size(val)+1)
+
+	var mask maskType = 1
+	for i := 0; i < digits-1; i++ {
+		mask *= 10
+	}
+
+	var result [digits + 1]byte
+
+	pad := ' '
+	result[0] = pad
+
+	var d, v maskType
+	prefix := true
+	sign := ' '
+
+	if val < 0 {
+		sign = '-'
+		v = -maskType(val)
+	} else {
+		v = maskType(val)
+	}
+
+	for i := 0; i < digits; i++ {
+		d = v / mask
+
+		if d == 0 && prefix && i+1 < digits {
+			result[i+1] = pad
+		} else {
+			if prefix {
+				result[i] = byte(sign)
+				prefix = false
+			}
+			result[i+1] = byte('0' + d)
+		}
+
+		v -= d * mask
+		mask /= 10
+	}
+	return string(result)
+}
+
+// Uitoa converts the unsigned integer val to its string
+// representation.
+func Uitoa(val uint) string {
+	digits := base10Digits(size(val))
+
+	maskType := make(uint, size(val))
+
+	var mask maskType = 1
+	for i := 0; i < digits-1; i++ {
+		mask *= 10
+	}
+
+	var result [digits]byte
+
+	var d maskType
+	prefix := true
+	prefixLen := 0
+
+	for i := 0; i < digits; i++ {
+		d = val / mask
+
+		if d == 0 && prefix && i+1 < digits {
+			prefixLen++
+			result[i] = ' '
+		} else {
+			result[i] = byte('0' + d)
+			prefix = false
+		}
+
+		val -= d * mask
+		mask /= 10
+	}
+	return string(result)
+}

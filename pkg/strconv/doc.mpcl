@@ -1,0 +1,10 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package strconv implements conversions to and from string
+// representations of basic types.
+package strconv

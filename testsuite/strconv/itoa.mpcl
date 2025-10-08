@@ -1,0 +1,14 @@
+// -*- go -*-
+
+package main
+
+import (
+	"strconv"
+)
+
+// @Hex
+// @LSB
+// @Test 0 0 = 0x2020202020202020202030
+func main(a, b int32) []byte {
+	return []byte(strconv.Itoa(a))
+}
