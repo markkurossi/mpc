@@ -172,7 +172,8 @@ func (c *Conn) Close() error {
 	}
 	// Wait that flush completes.
 	close(c.toWriter)
-	for range <-c.fromWriter {
+	for buf := range c.fromWriter {
+		_ = buf
 	}
 	if c.writerErr != nil {
 		return c.writerErr
