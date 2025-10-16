@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -36,6 +36,14 @@ var inputSizeTests = []struct {
 		},
 		sizes: []int{
 			4, 8, 12, 16,
+		},
+	},
+	{
+		inputs: []string{
+			"42x00", "0x00",
+		},
+		sizes: []int{
+			336, 8,
 		},
 	},
 }

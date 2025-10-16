@@ -9,6 +9,8 @@ package circuit
 import (
 	"fmt"
 	"math/big"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/markkurossi/mpc/types"
@@ -16,6 +18,10 @@ import (
 
 // IO specifies circuit input and output arguments.
 type IO []IOArg
+
+var (
+	reHexInput = regexp.MustCompilePOSIX(`^([[:digit:]]+)x([[:xdigit:]]*)$`)
+)
 
 // Size computes the size of the circuit input and output arguments in
 // bits.
@@ -207,12 +213,21 @@ func InputSizes(inputs []string) ([]int, error) {
 			if strings.HasPrefix(input, "0x") {
 				result = append(result, (len(input)-2)*4)
 			} else {
-				val := new(big.Int)
-				_, ok := val.SetString(input, 0)
-				if !ok {
-					return nil, fmt.Errorf("invalid input: %s", input)
+				m := reHexInput.FindStringSubmatch(input)
+				if m != nil {
+					count, err := strconv.Atoi(m[1])
+					if err != nil {
+						return nil, err
+					}
+					result = append(result, count*len(m[2])*4)
+				} else {
+					val := new(big.Int)
+					_, ok := val.SetString(input, 0)
+					if !ok {
+						return nil, fmt.Errorf("invalid input: %s", input)
+					}
+					result = append(result, val.BitLen())
 				}
-				result = append(result, val.BitLen())
 			}
 		}
 	}
