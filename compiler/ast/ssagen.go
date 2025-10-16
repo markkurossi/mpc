@@ -234,6 +234,9 @@ func initValue(typeInfo types.Info) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+		if typeInfo.ArraySize < 0 {
+			return nil, fmt.Errorf("negative ArraySize: %v", typeInfo.ArraySize)
+		}
 		init := make([]interface{}, typeInfo.ArraySize)
 		for i := types.Size(0); i < typeInfo.ArraySize; i++ {
 			init[i] = elInit
