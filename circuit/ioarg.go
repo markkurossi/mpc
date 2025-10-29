@@ -187,8 +187,9 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 			return nil, err
 		}
 
-		input.Lsh(input, uint(offset))
-		result.Or(result, input)
+		for i := 0; i < int(arg.Type.Bits); i++ {
+			result.SetBit(result, offset+i, input.Bit(i))
+		}
 
 		offset += int(arg.Type.Bits)
 	}
