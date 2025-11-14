@@ -1,0 +1,17 @@
+// -*- go -*-
+
+package main
+
+import (
+	"crypto/sha256"
+)
+
+// main computes SHA256(XOR(a,b)) for two 32-byte inputs.
+func main(a, b [32]byte) [sha256.Size]byte {
+	var tmp [32]byte
+
+	for i := 0; i < len(tmp); i++ {
+		tmp[i] = a[i] ^ b[i]
+	}
+	return sha256.Sum256(tmp[:])
+}
