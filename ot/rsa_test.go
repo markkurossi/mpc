@@ -66,10 +66,6 @@ func benchmark(b *testing.B, keySize int) {
 	}
 }
 
-func BenchmarkRSA512(b *testing.B) {
-	benchmark(b, 512)
-}
-
 func BenchmarkRSA1024(b *testing.B) {
 	benchmark(b, 1024)
 }
