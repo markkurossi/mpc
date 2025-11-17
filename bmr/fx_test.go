@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2024 Markku Rossi
+// Copyright (c) 2024-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,6 +7,7 @@
 package bmr
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/markkurossi/mpc/ot"
@@ -26,7 +27,7 @@ func testFx(t *testing.T, a, b uint) {
 
 	go fxReceiver(tp, ch, b)
 
-	oti := ot.NewCO()
+	oti := ot.NewCO(rand.Reader)
 	err := oti.InitSender(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -68,7 +69,7 @@ func testFx(t *testing.T, a, b uint) {
 func fxReceiver(pipe ot.IO, ch chan interface{}, b uint) {
 	defer close(ch)
 
-	oti := ot.NewCO()
+	oti := ot.NewCO(rand.Reader)
 	err := oti.InitReceiver(pipe)
 	if err != nil {
 		ch <- err
@@ -96,7 +97,7 @@ func testFxk(t *testing.T, b uint) {
 
 	go fxkReceiver(tp, ch, b)
 
-	oti := ot.NewCO()
+	oti := ot.NewCO(rand.Reader)
 	err := oti.InitSender(fp)
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +149,7 @@ func testFxk(t *testing.T, b uint) {
 func fxkReceiver(pipe ot.IO, ch chan interface{}, b uint) {
 	defer close(ch)
 
-	oti := ot.NewCO()
+	oti := ot.NewCO(rand.Reader)
 	err := oti.InitReceiver(pipe)
 	if err != nil {
 		ch <- err

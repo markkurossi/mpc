@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -13,10 +13,14 @@ import (
 	"github.com/markkurossi/mpc"
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/p2p"
 )
 
 func bmrMode(file string, params *utils.Params, player int) error {
+	cfg := &env.Config{}
+	rand := cfg.GetRandom()
+
 	fmt.Printf("semi-honest secure BMR protocol\n")
 	fmt.Printf("player: %d\n", player)
 
@@ -48,7 +52,7 @@ func bmrMode(file string, params *utils.Params, player int) error {
 
 	// Create network.
 	addr := makeAddr(player)
-	nw, err := p2p.NewNetwork(addr, player)
+	nw, err := p2p.NewNetwork(rand, addr, player)
 	if err != nil {
 		return err
 	}
@@ -68,7 +72,7 @@ func bmrMode(file string, params *utils.Params, player int) error {
 
 	log.Printf("Network created\n")
 
-	result, err := circuit.Player(nw, circ, input, verbose)
+	result, err := circuit.Player(cfg, nw, circ, input, verbose)
 	if err != nil {
 		return err
 	}

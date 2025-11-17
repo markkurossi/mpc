@@ -1,7 +1,7 @@
 //
 // rsa.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/markkurossi/crypto/pkcs1"
@@ -19,7 +20,7 @@ import (
 )
 
 // RandomData creates size bytes of random data.
-func RandomData(size int) ([]byte, error) {
+func RandomData(rand io.Reader, size int) ([]byte, error) {
 	m := make([]byte, size)
 	_, err := rand.Read(m)
 	if err != nil {
@@ -30,18 +31,20 @@ func RandomData(size int) ([]byte, error) {
 
 // Sender implements OT sender.
 type Sender struct {
-	key *rsa.PrivateKey
+	rand io.Reader
+	key  *rsa.PrivateKey
 }
 
 // NewSender creates a new OT sender for the bit.
-func NewSender(keyBits int) (*Sender, error) {
-	key, err := rsa.GenerateKey(rand.Reader, keyBits)
+func NewSender(rand io.Reader, keyBits int) (*Sender, error) {
+	key, err := rsa.GenerateKey(rand, keyBits)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Sender{
-		key: key,
+		rand: rand,
+		key:  key,
 	}, nil
 }
 
@@ -57,11 +60,11 @@ func (s *Sender) PublicKey() *rsa.PublicKey {
 
 // NewTransfer creates a new OT sender data transfer.
 func (s *Sender) NewTransfer(m0, m1 []byte) (*SenderXfer, error) {
-	x0, err := RandomData(s.MessageSize())
+	x0, err := RandomData(s.rand, s.MessageSize())
 	if err != nil {
 		return nil, err
 	}
-	x1, err := RandomData(s.MessageSize())
+	x1, err := RandomData(s.rand, s.MessageSize())
 	if err != nil {
 		return nil, err
 	}
@@ -125,13 +128,15 @@ func (s *SenderXfer) Messages() ([]byte, []byte, error) {
 
 // Receiver implements OT receivers.
 type Receiver struct {
-	pub *rsa.PublicKey
+	rand io.Reader
+	pub  *rsa.PublicKey
 }
 
 // NewReceiver creates a new OT receiver.
-func NewReceiver(pub *rsa.PublicKey) (*Receiver, error) {
+func NewReceiver(rand io.Reader, pub *rsa.PublicKey) (*Receiver, error) {
 	return &Receiver{
-		pub: pub,
+		rand: rand,
+		pub:  pub,
 	}, nil
 }
 
@@ -150,6 +155,7 @@ func (r *Receiver) NewTransfer(bit uint) (*ReceiverXfer, error) {
 
 // ReceiverXfer implements the OT receiver data transfer.
 type ReceiverXfer struct {
+	rand     io.Reader
 	receiver *Receiver
 	bit      uint
 	k        *big.Int
@@ -159,7 +165,7 @@ type ReceiverXfer struct {
 
 // ReceiveRandomMessages receives the random messages x0 and x1.
 func (r *ReceiverXfer) ReceiveRandomMessages(x0, x1 []byte) error {
-	k, err := rand.Int(rand.Reader, r.receiver.pub.N)
+	k, err := rand.Int(r.rand, r.receiver.pub.N)
 	if err != nil {
 		return err
 	}
@@ -216,6 +222,7 @@ func (r *ReceiverXfer) Message() (m []byte, bit uint) {
 
 // RSA implements RSA OT as the OT interface.
 type RSA struct {
+	rand    io.Reader
 	keyBits int
 	name    string
 	io      IO
@@ -225,8 +232,9 @@ type RSA struct {
 
 // NewRSA creates a new RSA OT implementing the OT interface. The
 // argument specifies the RSA key size in bits.
-func NewRSA(keyBits int) *RSA {
+func NewRSA(rand io.Reader, keyBits int) *RSA {
 	return &RSA{
+		rand:    rand,
 		keyBits: keyBits,
 		name:    fmt.Sprintf("RSA-%v", keyBits),
 	}
@@ -240,7 +248,7 @@ func (r *RSA) messageSize() int {
 func (r *RSA) InitSender(io IO) error {
 	r.io = io
 
-	priv, err := rsa.GenerateKey(rand.Reader, r.keyBits)
+	priv, err := rsa.GenerateKey(r.rand, r.keyBits)
 	if err != nil {
 		return err
 	}
@@ -290,11 +298,11 @@ func (r *RSA) InitReceiver(io IO) error {
 func (r *RSA) Send(wires []Wire) error {
 	for i := 0; i < len(wires); i++ {
 		// Send random messages.
-		x0, err := RandomData(r.messageSize())
+		x0, err := RandomData(r.rand, r.messageSize())
 		if err != nil {
 			return err
 		}
-		x1, err := RandomData(r.messageSize())
+		x1, err := RandomData(r.rand, r.messageSize())
 		if err != nil {
 			return err
 		}
@@ -348,7 +356,7 @@ func (r *RSA) Send(wires []Wire) error {
 // Receive receives the wire labels with OT based on the flag values.
 func (r *RSA) Receive(flags []bool, result []Label) error {
 	for i := 0; i < len(flags); i++ {
-		k, err := rand.Int(rand.Reader, r.pub.N)
+		k, err := rand.Int(r.rand, r.pub.N)
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,7 @@
 //
 // ot_test.go
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -92,11 +92,11 @@ func testOT(sender, receiver OT, t *testing.T) {
 }
 
 func TestOTCO(t *testing.T) {
-	testOT(NewCO(), NewCO(), t)
+	testOT(NewCO(rand.Reader), NewCO(rand.Reader), t)
 }
 
 func TestOTRSA(t *testing.T) {
-	testOT(NewRSA(2048), NewRSA(2048), t)
+	testOT(NewRSA(rand.Reader, 2048), NewRSA(rand.Reader, 2048), t)
 }
 
 func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
@@ -179,27 +179,28 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 }
 
 func BenchmarkOTCO_1(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 1, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 1, b)
 }
 
 func BenchmarkOTCO_8(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 8, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 8, b)
 }
 
 func BenchmarkOTCO_16(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 16, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 16, b)
 }
 
 func BenchmarkOTCO_32(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 32, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 32, b)
 }
 
 func BenchmarkOTCO_64(b *testing.B) {
-	benchmarkOT(NewCO(), NewCO(), 64, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 64, b)
 }
 
 func benchmarkOTRSA(keySize, batchSize int, b *testing.B) {
-	benchmarkOT(NewRSA(keySize), NewRSA(keySize), batchSize, b)
+	benchmarkOT(NewRSA(rand.Reader, keySize), NewRSA(rand.Reader, keySize),
+		batchSize, b)
 }
 
 func BenchmarkOTRSA_2048_1(b *testing.B) {

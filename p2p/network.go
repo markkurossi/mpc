@@ -9,6 +9,7 @@ package p2p
 import (
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"log"
 	"math/big"
 	"net"
@@ -20,6 +21,7 @@ import (
 
 // Network implements peer-to-peer network.
 type Network struct {
+	rand     io.Reader
 	ID       int
 	m        sync.Mutex
 	Peers    map[int]*Peer
@@ -28,12 +30,13 @@ type Network struct {
 }
 
 // NewNetwork creats a new peer-to-peer network.
-func NewNetwork(addr string, id int) (*Network, error) {
+func NewNetwork(rand io.Reader, addr string, id int) (*Network, error) {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 	nw := &Network{
+		rand:     rand,
 		ID:       id,
 		Peers:    make(map[int]*Peer),
 		addr:     addr,
@@ -135,6 +138,7 @@ func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 		return conn.Close()
 	}
 	peer := &Peer{
+		rand:   nw.rand,
 		id:     id,
 		conn:   conn,
 		client: client,
@@ -147,6 +151,7 @@ func (nw *Network) newPeer(client bool, conn *Conn, id int) error {
 
 // Peer implements a peer in the peer-to-peer network.
 type Peer struct {
+	rand       io.Reader
 	id         int
 	conn       *Conn
 	client     bool
@@ -187,7 +192,7 @@ func (peer *Peer) init() error {
 			N: new(big.Int).SetBytes(pubN),
 			E: pubE,
 		}
-		receiver, err := ot.NewReceiver(pub)
+		receiver, err := ot.NewReceiver(peer.rand, pub)
 		if err != nil {
 			finished <- err
 			return
@@ -197,7 +202,7 @@ func (peer *Peer) init() error {
 	}()
 
 	// Init oblivious transfer.
-	sender, err := ot.NewSender(2048)
+	sender, err := ot.NewSender(peer.rand, 2048)
 	if err != nil {
 		<-finished
 		return err

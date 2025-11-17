@@ -1,7 +1,7 @@
 //
 // rsa_test.go
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -18,8 +18,8 @@ func TestCO(t *testing.T) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender := NewCOSender()
-	receiver := NewCOReceiver(sender.Curve())
+	sender := NewCOSender(rand.Reader)
+	receiver := NewCOReceiver(rand.Reader, sender.Curve())
 
 	var l0Buf, l1Buf LabelData
 	l0Data := l0.Bytes(&l0Buf)
@@ -54,8 +54,8 @@ func BenchmarkCO(b *testing.B) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender := NewCOSender()
-	receiver := NewCOReceiver(sender.Curve())
+	sender := NewCOSender(rand.Reader)
+	receiver := NewCOReceiver(rand.Reader, sender.Curve())
 
 	b.ResetTimer()
 

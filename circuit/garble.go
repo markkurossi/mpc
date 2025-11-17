@@ -9,9 +9,9 @@ package circuit
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"io"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -141,8 +141,8 @@ func makeKHalf(x ot.Label, i uint32) ot.Label {
 	return x
 }
 
-func makeLabels(r ot.Label) (ot.Wire, error) {
-	l0, err := ot.NewLabel(rand.Reader)
+func makeLabels(rand io.Reader, r ot.Label) (ot.Wire, error) {
+	l0, err := ot.NewLabel(rand)
 	if err != nil {
 		return ot.Wire{}, err
 	}
@@ -182,9 +182,9 @@ func (g *Garbled) SetLambda(wire Wire, val uint) {
 }
 
 // Garble garbles the circuit.
-func (c *Circuit) Garble(key []byte) (*Garbled, error) {
+func (c *Circuit) Garble(rand io.Reader, key []byte) (*Garbled, error) {
 	// Create R.
-	r, err := ot.NewLabel(rand.Reader)
+	r, err := ot.NewLabel(rand)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +202,7 @@ func (c *Circuit) Garble(key []byte) (*Garbled, error) {
 
 	// Assing all input wires.
 	for i := 0; i < c.Inputs.Size(); i++ {
-		w, err := makeLabels(r)
+		w, err := makeLabels(rand, r)
 		if err != nil {
 			return nil, err
 		}

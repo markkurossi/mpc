@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/ot"
 )
 
@@ -47,7 +48,7 @@ func benchmarkGate(b *testing.B, g *Gate) {
 	inputs := []Wire{0, 1}
 	outputs := []Wire{2}
 
-	stream, err := NewStreaming(key[:], inputs, nil)
+	stream, err := NewStreaming(&env.Config{}, key[:], inputs, nil)
 	if err != nil {
 		b.Fatalf("failed to init streaming: %s", err)
 	}

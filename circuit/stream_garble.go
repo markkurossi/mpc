@@ -9,10 +9,10 @@ package circuit
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/rand"
 	"fmt"
 	"time"
 
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
@@ -38,10 +38,12 @@ type Streaming struct {
 }
 
 // NewStreaming creates a new streaming garbled circuit garbler.
-func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
+func NewStreaming(cfg *env.Config, key []byte, inputs []Wire, conn *p2p.Conn) (
 	*Streaming, error) {
 
-	r, err := ot.NewLabel(rand.Reader)
+	rand := cfg.GetRandom()
+
+	r, err := ot.NewLabel(rand)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,7 @@ func NewStreaming(key []byte, inputs []Wire, conn *p2p.Conn) (
 
 	// Assing all input wires.
 	for i := 0; i < len(inputs); i++ {
-		w, err := makeLabels(stream.r)
+		w, err := makeLabels(rand, stream.r)
 		if err != nil {
 			return nil, err
 		}

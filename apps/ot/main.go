@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2021 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -22,14 +22,14 @@ func main() {
 	m0, _ := ot.NewLabel(rand.Reader)
 	m1, _ := ot.NewLabel(rand.Reader)
 
-	sender, err := ot.NewSender(2048)
+	sender, err := ot.NewSender(rand.Reader, 2048)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("  Sender m0 : %x\n", m0)
 	fmt.Printf("  Sender m1 : %x\n", m1)
 
-	receiver, err := ot.NewReceiver(sender.PublicKey())
+	receiver, err := ot.NewReceiver(rand.Reader, sender.PublicKey())
 	if err != nil {
 		log.Fatal(err)
 	}

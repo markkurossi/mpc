@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,18 +9,20 @@
 package circuit
 
 import (
-	"crypto/rand"
 	"fmt"
+	"io"
 	"math/big"
 
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
 // Player runs the BMR protocol client on the P2P network.
-func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
-	[]*big.Int, error) {
+func Player(cfg *env.Config, nw *p2p.Network, circ *Circuit, inputs *big.Int,
+	verbose bool) ([]*big.Int, error) {
 
+	rand := cfg.GetRandom()
 	numPlayers := len(nw.Peers) + 1
 	player := nw.ID
 
@@ -35,7 +37,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 		return nil, err
 	}
 
-	garbled, err := circ.Garble(key[:])
+	garbled, err := circ.Garble(rand, key[:])
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +127,7 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 	}
 
 	// Init new gate values.
-	Gs := NewGateValues(circ.NumGates, numPlayers, nw.ID)
+	Gs := NewGateValues(rand, circ.NumGates, numPlayers, nw.ID)
 
 	Ag := new(big.Int)
 	Bg := new(big.Int)
@@ -183,21 +185,21 @@ func Player(nw *p2p.Network, circ *Circuit, inputs *big.Int, verbose bool) (
 			case INV:
 
 			default:
-				rand1, err := ot.NewLabel(rand.Reader)
+				rand1, err := ot.NewLabel(rand)
 				if err != nil {
 					return nil, err
 				}
 				X1LongAg[peerID][g] = rand1
 				Gs.Ag[player][g].Xor(rand1)
 
-				rand2, err := ot.NewLabel(rand.Reader)
+				rand2, err := ot.NewLabel(rand)
 				if err != nil {
 					return nil, err
 				}
 				X1LongBg[peerID][g] = rand2
 				Gs.Bg[player][g].Xor(rand2)
 
-				rand3, err := ot.NewLabel(rand.Reader)
+				rand3, err := ot.NewLabel(rand)
 				if err != nil {
 					return nil, err
 				}
@@ -409,7 +411,7 @@ type GateValues struct {
 }
 
 // NewGateValues creates GateValues for a player.
-func NewGateValues(numGates, numPlayers, we int) *GateValues {
+func NewGateValues(rand io.Reader, numGates, numPlayers, we int) *GateValues {
 	v := &GateValues{
 		Ag: make([][]ot.Label, numPlayers),
 		Bg: make([][]ot.Label, numPlayers),
@@ -418,18 +420,18 @@ func NewGateValues(numGates, numPlayers, we int) *GateValues {
 	}
 
 	for p := 0; p < numPlayers; p++ {
-		v.Ag[p] = arrayOfLabels(numGates)
-		v.Bg[p] = arrayOfLabels(numGates)
-		v.Cg[p] = arrayOfLabels(numGates)
-		v.Dg[p] = arrayOfLabels(numGates)
+		v.Ag[p] = arrayOfLabels(rand, numGates)
+		v.Bg[p] = arrayOfLabels(rand, numGates)
+		v.Cg[p] = arrayOfLabels(rand, numGates)
+		v.Dg[p] = arrayOfLabels(rand, numGates)
 	}
 	return v
 }
 
-func arrayOfLabels(count int) []ot.Label {
+func arrayOfLabels(rand io.Reader, count int) []ot.Label {
 	result := make([]ot.Label, count)
 	for i := 0; i < count; i++ {
-		l, err := ot.NewLabel(rand.Reader)
+		l, err := ot.NewLabel(rand)
 		if err != nil {
 			panic(err)
 		}

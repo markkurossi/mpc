@@ -177,7 +177,7 @@ func main() {
 
 	var err error
 
-	oti := ot.NewCO()
+	oti := ot.NewCO(params.Config.GetRandom())
 
 	if *stream {
 		if *evaluator {
@@ -385,7 +385,8 @@ func garblerMode(oti ot.OT, file string, params *utils.Params) error {
 	if err != nil {
 		return fmt.Errorf("%s: %v", file, err)
 	}
-	result, err := circuit.Garbler(conn, oti, circ, input, verbose)
+	result, err := circuit.Garbler(params.Config, conn, oti, circ, input,
+		verbose)
 	if err != nil {
 		return err
 	}

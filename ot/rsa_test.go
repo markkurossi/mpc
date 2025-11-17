@@ -1,7 +1,7 @@
 //
 // rsa_test.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -18,12 +18,12 @@ func benchmark(b *testing.B, keySize int) {
 	l0, _ := NewLabel(rand.Reader)
 	l1, _ := NewLabel(rand.Reader)
 
-	sender, err := NewSender(keySize)
+	sender, err := NewSender(rand.Reader, keySize)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	receiver, err := NewReceiver(sender.PublicKey())
+	receiver, err := NewReceiver(rand.Reader, sender.PublicKey())
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2022-2024 Markku Rossi
+// Copyright (c) 2022-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -7,6 +7,7 @@
 package bmr
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
 	"math/big"
@@ -33,8 +34,8 @@ func (p *Player) AddPeer(idx int, to, from ot.IO) {
 		id:         idx,
 		to:         to,
 		from:       from,
-		otSender:   ot.NewCO(),
-		otReceiver: ot.NewCO(),
+		otSender:   ot.NewCO(rand.Reader),
+		otReceiver: ot.NewCO(rand.Reader),
 	}
 }
 

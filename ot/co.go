@@ -1,7 +1,7 @@
 //
 // co.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -49,6 +49,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"hash"
+	"io"
 	"math/big"
 )
 
@@ -59,12 +60,14 @@ var (
 
 // COSender implements CO OT sender.
 type COSender struct {
+	rand  io.Reader
 	curve elliptic.Curve
 }
 
 // NewCOSender creates a new CO OT sender.
-func NewCOSender() *COSender {
+func NewCOSender(rand io.Reader) *COSender {
 	return &COSender{
+		rand:  rand,
 		curve: elliptic.P256(),
 	}
 }
@@ -79,7 +82,7 @@ func (s *COSender) NewTransfer(m0, m1 []byte) (*COSenderXfer, error) {
 	curveParams := s.curve.Params()
 
 	// a <- Zp
-	a, err := rand.Int(rand.Reader, curveParams.N)
+	a, err := rand.Int(s.rand, curveParams.N)
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +151,14 @@ func (s *COSenderXfer) E() (e0, e1 []byte) {
 
 // COReceiver implements CO OT receiver.
 type COReceiver struct {
+	rand  io.Reader
 	curve elliptic.Curve
 }
 
 // NewCOReceiver creates a new OT receiver.
-func NewCOReceiver(curve elliptic.Curve) *COReceiver {
+func NewCOReceiver(rand io.Reader, curve elliptic.Curve) *COReceiver {
 	return &COReceiver{
+		rand:  rand,
 		curve: curve,
 	}
 }
@@ -163,7 +168,7 @@ func (r *COReceiver) NewTransfer(bit uint) (*COReceiverXfer, error) {
 	curveParams := r.curve.Params()
 
 	// b <= Zp
-	b, err := rand.Int(rand.Reader, curveParams.N)
+	b, err := rand.Int(r.rand, curveParams.N)
 	if err != nil {
 		return nil, err
 	}
@@ -250,6 +255,7 @@ func xor(a, b []byte) []byte {
 
 // CO implements CO OT as the OT interface.
 type CO struct {
+	rand   io.Reader
 	curve  elliptic.Curve
 	hash   hash.Hash
 	digest []byte
@@ -257,8 +263,9 @@ type CO struct {
 }
 
 // NewCO creates a new CO OT implementing the OT interface.
-func NewCO() *CO {
+func NewCO(rand io.Reader) *CO {
 	return &CO{
+		rand:   rand,
 		curve:  elliptic.P256(),
 		hash:   sha256.New(),
 		digest: make([]byte, sha256.Size),
@@ -294,7 +301,7 @@ func (co *CO) Send(wires []Wire) error {
 	curveParams := co.curve.Params()
 
 	// a <- Zp
-	a, err := rand.Int(rand.Reader, curveParams.N)
+	a, err := rand.Int(co.rand, curveParams.N)
 	if err != nil {
 		return err
 	}
@@ -397,7 +404,7 @@ func (co *CO) Receive(flags []bool, result []Label) error {
 
 	for i := 0; i < flagsCnt; i++ {
 		// b <= Zp
-		b, err := rand.Int(rand.Reader, curveParams.N)
+		b, err := rand.Int(co.rand, curveParams.N)
 		if err != nil {
 			return err
 		}

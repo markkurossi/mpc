@@ -1,7 +1,7 @@
 //
 // garbler.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,10 +9,10 @@
 package circuit
 
 import (
-	"crypto/rand"
 	"fmt"
 	"math/big"
 
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
@@ -35,9 +35,10 @@ func (s FileSize) String() string {
 }
 
 // Garbler runs the garbler on the P2P network.
-func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
-	verbose bool) ([]*big.Int, error) {
+func Garbler(cfg *env.Config, conn *p2p.Conn, oti ot.OT, circ *Circuit,
+	inputs *big.Int, verbose bool) ([]*big.Int, error) {
 
+	rand := cfg.GetRandom()
 	timing := NewTiming()
 	if verbose {
 		fmt.Printf(" - Garbling...\n")
@@ -49,7 +50,7 @@ func Garbler(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 		return nil, err
 	}
 
-	garbled, err := circ.Garble(key[:])
+	garbled, err := circ.Garble(rand, key[:])
 	if err != nil {
 		return nil, err
 	}

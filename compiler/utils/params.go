@@ -14,10 +14,13 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+
+	"github.com/markkurossi/mpc/env"
 )
 
 // Params specify compiler parameters.
 type Params struct {
+	Config        *env.Config
 	Verbose       bool
 	Diagnostics   bool
 	SSAOut        io.WriteCloser
@@ -55,6 +58,7 @@ type Params struct {
 // default values.
 func NewParams() *Params {
 	return &Params{
+		Config:        new(env.Config),
 		MaxLoopUnroll: 0x20000,
 		Warn:          NewWarnings(),
 		SymbolIDs:     make(map[string]int),

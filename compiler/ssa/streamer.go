@@ -71,7 +71,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 		ids = append(ids, w.ID())
 	}
 
-	streaming, err := circuit.NewStreaming(key[:], ids, conn)
+	streaming, err := circuit.NewStreaming(params.Config, key[:], ids, conn)
 	if err != nil {
 		return nil, nil, err
 	}

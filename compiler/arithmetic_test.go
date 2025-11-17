@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -14,6 +14,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/utils"
+	"github.com/markkurossi/mpc/env"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
@@ -100,6 +101,9 @@ func main(a, b int6) int6 {
 }
 
 func TestArithmetics(t *testing.T) {
+	cfg := &env.Config{}
+	rand := cfg.GetRandom()
+
 	for _, test := range tests {
 		if testing.Short() && test.Heavy {
 			fmt.Printf("Skipping %s\n", test.Name)
@@ -126,13 +130,13 @@ func TestArithmetics(t *testing.T) {
 				gerr := make(chan error)
 
 				go func() {
-					_, err := circuit.Garbler(p2p.NewConn(gio), ot.NewCO(),
-						circ, gInput, false)
+					_, err := circuit.Garbler(cfg, p2p.NewConn(gio),
+						ot.NewCO(rand), circ, gInput, false)
 					gerr <- err
 				}()
 
 				result, err := circuit.Evaluator(p2p.NewConn(eio),
-					ot.NewCO(), circ, eInput, false)
+					ot.NewCO(rand), circ, eInput, false)
 				if err != nil {
 					t.Fatalf("Evaluator failed: %s\n", err)
 				}
@@ -162,6 +166,9 @@ func main(a, b int512) int512 {
 `
 
 func BenchmarkMult(b *testing.B) {
+	cfg := &env.Config{}
+	rand := cfg.GetRandom()
+
 	circ, _, err := New(utils.NewParams()).Compile(mult512, nil)
 	if err != nil {
 		b.Fatalf("failed to compile test: %s", err)
@@ -179,12 +186,12 @@ func BenchmarkMult(b *testing.B) {
 	gerr := make(chan error)
 
 	go func() {
-		_, err := circuit.Garbler(p2p.NewConn(gio), ot.NewCO(), circ, gInput,
-			false)
+		_, err := circuit.Garbler(cfg, p2p.NewConn(gio), ot.NewCO(rand),
+			circ, gInput, false)
 		gerr <- err
 	}()
 
-	_, err = circuit.Evaluator(p2p.NewConn(eio), ot.NewCO(), circ, eInput,
+	_, err = circuit.Evaluator(p2p.NewConn(eio), ot.NewCO(rand), circ, eInput,
 		false)
 	if err != nil {
 		b.Fatalf("Evaluator failed: %s\n", err)
