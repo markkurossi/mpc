@@ -179,6 +179,7 @@ The MPCL runtime defines the following builtin functions:
 
 # TODO
 
+ - [ ] [Graph](https://spidermonkey.dev/blog/2025/10/28/iongraph-web.html)
  - [ ] Foundation
    - [x] Circuit & garbling:
      - [x] Oblivious transfer extensions
