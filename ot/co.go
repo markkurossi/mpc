@@ -45,17 +45,13 @@ package ot
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
-	"hash"
 	"io"
 	"math/big"
 )
 
 var (
-	bo    = binary.BigEndian
-	_  OT = &CO{}
+	_ OT = &CO{}
 )
 
 // COSender implements CO OT sender.
@@ -101,7 +97,6 @@ func (s *COSender) NewTransfer(m0, m1 []byte) (*COSenderXfer, error) {
 
 	return &COSenderXfer{
 		curve:  s.curve,
-		hash:   sha256.New(),
 		m0:     m0,
 		m1:     m1,
 		a:      a,
@@ -115,7 +110,6 @@ func (s *COSender) NewTransfer(m0, m1 []byte) (*COSenderXfer, error) {
 // COSenderXfer implements sender OT transfer.
 type COSenderXfer struct {
 	curve  elliptic.Curve
-	hash   hash.Hash
 	m0     []byte
 	m1     []byte
 	a      *big.Int
@@ -140,8 +134,10 @@ func (s *COSenderXfer) ReceiveB(x, y []byte) {
 	bx, by = s.curve.ScalarMult(bx, by, s.a.Bytes())
 	bax, bay := s.curve.Add(bx, by, s.AaInvx, s.AaInvy)
 
-	s.e0 = xor(kdf(s.hash, bx, by, 0, nil), s.m0)
-	s.e1 = xor(kdf(s.hash, bax, bay, 0, nil), s.m1)
+	mask0 := deriveMask(bx, by, 0)
+	mask1 := deriveMask(bax, bay, 0)
+	s.e0 = append([]byte(nil), xor(mask0[:], s.m0)...)
+	s.e1 = append([]byte(nil), xor(mask1[:], s.m1)...)
 }
 
 // E returns sender's encrypted messages.
@@ -175,7 +171,6 @@ func (r *COReceiver) NewTransfer(bit uint) (*COReceiverXfer, error) {
 
 	return &COReceiverXfer{
 		curve: r.curve,
-		hash:  sha256.New(),
 		bit:   bit,
 		b:     b,
 	}, nil
@@ -184,7 +179,6 @@ func (r *COReceiver) NewTransfer(bit uint) (*COReceiverXfer, error) {
 // COReceiverXfer implements receiver OT transfer.
 type COReceiverXfer struct {
 	curve elliptic.Curve
-	hash  hash.Hash
 	bit   uint
 	b     *big.Int
 	Bx    *big.Int
@@ -218,57 +212,26 @@ func (r *COReceiverXfer) B() (x, y []byte) {
 // ReceiveE receives encrypted messages from the sender and returns
 // the result value.
 func (r *COReceiverXfer) ReceiveE(e0, e1 []byte) []byte {
-	var result []byte
-
-	data := kdf(r.hash, r.Asx, r.Asy, 0, nil)
+	mask := deriveMask(r.Asx, r.Asy, 0)
 
 	if r.bit != 0 {
-		result = xor(data, e1)
-	} else {
-		result = xor(data, e0)
+		return append([]byte(nil), xor(mask[:], e1)...)
 	}
-	return result
-}
-
-func kdf(hash hash.Hash, x, y *big.Int, id uint64, digest []byte) []byte {
-	hash.Reset()
-	hash.Write(x.Bytes())
-	hash.Write(y.Bytes())
-
-	var tmp [8]byte
-	bo.PutUint64(tmp[:], id)
-	hash.Write(tmp[:])
-
-	return hash.Sum(digest)
-}
-
-func xor(a, b []byte) []byte {
-	l := len(a)
-	if len(b) < l {
-		l = len(b)
-	}
-	for i := 0; i < l; i++ {
-		a[i] ^= b[i]
-	}
-	return a[:l]
+	return append([]byte(nil), xor(mask[:], e0)...)
 }
 
 // CO implements CO OT as the OT interface.
 type CO struct {
-	rand   io.Reader
-	curve  elliptic.Curve
-	hash   hash.Hash
-	digest []byte
-	io     IO
+	rand  io.Reader
+	curve elliptic.Curve
+	io    IO
 }
 
 // NewCO creates a new CO OT implementing the OT interface.
 func NewCO(rand io.Reader) *CO {
 	return &CO{
-		rand:   rand,
-		curve:  elliptic.P256(),
-		hash:   sha256.New(),
-		digest: make([]byte, sha256.Size),
+		rand:  rand,
+		curve: elliptic.P256(),
 	}
 }
 
@@ -298,98 +261,55 @@ func (co *CO) InitReceiver(io IO) error {
 
 // Send sends the wire labels with OT.
 func (co *CO) Send(wires []Wire) error {
-	curveParams := co.curve.Params()
-
-	// a <- Zp
-	a, err := rand.Int(co.rand, curveParams.N)
+	setup, err := GenerateCOSenderSetup(co.rand, co.curve)
 	if err != nil {
 		return err
 	}
-	aBytes := a.Bytes()
-
-	// A = G^a
-	Ax, Ay := co.curve.ScalarBaseMult(aBytes)
-
-	if err := co.io.SendData(Ax.Bytes()); err != nil {
+	if err := co.io.SendData(setup.Ax.Bytes()); err != nil {
 		return err
 	}
-	if err := co.io.SendData(Ay.Bytes()); err != nil {
+	if err := co.io.SendData(setup.Ay.Bytes()); err != nil {
 		return err
 	}
 	if err := co.io.Flush(); err != nil {
 		return err
 	}
 
-	// Aa = A^a
-	Aax, Aay := co.curve.ScalarMult(Ax, Ay, aBytes)
-
-	// a:    {x,y}
-	// a^-1: {x,-y}
-	// AaInv = {Aax, -Aay}
-	AaInvx := big.NewInt(0).Set(Aax)
-	AaInvy := big.NewInt(0).Sub(curveParams.P, Aay)
-
-	BxRaw := big.NewInt(0)
-	ByRaw := big.NewInt(0)
-
-	wiresCnt := len(wires)
-	Bxs := make([]*big.Int, wiresCnt)
-	Bys := make([]*big.Int, wiresCnt)
-	Baxs := make([]*big.Int, wiresCnt)
-	Bays := make([]*big.Int, wiresCnt)
-
-	for i := 0; i < wiresCnt; i++ {
-		data, err := co.io.ReceiveData()
+	points := make([]ECPoint, len(wires))
+	for i := 0; i < len(wires); i++ {
+		xData, err := co.io.ReceiveData()
 		if err != nil {
 			return err
 		}
-		BxRaw.SetBytes(data)
-		data, err = co.io.ReceiveData()
+		xBytes := append([]byte(nil), xData...)
+		yData, err := co.io.ReceiveData()
 		if err != nil {
 			return err
 		}
-		ByRaw.SetBytes(data)
-
-		Bx, By := co.curve.ScalarMult(BxRaw, ByRaw, aBytes)
-		Bax, Bay := co.curve.Add(Bx, By, AaInvx, AaInvy)
-
-		Bxs[i] = Bx
-		Bys[i] = By
-		Baxs[i] = Bax
-		Bays[i] = Bay
-	}
-
-	for i := 0; i < wiresCnt; i++ {
-		var labelData LabelData
-
-		Bx := Bxs[i]
-		By := Bys[i]
-		Bax := Baxs[i]
-		Bay := Bays[i]
-
-		wires[i].L0.GetData(&labelData)
-		e0 := xor(kdf(co.hash, Bx, By, uint64(i), co.digest[:]), labelData[:])
-		if err := co.io.SendData(e0); err != nil {
-			return err
-		}
-		wires[i].L1.GetData(&labelData)
-		e1 := xor(kdf(co.hash, Bax, Bay, uint64(i), co.digest[:]), labelData[:])
-		if err := co.io.SendData(e1); err != nil {
-			return err
+		yBytes := append([]byte(nil), yData...)
+		points[i] = ECPoint{
+			X: new(big.Int).SetBytes(xBytes),
+			Y: new(big.Int).SetBytes(yBytes),
 		}
 	}
 
-	if err := co.io.Flush(); err != nil {
+	ct, err := EncryptCOCiphertexts(co.curve, setup, points, wires)
+	if err != nil {
 		return err
 	}
-
-	return nil
+	for i := range ct {
+		if err := co.io.SendData(ct[i].Zero[:]); err != nil {
+			return err
+		}
+		if err := co.io.SendData(ct[i].One[:]); err != nil {
+			return err
+		}
+	}
+	return co.io.Flush()
 }
 
 // Receive receives the wire labels with OT based on the flag values.
 func (co *CO) Receive(flags []bool, result []Label) error {
-	curveParams := co.curve.Params()
-
 	Ax, err := ReceiveBigInt(co.io)
 	if err != nil {
 		return err
@@ -399,69 +319,43 @@ func (co *CO) Receive(flags []bool, result []Label) error {
 		return err
 	}
 
-	flagsCnt := len(flags)
-	BsBytes := make([][]byte, flagsCnt)
-
-	for i := 0; i < flagsCnt; i++ {
-		// b <= Zp
-		b, err := rand.Int(co.rand, curveParams.N)
-		if err != nil {
-			return err
-		}
-		bBytes := b.Bytes()
-
-		Bx, By := co.curve.ScalarBaseMult(bBytes)
-		if flags[i] {
-			Bx, By = co.curve.Add(Bx, By, Ax, Ay)
-		}
-		if err := co.io.SendData(Bx.Bytes()); err != nil {
-			return err
-		}
-		if err := co.io.SendData(By.Bytes()); err != nil {
-			return err
-		}
-
-		BsBytes[i] = bBytes
+	bundle, points, err := BuildCOChoices(co.rand, co.curve, Ax, Ay, flags)
+	if err != nil {
+		return err
 	}
-
+	for i := range points {
+		if err := co.io.SendData(points[i].X.Bytes()); err != nil {
+			return err
+		}
+		if err := co.io.SendData(points[i].Y.Bytes()); err != nil {
+			return err
+		}
+	}
 	if err := co.io.Flush(); err != nil {
 		return err
 	}
 
-	for i := 0; i < flagsCnt; i++ {
-		bBytes := BsBytes[i]
-		Asx, Asy := co.curve.ScalarMult(Ax, Ay, bBytes)
-
-		// Receive E. Please, be careful when editing the code below
-		// since the co.digest will be used as data after kdf()
-		// call. Also, data received from co.io can be overridden by
-		// the next call so we do the xor() as soon as we received the
-		// data.
-		data := kdf(co.hash, Asx, Asy, uint64(i), co.digest[:])
-		var e []byte
-		if flags[i] {
-			_, err = co.io.ReceiveData()
-			if err != nil {
-				return err
-			}
-			e, err := co.io.ReceiveData()
-			if err != nil {
-				return err
-			}
-			data = xor(data, e)
-		} else {
-			e, err = co.io.ReceiveData()
-			if err != nil {
-				return err
-			}
-			data = xor(data, e)
-			_, err := co.io.ReceiveData()
-			if err != nil {
-				return err
-			}
+	ciphertexts := make([]LabelCiphertext, len(flags))
+	for i := range ciphertexts {
+		zero, err := co.io.ReceiveData()
+		if err != nil {
+			return err
 		}
-		result[i].SetBytes(data)
+		copy(ciphertexts[i].Zero[:], zero)
+		one, err := co.io.ReceiveData()
+		if err != nil {
+			return err
+		}
+		copy(ciphertexts[i].One[:], one)
 	}
 
+	labels, err := DecryptCOCiphertexts(co.curve, bundle, ciphertexts)
+	if err != nil {
+		return err
+	}
+	if len(labels) != len(result) {
+		return fmt.Errorf("label count mismatch: got %d want %d", len(labels), len(result))
+	}
+	copy(result, labels)
 	return nil
 }
