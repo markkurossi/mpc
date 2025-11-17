@@ -9,8 +9,13 @@
 package ot
 
 import (
+	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
+	"io"
+	mrand "math/rand"
 	"testing"
 )
 
@@ -196,6 +201,132 @@ func BenchmarkOTCO_32(b *testing.B) {
 
 func BenchmarkOTCO_64(b *testing.B) {
 	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 64, b)
+}
+
+// readLabelFromReader deterministically fills a label using the reader's bytes.
+func readLabelFromReader(reader io.Reader) (Label, error) {
+	var data LabelData
+	if _, err := io.ReadFull(reader, data[:]); err != nil {
+		return Label{}, err
+	}
+	var label Label
+	label.SetData(&data)
+	return label, nil
+}
+
+// deterministicReader is a math/rand-backed reader for reproducible tests only.
+type deterministicReader struct {
+	src *mrand.Rand
+}
+
+// newDeterministicReader creates a deterministicReader seeded from the string.
+func newDeterministicReader(seed string) *deterministicReader {
+	sum := sha256.Sum256([]byte(seed))
+	src := mrand.NewSource(int64(binary.BigEndian.Uint64(sum[:8])))
+	return &deterministicReader{src: mrand.New(src)}
+}
+
+// Read fills the buffer with pseudo-random bytes (not cryptographically safe).
+func (r *deterministicReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = byte(r.src.Intn(256))
+	}
+	return len(p), nil
+}
+
+// TestCODeterministicTranscript locks the IO CO OT to a known hash.
+func TestCODeterministicTranscript(t *testing.T) {
+	const wiresCount = 8
+	wires := make([]Wire, wiresCount)
+	wireRand := newDeterministicReader("io-co-wires")
+	for i := range wires {
+		l0, err := readLabelFromReader(wireRand)
+		if err != nil {
+			t.Fatalf("l0: %v", err)
+		}
+		l1, err := readLabelFromReader(wireRand)
+		if err != nil {
+			t.Fatalf("l1: %v", err)
+		}
+		wires[i].L0 = l0
+		wires[i].L1 = l1
+	}
+	flags := []bool{false, true, false, true, true, false, true, false}
+
+	type transcriptResult struct {
+		labels []Label
+		err    error
+	}
+	resultCh := make(chan transcriptResult, 1)
+
+	senderPipe, receiverPipe := NewPipe()
+
+	go func() {
+		receiver := NewCO(newDeterministicReader("io-receiver"))
+		if err := receiver.InitReceiver(receiverPipe); err != nil {
+			resultCh <- transcriptResult{err: err}
+			return
+		}
+		labels := make([]Label, wiresCount)
+		if err := receiver.Receive(flags, labels); err != nil {
+			resultCh <- transcriptResult{err: err}
+			return
+		}
+		for idx, bit := range flags {
+			expected := wires[idx].L0
+			if bit {
+				expected = wires[idx].L1
+			}
+			if !labels[idx].Equal(expected) {
+				resultCh <- transcriptResult{
+					err: fmt.Errorf("label %d mismatch", idx),
+				}
+				return
+			}
+		}
+		copyLabels := make([]Label, len(labels))
+		copy(copyLabels, labels)
+		resultCh <- transcriptResult{labels: copyLabels}
+	}()
+
+	sender := NewCO(newDeterministicReader("io-sender"))
+	if err := sender.InitSender(senderPipe); err != nil {
+		t.Fatalf("InitSender: %v", err)
+	}
+	if err := sender.Send(wires); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	result := <-resultCh
+	if result.err != nil {
+		t.Fatalf("receiver failed: %v", result.err)
+	}
+
+	var buf bytes.Buffer
+	var tmp LabelData
+	for _, wire := range wires {
+		wire.L0.GetData(&tmp)
+		buf.Write(tmp[:])
+		wire.L1.GetData(&tmp)
+		buf.Write(tmp[:])
+	}
+	for _, flag := range flags {
+		if flag {
+			buf.WriteByte(1)
+		} else {
+			buf.WriteByte(0)
+		}
+	}
+	for _, label := range result.labels {
+		label.GetData(&tmp)
+		buf.Write(tmp[:])
+	}
+	// coTranscriptHash records the deterministic CO transcript digest.
+	const coTranscriptHash = "665c4a1093bb2792f09808a5113dcc57c13aae7ebb65cf041faeace305fca55e"
+	hash := fmt.Sprintf("%x", sha256.Sum256(buf.Bytes()))
+	if hash != coTranscriptHash {
+		t.Fatalf("transcript hash mismatch: got %s want %s", hash, coTranscriptHash)
+	}
 }
 
 func benchmarkOTRSA(keySize, batchSize int, b *testing.B) {
