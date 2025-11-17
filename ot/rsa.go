@@ -150,6 +150,7 @@ func (r *Receiver) NewTransfer(bit uint) (*ReceiverXfer, error) {
 	return &ReceiverXfer{
 		receiver: r,
 		bit:      bit,
+		rand:     r.rand,
 	}, nil
 }
 
