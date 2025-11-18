@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/sha256"
 	"fmt"
+	"math/big"
 	"testing"
 )
 
@@ -201,5 +202,20 @@ func BenchmarkDecryptCOCiphertexts(b *testing.B) {
 		if _, err := DecryptCOCiphertexts(curve, bundle, ciphertexts); err != nil {
 			b.Fatalf("DecryptCOCiphertexts: %v", err)
 		}
+	}
+}
+
+var benchmarkDeriveMaskSink [sha256.Size]byte
+
+// BenchmarkDeriveMask measures the SHA-256 based mask derivation cost.
+func BenchmarkDeriveMask(b *testing.B) {
+	curve := elliptic.P256()
+	scalar := new(big.Int).SetInt64(42)
+	x, y := curve.ScalarBaseMult(scalar.Bytes())
+
+	var id uint64
+	for b.Loop() {
+		benchmarkDeriveMaskSink = deriveMask(x, y, id)
+		id++
 	}
 }

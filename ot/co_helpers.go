@@ -199,15 +199,18 @@ func DecryptCOCiphertexts(curve elliptic.Curve, bundle COChoiceBundle, data []La
 
 // deriveMask derives the XOR pad for a particular Diffie-Hellman output.
 func deriveMask(x, y *big.Int, id uint64) [sha256.Size]byte {
+	hash := sha256.New()
+	hash.Write(x.Bytes())
+	hash.Write(y.Bytes())
+
 	var idBuf [8]byte
 	bo.PutUint64(idBuf[:], id)
+	hash.Write(idBuf[:])
 
-	buf := make([]byte, 0, len(x.Bytes())+len(y.Bytes())+len(idBuf))
-	buf = append(buf, x.Bytes()...)
-	buf = append(buf, y.Bytes()...)
-	buf = append(buf, idBuf[:]...)
+	var sum [sha256.Size]byte
+	hash.Sum(sum[:0])
 
-	return sha256.Sum256(buf)
+	return sum
 }
 
 // xor returns dst XOR src (truncating to the shorter slice).
