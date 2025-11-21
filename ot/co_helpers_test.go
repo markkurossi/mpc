@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"math/big"
 	"testing"
@@ -91,6 +92,78 @@ func TestCOHelpersNilCurve(t *testing.T) {
 	}
 	if _, err := DecryptCOCiphertexts(nil, COChoiceBundle{}, nil); err != ErrNilCurve {
 		t.Fatalf("unexpected error for nil curve: %v", err)
+	}
+}
+
+// TestBuildCOChoicesRejectsInvalidSenderPoint ensures malicious inputs fail fast.
+func TestBuildCOChoicesRejectsInvalidSenderPoint(t *testing.T) {
+	curve := elliptic.P256()
+	setup, err := GenerateCOSenderSetup(newDeterministicReader("invalid-curve-garbler"), curve)
+	if err != nil {
+		t.Fatalf("GenerateCOSenderSetup: %v", err)
+	}
+	fakeAy := new(big.Int).Add(setup.Ay, big.NewInt(1))
+	for curve.IsOnCurve(setup.Ax, fakeAy) {
+		fakeAy.Add(fakeAy, big.NewInt(1))
+	}
+	choices := []bool{false, true, false}
+	if _, _, err := BuildCOChoices(newDeterministicReader("invalid-curve-evaluator"), curve, setup.Ax, fakeAy, choices); !errors.Is(err, ErrPointNotOnCurve) {
+		t.Fatalf("BuildCOChoices error mismatch: %v", err)
+	}
+}
+
+// TestEncryptCOCiphertextsRejectsInvalidChoicePoint ensures evaluator points are validated.
+func TestEncryptCOCiphertextsRejectsInvalidChoicePoint(t *testing.T) {
+	curve := elliptic.P256()
+	setup, err := GenerateCOSenderSetup(newDeterministicReader("invalid-choice-garbler"), curve)
+	if err != nil {
+		t.Fatalf("GenerateCOSenderSetup: %v", err)
+	}
+	wires := make([]Wire, 2)
+	wireRand := newDeterministicReader("invalid-choice-wires")
+	for i := range wires {
+		l0, err := readLabelFromReader(wireRand)
+		if err != nil {
+			t.Fatalf("l0: %v", err)
+		}
+		l1, err := readLabelFromReader(wireRand)
+		if err != nil {
+			t.Fatalf("l1: %v", err)
+		}
+		wires[i].L0 = l0
+		wires[i].L1 = l1
+	}
+	points := make([]ECPoint, len(wires))
+	for i := range points {
+		x := new(big.Int).Add(setup.Ax, big.NewInt(int64(i+1)))
+		y := new(big.Int).Add(setup.Ay, big.NewInt(int64(2*i+3)))
+		for curve.IsOnCurve(x, y) {
+			y.Add(y, big.NewInt(1))
+		}
+		points[i] = ECPoint{X: x, Y: y}
+	}
+	if _, err := EncryptCOCiphertexts(curve, setup, points, wires); !errors.Is(err, ErrPointNotOnCurve) {
+		t.Fatalf("EncryptCOCiphertexts error mismatch: %v", err)
+	}
+}
+
+// TestEnsureOnCurve validates that the helper enforces curve membership.
+func TestEnsureOnCurve(t *testing.T) {
+	curve := elliptic.P256()
+	x := curve.Params().Gx
+	y := curve.Params().Gy
+	if err := ensureOnCurve(curve, x, y); err != nil {
+		t.Fatalf("ensureOnCurve valid point: %v", err)
+	}
+	if err := ensureOnCurve(nil, x, y); !errors.Is(err, ErrNilCurve) {
+		t.Fatalf("ensureOnCurve nil curve mismatch: %v", err)
+	}
+	badY := new(big.Int).Add(y, big.NewInt(1))
+	for curve.IsOnCurve(x, badY) {
+		badY.Add(badY, big.NewInt(1))
+	}
+	if err := ensureOnCurve(curve, x, badY); !errors.Is(err, ErrPointNotOnCurve) {
+		t.Fatalf("ensureOnCurve invalid point mismatch: %v", err)
 	}
 }
 

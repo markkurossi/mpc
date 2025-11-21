@@ -13,6 +13,9 @@ import (
 // ErrNilCurve signals that a helper received a nil elliptic curve.
 var ErrNilCurve = errors.New("ot: nil curve")
 
+// ErrPointNotOnCurve signals that an input point is not on the active curve.
+var ErrPointNotOnCurve = errors.New("ot: point not on curve")
+
 // ECPoint describes an affine curve point.
 type ECPoint struct {
 	// X is the affine x-coordinate.
@@ -102,6 +105,9 @@ func EncryptCOCiphertexts(curve elliptic.Curve, setup COSenderSetup, points []EC
 	if curve == nil {
 		return nil, ErrNilCurve
 	}
+	if err := ensureOnCurve(curve, setup.Ax, setup.Ay); err != nil {
+		return nil, err
+	}
 	if len(points) != len(wires) {
 		return nil, fmt.Errorf("OT point count mismatch: got %d want %d", len(points), len(wires))
 	}
@@ -110,6 +116,9 @@ func EncryptCOCiphertexts(curve elliptic.Curve, setup COSenderSetup, points []EC
 
 	result := make([]LabelCiphertext, len(points))
 	for idx, point := range points {
+		if err := ensureOnCurve(curve, point.X, point.Y); err != nil {
+			return nil, err
+		}
 		Bx, By := curve.ScalarMult(point.X, point.Y, aBytes)
 		Bax, Bay := curve.Add(Bx, By, setup.AaInvX, setup.AaInvY)
 
@@ -132,9 +141,10 @@ func BuildCOChoices(rand io.Reader, curve elliptic.Curve, Ax, Ay *big.Int, bits 
 	if curve == nil {
 		return COChoiceBundle{}, nil, ErrNilCurve
 	}
-
+	if err := ensureOnCurve(curve, Ax, Ay); err != nil {
+		return COChoiceBundle{}, nil, err
+	}
 	params := curve.Params()
-
 	points := make([]ECPoint, len(bits))
 	scalars := make([]*big.Int, len(bits))
 	for idx, bit := range bits {
@@ -164,6 +174,17 @@ func BuildCOChoices(rand io.Reader, curve elliptic.Curve, Ax, Ay *big.Int, bits 
 	}
 
 	return bundle, points, nil
+}
+
+// ensureOnCurve verifies that (x,y) is a valid affine point on the curve.
+func ensureOnCurve(curve elliptic.Curve, x, y *big.Int) error {
+	if curve == nil {
+		return ErrNilCurve
+	}
+	if x == nil || y == nil || !curve.IsOnCurve(x, y) {
+		return ErrPointNotOnCurve
+	}
+	return nil
 }
 
 // DecryptCOCiphertexts decodes the chosen labels from ciphertexts.
