@@ -8,12 +8,14 @@
 package ot
 
 import (
+	"encoding/binary"
 	"fmt"
 	"io"
 )
 
 var (
-	_ IO = &Pipe{}
+	bo    = binary.BigEndian
+	_  IO = &Pipe{}
 )
 
 // Pipe implements the IO interface with in-memory io.Pipe.

@@ -105,7 +105,9 @@ func Evaluator(conn *p2p.Conn, oti ot.OT, circ *Circuit, inputs *big.Int,
 			flags[i] = true
 		}
 	}
-	if err := oti.Receive(flags, wires[circ.Inputs[0].Type.Bits:]); err != nil {
+	start := int(circ.Inputs[0].Type.Bits)
+	end := start + int(circ.Inputs[1].Type.Bits)
+	if err := oti.Receive(flags, wires[start:end]); err != nil {
 		return nil, err
 	}
 	xfer := conn.Stats.Sum() - ioStats

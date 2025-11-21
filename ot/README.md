@@ -7,6 +7,21 @@ algorithms:
    operation.
  - Chou Orlandi OT: Diffie-Hellman - like fast OT algorithm.
 
+## Pure CO helpers
+
+The CO implementation now exposes pure helper functions so applications can
+prepare, encrypt, and decrypt OT payloads without depending on the streaming
+`IO` API.  Use:
+
+1. `GenerateCOSenderSetup` to sample the sender's randomness and public point.
+2. `EncryptCOCiphertexts` to turn `Wire` labels and evaluator points into OT ciphertexts.
+3. `BuildCOChoices` to build evaluator curve points deterministically from the sender's public key.
+4. `DecryptCOCiphertexts` to decode the evaluator's chosen labels.
+
+These helpers accept any `io.Reader` for randomness, which makes deterministic
+testing straightforward.  The streaming `CO` type is now a small wrapper around
+the same helpers, so both styles always share the exact same cryptographic core.
+
 ## Performance
 
 | Algorithm    |      ns/op |   ops/s |
