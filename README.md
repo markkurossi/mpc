@@ -6,6 +6,7 @@ two-party computation with [Garbled circuit](https://en.wikipedia.org/wiki/Garbl
  - [compiler](compiler/): **Multi-Party Computation Language (MPCL)** compiler
  - [circuit](circuit/): **garbled circuit** parser, garbler, and evaluator
  - [ot](ot/): **oblivious transfer** library
+ - [sha2pc](sha2pc/): **SHA256(XOR(a, b))** two-party protocol for two 32-byte inputs
 
 ## Getting started
 
