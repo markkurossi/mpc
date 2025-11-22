@@ -59,7 +59,7 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 			return fmt.Errorf("%s: %v", nc.RemoteAddr(), err)
 		}
 
-		mpc.PrintResults(result, outputs)
+		mpc.PrintResults(result, outputs, base)
 		if once {
 			return nil
 		}
@@ -101,6 +101,6 @@ func streamGarblerMode(params *utils.Params, oti ot.OT, input input,
 	if err != nil {
 		return err
 	}
-	mpc.PrintResults(result, outputs)
+	mpc.PrintResults(result, outputs, base)
 	return nil
 }

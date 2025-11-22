@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
 	"unicode"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -17,12 +18,61 @@ import (
 )
 
 // PrintResults prints the result values.
-func PrintResults(results []*big.Int, outputs circuit.IO) {
+func PrintResults(results []*big.Int, outputs circuit.IO, base int) {
 	for idx, value := range Results(results, outputs) {
 		fmt.Printf("Result[%d]: ", idx)
 		switch v := value.(type) {
 		case []byte:
 			fmt.Printf("%x\n", v)
+
+		case uint8:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+		case uint16:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+		case uint32:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+		case uint64:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+
+		case int8:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+		case int16:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+		case int32:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+		case int64:
+			if base == 0 {
+				base = 10
+			}
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+
+		case *big.Int:
+			if base == 0 {
+				base = 16
+			}
+			fmt.Printf("%s\n", v.Text(base))
+
 		default:
 			fmt.Printf("%v\n", v)
 		}

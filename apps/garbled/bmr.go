@@ -77,7 +77,7 @@ func bmrMode(file string, params *utils.Params, player int) error {
 		return err
 	}
 
-	mpc.PrintResults(result, circ.Outputs)
+	mpc.PrintResults(result, circ.Outputs, 0)
 	return nil
 }
 

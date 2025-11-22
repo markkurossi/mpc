@@ -31,6 +31,7 @@ import (
 var (
 	port    = ":8080"
 	verbose = false
+	base    = 0
 )
 
 type input []string
@@ -91,6 +92,7 @@ func main() {
 		"benchmark MPCL compilation")
 	sids := flag.String("sids", "", "store symbol IDs `file`")
 	wNone := flag.Bool("Wnone", false, "disable all warnings")
+	baseFlag := flag.Int("base", 0, "result output base")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -127,6 +129,7 @@ func main() {
 	if *wNone {
 		params.Warn.DisableAll()
 	}
+	base = *baseFlag
 
 	if len(*sids) > 0 {
 		err := params.LoadSymbolIDs(*sids)
@@ -332,7 +335,7 @@ func evaluatorMode(oti ot.OT, file string, params *utils.Params,
 		if err != nil && err != io.EOF {
 			return err
 		}
-		mpc.PrintResults(result, circ.Outputs)
+		mpc.PrintResults(result, circ.Outputs, base)
 		if once {
 			return nil
 		}
@@ -390,7 +393,7 @@ func garblerMode(oti ot.OT, file string, params *utils.Params) error {
 	if err != nil {
 		return err
 	}
-	mpc.PrintResults(result, circ.Outputs)
+	mpc.PrintResults(result, circ.Outputs, base)
 
 	return nil
 }
