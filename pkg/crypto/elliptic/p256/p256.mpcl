@@ -1,0 +1,14 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package p256 provides contants and functions for the P-256 elliptic
+// curve arithmetic.
+package p256
+
+const (
+	Prime uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+)
