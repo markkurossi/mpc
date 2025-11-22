@@ -1,0 +1,30 @@
+// -*- go -*-
+
+// SPDZ-MASCOT Open function.
+package main
+
+var (
+	P256Prime uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+)
+
+type Peer struct {
+	share  uint256
+	mac    uint256
+	macKey uint256
+}
+
+func main(g, e Peer) (uint256, uint256, uint256, uint256, bool) {
+	value := g.share + e.share
+	value = value % P256Prime
+
+	mac := g.mac + e.mac
+	mac = mac % P256Prime
+
+	alpha := g.macKey + e.macKey
+	alpha = alpha % P256Prime
+
+	em := uint512(alpha) * uint512(value)
+	expectedMAC := uint256(em % uint512(P256Prime))
+
+	return value, mac, alpha, expectedMAC, mac == expectedMAC
+}
