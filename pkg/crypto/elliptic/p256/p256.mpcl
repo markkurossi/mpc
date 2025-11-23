@@ -10,8 +10,8 @@
 package p256
 
 const (
-	// Prime field: y² = x³ - 3x + b (mod p)
-	Prime uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+	// P is the curve prime: y² = x³ - 3x + b (mod p)
+	P uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
 	// A: curve coefficient -3 mod p
 	A uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC
 	// B: curve coefficient
