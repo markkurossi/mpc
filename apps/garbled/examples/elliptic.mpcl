@@ -161,10 +161,10 @@ func modExp(base, exp, m uint256) uint256 {
 		// If bit i of exp is set, multiply result by base
 		bit = (exp >> i) & uint256(1)
 		if bit == 1 {
-			result = uint256((uint512(result) * uint512(base)) % uint512(m))
+			result = uint256((result × base) % uint512(m))
 		}
 		// Square the base for next iteration
-		base = uint256((uint512(base) * uint512(base)) % uint512(m))
+		base = uint256((base × base) % uint512(m))
 	}
 
 	return result
