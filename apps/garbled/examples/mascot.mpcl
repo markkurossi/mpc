@@ -23,7 +23,7 @@ func main(g, e Peer) (uint256, uint256, uint256, uint256, bool) {
 	alpha := g.macKey + e.macKey
 	alpha = alpha % p256.Prime
 
-	em := uint512(alpha) * uint512(value)
+	em := alpha × value
 	expectedMAC := uint256(em % uint512(p256.Prime))
 
 	return value, mac, alpha, expectedMAC, mac == expectedMAC

@@ -66,6 +66,7 @@ const (
 	TOr
 	TBitClear
 	TSend
+	TWideMul
 )
 
 var tokenTypes = map[TokenType]string{
@@ -111,6 +112,7 @@ var tokenTypes = map[TokenType]string{
 	TOr:          "||",
 	TBitClear:    "&^",
 	TSend:        "<-",
+	TWideMul:     "\u00d7",
 }
 
 func (t TokenType) String() string {
@@ -144,6 +146,7 @@ var binaryTypes = map[TokenType]ast.BinaryType{
 	TBitClear: ast.BinaryBclear,
 	TLshift:   ast.BinaryLshift,
 	TRshift:   ast.BinaryRshift,
+	TWideMul:  ast.BinaryWideMul,
 }
 
 // BinaryType returns token's binary type.
@@ -393,6 +396,9 @@ func (l *Lexer) Get() (*Token, error) {
 				l.UnreadRune()
 				return l.Token('*'), nil
 			}
+
+		case 0xd7:
+			return l.Token(TWideMul), nil
 
 		case '/':
 			r, _, err := l.ReadRune()

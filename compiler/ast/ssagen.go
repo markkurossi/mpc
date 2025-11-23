@@ -1455,7 +1455,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	rPow2, rConst := isPowerOf2(ast.Right, env, ctx, gen)
 	if lConst || rConst {
 		switch ast.Op {
-		case BinaryMul:
+		case BinaryMul, BinaryWideMul:
 			// Multiplication is commutative.
 			if rConst {
 				block, l, err := ast.value(env, ast.Left, block, ctx, gen)
@@ -1549,7 +1549,7 @@ func (ast *Binary) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 
 	var instr ssa.Instr
 	switch ast.Op {
-	case BinaryMul:
+	case BinaryMul, BinaryWideMul:
 		instr, err = ssa.NewMultInstr(l.Type, l, r, t)
 	case BinaryDiv:
 		instr, err = ssa.NewDivInstr(l.Type, l, r, t)
@@ -1619,6 +1619,15 @@ func (ast *Binary) resultType(ctx *Codegen, l, r ssa.Value) (
 				l.Type, ast.Op, r.Type)
 		}
 		resultType = *superType
+
+	case BinaryWideMul:
+		superType := l.TypeCompatible(r)
+		if superType == nil {
+			return types.Undefined, ctx.Errorf(ast, "invalid types: %s %s %s",
+				l.Type, ast.Op, r.Type)
+		}
+		resultType = *superType
+		resultType.Bits *= 2
 
 	case BinaryAdd:
 		// Binary addition is handled separately since we must handle

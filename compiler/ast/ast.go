@@ -683,6 +683,7 @@ type BinaryType int
 // Binary expression types.
 const (
 	BinaryMul BinaryType = iota
+	BinaryWideMul
 	BinaryDiv
 	BinaryMod
 	BinaryLshift
@@ -704,25 +705,26 @@ const (
 )
 
 var binaryTypes = map[BinaryType]string{
-	BinaryMul:    "*",
-	BinaryDiv:    "/",
-	BinaryMod:    "%",
-	BinaryLshift: "<<",
-	BinaryRshift: ">>",
-	BinaryBand:   "&",
-	BinaryBclear: "&^",
-	BinaryBor:    "|",
-	BinaryBxor:   "^",
-	BinaryAdd:    "+",
-	BinarySub:    "-",
-	BinaryEq:     "==",
-	BinaryNeq:    "!=",
-	BinaryLt:     "<",
-	BinaryLe:     "<=",
-	BinaryGt:     ">",
-	BinaryGe:     ">=",
-	BinaryAnd:    "&&",
-	BinaryOr:     "||",
+	BinaryMul:     "*",
+	BinaryWideMul: "\u00d7",
+	BinaryDiv:     "/",
+	BinaryMod:     "%",
+	BinaryLshift:  "<<",
+	BinaryRshift:  ">>",
+	BinaryBand:    "&",
+	BinaryBclear:  "&^",
+	BinaryBor:     "|",
+	BinaryBxor:    "^",
+	BinaryAdd:     "+",
+	BinarySub:     "-",
+	BinaryEq:      "==",
+	BinaryNeq:     "!=",
+	BinaryLt:      "<",
+	BinaryLe:      "<=",
+	BinaryGt:      ">",
+	BinaryGe:      ">=",
+	BinaryAnd:     "&&",
+	BinaryOr:      "||",
 }
 
 func (t BinaryType) String() string {

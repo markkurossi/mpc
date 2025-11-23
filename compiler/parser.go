@@ -158,7 +158,7 @@ func (p *Parser) errf(loc utils.Point, format string, a ...interface{}) error {
 	line, ok := p.lexer.history[loc.Line]
 	if ok {
 		var indicator []rune
-		for i := 0; i < loc.Col; i++ {
+		for i := 0; i+1 < loc.Col; i++ {
 			var r rune
 			if line[i] == '\t' {
 				r = '\t'
@@ -1246,7 +1246,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 			return left, nil
 		}
 		switch t.Type {
-		case '*', '/', '%', TLshift, TRshift, '&', TBitClear:
+		case '*', '/', '%', TLshift, TRshift, '&', TBitClear, TWideMul:
 			right, err := p.parseExprUnary(needLBrace)
 			if err != nil {
 				return nil, err
