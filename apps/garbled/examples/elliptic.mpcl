@@ -1,0 +1,171 @@
+// -*- go -*-
+//
+
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// curveAdd:
+//  - g.X: bb32c4722cbd5a05510cfbb9c4c152f144e70fa24b9e428b9b3bf9f39dd43bbe
+//  - g.Y: 25b7f3d9d79e5ca057b0ba7a940d5c917d41cc0a08d41cb1b2b83905e795c7db
+//  - e.X: 7aaf9286743dc0adbd8fa93d305521cf0f62947ee5831bc8e355b133de65bd5a
+//  - e.Y: 5e183e2d1f66256cc42883de880fdc7c177e99f2e003a2dd298e458aaebcc799
+//  =>  X: 72ebc952286e5b3956525ea0cf2a055ab6ec01ad840da4330714dd5578d6e76a
+//  =>  Y: 8aaff44f299ad260e21c9ff30885a69ff11cede1d9e7786d32e40080ec95c253
+
+// Evaluator:
+//
+//  ./garbled -v -e -stream -i 0x7aaf9286743dc0adbd8fa93d305521cf0f62947ee5831bc8e355b133de65bd5a,0x5e183e2d1f66256cc42883de880fdc7c177e99f2e003a2dd298e458aaebcc799
+//
+// Garbler:
+//
+//  ./garbled -v -stream -i 0xbb32c4722cbd5a05510cfbb9c4c152f144e70fa24b9e428b9b3bf9f39dd43bbe,0x25b7f3d9d79e5ca057b0ba7a940d5c917d41cc0a08d41cb1b2b83905e795c7db examples/elliptic.mpcl
+
+package main
+
+type Peer struct {
+	x uint256
+	y uint256
+}
+
+func main(g, e Peer) (uint256, uint256) {
+	return curveAdd(g.x, g.y, e.x, e.y)
+}
+
+// P256 curve parameters (secp256r1 / prime256v1)
+// Using uint256 for P256 field elements (256-bit unsigned integers)
+const (
+	// Prime field: y² = x³ - 3x + b (mod p)
+	p256P uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF
+	p256A uint256 = 0xFFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC // -3 mod p
+	p256B uint256 = 0x5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B
+	p256N uint256 = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551 // curve order
+)
+
+// curveAdd performs elliptic curve point addition on P256
+// Adds two points (x1, y1) and (x2, y2) and returns (x3, y3)
+// Handles special cases: point at infinity, point doubling
+func curveAdd(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
+	// Case 1: If P1 is the point at infinity (0, 0), return P2
+	// if x1 == 0 && y1 == 0 {
+	// 	x3 = x2
+	// 	y3 = y2
+	// 	return
+	// }
+	//
+	// // Case 2: If P2 is the point at infinity (0, 0), return P1
+	// if x2 == 0 && y2 == 0 {
+	// 	x3 = x1
+	// 	y3 = y1
+	// 	return
+	// }
+	//
+	// // Case 3: If x1 == x2 and y1 == -y2 (mod p), result is point at infinity
+	// negY2 := (-y2) % p256P
+	// if x1 == x2 && y1 == negY2 {
+	// 	x3 = 0
+	// 	y3 = 0
+	// 	return
+	// }
+	//
+	// // Case 4: Point doubling (x1 == x2 and y1 == y2)
+	// if x1 == x2 && y1 == y2 {
+	// 	return curveDouble(x1, y1)
+	// }
+
+	// Case 5: Standard point addition (P1 != P2)
+	// Calculate slope λ = (y2 - y1) / (x2 - x1) mod p
+
+	// numerator = y2 - y1
+	numerator := FpSub(y2, y1)
+
+	// denominator = x2 - x1
+	denominator := FpSub(x2, x1)
+
+	// λ = numerator * denominator^(-1) mod p
+	denominatorInv := modInverse(denominator, p256P)
+	lambda := (uint512(numerator) * uint512(denominatorInv)) % uint512(p256P)
+
+	// x3 = λ² - x1 - x2 mod p
+	x3 = uint256((lambda*lambda - uint512(x1) - uint512(x2)) % uint512(p256P))
+
+	// y3 = λ(x1 - x3) - y1 mod p
+	y3 = uint256((lambda*uint512(x1-x3) - uint512(y1)) % uint512(p256P))
+
+	return
+}
+
+// FpSub is Modular Subtraction (A - B) mod p
+func FpSub(A, B uint256) uint256 {
+	// R = A - B
+	// If A < B, borrow occurs, effectively adding P256_p
+	if A < B {
+		return uint256(uint257(A) + uint257(p256P) - uint257(B))
+	}
+	return A - B
+}
+
+// curveDouble performs elliptic curve point doubling on P256
+// Doubles point (x, y) and returns (x3, y3)
+func curveDouble(x, y uint256) (x3, y3 uint256) {
+	// Handle point at infinity
+	if x == 0 && y == 0 {
+		x3 = 0
+		y3 = 0
+		return
+	}
+
+	// Calculate slope λ = (3x² + a) / (2y) mod p
+	// For P256: a = -3
+
+	// numerator = 3x² + a
+	numerator := (3*x*x + p256A) % p256P
+
+	// denominator = 2y
+	denominator := (2 * y) % p256P
+
+	// λ = numerator * denominator^(-1) mod p
+	denominatorInv := modInverse(denominator, p256P)
+	lambda := (numerator * denominatorInv) % p256P
+
+	// x3 = λ² - 2x mod p
+	x3 = (lambda*lambda - 2*x) % p256P
+
+	// y3 = λ(x - x3) - y mod p
+	y3 = (lambda*(x-x3) - y) % p256P
+
+	return
+}
+
+// modInverse computes the modular multiplicative inverse of a modulo m
+// Returns a value x such that (a * x) % m == 1
+// Uses Fermat's Little Theorem: a^(-1) ≡ a^(m-2) mod m (when m is prime)
+func modInverse(a, m uint256) uint256 {
+	// Compute a^(m-2) mod m using square-and-multiply
+	// For P256: exponent = p256P - 2
+	exponent := m - uint256(2)
+	return modExp(a, exponent, m)
+}
+
+// modExp computes base^exp mod m using square-and-multiply algorithm
+// Fixed to 256 iterations for 256-bit exponent
+func modExp(base, exp, m uint256) uint256 {
+	result := uint256(1)
+	base = base % m
+
+	// Process each bit of the exponent (256 bits for uint256)
+	var bit uint256
+	for i := 0; i < 256; i++ {
+		// If bit i of exp is set, multiply result by base
+		bit = (exp >> i) & uint256(1)
+		if bit == 1 {
+			result = uint256((uint512(result) * uint512(base)) % uint512(m))
+		}
+		// Square the base for next iteration
+		base = uint256((uint512(base) * uint512(base)) % uint512(m))
+	}
+
+	return result
+}
