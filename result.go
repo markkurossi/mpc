@@ -21,57 +21,62 @@ import (
 func PrintResults(results []*big.Int, outputs circuit.IO, base int) {
 	for idx, value := range Results(results, outputs) {
 		fmt.Printf("Result[%d]: ", idx)
+
+		b := base
+
 		switch v := value.(type) {
 		case []byte:
 			fmt.Printf("%x\n", v)
 
 		case uint8:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), b))
 		case uint16:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), b))
 		case uint32:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), b))
 		case uint64:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), base))
+			fmt.Printf("%s\n", strconv.FormatUint(uint64(v), b))
 
 		case int8:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), b))
 		case int16:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), b))
 		case int32:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), b))
 		case int64:
-			if base == 0 {
-				base = 10
+			if b == 0 {
+				b = 10
 			}
-			fmt.Printf("%s\n", strconv.FormatInt(int64(v), base))
+			fmt.Printf("%s\n", strconv.FormatInt(int64(v), b))
 
 		case *big.Int:
-			if base == 0 {
-				base = 16
+			var prefix string
+			if b == 0 {
+				b = 16
+				prefix = "0x"
 			}
-			fmt.Printf("%s\n", v.Text(base))
+			fmt.Printf("%s%s\n", prefix, v.Text(b))
 
 		default:
 			fmt.Printf("%v\n", v)
