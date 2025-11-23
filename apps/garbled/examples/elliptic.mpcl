@@ -1,7 +1,5 @@
 // -*- go -*-
 //
-
-//
 // Copyright (c) 2025 Markku Rossi
 //
 // All rights reserved.
@@ -86,7 +84,7 @@ func curveAdd(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
 
 	// λ = numerator * denominator^(-1) mod p
 	denominatorInv := modInverse(denominator, p256P)
-	lambda := (uint512(numerator) * uint512(denominatorInv)) % uint512(p256P)
+	lambda := (numerator × denominatorInv) % uint512(p256P)
 
 	// x3 = λ² - x1 - x2 mod p
 	x3 = uint256((lambda*lambda - uint512(x1) - uint512(x2)) % uint512(p256P))
