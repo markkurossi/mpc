@@ -1626,6 +1626,11 @@ func (ast *Binary) resultType(ctx *Codegen, l, r ssa.Value) (
 			return types.Undefined, ctx.Errorf(ast, "invalid types: %s %s %s",
 				l.Type, ast.Op, r.Type)
 		}
+		if superType.Type != types.TUint {
+			return types.Undefined, ctx.Errorf(ast,
+				"invalid types: %s %s %s: expected uint",
+				l.Type, ast.Op, r.Type)
+		}
 		resultType = *superType
 		resultType.Bits *= 2
 
