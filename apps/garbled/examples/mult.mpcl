@@ -3,6 +3,9 @@
 
 package main
 
-func main(a, b uint64) uint {
-	return a * b
+func main(a, b uint256) (uint, uint, bool) {
+	o := uint512(a) * uint512(b)
+	n := a × b
+
+	return o, n, o == n
 }
