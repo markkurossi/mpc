@@ -166,16 +166,19 @@ The MPCL runtime defines the following builtin functions:
 
  - `copy(dst, src)`: copies the content of the array _src_ to
    _dst_. The function returns the number of elements copied, which is
-   the minimum of len(src) and len(dst).
+   the minimum of len(src) and len(dst)
  - `len(value)`: returns the length of the value as integer:
    - array: returns the number of array elements
    - string: returns the number of bytes in the string
- - `make(type, size)`: creates an instance of the type _type_ with _size_ bits.
+ - `make(type, size)`: creates an instance of the type _type_ with _size_ bits
  - `native(name, arg...)`: calls a builtin function _name_ with
    arguments _arg..._. The _name_ can specify a circuit file (*.circ)
    or one of the following builtin functions:
-   - `hamming(a, b uint)` computes the bitwise hamming distance between argument values
- - `size(variable)`: returns the bit size of the argument _variable_.
+   - `hamming(a, b uint)` computes the bitwise hamming distance between
+     argument values
+ - `size(variable)`: returns the bit size of the argument _variable_
+ - `wideMul(uintn, uintn) uint2n`: multiplies two n-bit unsigned
+   integer numbers and returns the 2n-bit unsigned integer result
 
 # TODO
 
