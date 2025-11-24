@@ -684,6 +684,15 @@ BenchmarkGarbleINV-8              	14924721	        77.97 ns/op
 |   256 |  512 |           |          |   1326461180 |   346797567 |  1m31.5s |
 |   512 | 1024 |           |          |  10197960188 |  2641252351 | 11m28.7s |
 
+Refactored `math.Exp()` to use `wideMul()` builtin function:
+
+| Input | Gates | Non-XOR | Stream Gates | Stream !XOR |  Stream |
+|------:|------:|--------:|-------------:|------------:|--------:|
+|    64 |       |         |     19016828 |     4928127 |  1.234s |
+|   128 |       |         |    148924924 |    38215423 |  9.341s |
+|   256 |       |         |   1167003644 |   297406975 | 1m12.5s |
+|   512 |       |         |   9169211388 |  2325200895 | 9m27.9s |
+
 ## Multiplication
 
 | Input Size | Total gates | Non-XOR gates |
