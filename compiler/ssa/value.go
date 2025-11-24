@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -297,13 +297,13 @@ func isSet(v interface{}, vt types.Info, bit types.Size) bool {
 		return (val & (1 << bit)) != 0
 
 	case *big.Int:
-		if bit > types.Size(val.BitLen()) {
+		if bit >= types.Size(val.BitLen()) {
 			return false
 		}
 		return val.Bit(int(bit)) != 0
 
 	case *mpa.Int:
-		if bit > types.Size(val.BitLen()) {
+		if bit >= types.Size(val.BitLen()) {
 			return false
 		}
 		return val.Bit(int(bit)) != 0

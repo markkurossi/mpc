@@ -13,6 +13,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
@@ -56,6 +57,10 @@ var builtins = map[string]Builtin{
 	"size": {
 		SSA:  sizeSSA,
 		Eval: sizeEval,
+	},
+	"wideMul": {
+		SSA:  wideMulSSA,
+		Eval: wideMulEval,
 	},
 }
 
@@ -443,4 +448,76 @@ func sizeEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 		return ssa.Undefined, false, ctx.Errorf(loc,
 			"size(%v/%T) is not constant", arg, arg)
 	}
+}
+
+func wideMulSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
+
+	if len(args) != 2 {
+		return nil, nil, ctx.Errorf(loc,
+			"invalid amount of arguments in call to wideMulSSA")
+	}
+	l := args[0]
+	r := args[1]
+
+	superType := l.TypeCompatible(r)
+	if superType == nil || superType.Type != types.TUint {
+		return nil, nil, ctx.Errorf(loc, "invalid types: wideMulSSA(%v, %v)",
+			l.Type, r.Type)
+	}
+	resultType := *superType
+	resultType.Bits *= 2
+
+	t := gen.AnonVal(resultType)
+	instr, err := ssa.NewMultInstr(*superType, l, r, t)
+	if err != nil {
+		return nil, nil, err
+	}
+	block.AddInstr(instr)
+
+	return block, []ssa.Value{t}, nil
+}
+
+func wideMulEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (ssa.Value, bool, error) {
+
+	if len(args) != 2 {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"invalid amount of arguments in call to wideMulSSA")
+	}
+	lConst, ok, err := args[0].Eval(env, ctx, gen)
+	if !ok || err != nil {
+		return ssa.Undefined, ok, err
+	}
+	rConst, ok, err := args[1].Eval(env, ctx, gen)
+	if !ok || err != nil {
+		return ssa.Undefined, ok, err
+	}
+	superType := lConst.TypeCompatible(rConst)
+	if superType == nil || superType.Type != types.TUint {
+		return ssa.Undefined, false,
+			ctx.Errorf(loc, "invalid types: wideMulSSA(%v, %v)",
+				lConst.Type, rConst.Type)
+	}
+	resultType := *superType
+	resultType.Bits *= 2
+
+	lInt, ok := lConst.ConstValue.(*mpa.Int)
+	if !ok {
+		return ssa.Undefined, false,
+			ctx.Errorf(loc, "wideMul: invalid constant: %v", lConst)
+	}
+	rInt, ok := lConst.ConstValue.(*mpa.Int)
+	if !ok {
+		return ssa.Undefined, false,
+			ctx.Errorf(loc, "wideMul: invalid constant: %v", rConst)
+	}
+	v := new(mpa.Int)
+	v.SetTypeSize(resultType.Bits)
+	v.Mul(lInt, rInt)
+
+	result := gen.Constant(v, resultType)
+	gen.AddConstant(result)
+
+	return result, true, nil
 }

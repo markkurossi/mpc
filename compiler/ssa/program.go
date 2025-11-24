@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2023 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -16,6 +16,7 @@ import (
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/circuits"
+	"github.com/markkurossi/mpc/compiler/mpa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 )
@@ -261,7 +262,12 @@ func (prog *Program) DefineConstants(zero, one *circuits.Wire) error {
 			len(consts), constWires)
 		if false {
 			for _, c := range consts {
-				fmt.Printf(" - %s:\t%v\n", c.Name, c.ConstValue)
+				switch cv := c.ConstValue.(type) {
+				case *mpa.Int:
+					fmt.Printf(" - %s:\t%v\n", c.Name, cv.Text(16))
+				default:
+					fmt.Printf(" - %s:\t%v\n", c.Name, cv)
+				}
 			}
 		}
 	}

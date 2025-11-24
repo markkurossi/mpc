@@ -3,9 +3,11 @@
 
 package main
 
-func main(a, b uint256) (uint, uint, bool) {
+func main(a, b uint256) (uint, uint, uint, uint, bool, bool, bool) {
 	o := uint512(a) * uint512(b)
-	n := a × b
+	n := wideMul(a, b)
+	e := wideMul(uint256(0xffffffff), uint256(0xffffffff))
+	f := uint512(0xffffffff) * uint512(0xffffffff)
 
-	return o, n, o == n
+	return o, n, e, f, o == n, o == e, o == f
 }

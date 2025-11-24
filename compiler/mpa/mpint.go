@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -473,7 +473,7 @@ func (z *Int) bin(op binaryOp, x, y *Int) *Int {
 		newIOArg("y", types.TInt, y.bits),
 	}
 	outputs := circuit.IO{
-		newIOArg("z", types.TInt, max(x.bits, y.bits)),
+		newIOArg("z", types.TInt, max(max(x.bits, y.bits), z.bits)),
 	}
 	i0w := calloc.Wires(inputs[0].Type.Bits)
 	i1w := calloc.Wires(inputs[1].Type.Bits)

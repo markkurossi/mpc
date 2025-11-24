@@ -15,16 +15,16 @@ type Peer struct {
 
 func main(g, e Peer) (uint256, uint256, uint256, uint256, bool) {
 	value := g.share + e.share
-	value = value % p256.Prime
+	value = value % p256.P
 
 	mac := g.mac + e.mac
-	mac = mac % p256.Prime
+	mac = mac % p256.P
 
 	alpha := g.macKey + e.macKey
-	alpha = alpha % p256.Prime
+	alpha = alpha % p256.P
 
-	em := alpha × value
-	expectedMAC := uint256(em % uint512(p256.Prime))
+	em := wideMul(alpha, value)
+	expectedMAC := uint256(em % uint512(p256.P))
 
 	return value, mac, alpha, expectedMAC, mac == expectedMAC
 }

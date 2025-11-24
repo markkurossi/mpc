@@ -1246,7 +1246,7 @@ func (p *Parser) parseExprMultiplicative(needLBrace bool) (ast.AST, error) {
 			return left, nil
 		}
 		switch t.Type {
-		case '*', '/', '%', TLshift, TRshift, '&', TBitClear, TWideMul:
+		case '*', '/', '%', TLshift, TRshift, '&', TBitClear:
 			right, err := p.parseExprUnary(needLBrace)
 			if err != nil {
 				return nil, err
