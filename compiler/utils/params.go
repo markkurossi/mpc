@@ -4,6 +4,7 @@
 // All rights reserved.
 //
 
+// Package utils implementes shared utilities for the MPCL compiler.
 package utils
 
 import (

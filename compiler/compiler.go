@@ -4,6 +4,7 @@
 // All rights reserved.
 //
 
+// Package compiler implements the MPCL compiler.
 package compiler
 
 import (

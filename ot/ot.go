@@ -5,6 +5,7 @@
 //
 // All rights reserved.
 
+// Package ot implements oblivious transfer protocols.
 package ot
 
 // OT defines Oblivious Transfer protocol.

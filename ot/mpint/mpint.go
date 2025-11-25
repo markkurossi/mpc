@@ -1,11 +1,12 @@
 //
 // mpint.go
 //
-// Copyright (c) 2019 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
 
+// Package mpint defines helper functions for big.Integer operations.
 package mpint
 
 import (

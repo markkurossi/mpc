@@ -4,6 +4,8 @@
 // All rights reserved.
 //
 
+// Package p2p implements point-to-point protocols for multi-party
+// computation peers.
 package p2p
 
 import (

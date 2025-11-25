@@ -6,6 +6,8 @@
 // All rights reserved.
 //
 
+// Package types implements defines and functions for the MPCL type
+// system.
 package types
 
 import (

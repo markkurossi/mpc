@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Package edwards25519 implements the ed25519 curve operations.
 package edwards25519
 
 import "encoding/binary"
@@ -56,8 +57,10 @@ func FeCopy(dst, src *FieldElement) {
 	copy(dst[:], src[:])
 }
 
-// Replace (f,g) with (g,g) if b == 1;
-// replace (f,g) with (f,g) if b == 0.
+// FeCMove replaces:
+//
+//   - (f,g) with (g,g) if b == 1;
+//   - (f,g) with (f,g) if b == 0.
 //
 // Preconditions: b in {0,1}.
 func FeCMove(f, g *FieldElement, b int32) {
@@ -1026,8 +1029,10 @@ func GeScalarMultBase(h *ExtendedGroupElement, a *[32]byte) {
 	}
 }
 
+// ScMulAdd is as follows:
+//
 // The scalars are GF(2^252 + 27742317777372353535851937790883648493).
-
+//
 // Input:
 //
 //	a[0]+256*a[1]+...+256^31*a[31] = a
@@ -1463,6 +1468,8 @@ func ScMulAdd(s, a, b, c *[32]byte) {
 	s[31] = byte(s11 >> 17)
 }
 
+// ScReduce is as follows:
+//
 // Input:
 //
 //	s[0]+256*s[1]+...+256^63*s[63] = s

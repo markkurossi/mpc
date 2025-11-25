@@ -22,11 +22,6 @@ type digest struct {
 	len uint64
 }
 
-const (
-	magic         = "sha\x01"
-	marshaledSize = len(magic) + 5*4 + chunk + 8
-)
-
 func (d *digest) Reset() {
 	d.h[0] = init0
 	d.h[1] = init1
@@ -113,7 +108,7 @@ func (d *digest) checkSum() [Size]byte {
 	return digest
 }
 
-// Sum returns the SHA-1 checksum of the data.
+// SumGo returns the SHA-1 checksum of the data.
 func SumGo(data []byte) [Size]byte {
 	var d digest
 	d.Reset()

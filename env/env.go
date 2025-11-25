@@ -4,6 +4,7 @@
 // All rights reserved.
 //
 
+// Package env implements global environment for the MPC system.
 package env
 
 import (

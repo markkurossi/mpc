@@ -14,10 +14,10 @@ import (
 	"encoding/binary"
 )
 
-// The size of a SHA-1 checksum in bytes.
+// Size defines the SHA-1 checksum size in bytes.
 const Size = 20
 
-// The blocksize of SHA-1 in bytes.
+// BlockSize defines the SHA-1 block size in bytes.
 const BlockSize = 64
 
 const (

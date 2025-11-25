@@ -6,6 +6,8 @@
 // All rights reserved.
 //
 
+// Package ast implements the abstract syntax tree representation of
+// the MPCL program.
 package ast
 
 import (
