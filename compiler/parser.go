@@ -446,6 +446,7 @@ func (p *Parser) parseTypeDecl(annotations ast.Annotations) error {
 		loc := t.From
 		_, err := p.needToken('{')
 		if err != nil {
+			return err
 		}
 		var fields []ast.StructField
 		for {
@@ -822,6 +823,7 @@ func (p *Parser) parseStatement(needLBrace bool) (ast.AST, error) {
 				p.lexer.Unget(n)
 				b2, err = p.parseStatement(needLBrace)
 				if err != nil {
+					return nil, err
 				}
 
 			default:
@@ -1604,28 +1606,6 @@ func (p *Parser) parseArrayCast(loc utils.Point, typeInfo *ast.TypeInfo) (
 		TypeInfo: typeInfo,
 		Expr:     expr,
 	}, nil
-}
-
-func (p *Parser) toByteArray(expr ast.AST) ([]byte, error) {
-	switch val := expr.(type) {
-	case *ast.BasicLit:
-		switch v := val.Value.(type) {
-		case string:
-			return []byte(v), nil
-		}
-	}
-	return nil, p.errf(expr.Location(), "cannot convert %s to []byte", expr)
-}
-
-func (p *Parser) toRuneArray(expr ast.AST) ([]rune, error) {
-	switch val := expr.(type) {
-	case *ast.BasicLit:
-		switch v := val.Value.(type) {
-		case string:
-			return []rune(v), nil
-		}
-	}
-	return nil, p.errf(expr.Location(), "cannot convert %s to []rune", expr)
 }
 
 func (p *Parser) parseCompositeLit(typeInfo *ast.TypeInfo) (ast.AST, error) {
