@@ -617,7 +617,7 @@ Max permanent wires: 53913890, cached circuits: 25
           4119990272  peak memory footprint
 ```
 
-Optimized stream garbler and evaluator permanent file allocation:
+Optimized stream garbler and evaluator permanent wire allocation:
 
 ```
 ┌──────────────┬────────────────┬─────────┬────────┐
@@ -643,6 +643,35 @@ Max permanent wires: 69663266, cached circuits: 23
        65.38 real        68.91 user         5.60 sys
           1263144960  maximum resident set size
           1534406656  peak memory footprint
+```
+
+Benchmark snapshot with the latest sources and go1.25.0:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   2.169829899s │   3.34% │        │
+│ Init         │     1.191631ms │   0.00% │     8B │
+│ OT Init      │       12.596µs │   0.00% │   16kB │
+│ Peer Inputs  │    47.223559ms │   0.07% │   57kB │
+│ Stream       │  1m2.68335876s │  96.58% │   15GB │
+│ ├╴InstrInit  │   1.573777358s │   2.51% │        │
+│ ├╴CircComp   │    14.305831ms │   0.02% │        │
+│ ├╴StreamInit │     108.1213ms │   0.17% │        │
+│ ╰╴Garble     │ 1m0.227261821s │  96.08% │        │
+│ Result       │      146.013µs │   0.00% │    8kB │
+│ Total        │ 1m4.901762458s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 235345 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 69663266, cached circuits: 23
+#gates=844183998 (XOR=542126152 XNOR=29103361 AND=272350024 OR=496562 INV=107899 xor=571229513 !xor=272954485 levels=10548 width=1796) #w=868191256
+Result[0]: f43c1cf1755345852211942af0838414334eec9cbf36e26a9f9e8d4bb720deb145ffbeec82249c875116757441206bcdc56b501e750f1f590917d772dfee980f
+       65.02 real        68.95 user         5.55 sys
+          1307033600  maximum resident set size
+          1303769088  peak memory footprint
 ```
 
 Theoretical minimum single-threaded garbling time:
