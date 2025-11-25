@@ -2,7 +2,7 @@ package sha2pc
 
 import (
 	"bytes"
-	_ "embed" // Embed SHA256(XOR) circuit.
+	_ "embed"
 
 	"github.com/markkurossi/mpc/circuit"
 )
