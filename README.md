@@ -183,6 +183,7 @@ The MPCL runtime defines the following builtin functions:
 
 # TODO
 
+ - [ ] setup CI running all the Go tests in each PR
  - [ ] [Graph](https://spidermonkey.dev/blog/2025/10/28/iongraph-web.html)
  - [ ] Foundation
    - [x] Circuit & garbling:
