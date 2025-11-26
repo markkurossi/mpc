@@ -13,6 +13,7 @@ import (
 	"math/big"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -225,6 +226,13 @@ func (c *Compiler) resolvePkgPath() error {
 		c.pkgPath = dir
 		break
 	}
+
+	var runtimeCaller string
+	var runtimeCallerOk bool
+
+	if len(c.pkgPath) == 0 {
+		runtimeCaller, runtimeCallerOk = c.resolvePkgPathByCaller()
+	}
 	if len(c.pkgPath) == 0 {
 		fmt.Printf("could not resolve pkg root directory, tried:\n")
 		for _, pkgPath := range pkgPaths {
@@ -235,12 +243,46 @@ func (c *Compiler) resolvePkgPath() error {
 			}
 			fmt.Printf("   - $(%s)/%s\n", pkgPath.env, pkgPath.prefix)
 		}
+		fmt.Printf(" - runtime.Caller(): %v\n", runtimeCallerOk)
+		fmt.Printf("   - %s\n", runtimeCaller)
 		return fmt.Errorf("could not find pkg root directory")
 	}
 	if c.params.Verbose {
 		fmt.Printf("found PkgRoot from '%s'\n", c.pkgPath)
 	}
 	return nil
+}
+
+func (c *Compiler) resolvePkgPathByCaller() (string, bool) {
+	// Try locate our source file.
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return file, ok
+	}
+
+	parts := strings.Split(file, "/")
+	if len(parts) < 3 {
+		return file, false
+	}
+	parts = parts[:len(parts)-2]
+	parts = append(parts, "pkg")
+	dir := strings.Join(parts, "/")
+	df, err := os.Open(dir)
+	if err != nil {
+		return dir, false
+	}
+	defer df.Close()
+
+	fi, err := df.Stat()
+	if err != nil {
+		return dir, false
+	}
+	if !fi.IsDir() {
+		return dir, false
+	}
+	c.pkgPath = dir
+
+	return dir, true
 }
 
 var pkgPaths = []*pkgPath{
