@@ -229,17 +229,20 @@ func (c *Conn) SendUint32(val int) error {
 
 // SendData sends binary data.
 func (c *Conn) SendData(val []byte) error {
-	if c.WritePos+4+len(val) > len(c.WriteBuf) {
-		if err := c.Flush(); err != nil {
-			return err
-		}
-	}
 	err := c.SendUint32(len(val))
 	if err != nil {
 		return err
 	}
-	copy(c.WriteBuf[c.WritePos:], val)
-	c.WritePos += len(val)
+	for len(val) > 0 {
+		if c.WritePos >= len(c.WriteBuf) {
+			if err := c.Flush(); err != nil {
+				return err
+			}
+		}
+		n := copy(c.WriteBuf[c.WritePos:], val)
+		c.WritePos += n
+		val = val[n:]
+	}
 	return nil
 }
 
@@ -327,15 +330,30 @@ func (c *Conn) ReceiveData() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if c.ReadStart+len > c.ReadEnd {
-		if err := c.Fill(len); err != nil {
-			return nil, err
-		}
-	}
-
 	result := make([]byte, len)
-	copy(result, c.ReadBuf[c.ReadStart:c.ReadStart+len])
-	c.ReadStart += len
+
+	var read int
+
+	for read < len {
+		if c.ReadStart >= c.ReadEnd {
+			need := len - read
+			if need > readBufSize {
+				need = readBufSize
+			}
+			if err := c.Fill(need); err != nil {
+				return nil, err
+			}
+		}
+		need := len - read
+		avail := c.ReadEnd - c.ReadStart
+
+		if avail > need {
+			avail = need
+		}
+		n := copy(result[read:], c.ReadBuf[c.ReadStart:c.ReadStart+avail])
+		c.ReadStart += n
+		read += n
+	}
 
 	return result, nil
 }

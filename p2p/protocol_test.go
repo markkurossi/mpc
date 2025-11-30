@@ -1,7 +1,7 @@
 //
 // protocol_test.go
 //
-// Copyright (c) 2023 Markku Rossi
+// Copyright (c) 2023-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,44 +10,17 @@ package p2p
 
 import (
 	"fmt"
-	"io"
 	"testing"
 )
-
-type pipe struct {
-	r *io.PipeReader
-	w *io.PipeWriter
-}
-
-func (p *pipe) Close() error {
-	if err := p.r.Close(); err != nil {
-		return err
-	}
-	return p.w.Close()
-}
-
-func (p *pipe) Read(data []byte) (n int, err error) {
-	return p.r.Read(data)
-}
-
-func (p *pipe) Write(data []byte) (n int, err error) {
-	return p.w.Write(data)
-}
-
-func newPipes() (*pipe, *pipe) {
-	var p0, p1 pipe
-
-	p0.r, p1.w = io.Pipe()
-	p1.r, p0.w = io.Pipe()
-
-	return &p0, &p1
-}
 
 var tests = []interface{}{
 	byte(42),
 	uint16(43),
 	uint32(44),
 	"Hello, world!",
+	make([]byte, 1024),
+	make([]byte, 2*1024*1024),
+	make([]byte, 64*1024*1024),
 }
 
 func writer(c *Conn) {
@@ -73,6 +46,11 @@ func writer(c *Conn) {
 				fmt.Printf("SendString: %v\n", err)
 			}
 
+		case []byte:
+			if err := c.SendData(d); err != nil {
+				fmt.Printf("SendData [%v]byte: %v\n", len(d), err)
+			}
+
 		default:
 			fmt.Printf("writer: invalid data: %v(%T)\n", test, test)
 		}
@@ -83,11 +61,9 @@ func writer(c *Conn) {
 }
 
 func TestProtocol(t *testing.T) {
-	p0, p1 := newPipes()
+	cw, c := Pipe()
 
-	go writer(NewConn(p0))
-
-	c := NewConn(p1)
+	go writer(cw)
 
 	for _, test := range tests {
 		switch d := test.(type) {
@@ -125,6 +101,16 @@ func TestProtocol(t *testing.T) {
 			}
 			if v != d {
 				t.Errorf("ReceiveString: got %v, expected %v", v, d)
+			}
+
+		case []byte:
+			v, err := c.ReceiveData()
+			if err != nil {
+				t.Fatalf("ReceiveData: %v", err)
+			}
+			if len(v) != len(d) {
+				t.Errorf("ReceiveData: got [%v]byte, expected [%v]byte",
+					len(v), len(d))
 			}
 
 		default:
