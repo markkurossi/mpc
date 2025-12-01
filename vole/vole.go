@@ -82,7 +82,7 @@ func (e *Ext) Setup(r io.Reader) error {
 // MulSender / MulReceiver (packed-IKNP path)
 // -----------------------------------------------------------------------------
 
-// MulSender: senderInputs = x[0..m-1]. Returns r[0..m-1].
+// MulSender functionality: senderInputs = x[0..m-1]. Returns r[0..m-1].
 func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 	if e == nil {
 		return nil, errors.New("vole: nil Ext")
@@ -154,7 +154,7 @@ func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error)
 	return rs, nil
 }
 
-// MulReceiver: receiverInputs = y[0..m-1]. Returns u[0..m-1] = r_i + x_i * y_i.
+// MulReceiver functionality: receiverInputs = y[0..m-1]. Returns u[0..m-1] = r_i + x_i * y_i.
 func (e *Ext) MulReceiver(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 	if e == nil {
 		return nil, errors.New("vole: nil Ext")
