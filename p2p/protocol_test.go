@@ -10,6 +10,7 @@ package p2p
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -29,34 +30,41 @@ func writer(c *Conn) {
 		case byte:
 			if err := c.SendByte(d); err != nil {
 				fmt.Printf("SendByte: %v\n", err)
+				os.Exit(1)
 			}
 
 		case uint16:
 			if err := c.SendUint16(int(d)); err != nil {
 				fmt.Printf("SendUint16: %v\n", err)
+				os.Exit(1)
 			}
 
 		case uint32:
 			if err := c.SendUint32(int(d)); err != nil {
 				fmt.Printf("SendUint32: %v\n", err)
+				os.Exit(1)
 			}
 
 		case string:
 			if err := c.SendString(d); err != nil {
 				fmt.Printf("SendString: %v\n", err)
+				os.Exit(1)
 			}
 
 		case []byte:
 			if err := c.SendData(d); err != nil {
 				fmt.Printf("SendData [%v]byte: %v\n", len(d), err)
+				os.Exit(1)
 			}
 
 		default:
 			fmt.Printf("writer: invalid data: %v(%T)\n", test, test)
+			os.Exit(1)
 		}
 	}
 	if err := c.Flush(); err != nil {
 		fmt.Printf("Flush: %v\n", err)
+		os.Exit(1)
 	}
 }
 
