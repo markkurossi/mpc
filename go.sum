@@ -1,13 +1,12 @@
 github.com/markkurossi/crypto v0.0.0-20240520115340-daed3f9a1082 h1:9lj+7BEGrRT+7iylAqu0hY50nHQk3+LUL2g0eWDqAuw=
 github.com/markkurossi/crypto v0.0.0-20240520115340-daed3f9a1082/go.mod h1:+mhV8wp86RN6GgVyETgAd6oY+D3xLNESWKty2fGNg5U=
-github.com/markkurossi/tabulate v0.0.0-20251004141156-4c8b7c8b825a h1:WlPm/v32/s7+ER1Fp7APqEEd0SfnsUG5b9z9tgTY+LM=
-github.com/markkurossi/tabulate v0.0.0-20251004141156-4c8b7c8b825a/go.mod h1:qPNWLW3h4173ZWYHjOgJ1wbvNyLuE1fboZilv97Aq7k=
+github.com/markkurossi/tabulate v0.0.0-20251126123558-a08056f6160f h1:u5MRsdjmedlD5iDJzIzPICOhdD2hs9rQKixfuZf6jqY=
+github.com/markkurossi/tabulate v0.0.0-20251126123558-a08056f6160f/go.mod h1:Jol1zHueCHE+CSGXfTFoSGftCpxVkFZSkAQkZP2LFrU=
 github.com/markkurossi/text v0.0.0-20250315092940-9a5813bf8efa h1:L8JtXBvWPvcdF5ioXx18elRhkmAmSIJjlSI0b5oyNm8=
 github.com/markkurossi/text v0.0.0-20250315092940-9a5813bf8efa/go.mod h1:4KvRwMHp/56tnL29ZUCqpJWwEMDd0I6CQU0cAN9tros=
 golang.org/x/crypto v0.45.0 h1:jMBrvKuj23MTlT0bQEOBcAE0mjg8mK9RXFhRH6nyF3Q=
 golang.org/x/crypto v0.45.0/go.mod h1:XTGrrkGJve7CYK7J8PEww4aY7gM3qMCElcJQ8n8JdX4=
 golang.org/x/sys v0.38.0 h1:3yZWxaJjBmCWXqhN1qh02AkOnCQ1poK6oF+a7xWL6Gc=
 golang.org/x/sys v0.38.0/go.mod h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=
-golang.org/x/text v0.29.0 h1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=
-golang.org/x/text v0.29.0/go.mod h1:7MhJOA9CD2qZyOKYazxdYMF85OwPdEr9jTtBpO7ydH4=
+golang.org/x/text v0.31.0 h1:aC8ghyu4JhP8VojJ2lEHBnochRno1sgL6nEi9WGFGMM=
 golang.org/x/text v0.31.0/go.mod h1:tKRAlv61yKIjGGHX/4tP1LTbc13YSec1pxVEWXzfoeM=
