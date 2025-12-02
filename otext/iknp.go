@@ -2,7 +2,6 @@ package otext
 
 import (
 	"crypto/aes"
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -13,15 +12,18 @@ import (
 )
 
 const (
+	// IKNPK defines the number of base-OTs.
 	IKNPK      = 128
 	labelBytes = 16
 )
 
+// The roles.
 const (
 	SenderRole   = 0
 	ReceiverRole = 1
 )
 
+// IKNPExt implements the IKNP OT extension.
 type IKNPExt struct {
 	base    ot.OT
 	conn    *p2p.Conn
@@ -33,6 +35,7 @@ type IKNPExt struct {
 	choices []bool // store base-OT choice bits for sender
 }
 
+// NewIKNPExt creates a new IKNP OT extension.
 func NewIKNPExt(base ot.OT, conn *p2p.Conn, role int) *IKNPExt {
 	return &IKNPExt{
 		base: base,
@@ -78,9 +81,6 @@ func packLabel(b []byte) ot.Label {
 
 // Setup phase runs k=128 base OTs.
 func (e *IKNPExt) Setup(r io.Reader) error {
-	if r == nil {
-		r = rand.Reader
-	}
 	if e.role == SenderRole {
 		// base OT receiver: choose random choice bits and call base.Receive.
 		choices := make([]bool, e.k)
@@ -171,9 +171,11 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 		return nil, errors.New("not enough U")
 	}
 
-	// generate T0 rows from seedS and, if choice bit == 1, PRG(seedS) ^ U_row would be T0?
-	// The standard IKNP computation yields rows equal to T0 for all i after this step.
-	// We'll compute rows = PRG(seedS) XOR (choices[i] ? U_row : 0) which yields T0 in either case.
+	// generate T0 rows from seedS and, if choice bit == 1, PRG(seedS)
+	// ^ U_row would be T0?  The standard IKNP computation yields rows
+	// equal to T0 for all i after this step.  We'll compute rows =
+	// PRG(seedS) XOR (choices[i] ? U_row : 0) which yields T0 in
+	// either case.
 	rows := make([][]byte, e.k)
 	for i := 0; i < e.k; i++ {
 		rows[i] = make([]byte, rowBytes)
@@ -188,7 +190,9 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 		}
 	}
 
-	// Build wires: for each column j build L0 from T0 (rows), and L1 from T1 = T0 ^ U_row
+	// Build wires. For each column j build:
+	//  L0 from T0 (rows)
+	//  L1 from T1 = T0 ^ U_row
 	wires := make([]ot.Wire, n)
 	for j := 0; j < n; j++ {
 		var b0 [16]byte
