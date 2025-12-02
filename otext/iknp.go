@@ -76,9 +76,7 @@ func packLabel(b []byte) ot.Label {
 	return l
 }
 
-// ------------------------------------------------------------
-// Setup phase: runs k=128 base OTs
-// ------------------------------------------------------------
+// Setup phase runs k=128 base OTs.
 func (e *IKNPExt) Setup(r io.Reader) error {
 	if r == nil {
 		r = rand.Reader
@@ -145,10 +143,8 @@ func (e *IKNPExt) Setup(r io.Reader) error {
 	}
 }
 
-// ------------------------------------------------------------
-// ExpandSend: sender side of IKNP
-// ------------------------------------------------------------
-func (e *IKNPExt) ExpandSend(N int) ([]ot.Wire, error) {
+// ExpandSend implements the sender side of IKNP.
+func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	if e.role != SenderRole {
 		return nil, errors.New("wrong role")
 	}
@@ -159,11 +155,11 @@ func (e *IKNPExt) ExpandSend(N int) ([]ot.Wire, error) {
 	if e.choices == nil || len(e.choices) != e.k {
 		return nil, errors.New("choices not initialized; call Setup() first")
 	}
-	if N <= 0 {
-		return nil, errors.New("N must be positive")
+	if n <= 0 {
+		return nil, errors.New("n must be positive")
 	}
 
-	rowBytes := (N + 7) / 8
+	rowBytes := (n + 7) / 8
 	total := e.k * rowBytes
 
 	// receive U (k xor-rows) from receiver: U = T0 ^ T1 for each row
@@ -193,8 +189,8 @@ func (e *IKNPExt) ExpandSend(N int) ([]ot.Wire, error) {
 	}
 
 	// Build wires: for each column j build L0 from T0 (rows), and L1 from T1 = T0 ^ U_row
-	wires := make([]ot.Wire, N)
-	for j := 0; j < N; j++ {
+	wires := make([]ot.Wire, n)
+	for j := 0; j < n; j++ {
 		var b0 [16]byte
 		var b1 [16]byte
 
@@ -230,9 +226,7 @@ func (e *IKNPExt) ExpandSend(N int) ([]ot.Wire, error) {
 	return wires, nil
 }
 
-// ------------------------------------------------------------
-// ExpandReceive: receiver side of IKNP
-// ------------------------------------------------------------
+// ExpandReceive implemenets the receiver side of IKNP.
 func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	if e.role != ReceiverRole {
 		return nil, errors.New("wrong role")
