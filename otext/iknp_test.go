@@ -92,11 +92,13 @@ func TestIKNP(t *testing.T) {
 		ext := NewIKNPExt(oti0, c0, SenderRole)
 		senderExt = ext
 		if err := ext.Setup(rand.Reader); err != nil {
-			t.Fatalf("sender setup err: %v", err)
+			fatalf("sender setup err: %v", err)
+			return
 		}
 		w, err := ext.ExpandSend(N)
 		if err != nil {
-			t.Fatalf("sender ExpandSend err: %v", err)
+			fatalf("sender ExpandSend err: %v", err)
+			return
 		}
 		senderWires = w
 	}()
@@ -108,17 +110,23 @@ func TestIKNP(t *testing.T) {
 		ext := NewIKNPExt(oti1, c1, ReceiverRole)
 		receiverExt = ext
 		if err := ext.Setup(rand.Reader); err != nil {
-			t.Fatalf("recv setup err: %v", err)
+			fatalf("recv setup err: %v", err)
+			return
 		}
 		recvFlags = randomBools(N)
 		labels, err := ext.ExpandReceive(recvFlags)
 		if err != nil {
-			t.Fatalf("recv ExpandReceive err: %v", err)
+			fatalf("recv ExpandReceive err: %v", err)
+			return
 		}
 		recvLabels = labels
 	}()
 
 	wg.Wait()
+
+	if ferr != nil {
+		t.Fatal(ferr)
+	}
 
 	//
 	// Compare sender wires and receiver outputs
@@ -206,4 +214,16 @@ func TestIKNP(t *testing.T) {
 	}
 
 	fmt.Println("IKNP test passed with no mismatches.")
+}
+
+var m sync.Mutex
+var ferr error
+
+func fatalf(format string, a ...interface{}) {
+	m.Lock()
+	defer m.Unlock()
+
+	if ferr == nil {
+		ferr = fmt.Errorf(format, a...)
+	}
 }
