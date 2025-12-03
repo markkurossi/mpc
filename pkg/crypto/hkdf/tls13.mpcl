@@ -30,11 +30,11 @@ func ExtractTLS13(secret, salt []byte) []byte {
 }
 
 // ExpandTLS13 implements the TLS 1.3 HKDF function.
-func ExpandTLS13(pseudorandomKey, info []byte) []byte {
+func ExpandTLS13(pseudorandomKey, info []byte, length int) []byte {
 
 	input := make([]byte, len(info)+1)
 	n := copy(input, info)
 	input[n] = 1
 
-	return hmac.SumSHA256(input, pseudorandomKey)
+	return hmac.SumSHA256(input, pseudorandomKey)[:length]
 }

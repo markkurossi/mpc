@@ -26,8 +26,9 @@ package main
 
 import (
 	"crypto/hkdf"
+	"crypto/sha256"
 )
 
 func main(g, e []byte) []byte {
-	return hkdf.ExpandTLS13(g, e)
+	return hkdf.ExpandTLS13(g, e, sha256.Size)
 }

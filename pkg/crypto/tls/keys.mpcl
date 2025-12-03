@@ -1,0 +1,84 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package tls
+
+import (
+	"crypto/hkdf"
+	"crypto/sha256"
+)
+
+// -Handshake:
+//	shared   : b9758251477cd772df6bed46188084a95a506c99855d0c2c919ff24ced805d85
+//	early    : 33ad0a1c607ec03b09e6cd9893680ce210adf300aa1f2660e1b22e10f170f92a
+//	derived  : 6f2615a108c702c5678f54fc9dbab69716c076189c48250cebeac3576c3611ba
+//	handshake: a9ff1d6627897c8629bffc5bb100a3583894dc6b74c3f00bb2cfaf5539f5587e
+//	transcrpt: d3aff9fbc2b27d1a3a59a85ae9a91f753bcabcab48bc8a40b1dae7500f24b078
+//	c-hs-tr  : 501d2c292e5ab461a08c460a8c41daba9e0804b6038adaab6501479d84799bde
+//	s-hs-tr  : 243957a513970b43f6f2912d78d0863ff77c3a37e239af710aaa42fa8e8a30ff
+//	c-hs-key : 526afcd5f165c6ca4794442530814555
+//	c-hs-iv  : 7cc66cc0e9aee9f42ffc65d1
+//	s-hs-key : 61e8083a2ee6ec753b8d7577990194c6
+//	s-hs-iv  : 066edb4b0c266a57e9ae6503
+// -Traffic  :
+//  derived  : a3a0cf5485ed1c74a7819d5b9747b26390d35c92c3bfececa8a92e2c6215688c
+//  master   : f8329008fe9b0eca7f105d3364e9b3a89a234e67c297fd2a983aa76c7130d5d5
+//  c-app-key: 928553caa5554bf32ae5d86154d96d44
+//  c-app-iv : c6ea3c45ec51e5a01e3b0f56
+//  s-app-key: bb9ddd0c1596fc63ef049ca826277fd9
+//  s-app-iv : eb35786cac58f94ab313390e
+
+func hkdfExpandLabel(secret []byte, label string, context []byte,
+	length int) []byte {
+
+	tls13 := []byte("tls13 ")
+	labelBytes := []byte(label)
+
+	hkdfLabel := make([]byte, 2+1+len(tls13)+len(labelBytes)+1+len(context))
+
+	hkdfLabel[0] = byte(length >> 8)
+	hkdfLabel[1] = byte(length)
+	hkdfLabel[2] = byte(len(tls13) + len(labelBytes))
+
+	ofs := 3
+	n := copy(hkdfLabel[ofs:], tls13)
+	ofs += n
+	n = copy(hkdfLabel[ofs:], labelBytes)
+	ofs += n
+	hkdfLabel[ofs] = byte(len(context))
+	ofs++
+	copy(hkdfLabel[ofs:], context)
+
+	return hkdf.ExpandTLS13(secret, hkdfLabel, length)
+}
+
+func deriveSecret(secret []byte, label string, hash []byte) []byte {
+	return hkdfExpandLabel(secret, label, hash, sha256.Size)
+}
+
+func DeriveHandshakeKeys(sharedSecret, transcript []byte) (
+	[]byte, []byte, []byte, []byte, []byte) {
+	// TLS 1.3 Key Schedule: RFC-8446: 7.1. Key Schedule, page 91-
+	earlySecret := hkdf.ExtractTLS13(hkdf.ZeroHashTLS13, hkdf.ZeroHashTLS13)
+	derivedSecret := deriveSecret(earlySecret, "derived", hkdf.EmptyHashTLS13)
+	handshakeSecret := hkdf.ExtractTLS13(sharedSecret, derivedSecret)
+
+	// Derive handshake traffic secrets.
+	clientHSTr := deriveSecret(handshakeSecret, "c hs traffic", transcript)
+	serverHSTr := deriveSecret(handshakeSecret, "s hs traffic", transcript)
+
+	// Derive keys and IVs from traffic secrets.
+
+	var empty [0]byte
+	clientHSKey := hkdfExpandLabel(clientHSTr, "key", empty, 16)
+	clientHSIV := hkdfExpandLabel(clientHSTr, "iv", empty, 12)
+
+	serverHSKey := hkdfExpandLabel(serverHSTr, "key", empty, 16)
+	serverHSIV := hkdfExpandLabel(serverHSTr, "iv", empty, 12)
+
+	return handshakeSecret, clientHSKey, clientHSIV, serverHSKey, serverHSIV
+}

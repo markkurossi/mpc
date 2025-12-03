@@ -1,0 +1,14 @@
+// -*- go -*-
+//
+
+// ./garbled -stream -e -v -i 0xd3aff9fbc2b27d1a3a59a85ae9a91f753bcabcab48bc8a40b1dae7500f24b078
+// ./garbled -stream -v -i 0xb9758251477cd772df6bed46188084a95a506c99855d0c2c919ff24ced805d85 examples/tls-keygen.mpcl
+package main
+
+import (
+	"crypto/tls"
+)
+
+func main(g, e []byte) ([]byte, []byte, []byte, []byte, []byte) {
+	return tls.DeriveHandshakeKeys(g, e)
+}
