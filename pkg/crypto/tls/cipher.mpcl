@@ -1,0 +1,38 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package tls
+
+import (
+	"crypto/cipher/gcm"
+	"encoding/binary"
+)
+
+func Encrypt(key [16]byte, iv [12]byte, seq uint64, ct byte,
+	data []byte) []byte {
+
+	plaintext := make([]byte, len(data)+1)
+	n := copy(plaintext, data)
+	plaintext[n] = ct
+
+	cipherLen := len(data) + 1 + gcm.TagSize
+
+	// Additional data is the TLS record header.
+	var hdr [5]byte
+	hdr[0] = CTApplicationData
+	hdr = binary.PutUint(hdr, 1, VersionTLS12)
+	hdr = binary.PutUint(hdr, 3, uint16(cipherLen))
+
+	var ivbuf [gcm.NonceSize]byte
+
+	ivbuf = binary.PutUint64(ivbuf, 4, seq)
+	for i := 0; i < len(iv); i++ {
+		ivbuf[i] = ivbuf[i] ^ iv[i]
+	}
+
+	return gcm.EncryptAES128(key, ivbuf, plaintext, hdr)
+}

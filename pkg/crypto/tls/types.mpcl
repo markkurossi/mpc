@@ -1,0 +1,41 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package tls
+
+// Version numbers.
+const (
+	VersionSSL30 = uint16(0x0300)
+	VersionTLS10 = uint16(0x0301)
+	VersionTLS11 = uint16(0x0302)
+	VersionTLS12 = uint16(0x0303)
+	VersionTLS13 = uint16(0x0304)
+)
+
+// Record layer record types.
+const (
+	CTInvalid          = 0
+	CTChangeCipherSpec = 20
+	CTAlert            = 21
+	CTHandshake        = 22
+	CTApplicationData  = 23
+)
+
+// Handshake message types.
+const (
+	HTClientHello         = 1
+	HTServerHello         = 2
+	HTNewSessionTicket    = 4
+	HTEndOfEarlyData      = 5
+	HTEncryptedExtensions = 8
+	HTCertificate         = 11
+	HTCertificateRequest  = 13
+	HTCertificateVerify   = 15
+	HTFinished            = 20
+	HTKeyUpdate           = 24
+	HTMessageHash         = 254
+)

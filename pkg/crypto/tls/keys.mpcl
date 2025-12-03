@@ -74,12 +74,11 @@ func DeriveHandshakeKeys(sharedSecret, transcript []byte) (
 
 	// Derive keys and IVs from traffic secrets.
 
-	var empty [0]byte
-	clientHSKey := hkdfExpandLabel(clientHSTr, "key", empty, 16)
-	clientHSIV := hkdfExpandLabel(clientHSTr, "iv", empty, 12)
+	clientHSKey := hkdfExpandLabel(clientHSTr, "key", nil, 16)
+	clientHSIV := hkdfExpandLabel(clientHSTr, "iv", nil, 12)
 
-	serverHSKey := hkdfExpandLabel(serverHSTr, "key", empty, 16)
-	serverHSIV := hkdfExpandLabel(serverHSTr, "iv", empty, 12)
+	serverHSKey := hkdfExpandLabel(serverHSTr, "key", nil, 16)
+	serverHSIV := hkdfExpandLabel(serverHSTr, "iv", nil, 12)
 
 	return handshakeSecret, clientHSKey, clientHSIV, serverHSKey, serverHSIV
 }

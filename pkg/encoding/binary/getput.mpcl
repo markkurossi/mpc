@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2024 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -28,7 +28,7 @@ func PutUint(d []byte, offset int, v uint) []byte {
 	bytes := size(v) / 8
 
 	for i := 0; i < bytes; i++ {
-		d[offset+bytes-1-i] = byte(v & 0xff)
+		d[offset+bytes-1-i] = byte(v)
 		v >>= 8
 	}
 	return d
