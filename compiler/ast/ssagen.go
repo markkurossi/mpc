@@ -2289,6 +2289,13 @@ func (ast *Copy) SSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator) (
 	}
 	src := v[0]
 	src = src.Indirect(block, gen)
+
+	if src.Type.Type == types.TNil {
+		// copy(dst, nil) => 0
+		ret := gen.Constant(int64(0), types.Undefined)
+		gen.AddConstant(ret)
+		return block, []ssa.Value{ret}, nil
+	}
 	if !src.Type.Type.Array() {
 		return nil, nil, ast.errf(ctx, ast.Src, "got %v", src.Type)
 	}
