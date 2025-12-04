@@ -24,13 +24,6 @@ import (
 //	c-hs-iv  : 7cc66cc0e9aee9f42ffc65d1
 //	s-hs-key : 61e8083a2ee6ec753b8d7577990194c6
 //	s-hs-iv  : 066edb4b0c266a57e9ae6503
-// -Traffic  :
-//  derived  : a3a0cf5485ed1c74a7819d5b9747b26390d35c92c3bfececa8a92e2c6215688c
-//  master   : f8329008fe9b0eca7f105d3364e9b3a89a234e67c297fd2a983aa76c7130d5d5
-//  c-app-key: 928553caa5554bf32ae5d86154d96d44
-//  c-app-iv : c6ea3c45ec51e5a01e3b0f56
-//  s-app-key: bb9ddd0c1596fc63ef049ca826277fd9
-//  s-app-iv : eb35786cac58f94ab313390e
 
 func hkdfExpandLabel(secret []byte, label string, context []byte,
 	length int) []byte {
@@ -60,8 +53,21 @@ func deriveSecret(secret []byte, label string, hash []byte) []byte {
 	return hkdfExpandLabel(secret, label, hash, sha256.Size)
 }
 
+// -Handshake:
+//	shared   : b9758251477cd772df6bed46188084a95a506c99855d0c2c919ff24ced805d85
+//	early    : 33ad0a1c607ec03b09e6cd9893680ce210adf300aa1f2660e1b22e10f170f92a
+//	derived  : 6f2615a108c702c5678f54fc9dbab69716c076189c48250cebeac3576c3611ba
+//	handshake: a9ff1d6627897c8629bffc5bb100a3583894dc6b74c3f00bb2cfaf5539f5587e
+//	transcrpt: d3aff9fbc2b27d1a3a59a85ae9a91f753bcabcab48bc8a40b1dae7500f24b078
+//	c-hs-tr  : 501d2c292e5ab461a08c460a8c41daba9e0804b6038adaab6501479d84799bde
+//	s-hs-tr  : 243957a513970b43f6f2912d78d0863ff77c3a37e239af710aaa42fa8e8a30ff
+//	c-hs-key : 526afcd5f165c6ca4794442530814555
+//	c-hs-iv  : 7cc66cc0e9aee9f42ffc65d1
+//	s-hs-key : 61e8083a2ee6ec753b8d7577990194c6
+//	s-hs-iv  : 066edb4b0c266a57e9ae6503
+
 func DeriveHandshakeKeys(sharedSecret, transcript []byte) (
-	[]byte, []byte, []byte, []byte, []byte) {
+	[]byte, []byte, []byte, []byte, []byte, []byte) {
 
 	// TLS 1.3 Key Schedule: RFC-8446: 7.1. Key Schedule, page 91-
 	earlySecret := hkdf.ExtractTLS13(hkdf.ZeroHashTLS13, hkdf.ZeroHashTLS13)
@@ -80,5 +86,42 @@ func DeriveHandshakeKeys(sharedSecret, transcript []byte) (
 	serverHSKey := hkdfExpandLabel(serverHSTr, "key", nil, 16)
 	serverHSIV := hkdfExpandLabel(serverHSTr, "iv", nil, 12)
 
-	return handshakeSecret, clientHSKey, clientHSIV, serverHSKey, serverHSIV
+	// XXX rethink finished keys as client's key has more transcript.
+	finishedKey := hkdfExpandLabel(serverHSTr, "finished", nil, sha256.Size)
+
+	return handshakeSecret, clientHSKey, clientHSIV, serverHSKey, serverHSIV,
+		finishedKey
+}
+
+// -Traffic  :
+//  handshake: 498e6bd176af969a8e700ffa46bcdf87c414a577bd78ac3a8c461fdcd9924f60
+//  transcrpt: 41ba1862ff66297c054474cd13f76433211b79047eb100dabac91aedf4348797
+//  derived  : 591a5068a3b148754cacb4c209acb25efdde03af58909c48f0cb641ed5133ce3
+//  master   : b6a30698c3e7d9519b0c6363bd6429cd4fc95f14e6e9161fc554046745407d28
+//  c-app-key: fdfb403252a48455b6192eb11f4db6e6
+//  c-app-iv : 1978163b760ad9f2a745d7ca
+//  s-app-key: 2061b2c81198c0b87e0a8b86cfabead1
+//  s-app-iv : 7172ce939c84c72d713f2938
+
+func DeriveKeys(handshakeSecret, transcript []byte) (
+	[]byte, []byte, []byte, []byte) {
+
+	// TLS 1.3 Key Schedule: RFC-8446: 7.1. Key Schedule, page 91-
+	derivedSecret := deriveSecret(handshakeSecret, "derived",
+		hkdf.EmptyHashTLS13)
+	masterSecret := hkdf.ExtractTLS13(hkdf.ZeroHashTLS13, derivedSecret)
+
+	// Derive application traffic secrets.
+	clientAppTr := deriveSecret(masterSecret, "c ap traffic", transcript)
+	serverAppTr := deriveSecret(masterSecret, "s ap traffic", transcript)
+
+	// Derive keys and IVs from traffic secrets.
+
+	clientAppKey := hkdfExpandLabel(clientAppTr, "key", nil, 16)
+	clientAppIV := hkdfExpandLabel(clientAppTr, "iv", nil, 12)
+
+	serverAppKey := hkdfExpandLabel(serverAppTr, "key", nil, 16)
+	serverAppIV := hkdfExpandLabel(serverAppTr, "iv", nil, 12)
+
+	return clientAppKey, clientAppIV, serverAppKey, serverAppIV
 }
