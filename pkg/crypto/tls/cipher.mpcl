@@ -36,3 +36,27 @@ func Encrypt(key [16]byte, iv [12]byte, seq uint64, ct byte,
 
 	return gcm.EncryptAES128(key, ivbuf, plaintext, hdr)
 }
+
+func Decrypt(key [16]byte, iv [12]byte, seq uint64, data []byte) (
+	byte, []byte, bool) {
+	// Additional data is the TLS record header.
+	var hdr [5]byte
+	hdr[0] = CTApplicationData
+	hdr = binary.PutUint(hdr, 1, VersionTLS12)
+	hdr = binary.PutUint(hdr, 3, uint16(len(data)))
+
+	var ivbuf [gcm.NonceSize]byte
+	ivbuf = binary.PutUint64(ivbuf, 4, seq)
+	for i := 0; i < len(iv); i++ {
+		ivbuf[i] = ivbuf[i] ^ iv[i]
+	}
+
+	plain, ok := gcm.DecryptAES128(key, ivbuf, data, hdr)
+	if !ok {
+		return tls.CTInvalid, nil, false
+	}
+
+	end := len(plain) - 1
+
+	return plain[end], plain[:end], true
+}
