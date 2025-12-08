@@ -1,0 +1,42 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package ctr implements the counter mode of operation (CTR) for
+// block ciphers.
+package ctr
+
+import (
+	"crypto/aes"
+)
+
+// NonceSize specifies the nonce size in bytes.
+const NonceSize = 16
+
+// XORAES128 XORs each byte in the plaintext slice with a byte from
+// the cipher's key stream. The function returns the ciphertext.
+func XORAES128(key [16]byte, nonce [NonceSize]byte, plaintext []byte) []byte {
+	var counter [aes.BlockSize]byte
+	copy(counter, nonce)
+
+	var cipher [len(plaintext)]byte
+	var block [aes.BlockSize]byte
+	var ctr uint128
+
+	for i := 0; i < len(plaintext); i += aes.BlockSize {
+		block = aes.Block128(key, counter)
+		for j := 0; j < aes.BlockSize; j++ {
+			if i+j < len(plaintext) {
+				cipher[i+j] = plaintext[i+j] ^ block[j]
+			}
+		}
+		ctr = binary.GetUint(counter[:])
+		ctr++
+		counter = binary.PutUint(counter, 0, ctr)
+	}
+
+	return cipher
+}
