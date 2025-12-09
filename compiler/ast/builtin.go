@@ -43,6 +43,10 @@ var builtins = map[string]Builtin{
 		SSA:  base10DigitsSSA,
 		Eval: base10DigitsEval,
 	},
+	"paddingN": {
+		SSA:  paddingNSSA,
+		Eval: paddingNEval,
+	},
 	"len": {
 		SSA:  lenSSA,
 		Eval: lenEval,
@@ -123,6 +127,48 @@ func base10DigitsEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
 	digits := int(float64(val)*math.Log10(2)) + 1
 
 	return gen.Constant(int64(digits), types.Undefined), true, nil
+}
+
+func paddingNSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
+	args []ssa.Value, loc utils.Point) (*ssa.Block, []ssa.Value, error) {
+	return nil, nil, ctx.Errorf(loc, "paddingNSSA not implemented")
+}
+
+func paddingNEval(args []AST, env *Env, ctx *Codegen, gen *ssa.Generator,
+	loc utils.Point) (ssa.Value, bool, error) {
+
+	if len(args) != 2 {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"invalid amount of arguments in call to paddingN")
+	}
+
+	constVal, _, err := args[0].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc, "%s", err)
+	}
+	val, err := constVal.ConstInt()
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"non-integer (%T) argument in %s: %s", constVal, args[0], err)
+	}
+
+	constN, _, err := args[1].Eval(env, ctx, gen)
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc, "%s", err)
+	}
+
+	n, err := constN.ConstInt()
+	if err != nil {
+		return ssa.Undefined, false, ctx.Errorf(loc,
+			"non-integer (%T) argument in %s: %s", constVal, args[1], err)
+	}
+
+	var pad types.Size
+	if val%n != 0 {
+		pad = n - (val % n)
+	}
+
+	return gen.Constant(int64(pad), types.Undefined), true, nil
 }
 
 func lenSSA(block *ssa.Block, ctx *Codegen, gen *ssa.Generator,
