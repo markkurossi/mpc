@@ -54,6 +54,16 @@ func GetUint32LSB(d []byte) uint32 {
 	return uint32(d[0]) | uint32(d[1])<<8 | uint32(d[2])<<16 | uint32(d[3])<<24
 }
 
+// PutUint32 puts the uint32 value v to the buffer d starting from the
+// offset offset in LSB-order.
+func PutUint32LSB(d []byte, offset int, v uint32) []byte {
+	d[offset+3] = byte(v >> 24)
+	d[offset+2] = byte(v >> 16)
+	d[offset+1] = byte(v >> 8)
+	d[offset+0] = byte(v)
+	return d
+}
+
 // GetUint64 gets a MSB-encoded uint64 value from the argument buffer.
 func GetUint64(d []byte) uint64 {
 	return uint64(d[0])<<56 | uint64(d[1])<<48 |
@@ -82,4 +92,18 @@ func GetUint64LSB(d []byte) uint64 {
 		uint64(d[2])<<16 | uint64(d[3])<<24 |
 		uint64(d[4])<<32 | uint64(d[5])<<40 |
 		uint64(d[6])<<48 | uint64(d[7])<<56
+}
+
+// PutUint64LSB puts the uint64 value v to the buffer d starting from
+// the offset offset in LSB-order.
+func PutUint64LSB(d []byte, offset int, v uint64) []byte {
+	d[offset+7] = byte(v >> 56)
+	d[offset+6] = byte(v >> 48)
+	d[offset+5] = byte(v >> 40)
+	d[offset+4] = byte(v >> 32)
+	d[offset+3] = byte(v >> 24)
+	d[offset+2] = byte(v >> 16)
+	d[offset+1] = byte(v >> 8)
+	d[offset+0] = byte(v)
+	return d
 }
