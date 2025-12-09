@@ -1,0 +1,541 @@
+// -*- go -*-
+//
+// Copyright (c) 2021-2024 Markku Rossi
+//
+// All rights reserved.
+//
+
+// Package chacha20poly1305 implements the ChaCha20-Poly1305 AEAD, as
+// specified in RFC 8439.
+package chacha20poly1305
+
+import (
+	"encoding/binary"
+)
+
+const (
+	// KeySize specifies the key size in bytes.
+	KeySize = 32
+
+	// NonceSize specifies the nonce size in bytes.
+	NonceSize = 12
+
+	// TagSize specifies the tag size in bytes.
+	TagSize = 16
+)
+
+//
+// ===================== ChaCha20 core =====================
+//
+
+func add32(a, b uint32) uint32 {
+	return a + b
+}
+
+func xor32(a, b uint32) uint32 {
+	return a ^ b
+}
+
+func rotl32(x uint32, n uint32) uint32 {
+	return (x << n) | (x >> (32 - n))
+}
+
+func quarterRound(s *[16]uint32, a, b, c, d int) {
+	s[a] = add32(s[a], s[b])
+	s[d] = rotl32(xor32(s[d], s[a]), 16)
+
+	s[c] = add32(s[c], s[d])
+	s[b] = rotl32(xor32(s[b], s[c]), 12)
+
+	s[a] = add32(s[a], s[b])
+	s[d] = rotl32(xor32(s[d], s[a]), 8)
+
+	s[c] = add32(s[c], s[d])
+	s[b] = rotl32(xor32(s[b], s[c]), 7)
+}
+
+// chacha20Block: key (32 bytes), counter (32-bit), nonce (12 bytes).
+func chacha20Block(key [32]byte, counter uint32, nonce [12]byte) [64]byte {
+	var state [16]uint32
+
+	// Constants "expand 32-byte k"
+	state[0] = 0x61707865
+	state[1] = 0x3320646e
+	state[2] = 0x79622d32
+	state[3] = 0x6b206574
+
+	// Key
+	for i := 0; i < 8; i++ {
+		state[4+i] = binary.GetUint32LSB(key[i*4 : (i+1)*4])
+	}
+
+	state[12] = counter
+
+	// Nonce
+	state[13] = binary.GetUint32LSB(nonce[0:4])
+	state[14] = binary.GetUint32LSB(nonce[4:8])
+	state[15] = binary.GetUint32LSB(nonce[8:12])
+
+	working := state
+
+	for i := 0; i < 10; i++ {
+		// column
+		quarterRound(&working, 0, 4, 8, 12)
+		quarterRound(&working, 1, 5, 9, 13)
+		quarterRound(&working, 2, 6, 10, 14)
+		quarterRound(&working, 3, 7, 11, 15)
+		// diagonal
+		quarterRound(&working, 0, 5, 10, 15)
+		quarterRound(&working, 1, 6, 11, 12)
+		quarterRound(&working, 2, 7, 8, 13)
+		quarterRound(&working, 3, 4, 9, 14)
+	}
+
+	for i := 0; i < 16; i++ {
+		working[i] = add32(working[i], state[i])
+	}
+
+	var out [64]byte
+	for i := 0; i < 16; i++ {
+		out = binary.PutUint32LSB(out, i*4, working[i])
+	}
+	return out
+}
+
+func chacha20XOR(key [32]byte, nonce [12]byte, counter uint32,
+	src []byte) []byte {
+
+	dst := make([]byte, len(src))
+
+	var block [64]byte
+	var keystream []byte
+	rem := len(src)
+	sOff := 0
+	dOff := 0
+	c := counter
+
+	for rem > 0 {
+		block = chacha20Block(key, c, nonce)
+		c++
+		keystream = block[:]
+
+		n := 64
+		if rem < n {
+			n = rem
+		}
+
+		for i := 0; i < n; i++ {
+			dst[dOff+i] = src[sOff+i] ^ keystream[i]
+		}
+
+		rem -= n
+		sOff += n
+		dOff += n
+	}
+
+	return dst
+}
+
+//
+// ===================== Poly1305 core (5×26-bit) =====================
+//
+// Internal representation:
+// h, r are each 5 limbs, each limb < 2^26.
+// Operations are mod 2^130 - 5.
+// This maps very cleanly to boolean circuits: add, mul, shifts.
+//
+
+type poly1305State struct {
+	r   [5]uint64
+	r5  [5]uint64 // r * 5 (precomputed)
+	h   [5]uint64
+	pad [4]uint32 // s (the second half of one-time key)
+}
+
+const mask26 = (1 << 26) - 1
+
+// clampR clamps the first 16 bytes of r as in RFC 8439.
+func clampR(rBytes *[16]byte) {
+	rBytes[3] &= 15
+	rBytes[4] &= 252
+	rBytes[7] &= 15
+	rBytes[8] &= 252
+	rBytes[11] &= 15
+	rBytes[12] &= 252
+}
+
+// loadR loads clamped rBytes (16 bytes) into 5×26-bit limbs.
+func loadR(rBytes *[16]byte, out *[5]uint64) {
+	// Interpret as 4 little-endian 32-bit words
+	t0 := uint64(binary.GetUint32LSB(rBytes[0:4]))
+	t1 := uint64(binary.GetUint32LSB(rBytes[4:8]))
+	t2 := uint64(binary.GetUint32LSB(rBytes[8:12]))
+	t3 := uint64(binary.GetUint32LSB(rBytes[12:16]))
+
+	out[0] = t0 & mask26
+	out[1] = ((t0 >> 26) | (t1 << 6)) & mask26
+	out[2] = ((t1 >> 20) | (t2 << 12)) & mask26
+	out[3] = ((t2 >> 14) | (t3 << 18)) & mask26
+	out[4] = (t3 >> 8) & 0x3fffff // only 22 bits used
+}
+
+func poly1305Init(st *poly1305State, key [32]byte) {
+	var rBytes [16]byte
+	copy(rBytes[:], key[0:16])
+
+	clampR(&rBytes)
+	loadR(&rBytes, &st.r)
+
+	for i := 0; i < 5; i++ {
+		st.r5[i] = st.r[i] * 5
+	}
+
+	st.h[0] = 0
+	st.h[1] = 0
+	st.h[2] = 0
+	st.h[3] = 0
+	st.h[4] = 0
+
+	st.pad[0] = binary.GetUint32LSB(key[16:20])
+	st.pad[1] = binary.GetUint32LSB(key[20:24])
+	st.pad[2] = binary.GetUint32LSB(key[24:28])
+	st.pad[3] = binary.GetUint32LSB(key[28:32])
+}
+
+// loadM loads a 16-byte block into 5×26-bit limbs and adds the extra 1 bit
+// (the "1" appended above the block).
+func loadM(block *[16]byte, out *[5]uint64) {
+	t0 := uint64(binary.GetUint32LSB(block[0:4]))
+	t1 := uint64(binary.GetUint32LSB(block[4:8]))
+	t2 := uint64(binary.GetUint32LSB(block[8:12]))
+	t3 := uint64(binary.GetUint32LSB(block[12:16]))
+
+	out[0] = t0 & mask26
+	out[1] = ((t0 >> 26) | (t1 << 6)) & mask26
+	out[2] = ((t1 >> 20) | (t2 << 12)) & mask26
+	out[3] = ((t2 >> 14) | (t3 << 18)) & mask26
+	out[4] = (t3 >> 8) & 0x3fffff
+
+	// add the "1" bit (2^128) = 1<<24 in limb 4 (since 4*26 = 104, 128-104 = 24)
+	out[4] += 1 << 24
+}
+
+// poly1305Block: process a single 16-byte block.
+func poly1305Block(st *poly1305State, block *[16]byte) {
+	var m [5]uint64
+	loadM(block, &m)
+
+	h0 := st.h[0] + m[0]
+	h1 := st.h[1] + m[1]
+	h2 := st.h[2] + m[2]
+	h3 := st.h[3] + m[3]
+	h4 := st.h[4] + m[4]
+
+	r0 := st.r[0]
+	r1 := st.r[1]
+	r2 := st.r[2]
+	r3 := st.r[3]
+	r4 := st.r[4]
+
+	s1 := st.r5[1]
+	s2 := st.r5[2]
+	s3 := st.r5[3]
+	s4 := st.r5[4]
+
+	d0 := h0*r0 + h1*s4 + h2*s3 + h3*s2 + h4*s1
+	d1 := h0*r1 + h1*r0 + h2*s4 + h3*s3 + h4*s2
+	d2 := h0*r2 + h1*r1 + h2*r0 + h3*s4 + h4*s3
+	d3 := h0*r3 + h1*r2 + h2*r1 + h3*r0 + h4*s4
+	d4 := h0*r4 + h1*r3 + h2*r2 + h3*r1 + h4*r0
+
+	// carry propagation
+	c := d0 >> 26
+	h0 = d0 & mask26
+	d1 += c
+	c = d1 >> 26
+	h1 = d1 & mask26
+	d2 += c
+	c = d2 >> 26
+	h2 = d2 & mask26
+	d3 += c
+	c = d3 >> 26
+	h3 = d3 & mask26
+	d4 += c
+	c = d4 >> 26
+	h4 = d4 & mask26
+
+	// final reduction step: fold carry from h4 into h0..h1
+	h0 += c * 5
+	c = h0 >> 26
+	h0 &= mask26
+	h1 += c
+
+	st.h[0] = h0
+	st.h[1] = h1
+	st.h[2] = h2
+	st.h[3] = h3
+	st.h[4] = h4
+}
+
+// poly1305Finish finalizes and produces 16-byte tag.
+func poly1305Finish(st *poly1305State) [16]byte {
+	h0 := st.h[0]
+	h1 := st.h[1]
+	h2 := st.h[2]
+	h3 := st.h[3]
+	h4 := st.h[4]
+
+	// fully carry
+	c := h1 >> 26
+	h1 &= mask26
+	h2 += c
+	c = h2 >> 26
+	h2 &= mask26
+	h3 += c
+	c = h3 >> 26
+	h3 &= mask26
+	h4 += c
+	c = h4 >> 26
+	h4 &= mask26
+	h0 += c * 5
+	c = h0 >> 26
+	h0 &= mask26
+	h1 += c
+
+	// Compute h + -p, then conditional select
+	// p = 2^130 - 5
+	g0 := h0 + 5
+	c = g0 >> 26
+	g0 &= mask26
+	g1 := h1 + c
+	c = g1 >> 26
+	g1 &= mask26
+	g2 := h2 + c
+	c = g2 >> 26
+	g2 &= mask26
+	g3 := h3 + c
+	c = g3 >> 26
+	g3 &= mask26
+	g4 := h4 + c - (1 << 26)
+
+	// mask = 0xffffffff if g4 has no borrow, else 0x00000000
+	mask := (g4 >> 63) - 1
+
+	// select h or g based on mask
+	ff := uint64(0xffffffffffffffff)
+	h0 = (h0 & (ff ^ mask)) | (g0 & mask)
+	h1 = (h1 & (ff ^ mask)) | (g1 & mask)
+	h2 = (h2 & (ff ^ mask)) | (g2 & mask)
+	h3 = (h3 & (ff ^ mask)) | (g3 & mask)
+	h4 = (h4 & (ff ^ mask)) | ((g4 + (1 << 26)) & mask26 & mask) // restore if selected
+
+	// collapse to 128 bits
+	f0 := h0 + (h1 << 26)
+	f1 := (h1 >> 6) + (h2 << 20)
+	f2 := (h2 >> 12) + (h3 << 14)
+	f3 := (h3 >> 18) + (h4 << 8)
+
+	// add pad
+	f0 += uint64(st.pad[0])
+	c0 := f0 >> 32
+	f0 &= 0xffffffff
+
+	f1 += uint64(st.pad[1]) + c0
+	c1 := f1 >> 32
+	f1 &= 0xffffffff
+
+	f2 += uint64(st.pad[2]) + c1
+	c2 := f2 >> 32
+	f2 &= 0xffffffff
+
+	f3 += uint64(st.pad[3]) + c2
+	f3 &= 0xffffffff
+
+	var tag [16]byte
+	tag = binary.PutUint32LSB(tag, 0, uint32(f0))
+	tag = binary.PutUint32LSB(tag, 4, uint32(f1))
+	tag = binary.PutUint32LSB(tag, 8, uint32(f2))
+	tag = binary.PutUint32LSB(tag, 12, uint32(f3))
+
+	return tag
+}
+
+//
+// Helper: build Poly1305 input (AAD || pad || CT || pad || lens)
+// For an MPC circuit you might instead hard-code max lengths and
+// avoid this higher-level logic.
+//
+
+func pad16Len(n int) int {
+	if n%16 == 0 {
+		return 0
+	}
+	return 16 - (n % 16)
+}
+
+func buildPoly1305Msg(aad, ct []byte) []byte {
+	aLen := len(aad)
+	cLen := len(ct)
+
+	p1 := paddingN(aLen, 16)
+	p2 := paddingN(cLen, 16)
+
+	total := aLen + p1 + cLen + p2 + 8 + 8
+	out := make([]byte, total)
+
+	ofs := copy(out, aad)
+	ofs += p1
+	ofs += copy(out[ofs:], ct)
+	ofs += p2
+
+	var lenBuf [8]byte
+
+	lenBuf = binary.PutUint64LSB(lenBuf, 0, uint64(aLen))
+	ofs += copy(out[ofs:], lenBuf)
+
+	lenBuf = binary.PutUint64LSB(lenBuf, 0, uint64(cLen))
+	ofs += copy(out[ofs:], lenBuf)
+
+	return out
+}
+
+// poly1305TagBytes is a wrapper that processes arbitrary-length msg.
+func poly1305TagBytes(msg, key []byte) [16]byte {
+	if len(key) != 32 {
+		panic("poly1305 key must be 32 bytes")
+	}
+
+	var st poly1305State
+	var k [32]byte
+	copy(k[:], key)
+	poly1305Init(&st, k)
+
+	var block [16]byte
+	i := 0
+	for i+16 <= len(msg) {
+		copy(block[:], msg[i:i+16])
+		poly1305Block(&st, &block)
+		i += 16
+	}
+
+	// final partial block (if any)
+	rem := len(msg) - i
+	if rem > 0 {
+		for j := 0; j < 16; j++ {
+			if j < rem {
+				block[j] = msg[i+j]
+			} else {
+				block[j] = 0
+			}
+		}
+		// For the final block, the "1" bit must be at 2^(8*rem),
+		// not at 2^128. For a circuit you might choose fixed-size
+		// messages and avoid this branch altogether.
+		// Here we quickly adapt by zeroing the regular 1-bit and
+		// setting the correct one.
+		// First, clear the implicit 1 we added in loadM:
+		// we call loadM, then adjust.
+		poly1305BlockPartial(&st, &block, rem)
+	}
+
+	return poly1305Finish(&st)
+}
+
+// poly1305BlockPartial: like poly1305Block but places the "1" at 8*rem.
+func poly1305BlockPartial(st *poly1305State, block *[16]byte, rem int) {
+	// Interpret block as integer, but we will add 1<<(8*rem) manually.
+	// For circuit use, you'd typically avoid this by fixing message length.
+	var m [5]uint64
+
+	// same as loadM, but without the +1<<24
+	t0 := uint64(binary.GetUint32LSB(block[0:4]))
+	t1 := uint64(binary.GetUint32LSB(block[4:8]))
+	t2 := uint64(binary.GetUint32LSB(block[8:12]))
+	t3 := uint64(binary.GetUint32LSB(block[12:16]))
+
+	m[0] = t0 & mask26
+	m[1] = ((t0 >> 26) | (t1 << 6)) & mask26
+	m[2] = ((t1 >> 20) | (t2 << 12)) & mask26
+	m[3] = ((t2 >> 14) | (t3 << 18)) & mask26
+	m[4] = (t3 >> 8) & 0x3fffff
+
+	// Add 1 at 8*rem.
+	// Position of that bit in limb representation is a little fiddly.
+	// For MPC, you'd typically avoid variable rem, but this keeps correctness.
+	bitPos := uint(rem * 8)
+	limb := bitPos / uint32(26)
+	off := bitPos % uint32(26)
+	if limb < 5 {
+		m[limb] += 1 << off
+	}
+
+	// then same as poly1305Block
+	h0 := st.h[0] + m[0]
+	h1 := st.h[1] + m[1]
+	h2 := st.h[2] + m[2]
+	h3 := st.h[3] + m[3]
+	h4 := st.h[4] + m[4]
+
+	r0 := st.r[0]
+	r1 := st.r[1]
+	r2 := st.r[2]
+	r3 := st.r[3]
+	r4 := st.r[4]
+
+	s1 := st.r5[1]
+	s2 := st.r5[2]
+	s3 := st.r5[3]
+	s4 := st.r5[4]
+
+	d0 := h0*r0 + h1*s4 + h2*s3 + h3*s2 + h4*s1
+	d1 := h0*r1 + h1*r0 + h2*s4 + h3*s3 + h4*s2
+	d2 := h0*r2 + h1*r1 + h2*r0 + h3*s4 + h4*s3
+	d3 := h0*r3 + h1*r2 + h2*r1 + h3*r0 + h4*s4
+	d4 := h0*r4 + h1*r3 + h2*r2 + h3*r1 + h4*r0
+
+	c := d0 >> 26
+	h0 = d0 & mask26
+	d1 += c
+	c = d1 >> 26
+	h1 = d1 & mask26
+	d2 += c
+	c = d2 >> 26
+	h2 = d2 & mask26
+	d3 += c
+	c = d3 >> 26
+	h3 = d3 & mask26
+	d4 += c
+	c = d4 >> 26
+	h4 = d4 & mask26
+
+	h0 += c * 5
+	c = h0 >> 26
+	h0 &= mask26
+	h1 += c
+
+	st.h[0] = h0
+	st.h[1] = h1
+	st.h[2] = h2
+	st.h[3] = h3
+	st.h[4] = h4
+}
+
+func Encrypt(key [32]byte, nonce [12]byte, plaintext, aad []byte) (
+	[]byte, []byte) {
+
+	var n [12]byte
+	copy(n[:], nonce)
+
+	// Poly1305 key from block 0
+	block0 := chacha20Block(key, 0, n)
+	polyKey := block0[:32]
+
+	// Encrypt with counter=1
+	ciphertext := chacha20XOR(key, n, 1, plaintext)
+
+	// Build MAC input
+	macInput := buildPoly1305Msg(aad, ciphertext)
+	tag := poly1305TagBytes(macInput, polyKey)
+
+	return ciphertext, tag
+}
