@@ -1,10 +1,37 @@
 // -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+// This is derived from Go's poly1305/sum_generic.go file. The
+// original copyright is as follows:
+//
+// Copyright 2019 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found at https://golang.org/LICENSE.
 
 package chacha20poly1305
 
 import (
 	"encoding/binary"
 )
+
+// Poly1305 [RFC 7539] is a relatively simple MAC algorithm: the
+// authentication tag for a 64 bytes message is approximately
+//
+//     s + m[0:16] * r⁴ + m[16:32] * r³ + m[32:48] * r² + m[48:64] * r  mod  2¹³⁰ - 5
+//
+// for some secret r and s. It can be computed sequentially like
+//
+//     for len(msg) > 0:
+//         h += read(msg, 16)
+//         h *= r
+//         h %= 2¹³⁰ - 5
+//     return h + s
+//
+// All the complexity is about doing performant constant-time math on
+// numbers larger than any available numeric type.
 
 // Poly1305State holds numbers in saturated 64-bit little-endian
 // limbs. That is, the value of [x0, x1, x2] is x[0] + x[1] * 2⁶⁴ +
@@ -18,9 +45,9 @@ type Poly1305State struct {
 	s [2]uint64
 }
 
-// [rMask0, rMask1] is the specified Poly1305 clamping mask in little-endian. It
-// clears some bits of the secret coefficient to make it possible to implement
-// multiplication more efficiently.
+// [rMask0, rMask1] is the specified Poly1305 clamping mask in
+// little-endian. It clears some bits of the secret coefficient to
+// make it possible to implement multiplication more efficiently.
 const (
 	rMask0 = uint64(0x0FFFFFFC0FFFFFFF)
 	rMask1 = uint64(0x0FFFFFFC0FFFFFFC)
@@ -38,11 +65,18 @@ func poly1305Init(key [32]byte) Poly1305State {
 }
 
 const (
+	// BlockSize defines the Poly1305 block size in bytes.
 	BlockSize = 64
 )
 
+// update absorbs msg into the state.h accumulator. For each chunk of
+// 128 bits of message, it computes
+//
+//	h₊ = (h + m) * r  mod  2¹³⁰ - 5
+//
+// If the msg length is not a multiple of TagSize, it assumes the last
+// incomplete chunk is the final one.
 func update(state *Poly1305State, msg []byte) {
-
 	h0 := state.h[0]
 	h1 := state.h[1]
 	h2 := state.h[2]
@@ -56,6 +90,8 @@ func update(state *Poly1305State, msg []byte) {
 	var t uint384
 
 	for ofs := 0; ofs < len(msg); ofs += TagSize {
+		// XXX partial final block.
+
 		m = uint192(binary.GetUintLSB(msg[ofs : ofs+TagSize]))
 		m |= uint192(1) << 128
 
@@ -63,13 +99,33 @@ func update(state *Poly1305State, msg []byte) {
 
 		t = wideMul(h, r)
 
+		// Now we have the result in t, and we need to reduce it
+		// modulo 2¹³⁰ - 5. The special shape of this Crandall prime
+		// lets us do a cheap partial reduction according to the
+		// reduction identity
+		//
+		//     c * 2¹³⁰ + n  =  c * 5 + n  mod  2¹³⁰ - 5
+		//
+		// because 2¹³⁰ = 5 mod 2¹³⁰ - 5. Partial reduction since the
+		// result is likely to be larger than 2¹³⁰ - 5, but still
+		// small enough to fit the assumptions we make about h in the
+		// rest of the code.
+		//
+		// See also https://speakerdeck.com/gtank/engineering-prime-numbers?slide=23
+
+		// We split the final result at the 2¹³⁰ mark into h and cc,
+		// the carry.
+
 		h = uint192(t & 0x3ffffffffffffffffffffffffffffffff)
 		cc = uint192(t >> 130)
 
-		// Add cc*5
+		// Add cc*5: cc + 4*cc
 		h += cc
 		h += (cc << 2)
 
+		// The whole of h at most
+		//
+		//     5 * 2¹²⁸ + (2¹²⁸ - 1) = 6 * 2¹²⁸ - 1
 	}
 	state.h[0] = uint64(h)
 	state.h[1] = uint64(h >> 64)
@@ -80,23 +136,30 @@ const (
 	p = uint192(0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB)
 )
 
+// finalize completes the modular reduction of h and computes
+//
+//	out = h + s  mod  2¹²⁸
 func finalize(state *Poly1305State) [TagSize]byte {
 	var result [TagSize]byte
 
-	// After the partial reduction in update, h might be more than
-	// 2¹³⁰ - 5, but will be less than 2 * (2¹³⁰ - 5). To complete the
-	// reduction in constant time, we compute t = h - (2¹³⁰ - 5), and
-	// select h as the result if the subtraction underflows, and t
-	// otherwise.
 	h := uint192(state.h[0]) | (uint192(state.h[1]) << 64) |
 		(uint192(state.h[2]) << 128)
-
-	sub := h - p
-	if (sub & uint192(1<<192)) != 0 {
-		h = sub
+	// After the partial reduction in update, h might be more than
+	// 2¹³⁰ - 5, but will be less than 2 * (2¹³⁰ - 5). To complete the
+	// reduction, we compute t = h - (2¹³⁰ - 5), and select h as the
+	// result if the subtraction underflows, and t otherwise.
+	t := h - p
+	if (t & uint192(1<<192)) != 0 {
+		h = t
 	}
-
 	h &= uint192(0xffffffffffffffffffffffffffffffff)
+
+	// Finally, we compute the last Poly1305 step
+	//
+	//     tag = h + s  mod  2¹²⁸
+	//
+	// by just doing a wide addition with the 128 low bits of h and
+	// discarding the overflow.
 
 	s := uint192(state.s[0]) | (uint192(state.s[1]) << 64)
 	h += s
