@@ -21,6 +21,19 @@ func GetUint(d []byte) uint {
 	return result
 }
 
+// GetUintLSB gets a LSB-encoded unsigned integer from the argument
+// buffer. The size of the result number is determined by the length
+// of the input buffer.
+func GetUintLSB(d []byte) uint {
+	resultType := make(uint, len(d)*8)
+
+	var result resultType
+	for i := 0; i < len(d); i++ {
+		result |= resultType(d[i]) << (i * 8)
+	}
+	return result
+}
+
 // PutUint puts the unsigned integer v to the buffer d starting from
 // the offset offset in MSB-order. The number of bytes encoded is
 // determined by the size of the input value v.
