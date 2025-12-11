@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2024 Markku Rossi
+// Copyright (c) 2020-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -263,6 +263,16 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 		var name string
 		var elementType types.Info
 
+		if ti.Type == types.TStruct {
+			for _, field := range ti.Struct {
+				bits += field.Type.Bits
+			}
+			v.Name = "$" + ti.String()
+			ti.Bits = bits
+			ti.MinBits = bits
+			v.Type = ti
+			return v
+		}
 		if len(val) > 0 {
 			if ti.Type.Array() {
 				elementType = *ti.ElementType
@@ -275,13 +285,6 @@ func (gen *Generator) Constant(value interface{}, ti types.Info) Value {
 			length = fmt.Sprintf("%d", len(val))
 		} else {
 			name = "interface{}"
-		}
-		if !ti.Undefined() && ti.Type == types.TStruct {
-			v.Name = "$" + ti.String()
-			ti.Bits = bits
-			ti.MinBits = bits
-			v.Type = ti
-			return v
 		}
 
 		v.Name = fmt.Sprintf("$[%s]%s%s", length, name, arrayString(val))
