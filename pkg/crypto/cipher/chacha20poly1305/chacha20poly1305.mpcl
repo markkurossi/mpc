@@ -12,12 +12,8 @@ package chacha20poly1305
 import (
 	"bytes"
 	"crypto/cipher/chacha20"
+	"crypto/poly1305"
 	"encoding/binary"
-)
-
-const (
-	// TagSize specifies the tag size in bytes.
-	TagSize = 16
 )
 
 func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
@@ -33,7 +29,7 @@ func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	// Encrypt with counter=1
 	ciphertext := chacha20.XORKeyStream(key, n, 1, plaintext)
 
-	tag := poly1305TagBytes(aad, ciphertext, polyKey)
+	tag := poly1305.TagBytes(aad, ciphertext, polyKey)
 
 	result := make([]byte, len(ciphertext)+len(tag))
 	l := copy(result, ciphertext)
@@ -51,12 +47,12 @@ func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	block0 := chacha20.Block(key, 0, n)
 	polyKey := block0[:32]
 
-	l := len(ciphertext) - TagSize
+	l := len(ciphertext) - poly1305.TagSize
 
 	cipher := ciphertext[:l]
 	tag := ciphertext[l:]
 
-	expected := poly1305TagBytes(aad, cipher, polyKey)
+	expected := poly1305.TagBytes(aad, cipher, polyKey)
 
 	plaintext := chacha20.XORKeyStream(key, n, 1, ciphertext)
 

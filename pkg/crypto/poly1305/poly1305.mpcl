@@ -11,7 +11,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found at https://golang.org/LICENSE.
 
-package chacha20poly1305
+// Package poly1305 implements Poly1305 one-time message
+// authentication code.
+package poly1305
 
 import (
 	"encoding/binary"
@@ -53,7 +55,7 @@ const (
 	rMask1 = uint64(0x0FFFFFFC0FFFFFFC)
 )
 
-func poly1305Init(key [32]byte) Poly1305State {
+func Init(key [32]byte) Poly1305State {
 	var st Poly1305State
 
 	st.r[0] = binary.GetUint64LSB(key[0:8]) & rMask0
@@ -67,6 +69,9 @@ func poly1305Init(key [32]byte) Poly1305State {
 const (
 	// BlockSize defines the Poly1305 block size in bytes.
 	BlockSize = 64
+
+	// TagSize specifies the tag size in bytes.
+	TagSize = 16
 )
 
 // update absorbs msg into the state.h accumulator. For each chunk of
@@ -76,7 +81,7 @@ const (
 //
 // If the msg length is not a multiple of TagSize, it assumes the last
 // incomplete chunk is the final one.
-func update(state *Poly1305State, msg []byte) {
+func Update(state *Poly1305State, msg []byte) {
 	h0 := state.h[0]
 	h1 := state.h[1]
 	h2 := state.h[2]
@@ -139,7 +144,7 @@ const (
 // finalize completes the modular reduction of h and computes
 //
 //	out = h + s  mod  2¹²⁸
-func finalize(state *Poly1305State) [TagSize]byte {
+func Finalize(state *Poly1305State) [TagSize]byte {
 	var result [TagSize]byte
 
 	h := uint192(state.h[0]) | (uint192(state.h[1]) << 64) |
@@ -170,9 +175,9 @@ func finalize(state *Poly1305State) [TagSize]byte {
 	return result
 }
 
-func poly1305TagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
+func TagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
 
-	st := poly1305Init(key)
+	st := Init(key)
 
 	input := make([]byte, len(aad)+5+len(ct)+6+16)
 	copy(input, aad)
@@ -180,7 +185,7 @@ func poly1305TagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
 	input = binary.PutUint64LSB(input, 48, uint64(len(aad)))
 	input = binary.PutUint64LSB(input, 56, uint64(len(ct)))
 
-	update(&st, input)
+	Update(&st, input)
 
-	return finalize(&st)
+	return Finalize(&st)
 }
