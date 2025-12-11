@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2024 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,7 @@
 package chacha20poly1305
 
 import (
+	"bytes"
 	"encoding/binary"
 )
 
@@ -332,5 +333,5 @@ func Decrypt(key [KeySize]byte, nonce [NonceSize]byte, ciphertext, aad []byte) (
 
 	plaintext := chacha20XOR(key, n, 1, ciphertext)
 
-	return plaintext, bytes.Compare(expected[:], tag[:]) == 0
+	return plaintext, bytes.Equal(expected[:], tag[:])
 }

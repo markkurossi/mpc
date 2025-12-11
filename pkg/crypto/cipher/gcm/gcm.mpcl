@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2024 Markku Rossi
+// Copyright (c) 2021-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -167,11 +167,8 @@ func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
 	x ^= e0
 
 	computedTag := uint128ToByte(x)
-	if bytes.Compare(tag, computedTag) != 0 {
-		return cipher, false
-	}
 
-	return plain, true
+	return plain, bytes.Equal(tag, computedTag)
 }
 
 func byteToUint128(x [16]byte) uint128 {

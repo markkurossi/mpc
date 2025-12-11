@@ -31,6 +31,19 @@ func Compare(a, b []byte) int {
 	return 0
 }
 
+// Equal tests whether a and b are the same length and contain the same bytes.
+func Equal(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := 0; i < len(a); i++ {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // HasPrefix tests if the byte slice s begins with prefix.
 func HasPrefix(s, prefix []byte) bool {
 	limit := len(prefix)
