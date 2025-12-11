@@ -21,8 +21,7 @@ const (
 )
 
 func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
-	plaintext, aad []byte) ([]byte,
-	[]byte, uint, uint, uint, uint, uint) {
+	plaintext, aad []byte) []byte {
 
 	var n [chacha20.NonceSize]byte
 	copy(n[:], nonce)
@@ -34,18 +33,17 @@ func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	// Encrypt with counter=1
 	ciphertext := chacha20.XORKeyStream(key, n, 1, plaintext)
 
-	dbg, h0, h1, h2, h3, tag := poly1305TagBytes(aad, ciphertext, polyKey)
+	tag := poly1305TagBytes(aad, ciphertext, polyKey)
 
 	result := make([]byte, len(ciphertext)+len(tag))
 	l := copy(result, ciphertext)
 	copy(result[l:], tag)
 
-	return result, polyKey, dbg, h0, h1, h2, h3
+	return result
 }
 
 func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
-	ciphertext, aad []byte) ([]byte, bool,
-	[]byte) {
+	ciphertext, aad []byte) ([]byte, bool) {
 
 	var n [chacha20.NonceSize]byte
 	copy(n[:], nonce)
@@ -58,7 +56,7 @@ func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	cipher := ciphertext[:l]
 	tag := ciphertext[l:]
 
-	h0, h1, h2, h3, h4, expected := poly1305TagBytes(aad, cipher, polyKey)
+	expected := poly1305TagBytes(aad, cipher, polyKey)
 
 	plaintext := chacha20.XORKeyStream(key, n, 1, ciphertext)
 

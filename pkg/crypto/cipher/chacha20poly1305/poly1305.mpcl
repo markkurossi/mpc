@@ -170,8 +170,7 @@ func finalize(state *Poly1305State) [TagSize]byte {
 	return result
 }
 
-func poly1305TagBytes(aad []byte, ct []byte, key [32]byte) (
-	uint, uint64, uint64, uint64, uint64, [16]byte) {
+func poly1305TagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
 
 	st := poly1305Init(key)
 
@@ -183,7 +182,5 @@ func poly1305TagBytes(aad []byte, ct []byte, key [32]byte) (
 
 	update(&st, input)
 
-	var h0, h1, h2 uint64
-	tag := finalize(&st)
-	return uint32(0), h0, h1, h2, uint32(0), tag
+	return finalize(&st)
 }
