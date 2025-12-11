@@ -49,7 +49,7 @@ func quarterRound(s *[16]uint32, a, b, c, d int) {
 	s[b] = rotl32(xor32(s[b], s[c]), 7)
 }
 
-func chacha20Block(key [KeySize]byte, counter uint32,
+func Block(key [KeySize]byte, counter uint32,
 	nonce [NonceSize]byte) [64]byte {
 
 	var state [16]uint32
@@ -113,7 +113,7 @@ func XORKeyStream(key [KeySize]byte, nonce [NonceSize]byte, counter uint32,
 	c := counter
 
 	for rem > 0 {
-		block = chacha20Block(key, c, nonce)
+		block = Block(key, c, nonce)
 		c++
 		keystream = block[:]
 
