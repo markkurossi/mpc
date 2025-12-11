@@ -7,17 +7,12 @@ import (
 	"crypto/cipher/gcm"
 )
 
-func main(a, b byte) (string, int) {
-	key := []byte{
-		0x06, 0xa9, 0x21, 0x40, 0x36, 0xb8, 0xa1, 0x5b,
-		0x51, 0x2e, 0x03, 0xd5, 0x34, 0x12, 0x00, 0x06,
-	}
-	nonce := []byte{
-		0x3d, 0xaf, 0xba, 0x42, 0x9d, 0x9e, 0xb4, 0x30,
-		0xb4, 0x22, 0xda, 0x80,
-	}
-	plain := []byte("Single block msgSingle block msg")
-	additional := []byte("additional data to be authenticated")
+// ./garbled -e -stream -i 0x3dafba429d9eb430b422da80
+// ./garbled -stream -i 0x06a9214036b8a15b512e03d534120006 examples/aesgcm.mpcl
+
+func main(key, nonce []byte) (string, int) {
+	plain := []byte("Hello MPC / circuit world!")
+	additional := []byte("AAD example")
 
 	c := gcm.EncryptAES128(key, nonce, plain, additional)
 	p, ok := gcm.DecryptAES128(key, nonce, c, additional)
