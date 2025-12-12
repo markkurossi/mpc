@@ -112,12 +112,14 @@ func XORKeyStream(key [KeySize]byte, nonce [NonceSize]byte, counter uint32,
 	dOff := 0
 	c := counter
 
+	var n int32
+
 	for rem > 0 {
 		block = Block(key, c, nonce)
 		c++
 		keystream = block[:]
 
-		n := 64
+		n = 64
 		if rem < n {
 			n = rem
 		}
