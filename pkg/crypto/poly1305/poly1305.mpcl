@@ -174,18 +174,3 @@ func Finalize(state *Poly1305State) [TagSize]byte {
 
 	return result
 }
-
-func TagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
-
-	st := Init(key)
-
-	input := make([]byte, len(aad)+5+len(ct)+6+16)
-	copy(input, aad)
-	copy(input[16:], ct)
-	input = binary.PutUint64LSB(input, 48, uint64(len(aad)))
-	input = binary.PutUint64LSB(input, 56, uint64(len(ct)))
-
-	Update(&st, input)
-
-	return Finalize(&st)
-}

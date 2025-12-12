@@ -29,7 +29,7 @@ func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	// Encrypt with counter=1
 	ciphertext := chacha20.XORKeyStream(key, n, 1, plaintext)
 
-	tag := poly1305.TagBytes(aad, ciphertext, polyKey)
+	tag := tagBytes(aad, ciphertext, polyKey)
 
 	result := make([]byte, len(ciphertext)+len(tag))
 	l := copy(result, ciphertext)
@@ -52,9 +52,24 @@ func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	cipher := ciphertext[:l]
 	tag := ciphertext[l:]
 
-	expected := poly1305.TagBytes(aad, cipher, polyKey)
+	expected := tagBytes(aad, cipher, polyKey)
 
 	plaintext := chacha20.XORKeyStream(key, n, 1, ciphertext)
 
 	return plaintext, bytes.Equal(expected[:], tag[:])
+}
+
+func tagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
+
+	st := poly1305.Init(key)
+
+	input := make([]byte, len(aad)+5+len(ct)+6+16)
+	copy(input, aad)
+	copy(input[16:], ct)
+	input = binary.PutUint64LSB(input, 48, uint64(len(aad)))
+	input = binary.PutUint64LSB(input, 56, uint64(len(ct)))
+
+	poly1305.Update(&st, input)
+
+	return poly1305.Finalize(&st)
 }
