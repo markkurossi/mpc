@@ -61,13 +61,16 @@ func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 
 func tagBytes(aad []byte, ct []byte, key [32]byte) [16]byte {
 
-	st := poly1305.Init(key)
+	aadPad := paddingN(len(aad), 16)
+	ctPad := paddingN(len(ct), 16)
 
-	input := make([]byte, len(aad)+5+len(ct)+6+16)
+	input := make([]byte, len(aad)+aadPad+len(ct)+ctPad+16)
 	copy(input, aad)
-	copy(input[16:], ct)
-	input = binary.PutUint64LSB(input, 48, uint64(len(aad)))
-	input = binary.PutUint64LSB(input, 56, uint64(len(ct)))
+	copy(input[len(aad)+aadPad:], ct)
+	input = binary.PutUint64LSB(input, len(input)-16, uint64(len(aad)))
+	input = binary.PutUint64LSB(input, len(input)-8, uint64(len(ct)))
+
+	st := poly1305.Init(key)
 
 	poly1305.Update(&st, input)
 
