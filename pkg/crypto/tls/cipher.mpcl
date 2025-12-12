@@ -8,12 +8,12 @@
 package tls
 
 import (
+	"crypto/cipher/chacha20poly1305"
 	"crypto/cipher/gcm"
 	"encoding/binary"
 )
 
-func Encrypt(key [16]byte, iv [12]byte, seq uint64, ct byte,
-	data []byte) []byte {
+func Encrypt(key []byte, iv []byte, seq uint64, ct byte, data []byte) []byte {
 
 	plaintext := make([]byte, len(data)+1)
 	n := copy(plaintext, data)
@@ -35,9 +35,10 @@ func Encrypt(key [16]byte, iv [12]byte, seq uint64, ct byte,
 	}
 
 	return gcm.EncryptAES128(key, ivbuf, plaintext, hdr)
+	//return chacha20poly1305.Seal(key, ivbuf, plaintext, hdr)
 }
 
-func Decrypt(key [16]byte, iv [12]byte, seq uint64, data []byte) (
+func Decrypt(key []byte, iv []byte, seq uint64, data []byte) (
 	byte, []byte, bool) {
 	// Additional data is the TLS record header.
 	var hdr [5]byte
@@ -52,6 +53,7 @@ func Decrypt(key [16]byte, iv [12]byte, seq uint64, data []byte) (
 	}
 
 	plain, ok := gcm.DecryptAES128(key, ivbuf, data, hdr)
+	//plain, ok := chacha20poly1305.Open(key, ivbuf, data, hdr)
 	if !ok {
 		return tls.CTInvalid, nil, false
 	}
