@@ -59,6 +59,9 @@ func compileFiles(files []string, params *utils.Params, inputSizes [][]int,
 					return err
 				}
 			}
+			if params.Verbose {
+				fmt.Println(circ)
+			}
 		} else if compiler.IsFilename(file) {
 			if ssa {
 				params.SSAOut, err = makeOutput(file, "ssa")
@@ -72,9 +75,12 @@ func compileFiles(files []string, params *utils.Params, inputSizes [][]int,
 					}
 				}
 			}
-			_, _, err = compiler.New(params).CompileFile(file, inputSizes)
+			circ, _, err = compiler.New(params).CompileFile(file, inputSizes)
 			if err != nil {
 				return err
+			}
+			if params.Verbose {
+				fmt.Println(circ)
 			}
 		} else {
 			return fmt.Errorf("unknown file type '%s'", file)
