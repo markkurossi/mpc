@@ -94,12 +94,17 @@ func Update(state *Poly1305State, msg []byte) {
 
 	var m, cc uint192
 	var t uint384
+	var shift int32
 
 	for ofs := 0; ofs < len(msg); ofs += TagSize {
-		// XXX partial final block.
 
 		m = uint192(binary.GetUintLSB(msg[ofs : ofs+TagSize]))
-		m |= uint192(1) << 128
+
+		shift = len(msg) - ofs
+		if shift > TagSize {
+			shift = TagSize
+		}
+		m |= uint192(1) << (shift << 3)
 
 		h = h + m
 
