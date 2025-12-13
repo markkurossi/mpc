@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/cipher/chacha20"
 	"crypto/cipher/chacha20poly1305"
 )
 
@@ -15,27 +16,24 @@ import (
 // Tag      : 0dc924f4ff92208c9d0dbd30c61288ce
 // Result[1]: 328b5e31a75663708c10d9ce57e0efbf
 
-func main(key, nonce []byte) ([]byte, bool, []byte, bool) {
+type Garbler struct {
+	key   [chacha20.KeySize]byte
+	nonce [chacha20.NonceSize]byte
+	plain []byte
+	aad   []byte
+}
 
-	plain := []byte("Hello MPC / circuit world!")
-	aad := []byte("AAD example")
+type Evaluator struct {
+	key [chacha20.KeySize]byte
+}
 
-	cipher := chacha20poly1305.Seal(key, nonce, plain, aad)
-	// p, ok := chacha20poly1305.Open(key, nonce, cipher, aad)
+func main(g Garbler, e Evaluator) []byte {
 
-	correctCipher := []byte{
-		0x05, 0xaf, 0xdc, 0x9b, 0x65, 0x5d, 0x2a, 0x04,
-		0x8e, 0x1e, 0x97, 0xed, 0xae, 0x99, 0x3b, 0x7b,
-		0x52, 0x9a, 0x6e, 0xee, 0x66, 0xeb, 0x9b, 0x81,
-		0xe0, 0x1e,
+	var key [chacha20.KeySize]byte
+
+	for i := 0; i < len(key); i++ {
+		key[i] = g.key[i] ^ e.key[i]
 	}
-	correctTag := []byte{
-		0x0d, 0xc9, 0x24, 0xf4, 0xff, 0x92, 0x20, 0x8c,
-		0x9d, 0x0d, 0xbd, 0x30, 0xc6, 0x12, 0x88, 0xce,
-	}
 
-	l := len(cipher) - 16
-
-	return cipher[:l], bytes.Equal(cipher[:l], correctCipher),
-		cipher[l:], bytes.Equal(cipher[l:], correctTag)
+	return chacha20poly1305.Seal(key, g.nonce, g.plain, g.aad)
 }

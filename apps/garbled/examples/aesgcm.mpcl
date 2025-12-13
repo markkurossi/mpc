@@ -10,14 +10,22 @@ import (
 // ./garbled -e -stream -i 0x3dafba429d9eb430b422da80
 // ./garbled -stream -i 0x06a9214036b8a15b512e03d534120006 examples/aesgcm.mpcl
 
-func main(key, nonce []byte) (string, int) {
-	plain := []byte("Hello MPC / circuit world!")
-	additional := []byte("AAD example")
+type Garbler struct {
+	key   [16]byte
+	nonce [gcm.NonceSize]byte
+	plain []byte
+	aad   []byte
+}
 
-	c := gcm.EncryptAES128(key, nonce, plain, additional)
-	p, ok := gcm.DecryptAES128(key, nonce, c, additional)
-	if !ok {
-		return "Open failed", 0
+type Evaluator struct {
+	key [16]byte
+}
+
+func main(g Garbler, e Evaluator) []byte {
+	var key [16]byte
+
+	for i := 0; i < len(key); i++ {
+		key[i] = g.key[i] ^ e.key[i]
 	}
-	return string(p), bytes.Compare(plain, p)
+	return gcm.EncryptAES128(key, g.nonce, g.plain, g.aad)
 }
