@@ -55,6 +55,7 @@ const (
 	rMask1 = uint64(0x0FFFFFFC0FFFFFFC)
 )
 
+// Init initializes the state from the key.
 func Init(key [32]byte) Poly1305State {
 	var st Poly1305State
 
@@ -67,14 +68,14 @@ func Init(key [32]byte) Poly1305State {
 }
 
 const (
-	// BlockSize defines the Poly1305 block size in bytes.
+	// BlockSize defines the block size in bytes.
 	BlockSize = 64
 
 	// TagSize specifies the tag size in bytes.
 	TagSize = 16
 )
 
-// update absorbs msg into the state.h accumulator. For each chunk of
+// Update absorbs msg into the state.h accumulator. For each chunk of
 // 128 bits of message, it computes
 //
 //	h₊ = (h + m) * r  mod  2¹³⁰ - 5
@@ -141,7 +142,7 @@ const (
 	p = uint192(0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB)
 )
 
-// finalize completes the modular reduction of h and computes
+// Finalize completes the modular reduction of h and computes
 //
 //	out = h + s  mod  2¹²⁸
 func Finalize(state *Poly1305State) [TagSize]byte {
