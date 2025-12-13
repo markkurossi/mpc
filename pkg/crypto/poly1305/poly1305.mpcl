@@ -149,12 +149,14 @@ func Finalize(state *Poly1305State) [TagSize]byte {
 
 	h := uint192(state.h[0]) | (uint192(state.h[1]) << 64) |
 		(uint192(state.h[2]) << 128)
+
 	// After the partial reduction in update, h might be more than
 	// 2¹³⁰ - 5, but will be less than 2 * (2¹³⁰ - 5). To complete the
 	// reduction, we compute t = h - (2¹³⁰ - 5), and select h as the
 	// result if the subtraction underflows, and t otherwise.
 	t := h - p
-	if (t & uint192(1<<192)) != 0 {
+
+	if (t & (uint192(1) << 191)) == 0 {
 		h = t
 	}
 	h &= uint192(0xffffffffffffffffffffffffffffffff)
