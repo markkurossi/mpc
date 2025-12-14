@@ -93,6 +93,7 @@ func main() {
 	sids := flag.String("sids", "", "store symbol IDs `file`")
 	wNone := flag.Bool("Wnone", false, "disable all warnings")
 	baseFlag := flag.Int("base", 0, "result output base")
+	objdump := flag.Bool("objdump", false, "circuit file dumper")
 	flag.Parse()
 
 	log.SetFlags(0)
@@ -138,6 +139,13 @@ func main() {
 		}
 	}
 
+	if *objdump {
+		err := dumpObjects(flag.Args())
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	if *compile || *ssa {
 		inputSizes := make([][]int, 2)
 		iSizes, err := circuit.InputSizes(inputFlag)

@@ -24,7 +24,6 @@ apps/garbled/garbled
 apps/iotest/iotest
 apps/iter/iter
 apps/mpcldoc/mpcldoc
-apps/objdump/objdump
 apps/ot/ot
 docs/ref/ecdh/ecdh
 docs/ref/ed25519/ed25519
