@@ -49,7 +49,16 @@ func quarterRound(s *[16]uint32, a, b, c, d int) {
 	s[b] = rotl32(xor32(s[b], s[c]), 7)
 }
 
-func Block(key [KeySize]byte, counter uint32,
+// Block creates one block fo ChaCha20 key stream for key, counter,
+// and nonce. Block uses a pre-compiled circuit so it is normally
+// faster than BlockMPCL.
+func Block(key [KeySize]byte, counter uint32, nonce [NonceSize]byte) [64]byte {
+	return native("chacha20block.mpclc", key, counter, nonce)
+}
+
+// BlockMPCL creates one block fo ChaCha20 key stream for key,
+// counter, and nonce.
+func BlockMPCL(key [KeySize]byte, counter uint32,
 	nonce [NonceSize]byte) [64]byte {
 
 	var state [16]uint32
