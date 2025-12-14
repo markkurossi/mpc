@@ -353,9 +353,12 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 
 	if len(circ.Inputs) > len(args) {
 		return nil, nil, ctx.Errorf(loc,
-			"not enough arguments in call to native")
+			"not enough arguments in call to native: got %v, expected %v",
+			len(args), len(circ.Inputs))
 	} else if len(circ.Inputs) < len(args) {
-		return nil, nil, ctx.Errorf(loc, "too many argument in call to native")
+		return nil, nil, ctx.Errorf(loc,
+			"too many argument in call to native: got %v, expected %v",
+			len(args), len(circ.Inputs))
 	}
 	// Check that the argument types match.
 	for idx, io := range circ.Inputs {
@@ -369,15 +372,9 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 	}
 
 	var result []ssa.Value
-
 	for _, io := range circ.Outputs {
-		result = append(result, gen.AnonVal(types.Info{
-			Type:       types.TUndefined,
-			IsConcrete: true,
-			Bits:       io.Type.Bits,
-		}))
+		result = append(result, gen.AnonVal(io.Type))
 	}
-
 	block.AddInstr(ssa.NewCircInstr(args, circ, result))
 
 	return block, result, nil
