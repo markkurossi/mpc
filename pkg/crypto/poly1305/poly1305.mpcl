@@ -89,22 +89,22 @@ func Update(state *Poly1305State, msg []byte) {
 	r0 := state.r[0]
 	r1 := state.r[1]
 
-	h := uint192(h0) | (uint192(h1) << 64) | (uint192(h2) << 128)
-	r := uint192(r0) | (uint192(r1) << 64)
+	h := uint133(h0) | (uint133(h1) << 64) | (uint133(h2) << 128)
+	r := uint133(r0) | (uint133(r1) << 64)
 
-	var m, cc uint192
-	var t uint384
+	var m, cc uint133
+	var t uint266
 	var shift int32
 
 	for ofs := 0; ofs < len(msg); ofs += TagSize {
 
-		m = uint192(binary.GetUintLSB(msg[ofs : ofs+TagSize]))
+		m = uint133(binary.GetUintLSB(msg[ofs : ofs+TagSize]))
 
 		shift = len(msg) - ofs
 		if shift > TagSize {
 			shift = TagSize
 		}
-		m |= uint192(1) << (shift << 3)
+		m |= uint133(1) << (shift << 3)
 
 		h = h + m
 
@@ -127,8 +127,8 @@ func Update(state *Poly1305State, msg []byte) {
 		// We split the final result at the 2¹³⁰ mark into h and cc,
 		// the carry.
 
-		h = uint192(t & 0x3ffffffffffffffffffffffffffffffff)
-		cc = uint192(t >> 130)
+		h = uint133(t & 0x3ffffffffffffffffffffffffffffffff)
+		cc = uint133(t >> 130)
 
 		// Add cc*5: cc + 4*cc
 		h += cc
@@ -144,7 +144,7 @@ func Update(state *Poly1305State, msg []byte) {
 }
 
 const (
-	p = uint192(0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB)
+	p = uint133(0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFB)
 )
 
 // Finalize completes the modular reduction of h and computes
@@ -153,8 +153,8 @@ const (
 func Finalize(state *Poly1305State) [TagSize]byte {
 	var result [TagSize]byte
 
-	h := uint192(state.h[0]) | (uint192(state.h[1]) << 64) |
-		(uint192(state.h[2]) << 128)
+	h := uint133(state.h[0]) | (uint133(state.h[1]) << 64) |
+		(uint133(state.h[2]) << 128)
 
 	// After the partial reduction in update, h might be more than
 	// 2¹³⁰ - 5, but will be less than 2 * (2¹³⁰ - 5). To complete the
@@ -162,10 +162,10 @@ func Finalize(state *Poly1305State) [TagSize]byte {
 	// result if the subtraction underflows, and t otherwise.
 	t := h - p
 
-	if (t & (uint192(1) << 191)) == 0 {
+	if (t & (uint133(1) << 132)) == 0 {
 		h = t
 	}
-	h &= uint192(0xffffffffffffffffffffffffffffffff)
+	h &= uint133(0xffffffffffffffffffffffffffffffff)
 
 	// Finally, we compute the last Poly1305 step
 	//
@@ -174,7 +174,7 @@ func Finalize(state *Poly1305State) [TagSize]byte {
 	// by just doing a wide addition with the 128 low bits of h and
 	// discarding the overflow.
 
-	s := uint192(state.s[0]) | (uint192(state.s[1]) << 64)
+	s := uint133(state.s[0]) | (uint133(state.s[1]) << 64)
 	h += s
 
 	result = binary.PutUint64LSB(result, 0, uint64(h))
