@@ -4,7 +4,7 @@ package main
 
 import (
 	"bytes"
-	"crypto/cipher/chacha20"
+	"crypto/chacha20"
 	"crypto/cipher/chacha20poly1305"
 )
 
