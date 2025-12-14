@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2025 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,52 +9,44 @@
 package main
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/tabulate"
 )
 
 func dumpObjects(files []string) error {
-	type oCircuit struct {
-		name    string
-		circuit *circuit.Circuit
-	}
-	var circuits []oCircuit
-
 	for _, file := range files {
-		if circuit.IsFilename(file) {
-			c, err := circuit.Parse(file)
-			if err != nil {
-				return err
-			}
-			circuits = append(circuits, oCircuit{
-				name:    file,
-				circuit: c,
-			})
+		if !circuit.IsFilename(file) {
+			continue
 		}
-	}
-
-	if len(circuits) > 0 {
-		tab := tabulate.New(tabulate.Github)
-		tab.Header("File")
-		tab.Header("XOR").SetAlign(tabulate.MR)
-		tab.Header("XNOR").SetAlign(tabulate.MR)
-		tab.Header("AND").SetAlign(tabulate.MR)
-		tab.Header("OR").SetAlign(tabulate.MR)
-		tab.Header("INV").SetAlign(tabulate.MR)
-		tab.Header("Gates").SetAlign(tabulate.MR)
-		tab.Header("xor").SetAlign(tabulate.MR)
-		tab.Header("!xor").SetAlign(tabulate.MR)
-		tab.Header("Wires").SetAlign(tabulate.MR)
-
-		for _, c := range circuits {
-			row := tab.Row()
-			row.Column(c.name)
-			c.circuit.TabulateRow(row)
+		c, err := circuit.Parse(file)
+		if err != nil {
+			return err
 		}
+		fmt.Printf("%s:\n", file)
+		fmt.Printf(" - inputs:\n")
+		for idx, input := range c.Inputs {
+			fmt.Printf("   %v: %v\n", idx, input)
+		}
+		fmt.Printf(" - outputs:\n")
+		for idx, output := range c.Outputs {
+			fmt.Printf("   %v: %v\n", idx, output)
+		}
+		fmt.Printf(" - gates  : %v\n",
+			c.Stats[circuit.XOR]+c.Stats[circuit.XNOR]+
+				c.Stats[circuit.AND]+c.Stats[circuit.OR]+c.Stats[circuit.INV])
 
-		tab.Print(os.Stdout)
+		fmt.Printf("   - XOR  : %v\n", c.Stats[circuit.XOR])
+		fmt.Printf("   - XNOR : %v\n", c.Stats[circuit.XNOR])
+		fmt.Printf("   - AND  : %v\n", c.Stats[circuit.AND])
+		fmt.Printf("   - OR   : %v\n", c.Stats[circuit.OR])
+		fmt.Printf("   - INV  : %v\n", c.Stats[circuit.INV])
+		fmt.Printf("   - #xor : %v\n",
+			c.Stats[circuit.XOR]+c.Stats[circuit.XNOR])
+		fmt.Printf("   - #!xor: %v\n",
+			c.Stats[circuit.AND]+c.Stats[circuit.OR]+c.Stats[circuit.INV])
+		fmt.Printf(" - wires  : %v\n", c.NumWires)
+		fmt.Printf(" - Cost   : %v\n", c.Cost())
 	}
 
 	return nil
