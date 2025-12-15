@@ -1,0 +1,17 @@
+// -*- go -*-
+
+// ChaCha20 cipher block. This file is the source for the
+// `pkg/crypto/chacha20/chacha20block.mpclc` native
+// circuit. Regenerate it with the following command:
+//
+//	./garbled -circ examples/chacha20block.mpcl
+package main
+
+import (
+	"crypto/chacha20"
+)
+
+func main(key [chacha20.KeySize]byte, counter uint32,
+	nonce [chacha20.NonceSize]byte) [64]byte {
+	return chacha20.BlockMPCL(key, counter, nonce)
+}
