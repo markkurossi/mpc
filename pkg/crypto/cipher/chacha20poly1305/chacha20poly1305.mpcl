@@ -16,6 +16,12 @@ import (
 	"encoding/binary"
 )
 
+// Seal encrypts the plaintext in ChaCha20Poly1305 mode. The key
+// specifies the ChaCha20 encryption key and nonce is an unique
+// initialization vector; the nonce must not be reused for the same
+// encryption key. The additionalData specifies additional data that
+// is authenticated but not encrypted. The input plaintext can be of
+// any length i.e. it don't have to be padded to cipher block size.
 func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	plaintext, aad []byte) []byte {
 
@@ -38,6 +44,12 @@ func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	return result
 }
 
+// Open decrypts the ciphertext in ChaCha20Poly1305 mode. They key
+// specifies the ChaCha20 encryption key and nonce is an unique
+// initialization vector; the nonce must not be reused for the same
+// encryption key. The additionalData specifies additional data that
+// is was authenticated but not encrypted when the ciphertext was
+// created.
 func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 	ciphertext, aad []byte) ([]byte, bool) {
 
