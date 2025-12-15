@@ -22,7 +22,7 @@
 apps/circuit/circuit
 apps/garbled/garbled
 apps/iotest/iotest
-apps/iter/iter
+apps/karatsuba/karatsuba
 apps/mpcldoc/mpcldoc
 apps/ot/ot
 docs/ref/ecdh/ecdh
