@@ -27,5 +27,5 @@ func main(g Garbler, e Evaluator) []byte {
 	for i := 0; i < len(key); i++ {
 		key[i] = g.key[i] ^ e.key[i]
 	}
-	return gcm.EncryptAES128(key, g.nonce, g.plain, g.aad)
+	return gcm.SealAES128(key, g.nonce, g.plain, g.aad)
 }

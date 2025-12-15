@@ -20,13 +20,13 @@ const NonceSize = 12
 // TagSize specifies the tag size in bytes.
 const TagSize = 16
 
-// EncryptAES128 encrypts the plaintext in AES-GCM mode. The key
+// SealAES128 encrypts the plaintext in AES-GCM mode. The key
 // specifies the AES encryption key and nonce is an unique
 // initialization vector; the nonce must not be reused for the same
 // encryption key. The additionalData specifies additional data that
 // is authenticated but not encrypted. The input plaintext can be of
 // any length i.e. it don't have to be padded to cipher block size.
-func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
+func SealAES128(key [16]byte, nonce [NonceSize]byte,
 	plaintext, additionalData []byte) []byte {
 
 	var counter [aes.BlockSize]byte
@@ -93,13 +93,13 @@ func EncryptAES128(key [16]byte, nonce [NonceSize]byte,
 	return cipher
 }
 
-// DecryptAES128 decrypts the ciphertext in AES-GCM mode. They key
+// OpenAES128 decrypts the ciphertext in AES-GCM mode. They key
 // specifies the AES encryption key and nonce is an unique
 // initialization vector; the nonce must not be reused for the same
 // encryption key. The additionalData specifies additional data that
 // is was authenticated but not encrypted when the ciphertext was
 // created.
-func DecryptAES128(key [16]byte, nonce [NonceSize]byte,
+func OpenAES128(key [16]byte, nonce [NonceSize]byte,
 	ciphertext, additionalData []byte) ([]byte, bool) {
 
 	var counter [aes.BlockSize]byte

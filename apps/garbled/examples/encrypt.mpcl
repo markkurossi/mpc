@@ -40,5 +40,5 @@ func main(g Garbler, e Evaluator) []byte {
 		nonce[i] = g.nonceShare[i] ^ e.nonceShare[i]
 	}
 
-	return gcm.EncryptAES128(key, nonce, g.msg, []byte("unused"))
+	return gcm.SealAES128(key, nonce, g.msg, []byte("AAD"))
 }
