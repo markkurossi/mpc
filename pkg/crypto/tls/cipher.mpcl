@@ -9,7 +9,6 @@ package tls
 
 import (
 	"crypto/cipher/chacha20poly1305"
-	"crypto/cipher/gcm"
 	"encoding/binary"
 )
 
@@ -19,7 +18,7 @@ func Encrypt(key []byte, iv []byte, seq uint64, ct byte, data []byte) []byte {
 	n := copy(plaintext, data)
 	plaintext[n] = ct
 
-	cipherLen := len(data) + 1 + gcm.TagSize
+	cipherLen := len(data) + 1 + chacha20poly1305.TagSize
 
 	// Additional data is the TLS record header.
 	var hdr [5]byte
@@ -27,15 +26,14 @@ func Encrypt(key []byte, iv []byte, seq uint64, ct byte, data []byte) []byte {
 	hdr = binary.PutUint(hdr, 1, VersionTLS12)
 	hdr = binary.PutUint(hdr, 3, uint16(cipherLen))
 
-	var ivbuf [gcm.NonceSize]byte
+	var ivbuf [chacha20poly1305.NonceSize]byte
 
 	ivbuf = binary.PutUint64(ivbuf, 4, seq)
 	for i := 0; i < len(iv); i++ {
 		ivbuf[i] = ivbuf[i] ^ iv[i]
 	}
 
-	return gcm.EncryptAES128(key, ivbuf, plaintext, hdr)
-	//return chacha20poly1305.Seal(key, ivbuf, plaintext, hdr)
+	return chacha20poly1305.Seal(key, ivbuf, plaintext, hdr)
 }
 
 func Decrypt(key []byte, iv []byte, seq uint64, data []byte) (
@@ -46,14 +44,13 @@ func Decrypt(key []byte, iv []byte, seq uint64, data []byte) (
 	hdr = binary.PutUint(hdr, 1, VersionTLS12)
 	hdr = binary.PutUint(hdr, 3, uint16(len(data)))
 
-	var ivbuf [gcm.NonceSize]byte
+	var ivbuf [chacha20poly1305.NonceSize]byte
 	ivbuf = binary.PutUint64(ivbuf, 4, seq)
 	for i := 0; i < len(iv); i++ {
 		ivbuf[i] = ivbuf[i] ^ iv[i]
 	}
 
-	plain, ok := gcm.DecryptAES128(key, ivbuf, data, hdr)
-	//plain, ok := chacha20poly1305.Open(key, ivbuf, data, hdr)
+	plain, ok := chacha20poly1305.Open(key, ivbuf, data, hdr)
 	if !ok {
 		return tls.CTInvalid, nil, false
 	}

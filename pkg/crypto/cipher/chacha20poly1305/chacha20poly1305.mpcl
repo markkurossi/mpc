@@ -16,16 +16,24 @@ import (
 	"encoding/binary"
 )
 
+const (
+	// NonceSize specifies the nonce size in bytes.
+	NonceSize = chacha20.NonceSize
+
+	// TagSize specifies the tag size in bytes.
+	TagSize = poly1305.TagSize
+)
+
 // Seal encrypts the plaintext in ChaCha20Poly1305 mode. The key
 // specifies the ChaCha20 encryption key and nonce is an unique
 // initialization vector; the nonce must not be reused for the same
 // encryption key. The additionalData specifies additional data that
 // is authenticated but not encrypted. The input plaintext can be of
 // any length i.e. it don't have to be padded to cipher block size.
-func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
+func Seal(key [chacha20.KeySize]byte, nonce [NonceSize]byte,
 	plaintext, aad []byte) []byte {
 
-	var n [chacha20.NonceSize]byte
+	var n [NonceSize]byte
 	copy(n[:], nonce)
 
 	// Poly1305 key from block 0
@@ -50,16 +58,16 @@ func Seal(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
 // encryption key. The additionalData specifies additional data that
 // is was authenticated but not encrypted when the ciphertext was
 // created.
-func Open(key [chacha20.KeySize]byte, nonce [chacha20.NonceSize]byte,
+func Open(key [chacha20.KeySize]byte, nonce [NonceSize]byte,
 	ciphertext, aad []byte) ([]byte, bool) {
 
-	var n [chacha20.NonceSize]byte
+	var n [NonceSize]byte
 	copy(n[:], nonce)
 
 	block0 := chacha20.Block(key, 0, n)
 	polyKey := block0[:32]
 
-	l := len(ciphertext) - poly1305.TagSize
+	l := len(ciphertext) - TagSize
 
 	cipher := ciphertext[:l]
 	tag := ciphertext[l:]
