@@ -1,0 +1,367 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+package p256
+
+// Add performs elliptic curve point addition on P256 Adds two points
+// (x1, y1) and (x2, y2) and returns (x3, y3) Handles special cases:
+// point at infinity, point doubling
+//
+// XXX: this triggers a compiler panic
+func Add(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
+	// Case 1: If P1 is the point at infinity (0, 0), return P2
+	if x1 == 0 && y1 == 0 {
+		x3 = x2
+		y3 = y2
+		return
+	}
+
+	// Case 2: If P2 is the point at infinity (0, 0), return P1
+	if x2 == 0 && y2 == 0 {
+		x3 = x1
+		y3 = y1
+		return
+	}
+
+	// Case 3: If x1 == x2 and y1 == -y2 (mod p), result is point at infinity
+	negY2 := (P - y2) % P
+	if x1 == x2 && y1 == negY2 {
+		x3 = 0
+		y3 = 0
+		return
+	}
+
+	// Case 4: Point doubling (x1 == x2 and y1 == y2)
+	if x1 == x2 && y1 == y2 {
+		return curveDouble(x1, y1)
+	}
+
+	// Case 5: Standard point addition (P1 != P2)
+	// Use projective coordinates internally to avoid modular inverse
+	return curveAddProjective(x1, y1, x2, y2)
+}
+
+// curveAddProjective performs point addition using Jacobian
+// projective coordinates This avoids the expensive modular inverse
+// operation Jacobian coordinates: (X, Y, Z) represents affine point
+// (X/Z², Y/Z³)
+func curveAddProjective(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
+	// Convert affine to projective: (x, y) -> (x, y, 1)
+	X1, Y1, Z1 := x1, y1, uint256(1)
+	X2, Y2, Z2 := x2, y2, uint256(1)
+
+	// Projective point addition formula for Jacobian coordinates
+	// Source: https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html
+
+	// U1 = X1 * Z2²
+	Z2_squared := (Z2 * Z2) % P
+	U1 := (X1 * Z2_squared) % P
+
+	// U2 = X2 * Z1²
+	Z1_squared := (Z1 * Z1) % P
+	U2 := (X2 * Z1_squared) % P
+
+	// S1 = Y1 * Z2³
+	Z2_cubed := (Z2_squared * Z2) % P
+	S1 := (Y1 * Z2_cubed) % P
+
+	// S2 = Y2 * Z1³
+	Z1_cubed := (Z1_squared * Z1) % P
+	S2 := (Y2 * Z1_cubed) % P
+
+	// H = U2 - U1
+	H := (U2 - U1 + P) % P
+
+	// R = S2 - S1
+	R := (S2 - S1 + P) % P
+
+	// H² = H * H
+	H_squared := (H * H) % P
+
+	// H³ = H² * H
+	H_cubed := (H_squared * H) % P
+
+	// X3 = R² - H³ - 2*U1*H²
+	R_squared := (R * R) % P
+	U1H2 := (U1 * H_squared) % P
+	X3 := (R_squared - H_cubed - 2*U1H2 + 3*P) % P
+
+	// Y3 = R*(U1*H² - X3) - S1*H³
+	temp1 := (U1H2 - X3 + P) % P
+	temp2 := (R * temp1) % P
+	temp3 := (S1 * H_cubed) % P
+	Y3 := (temp2 - temp3 + P) % P
+
+	// Z3 = H * Z1 * Z2
+	Z3 := (H * Z1) % P
+	Z3 = (Z3 * Z2) % P
+
+	// Convert back to affine coordinates: (X3/Z3², Y3/Z3³)
+	return projectiveToAffine(X3, Y3, Z3)
+}
+
+// curveDouble performs elliptic curve point doubling on P256
+// Doubles point (x, y) and returns (x3, y3)
+func curveDouble(x, y uint256) (x3, y3 uint256) {
+	// Handle point at infinity
+	if x == 0 && y == 0 {
+		x3 = 0
+		y3 = 0
+		return
+	}
+
+	// Use projective coordinates to avoid modular inverse
+	return curveDoubleProjective(x, y)
+}
+
+// curveDoubleProjective performs point doubling using Jacobian
+// projective coordinates
+func curveDoubleProjective(x, y uint256) (x3, y3 uint256) {
+	// Convert affine to projective: (x, y) -> (x, y, 1)
+	X1, Y1, Z1 := x, y, uint256(1)
+
+	// Projective point doubling formula for Jacobian coordinates
+	// Source: https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html
+
+	// S = 4*X1*Y1²
+	Y1_squared := (Y1 * Y1) % P
+	S := (4 * X1) % P
+	S = (S * Y1_squared) % P
+
+	// M = 3*X1² + a*Z1⁴
+	// For P256: a = -3, so M = 3*X1² - 3*Z1⁴ = 3*(X1² - Z1⁴)
+	X1_squared := (X1 * X1) % P
+	Z1_squared := (Z1 * Z1) % P
+	Z1_fourth := (Z1_squared * Z1_squared) % P
+
+	temp := (X1_squared - Z1_fourth + P) % P
+	M := (3 * temp) % P
+
+	// X3 = M² - 2*S
+	M_squared := (M * M) % P
+	X3 := (M_squared - uint256(2)*S + uint256(2)*P) % P
+
+	// Y3 = M*(S - X3) - 8*Y1⁴
+	Y1_fourth := (Y1_squared * Y1_squared) % P
+	temp1 := (S - X3 + P) % P
+	temp2 := (M * temp1) % P
+	temp3 := (8 * Y1_fourth) % P
+	Y3 := (temp2 - temp3 + P) % P
+
+	// Z3 = 2*Y1*Z1
+	Z3 := (2 * Y1) % P
+	Z3 = (Z3 * Z1) % P
+
+	// Convert back to affine coordinates
+	return projectiveToAffine(X3, Y3, Z3)
+}
+
+// projectiveToAffine converts Jacobian projective coordinates to
+// affine coordinates (X, Y, Z) -> (X/Z², Y/Z³) This requires ONE
+// modular inverse operation
+func projectiveToAffine(X, Y, Z uint256) (x, y uint256) {
+	if Z == 0 {
+		// Point at infinity
+		return 0, 0
+	}
+
+	// Compute Z^(-1)
+	Z_inv := modInverse(Z, P)
+
+	// Compute Z^(-2) = Z^(-1) * Z^(-1)
+	Z_inv_squared := (Z_inv * Z_inv) % P
+
+	// x = X * Z^(-2)
+	x = (X * Z_inv_squared) % P
+
+	// Compute Z^(-3) = Z^(-2) * Z^(-1)
+	Z_inv_cubed := (Z_inv_squared * Z_inv) % P
+
+	// y = Y * Z^(-3)
+	y = (Y * Z_inv_cubed) % P
+
+	return
+}
+
+// curveScalarMult performs scalar multiplication: k * P This computes
+// the point P added to itself k times Uses double-and-add algorithm
+// with fixed 256 iterations Uses projective coordinates internally
+// for efficiency
+func curveScalarMult(k uint256, x, y uint256) (x3, y3 uint256) {
+	// Result starts at point at infinity in projective coords
+	resX := uint256(0)
+	resY := uint256(0)
+	resZ := uint256(0)
+
+	// Convert input to projective coordinates
+	tmpX := x
+	tmpY := y
+	tmpZ := uint256(1)
+
+	// Process each bit of k (256 bits for uint256)
+	for i := 0; i < 256; i++ {
+		// Get bit i of k
+		bit := (k >> i) & 1
+
+		// If bit is 1, add current point to result (in projective coords)
+		if bit == 1 {
+			// Add in projective coordinates
+			resX, resY, resZ = curveAddProjectiveInternal(resX, resY, resZ, tmpX, tmpY, tmpZ)
+		}
+
+		// Double the temporary point for next iteration (in projective coords)
+		tmpX, tmpY, tmpZ = curveDoubleProjectiveInternal(tmpX, tmpY, tmpZ)
+	}
+
+	// Convert final result back to affine coordinates
+	return projectiveToAffine(resX, resY, resZ)
+}
+
+// curveAddProjectiveInternal adds two points in projective
+// coordinates Returns result in projective coordinates (no conversion
+// to affine)
+func curveAddProjectiveInternal(X1, Y1, Z1, X2, Y2, Z2 uint256) (X3, Y3, Z3 uint256) {
+	// Handle point at infinity cases
+	if Z1 == 0 {
+		return X2, Y2, Z2
+	}
+	if Z2 == 0 {
+		return X1, Y1, Z1
+	}
+
+	// U1 = X1 * Z2²
+	Z2_squared := (Z2 * Z2) % P
+	U1 := (X1 * Z2_squared) % P
+
+	// U2 = X2 * Z1²
+	Z1_squared := (Z1 * Z1) % P
+	U2 := (X2 * Z1_squared) % P
+
+	// S1 = Y1 * Z2³
+	Z2_cubed := (Z2_squared * Z2) % P
+	S1 := (Y1 * Z2_cubed) % P
+
+	// S2 = Y2 * Z1³
+	Z1_cubed := (Z1_squared * Z1) % P
+	S2 := (Y2 * Z1_cubed) % P
+
+	// Check if points are equal (need doubling instead)
+	if U1 == U2 {
+		if S1 == S2 {
+			return curveDoubleProjectiveInternal(X1, Y1, Z1)
+		}
+		// Points are negatives, return point at infinity
+		return 0, 0, 0
+	}
+
+	// H = U2 - U1
+	H := (U2 - U1 + P) % P
+
+	// R = S2 - S1
+	R := (S2 - S1 + P) % P
+
+	// H² = H * H
+	H_squared := (H * H) % P
+
+	// H³ = H² * H
+	H_cubed := (H_squared * H) % P
+
+	// X3 = R² - H³ - 2*U1*H²
+	R_squared := (R * R) % P
+	U1H2 := (U1 * H_squared) % P
+	X3 = (R_squared - H_cubed - 2*U1H2 + 3*P) % P
+
+	// Y3 = R*(U1*H² - X3) - S1*H³
+	temp1 := (U1H2 - X3 + P) % P
+	temp2 := (R * temp1) % P
+	temp3 := (S1 * H_cubed) % P
+	Y3 = (temp2 - temp3 + P) % P
+
+	// Z3 = H * Z1 * Z2
+	Z3 = (H * Z1) % P
+	Z3 = (Z3 * Z2) % P
+
+	return
+}
+
+// curveDoubleProjectiveInternal doubles a point in projective
+// coordinates Returns result in projective coordinates (no conversion
+// to affine)
+func curveDoubleProjectiveInternal(X1, Y1, Z1 uint256) (X3, Y3, Z3 uint256) {
+	// Handle point at infinity
+	if Z1 == 0 {
+		return 0, 0, 0
+	}
+
+	// S = 4*X1*Y1²
+	Y1_squared := (Y1 * Y1) % P
+	S := (4 * X1) % P
+	S = (S * Y1_squared) % P
+
+	// M = 3*X1² + a*Z1⁴
+	// For P256: a = -3, so M = 3*X1² - 3*Z1⁴ = 3*(X1² - Z1⁴)
+	X1_squared := (X1 * X1) % P
+	Z1_squared := (Z1 * Z1) % P
+	Z1_fourth := (Z1_squared * Z1_squared) % P
+
+	temp := (X1_squared - Z1_fourth + P) % P
+	M := (3 * temp) % P
+
+	// X3 = M² - 2*S
+	M_squared := (M * M) % P
+	X3 = (M_squared - 2*S + 2*P) % P
+
+	// Y3 = M*(S - X3) - 8*Y1⁴
+	Y1_fourth := (Y1_squared * Y1_squared) % P
+	temp1 := (S - X3 + P) % P
+	temp2 := (M * temp1) % P
+	temp3 := (8 * Y1_fourth) % P
+	Y3 = (temp2 - temp3 + P) % P
+
+	// Z3 = 2*Y1*Z1
+	Z3 = (2 * Y1) % P
+	Z3 = (Z3 * Z1) % P
+
+	return
+}
+
+// modInverse computes the modular multiplicative inverse of a modulo m
+// Returns a value x such that (a * x) % m == 1
+// Uses Fermat's Little Theorem: a^(-1) ≡ a^(m-2) mod m (when m is prime)
+func modInverse(a, m uint256) uint256 {
+	if a == 0 {
+		return 0
+	}
+
+	// Compute a^(m-2) mod m using square-and-multiply
+	// For P256: exponent = P - 2
+	exponent := m - uint26(2)
+	return modExp(a, exponent, m)
+}
+
+// modExp computes base^exp mod m using square-and-multiply algorithm
+// Fixed to 256 iterations for 256-bit exponent Uses branchless
+// operations for MPC compatibility
+func modExp(base, exp, m uint256) uint256 {
+	result := uint256(1)
+	b := base % m
+
+	// Process each bit of the exponent (256 bits for uint256)
+	for i := 0; i < 256; i++ {
+		// Get bit i of exp
+		bit := (exp >> i) & uint256(1)
+
+		// Branchless multiply: if bit is 1, multiply; if 0, keep result
+		newResult := (result * b) % m
+		result = (bit*newResult + (uint256(1)-bit)*result) % m
+
+		// Square the base for next iteration
+		b = (b * b) % m
+	}
+
+	return result
+}
