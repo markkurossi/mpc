@@ -1,0 +1,31 @@
+// -*- go -*-
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
+// - g.X: bb32c4722cbd5a05510cfbb9c4c152f144e70fa24b9e428b9b3bf9f39dd43bbe
+// - g.Y: 25b7f3d9d79e5ca057b0ba7a940d5c917d41cc0a08d41cb1b2b83905e795c7db
+// - e.X: 7aaf9286743dc0adbd8fa93d305521cf0f62947ee5831bc8e355b133de65bd5a
+// - e.Y: 5e183e2d1f66256cc42883de880fdc7c177e99f2e003a2dd298e458aaebcc799
+// =>  X: 72ebc952286e5b3956525ea0cf2a055ab6ec01ad840da4330714dd5578d6e76a
+// =>  Y: 8aaff44f299ad260e21c9ff30885a69ff11cede1d9e7786d32e40080ec95c253
+
+// ./garbled -v -e -stream -i 0x7aaf9286743dc0adbd8fa93d305521cf0f62947ee5831bc8e355b133de65bd5a,0x5e183e2d1f66256cc42883de880fdc7c177e99f2e003a2dd298e458aaebcc799
+// ./garbled -v -stream -i 0xbb32c4722cbd5a05510cfbb9c4c152f144e70fa24b9e428b9b3bf9f39dd43bbe,0x25b7f3d9d79e5ca057b0ba7a940d5c917d41cc0a08d41cb1b2b83905e795c7db examples/p256add.mpcl
+
+package main
+
+import (
+	"crypto/elliptic/p256"
+)
+
+type Peer struct {
+	x uint256
+	y uint256
+}
+
+func main(g, e Peer) (uint256, uint256) {
+	return p256.Add(g.x, g.y, e.x, e.y)
+}
