@@ -24,18 +24,19 @@ func XORAES128(key [16]byte, nonce [NonceSize]byte, plaintext []byte) []byte {
 
 	var cipher [len(plaintext)]byte
 	var block [aes.BlockSize]byte
-	var ctr uint128
+
+	ctr := binary.GetUint(counter[:])
 
 	for i := 0; i < len(plaintext); i += aes.BlockSize {
 		block = aes.Block128(key, counter)
+		ctr++
+		counter = binary.PutUint(counter, 0, ctr)
+
 		for j := 0; j < aes.BlockSize; j++ {
 			if i+j < len(plaintext) {
 				cipher[i+j] = plaintext[i+j] ^ block[j]
 			}
 		}
-		ctr = binary.GetUint(counter[:])
-		ctr++
-		counter = binary.PutUint(counter, 0, ctr)
 	}
 
 	return cipher
