@@ -62,6 +62,16 @@ func (stats Stats) Count() uint64 {
 	return result
 }
 
+// NumXOR returns the number of XOR and XNOR gates.
+func (stats Stats) NumXOR() uint64 {
+	return stats[XOR] + stats[XNOR]
+}
+
+// NumNonXOR returns the number AND, or, and INV gates.
+func (stats Stats) NumNonXOR() uint64 {
+	return stats[AND] + stats[OR] + stats[INV]
+}
+
 // Cost computes the relative computational cost of the circuit.
 func (stats Stats) Cost() uint64 {
 	return (stats[AND]+stats[INV])*2 + stats[OR]*3
