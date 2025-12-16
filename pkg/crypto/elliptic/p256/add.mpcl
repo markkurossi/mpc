@@ -10,8 +10,6 @@ package p256
 // Add performs elliptic curve point addition on P256 Adds two points
 // (x1, y1) and (x2, y2) and returns (x3, y3) Handles special cases:
 // point at infinity, point doubling
-//
-// XXX: this triggers a compiler panic
 func Add(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
 	// Case 1: If P1 is the point at infinity (0, 0), return P2
 	if x1 == 0 && y1 == 0 {
@@ -88,7 +86,7 @@ func curveAddProjective(x1, y1, x2, y2 uint256) (x3, y3 uint256) {
 	// X3 = R² - H³ - 2*U1*H²
 	R_squared := (R * R) % P
 	U1H2 := (U1 * H_squared) % P
-	X3 := (R_squared - H_cubed - 2*U1H2 + 3*P) % P
+	X3 := (R_squared - H_cubed - uint256(2)*U1H2 + uint256(3)*P) % P
 
 	// Y3 = R*(U1*H² - X3) - S1*H³
 	temp1 := (U1H2 - X3 + P) % P
@@ -339,25 +337,22 @@ func modInverse(a, m uint256) uint256 {
 
 	// Compute a^(m-2) mod m using square-and-multiply
 	// For P256: exponent = P - 2
-	exponent := m - uint26(2)
+	exponent := m - uint256(2)
 	return modExp(a, exponent, m)
 }
 
 // modExp computes base^exp mod m using square-and-multiply algorithm
-// Fixed to 256 iterations for 256-bit exponent Uses branchless
-// operations for MPC compatibility
+// Fixed to 256 iterations for 256-bit exponent
 func modExp(base, exp, m uint256) uint256 {
 	result := uint256(1)
 	b := base % m
 
 	// Process each bit of the exponent (256 bits for uint256)
 	for i := 0; i < 256; i++ {
-		// Get bit i of exp
-		bit := (exp >> i) & uint256(1)
-
-		// Branchless multiply: if bit is 1, multiply; if 0, keep result
-		newResult := (result * b) % m
-		result = (bit*newResult + (uint256(1)-bit)*result) % m
+		// If bit i of exp is set, multiply result by current base
+		if ((exp >> i) & uint256(1)) == 1 {
+			result = (result * b) % m
+		}
 
 		// Square the base for next iteration
 		b = (b * b) % m
