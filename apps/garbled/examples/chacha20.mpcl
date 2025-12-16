@@ -1,0 +1,28 @@
+// -*- go -*-
+
+package main
+
+import (
+	"bytes"
+	"crypto/chacha20"
+)
+
+type Garbler struct {
+	key   [chacha20.KeySize]byte
+	nonce [chacha20.NonceSize]byte
+	plain []byte
+}
+
+type Evaluator struct {
+	key [chacha20.KeySize]byte
+}
+
+func main(g Garbler, e Evaluator) []byte {
+	var key [chacha20.KeySize]byte
+
+	for i := 0; i < len(key); i++ {
+		key[i] = g.key[i] ^ e.key[i]
+	}
+
+	return chacha20.XORKeyStream(key, g.nonce, 0, g.plain)
+}
