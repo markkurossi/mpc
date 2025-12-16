@@ -5,8 +5,8 @@
 // All rights reserved.
 //
 
-// Package p256 provides contants and functions for the P-256 elliptic
-// curve arithmetic.
+// Package p256 provides constants and functions for the P-256
+// elliptic curve arithmetic.
 package p256
 
 const (
@@ -22,98 +22,4 @@ const (
 	Gy uint256 = 0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
 	// N defines the order of the base point.
 	N uint256 = 0xFFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551
-
-	pMinus2 uint256 = P - uint256(2)
 )
-
-func AffineToJacobian(x, y uint256) Point {
-	var p Point
-
-	p.X = x
-	p.Y = y
-	p.Z = 1
-
-	return p
-}
-
-type Point struct {
-	X uint256
-	Y uint256
-	Z uint256 // Z is the projective coordinate
-}
-
-// JacobianToAffine converts a projective point (X, Y, Z) to (x, y).
-// This requires a modular inversion of Z, the most costly step.  The
-// formulas are: x = X / Z^2 and y = Y / Z^3
-func JacobianToAffine(p Point) (uint256, uint256) {
-	// 1. Check for the point at infinity (Z=0)
-	// P-256 standard mandates Z=0 for the point at infinity.
-	if p.Z == 0 {
-		// Return a special representation for the point at infinity
-		// (e.g., (0, 0) or (0, 1) based on implementation) For
-		// simplicity, we assume standard library practice: (0, 0)
-		// represents the point at infinity.
-		return 0, 0
-	}
-
-	// 2. Compute the Modular Inverse of Z (Z^-1)
-	// This is the expensive step in Garbled Circuits.
-	Z_inv := FpInv(p.Z)
-
-	// 3. Compute Z^-2 and Z^-3
-	Z_inv_Sq := FpSq(Z_inv)
-	Z_inv_Cb := FpMul(Z_inv_Sq, Z_inv) // Z^-3
-
-	// 4. Compute Affine x and y
-	// x = X * (Z^-2) mod p
-	x := FpMul(p.X, Z_inv_Sq)
-
-	// y = Y * (Z^-3) mod p
-	y := FpMul(p.Y, Z_inv_Cb)
-
-	return x, y
-}
-
-// Modular Exponentiation (Square-and-Multiply)
-
-// FpExp computes Base^E Mod P using the Square-and-Multiply algorithm.
-//
-// This requires 2 * 256 = 512 field operations in the worst case
-// (multiplications and squarings).
-func FpExp(Base, E uint256) uint256 {
-	// 1. Initialization
-	Result := uint256(1)
-	B := Base
-
-	// The loop iterates from the highest bit (bit 255) down to the
-	// lowest bit (bit 0) of the exponent E.  This is known as the
-	// "left-to-right" binary method.
-	for i := 255; i >= 0; i-- {
-		// 2. Square step (always executed)
-		Result = FpSq(Result) // Result = Result^2 mod p
-
-		// 3. Multiply step (conditional)
-		// If the current bit of the exponent E is 1, multiply by the base.
-		if (E>>i)&uint256(1) == 1 {
-			Result = FpMul(Result, B) // Result = Result * B mod p
-		}
-	}
-	return Result
-}
-
-// Modular Inverse (Fermat's Little Theorem)
-
-// FpInv computes the modular inverse A^-1 mod p using A^(p-2) mod p.
-// This is the core reason for high complexity when converting
-// Jacobian back to Affine.
-func FpInv(A uint256) uint256 {
-	// Handle the case where A = 0 (which should not occur for P-256 points)
-	if A == 0 {
-		// In a real implementation, this would trigger an error or return 0,
-		// as 0 has no inverse.
-		return 0
-	}
-
-	// A^-1 = A^(p-2) mod p
-	return FpExp(A, pMinus2)
-}
