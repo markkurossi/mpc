@@ -20,6 +20,8 @@
 *.prof
 *.bristol
 apps/circuit/circuit
+apps/circ-iter/circ-iter
+apps/circ-iter/*.csv
 apps/garbled/garbled
 apps/iotest/iotest
 apps/karatsuba/karatsuba
