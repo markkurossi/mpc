@@ -1,0 +1,15 @@
+// -*- go -*-
+
+package main
+
+import (
+	"crypto/poly1305"
+)
+
+func main(input []byte, key [32]byte) []byte {
+
+	st := poly1305.Init(key)
+	poly1305.Update(&st, input)
+
+	return poly1305.Finalize(&st)
+}
