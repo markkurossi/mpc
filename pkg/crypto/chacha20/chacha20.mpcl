@@ -110,37 +110,21 @@ func BlockMPCL(key [KeySize]byte, counter uint32,
 // XORKeyStream XORs each byte in the plaintext slice with a byte from
 // the cipher's key stream. The function returns the ciphertext.
 func XORKeyStream(key [KeySize]byte, nonce [NonceSize]byte, counter uint32,
-	src []byte) []byte {
+	plaintext []byte) []byte {
 
-	dst := make([]byte, len(src))
+	var cipher [len(plaintext)]byte
+	var block [BlockSize]byte
 
-	var block [64]byte
-	var keystream []byte
-	rem := len(src)
-	sOff := 0
-	dOff := 0
-	c := counter
+	for i := 0; i < len(plaintext); i += BlockSize {
+		block = Block(key, counter, nonce)
+		counter++
 
-	var n int32
-
-	for rem > 0 {
-		block = Block(key, c, nonce)
-		c++
-		keystream = block[:]
-
-		n = 64
-		if rem < n {
-			n = rem
+		for j := 0; j < BlockSize; j++ {
+			if i+j < len(plaintext) {
+				cipher[i+j] = plaintext[i+j] ^ block[j]
+			}
 		}
-
-		for i := 0; i < n; i++ {
-			dst[dOff+i] = src[sOff+i] ^ keystream[i]
-		}
-
-		rem -= n
-		sOff += n
-		dOff += n
 	}
 
-	return dst
+	return cipher
 }
