@@ -11,15 +11,14 @@ import (
 	"crypto/cipher"
 )
 
-func prgAESCTR(key []byte, out []byte) error {
+func prgAESCTR(key []byte, out []byte) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	var iv [16]byte
 	stream := cipher.NewCTR(block, iv[:])
 
 	stream.XORKeyStream(out[:], out[:])
-	return nil
 }

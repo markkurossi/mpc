@@ -150,9 +150,8 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	rows := make([][]byte, e.k)
 	for i := 0; i < e.k; i++ {
 		rows[i] = make([]byte, rowBytes)
-		if err := prgAESCTR(e.seedS[i], rows[i]); err != nil {
-			return nil, err
-		}
+		prgAESCTR(e.seedS[i], rows[i])
+
 		if e.choices[i] {
 			urow := U[i*rowBytes : (i+1)*rowBytes]
 			for j := 0; j < rowBytes; j++ {
@@ -221,12 +220,8 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	for i := 0; i < e.k; i++ {
 		T0[i] = make([]byte, rowBytes)
 		T1[i] = make([]byte, rowBytes)
-		if err := prgAESCTR(e.seed0[i], T0[i]); err != nil {
-			return nil, err
-		}
-		if err := prgAESCTR(e.seed1[i], T1[i]); err != nil {
-			return nil, err
-		}
+		prgAESCTR(e.seed0[i], T0[i])
+		prgAESCTR(e.seed1[i], T1[i])
 	}
 
 	// send U rows (T0 xor T1) concatenated

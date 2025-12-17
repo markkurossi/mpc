@@ -26,9 +26,6 @@ func benchmarkPRGAESCTR(b *testing.B, n int) {
 	out := make([]byte, n)
 
 	for b.Loop() {
-		err := prgAESCTR(key[:], out)
-		if err != nil {
-			b.Fatal(err)
-		}
+		prgAESCTR(key[:], out)
 	}
 }
