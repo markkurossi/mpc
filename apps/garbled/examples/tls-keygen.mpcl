@@ -21,11 +21,12 @@
 package main
 
 import (
+	"crypto/chacha20"
 	"crypto/tls"
 )
 
 func main(g, e []byte) ([]byte, []byte, []byte, []byte) {
 	//return tls.DeriveHandshakeKeys(g, e)
 
-	return tls.DeriveKeys(g, e)
+	return tls.DeriveKeys(g, e, chacha20.KeySize)
 }

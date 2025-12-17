@@ -1,0 +1,59 @@
+// -*- go -*-
+
+// The final arithmetic addition to construct the ECDH shared secret,
+// and the handshake key derivation.
+//
+// Evaluator:
+//
+//	./garbled -stream -e -v -i 0x1838f4c0caf284a2ac47877cdada6f04331e4a5c3adf18f911cb6da93f5efa03
+//
+// Garbler:
+//
+//	./garbled -stream -v -i 0x775872b6a90d9e10f92dc3d200cda208168841716f9e82cc5ae5ee2530f37284
+//
+// Result:
+//
+//	0x8f916777740022b3a5754b4edba8110c49a68bcdaa7d9bc56cb15bce70526c87
+//
+// Error:
+//
+//	./garbled -stream -e -v -i 0xe2f31d91ab3359b4f5dc53daaa4bc2854140a77cf555fe6836f11cb7d7f2b405
+//	./garbled -stream -v -i 0xad4c03621077e910408c6575b4921f2be4e1011ba95acb992eae3787e3e989f4,0xd3aff9fbc2b27d1a3a59a85ae9a91f753bcabcab48bc8a40b1dae7500f24b078 examples/tls-kex.mpcl
+//
+//	Result[0]: 31487703e06a6abbda6b075757bc94b7d44bf4a87bf050f9fd58998a41fbae62
+//	Result[1]: 8e9bca356b7d53715271ce575c7fbca829eb179cca39a298e87ccb1b498c0fda
+//	Result[2]: 6c0c34146bcf5fffe0de2dd7
+//	Result[3]: dcaa78f1020413854f8349fe1c48840a0f7fa904077ba0c7ad020b028cb04ad0
+//	Result[4]: 336128b2e2a4ce8d9fa333f9
+package main
+
+import (
+	"crypto/chacha20"
+	"crypto/elliptic/p256"
+	"crypto/tls"
+)
+
+type Garbler struct {
+	share      uint256
+	transcript []byte
+}
+
+func main(g Garbler, e uint256) ([]byte, []byte, []byte, []byte, []byte) {
+	sum := uint257(g.share) + uint257(e)
+	var secret uint256
+	if sum > uint257(p256.P) {
+		secret = uint256(sum - uint257(p256.P))
+	} else {
+		secret = uint256(sum)
+	}
+
+	var sharedSecret [32]byte
+	sharedSecret = binary.PutUint(sharedSecret, 0, secret)
+
+	// Derive handshake keys.
+	handshakeSecret, clientKey, clientIV, serverKey, serverIV,
+		finishedKey := tls.DeriveHandshakeKeys(sharedSecret[:], g.transcript,
+		chacha20.KeySize)
+
+	return handshakeSecret, clientKey, clientIV, serverKey, serverIV
+}
