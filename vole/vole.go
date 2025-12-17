@@ -106,14 +106,17 @@ func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error)
 		return nil, fmt.Errorf("vole: ExpandSend returned %d wires, want %d", len(wires), m)
 	}
 
-	// Derive r_i from L0 label using ChaCha20 PRG and reduce mod p.
+	// Derive r_i from L0 label using PRG and reduce mod p.
 	rs := make([]*big.Int, m)
 	for i := 0; i < m; i++ {
 		var ld ot.LabelData
 		wires[i].L0.GetData(&ld)
-		// expand to 32-bytes
-		pad := prgChaCha20(ld[:], 32)
-		rsi := new(big.Int).SetBytes(pad)
+
+		// Expand label to 32-bytes.
+		var pad [32]byte
+		prgExpandLabel(ld, &pad)
+
+		rsi := new(big.Int).SetBytes(pad[:])
 		rsi.Mod(rsi, p)
 		rs[i] = rsi
 	}
