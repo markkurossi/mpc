@@ -172,8 +172,8 @@ func TestIKNP(t *testing.T) {
 				for i := 0; i < receiverExt.k; i++ {
 					T0[i] = make([]byte, rowBytes)
 					T1[i] = make([]byte, rowBytes)
-					prgAES128(receiverExt.seed0[i], T0[i])
-					prgAES128(receiverExt.seed1[i], T1[i])
+					prgAESCTR(receiverExt.seed0[i], T0[i])
+					prgAESCTR(receiverExt.seed1[i], T1[i])
 				}
 
 				fmt.Println("Receiver-side T0 sample:")
@@ -185,7 +185,7 @@ func TestIKNP(t *testing.T) {
 				rows := make([][]byte, senderExt.k)
 				for i := 0; i < senderExt.k; i++ {
 					rows[i] = make([]byte, rowBytes)
-					prgAES128(senderExt.seedS[i], rows[i])
+					prgAESCTR(senderExt.seedS[i], rows[i])
 
 					if senderExt.choices[i] {
 						// apply U = T0 ^ T1

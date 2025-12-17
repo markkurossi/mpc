@@ -1,11 +1,8 @@
 package otext
 
 import (
-	"crypto/aes"
-	"encoding/binary"
 	"errors"
 	"io"
-	"math"
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
@@ -43,32 +40,6 @@ func NewIKNPExt(base ot.OT, conn *p2p.Conn, role int) *IKNPExt {
 		role: role,
 		k:    IKNPK,
 	}
-}
-
-// AES-CTR PRG
-func prgAES128(key []byte, out []byte) error {
-	if len(key) != 16 {
-		return errors.New("AES128 key must be 16 bytes")
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return err
-	}
-	blocks := int(math.Ceil(float64(len(out)) / 16.0))
-	var ctr [16]byte
-	var tmp [16]byte
-
-	for i := 0; i < blocks; i++ {
-		binary.BigEndian.PutUint64(ctr[8:], uint64(i))
-		block.Encrypt(tmp[:], ctr[:])
-		start := i * 16
-		end := start + 16
-		if end > len(out) {
-			end = len(out)
-		}
-		copy(out[start:end], tmp[:end-start])
-	}
-	return nil
 }
 
 func packLabel(b []byte) ot.Label {
@@ -179,7 +150,7 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	rows := make([][]byte, e.k)
 	for i := 0; i < e.k; i++ {
 		rows[i] = make([]byte, rowBytes)
-		if err := prgAES128(e.seedS[i], rows[i]); err != nil {
+		if err := prgAESCTR(e.seedS[i], rows[i]); err != nil {
 			return nil, err
 		}
 		if e.choices[i] {
@@ -250,10 +221,10 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	for i := 0; i < e.k; i++ {
 		T0[i] = make([]byte, rowBytes)
 		T1[i] = make([]byte, rowBytes)
-		if err := prgAES128(e.seed0[i], T0[i]); err != nil {
+		if err := prgAESCTR(e.seed0[i], T0[i]); err != nil {
 			return nil, err
 		}
-		if err := prgAES128(e.seed1[i], T1[i]); err != nil {
+		if err := prgAESCTR(e.seed1[i], T1[i]); err != nil {
 			return nil, err
 		}
 	}
