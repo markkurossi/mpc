@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"sync"
 
-	"golang.org/x/crypto/chacha20"
-
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/otext"
 	"github.com/markkurossi/mpc/p2p"
@@ -21,10 +19,6 @@ type Role int
 const (
 	SenderRole   Role = 0
 	ReceiverRole Role = 1
-)
-
-var (
-	ErrNotImplemented = errors.New("vole: not implemented")
 )
 
 // Ext wraps base OT (optional) and provides VOLE batched interface.
@@ -315,28 +309,6 @@ func (e *Ext) mulReceiverShim(receiverInputs []*big.Int, p *big.Int) ([]*big.Int
 		us[i].Mod(us[i], p)
 	}
 	return us, nil
-}
-
-// -----------------------------------------------------------------------------
-// PRG: ChaCha20-based expansion
-// -----------------------------------------------------------------------------
-
-// prgChaCha20 expands keyBytes into n bytes using ChaCha20. keyBytes may be any length;
-// it is expanded/padded to 32 bytes deterministically (repeat/trim) to form the key.
-// NONCE is zero for each stream but the key is unique per label.
-func prgChaCha20(keyBytes []byte, n int) []byte {
-	key := make([]byte, 32)
-	// repeat keyBytes until we fill 32 bytes (deterministic)
-	for i := 0; i < 32; i++ {
-		key[i] = keyBytes[i%len(keyBytes)]
-	}
-	nonce := make([]byte, 12) // zero nonce
-	c, _ := chacha20.NewUnauthenticatedCipher(key, nonce)
-	out := make([]byte, n)
-	// stream XOR of zeros gives keystream directly
-	zeros := make([]byte, n)
-	c.XORKeyStream(out, zeros)
-	return out
 }
 
 // -----------------------------------------------------------------------------
