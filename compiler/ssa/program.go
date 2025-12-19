@@ -300,3 +300,8 @@ func (prog *Program) PP(out io.Writer) {
 		}
 	}
 }
+
+// Stats return the program circuit stats.
+func (prog *Program) Stats() circuit.Stats {
+	return prog.stats
+}
