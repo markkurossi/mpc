@@ -131,6 +131,16 @@ func (t *Timing) Print(stats p2p.IOStats) {
 	tab.Print(os.Stdout)
 }
 
+// Get gets the named sample.
+func (t *Timing) Get(label string) *Sample {
+	for _, sample := range t.Samples {
+		if sample.Label == label {
+			return sample
+		}
+	}
+	return nil
+}
+
 // Sample contains information about one timing sample.
 type Sample struct {
 	Label   string
@@ -139,6 +149,14 @@ type Sample struct {
 	Abs     time.Duration
 	Cols    []string
 	Samples []*Sample
+}
+
+// Duration returns the sample duration.
+func (s Sample) Duration() time.Duration {
+	if s.Abs > 0 {
+		return s.Abs
+	}
+	return s.End.Sub(s.Start)
 }
 
 // SubSample adds a sub-sample for a timing sample.
@@ -160,4 +178,14 @@ func (s *Sample) AbsSubSample(label string, duration time.Duration) {
 		Label: label,
 		Abs:   duration,
 	})
+}
+
+// Get gets the named sub-sample.
+func (s *Sample) Get(label string) *Sample {
+	for _, sample := range s.Samples {
+		if sample.Label == label {
+			return sample
+		}
+	}
+	return nil
 }
