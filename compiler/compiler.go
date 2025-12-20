@@ -15,6 +15,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
@@ -32,9 +33,18 @@ func IsFilename(file string) bool {
 
 // Compiler implements MPCL compiler.
 type Compiler struct {
-	params   *utils.Params
-	packages map[string]*ast.Package
-	pkgPath  string
+	params      *utils.Params
+	packages    map[string]*ast.Package
+	pkgPath     string
+	StreamStats StreamStats
+}
+
+// StreamStats provide statistics about the streaming mode.
+type StreamStats struct {
+	Compile  time.Duration
+	Stream   time.Duration
+	Garble   time.Duration
+	Circuits circuit.Stats
 }
 
 type pkgPath struct {
@@ -171,6 +181,18 @@ func (c *Compiler) Stream(conn *p2p.Conn, oti ot.OT, source string,
 	if err != nil {
 		return nil, nil, err
 	}
+	tCompile := timing.Get("Compile")
+	if tCompile != nil {
+		c.StreamStats.Compile = tCompile.Duration()
+	}
+	tStream := timing.Get("Stream")
+	tGarble := tStream.Get("Garble")
+	if tStream != nil && tGarble != nil {
+		c.StreamStats.Garble = tGarble.Duration()
+		c.StreamStats.Stream = tStream.Duration() - c.StreamStats.Garble
+	}
+	c.StreamStats.Circuits = program.Stats()
+
 	if false {
 		program.StreamDebug()
 	}
