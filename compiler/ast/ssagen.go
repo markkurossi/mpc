@@ -354,7 +354,7 @@ func (ast *Assign) SSA(block *ssa.Block, ctx *Codegen,
 					lrv, _, _, err = ctx.LookupVar(block, gen,
 						block.Bindings, i)
 					if err != nil {
-						return nil, nil, err
+						return nil, nil, ctx.Error(idx.Expr, err.Error())
 					}
 
 				default:
