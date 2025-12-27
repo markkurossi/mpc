@@ -15,10 +15,10 @@ import (
 	"path"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/markkurossi/mpc/circuit"
 	"github.com/markkurossi/mpc/compiler/ast"
+	"github.com/markkurossi/mpc/compiler/ssa"
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
@@ -33,18 +33,9 @@ func IsFilename(file string) bool {
 
 // Compiler implements MPCL compiler.
 type Compiler struct {
-	params      *utils.Params
-	packages    map[string]*ast.Package
-	pkgPath     string
-	StreamStats StreamStats
-}
-
-// StreamStats provide statistics about the streaming mode.
-type StreamStats struct {
-	Compile  time.Duration
-	Stream   time.Duration
-	Garble   time.Duration
-	Circuits circuit.Stats
+	params   *utils.Params
+	packages map[string]*ast.Package
+	pkgPath  string
 }
 
 type pkgPath struct {
@@ -181,22 +172,26 @@ func (c *Compiler) Stream(conn *p2p.Conn, oti ot.OT, source string,
 	if err != nil {
 		return nil, nil, err
 	}
-	tCompile := timing.Get("Compile")
-	if tCompile != nil {
-		c.StreamStats.Compile = tCompile.Duration()
-	}
-	tStream := timing.Get("Stream")
-	tGarble := tStream.Get("Garble")
-	if tStream != nil && tGarble != nil {
-		c.StreamStats.Garble = tGarble.Duration()
-		c.StreamStats.Stream = tStream.Duration() - c.StreamStats.Garble
-	}
-	c.StreamStats.Circuits = program.Stats()
 
 	if false {
 		program.StreamDebug()
 	}
 	return out, bits, err
+}
+
+// CompileSSA compiles the input into SSA Program.
+func (c *Compiler) CompileSSA(source string, in io.Reader, inputSizes [][]int) (
+	*ssa.Program, ast.Annotations, error) {
+
+	logger := utils.NewLogger(os.Stdout)
+	pkg, err := c.parse(source, in, logger, ast.NewPackage("main", source, nil))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ctx := ast.NewCodegen(logger, pkg, c.packages, c.params, inputSizes)
+
+	return pkg.Compile(ctx)
 }
 
 func (c *Compiler) parse(source string, in io.Reader, logger *utils.Logger,
