@@ -74,7 +74,7 @@ func Open(key [chacha20.KeySize]byte, nonce [NonceSize]byte,
 
 	expected := tagBytes(aad, cipher, polyKey)
 
-	plaintext := chacha20.XORKeyStream(key, n, 1, ciphertext)
+	plaintext := chacha20.XORKeyStream(key, n, 1, cipher)
 
 	return plaintext, bytes.Equal(expected[:], tag[:])
 }
