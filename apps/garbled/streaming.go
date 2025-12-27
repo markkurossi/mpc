@@ -51,7 +51,7 @@ func streamEvaluatorMode(oti ot.OT, input input, once bool) error {
 			return err
 		}
 
-		outputs, result, err := circuit.StreamEvaluator(conn, oti, input,
+		outputs, result, err := circuit.StreamEvaluator(conn, oti, input, nil,
 			verbose)
 		conn.Close()
 

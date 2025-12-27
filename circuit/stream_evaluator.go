@@ -95,9 +95,11 @@ func (stream *StreamEval) ensureWires(max int) {
 	}
 }
 
-// StreamEvaluator runs the stream evaluator on the connection.
+// StreamEvaluator runs the stream evaluator on the connection. The
+// evaluator's input values must be specified as a string array in
+// inputFlag or as a value array in inputValues.
 func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
-	verbose bool) (IO, []*big.Int, error) {
+	inputValues []interface{}, verbose bool) (IO, []*big.Int, error) {
 
 	timing := NewTiming()
 
@@ -123,7 +125,12 @@ func StreamEvaluator(conn *p2p.Conn, oti ot.OT, inputFlag []string,
 	if err != nil {
 		return nil, nil, err
 	}
-	inputs, err := in2.Parse(inputFlag)
+	var inputs *big.Int
+	if len(inputFlag) > 0 {
+		inputs, err = in2.Parse(inputFlag)
+	} else {
+		inputs, err = in2.Set(nil, inputValues)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
