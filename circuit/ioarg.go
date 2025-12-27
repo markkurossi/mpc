@@ -90,6 +90,166 @@ func (io IOArg) Len() int {
 	return len(io.Compound)
 }
 
+// Set sets the I/O argument from the input values.
+func (io IOArg) Set(result *big.Int, inputs []interface{}) (*big.Int, error) {
+	if result == nil {
+		result = new(big.Int)
+	} else {
+		result.SetInt64(0)
+	}
+	_, err := io.set(result, inputs, 0)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (io IOArg) set(result *big.Int, inputs []interface{}, ofs int) (
+	int, error) {
+
+	if len(io.Compound) > 0 {
+		if len(inputs) != len(io.Compound) {
+			return ofs,
+				fmt.Errorf("invalid amount of arguments, got %d, expected %d",
+					len(inputs), len(io.Compound))
+		}
+		var err error
+		for idx, arg := range io.Compound {
+			ofs, err = arg.set(result, inputs[idx:idx+1], ofs)
+			if err != nil {
+				return ofs, err
+			}
+		}
+		return ofs, nil
+	}
+
+	if len(inputs) != 1 {
+		return ofs,
+			fmt.Errorf("invalid amount of arguments, got %d, expected 1",
+				len(inputs))
+	}
+
+	switch io.Type.Type {
+	case types.TInt, types.TUint:
+		return setInt(io.Type, result, inputs[0], ofs)
+
+	case types.TBool:
+		return setBool(result, inputs[0], ofs)
+
+	case types.TArray:
+		count := int(io.Type.ArraySize)
+		if count == 0 {
+			// Handle empty types.TArray arguments.
+			return ofs, nil
+		}
+		c, _, err := setArray(io.Type, result, inputs[0], ofs)
+		if err != nil {
+			return ofs, err
+		}
+		if c > count {
+			return ofs, fmt.Errorf("too many values for input: %s", io.Type)
+		}
+		return ofs + count*int(io.Type.ElementType.Bits), nil
+
+	case types.TSlice:
+		count := int(io.Type.ArraySize)
+		c, ofs, err := setArray(io.Type, result, inputs[0], ofs)
+		if err != nil {
+			return ofs, err
+		}
+		if c > count {
+			return ofs, fmt.Errorf("too many values for input: %s", io.Type)
+		}
+		return ofs, nil
+
+	default:
+		return ofs, fmt.Errorf("unsupported input type: %s", io.Type)
+	}
+}
+
+func setArray(t types.Info, result *big.Int, val interface{}, ofs int) (
+	int, int, error) {
+
+	switch t.ElementType.Type {
+	case types.TInt, types.TUint:
+		return setIntArray(t, result, val, ofs)
+
+	default:
+		return 0, ofs, fmt.Errorf("unsupported array element type: %s", t)
+	}
+}
+
+func setIntArray(t types.Info, result *big.Int, val interface{}, ofs int) (
+	int, int, error) {
+
+	elSize := t.ElementType.Bits
+
+	switch v := val.(type) {
+	case []byte:
+		if elSize < 8 {
+			return 0, ofs, fmt.Errorf("invalid input '%T' for %s", v, t)
+		}
+		for i := 0; i < len(v); i++ {
+			setInt(*t.ElementType, result, v[i], ofs)
+			ofs += int(elSize)
+		}
+		return len(v), ofs, nil
+
+	case nil:
+		return 0, ofs, nil
+
+	default:
+		return 0, ofs, fmt.Errorf("invalid input '%T' for %s", v, t)
+	}
+}
+
+func setInt(t types.Info, result *big.Int, val interface{}, ofs int) (
+	int, error) {
+
+	var ival uint64
+
+	switch v := val.(type) {
+	case int8:
+		ival = uint64(v)
+	case uint8:
+		ival = uint64(v)
+	case int16:
+		ival = uint64(v)
+	case uint16:
+		ival = uint64(v)
+	case int32:
+		ival = uint64(v)
+	case uint32:
+		ival = uint64(v)
+	case int64:
+		ival = uint64(v)
+	case uint64:
+		ival = uint64(v)
+	default:
+		return ofs, fmt.Errorf("invalid input '%v' for %s", v, t)
+	}
+
+	for i := 0; i < 64; i++ {
+		result.SetBit(result, ofs+i, uint((ival>>i)&0x1))
+	}
+
+	return ofs + int(t.Bits), nil
+}
+
+func setBool(result *big.Int, val interface{}, ofs int) (int, error) {
+	v, ok := val.(bool)
+	if !ok {
+		return ofs, fmt.Errorf("invalid input '%v' for %s", val, types.TBool)
+	}
+	var flag uint
+	if v {
+		flag = 1
+	}
+	result.SetBit(result, ofs, flag)
+
+	return ofs + 1, nil
+}
+
 // Parse parses the I/O argument from the input string values.
 func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 	result := new(big.Int)
@@ -194,6 +354,55 @@ func (io IOArg) Parse(inputs []string) (*big.Int, error) {
 		offset += int(arg.Type.Bits)
 	}
 	return result, nil
+}
+
+// Sizes computes the bit sizes of the input arguments. This is used
+// for parametrized main() when the program is instantiated based on
+// input sizes.
+func Sizes(inputs []interface{}) ([]int, error) {
+	var result []int
+
+	for _, input := range inputs {
+		var size int
+		switch v := input.(type) {
+		case nil:
+			size = 0
+		case bool:
+			size = 1
+		case int8:
+			size = bitLen(uint64(v))
+		case uint8:
+			size = bitLen(uint64(v))
+		case int16:
+			size = bitLen(uint64(v))
+		case uint16:
+			size = bitLen(uint64(v))
+		case int32:
+			size = bitLen(uint64(v))
+		case uint32:
+			size = bitLen(uint64(v))
+		case int64:
+			size = bitLen(uint64(v))
+		case uint64:
+			size = bitLen(v)
+		case []byte:
+			size = len(v) * 8
+		default:
+			return nil, fmt.Errorf("unsupport input %v[%T]", v, v)
+		}
+		result = append(result, size)
+	}
+
+	return result, nil
+}
+
+func bitLen(v uint64) int {
+	for i := 63; i > 1; i-- {
+		if v&(uint64(1)<<i) != 0 {
+			return i + 1
+		}
+	}
+	return 1
 }
 
 // InputSizes computes the bit sizes of the input arguments. This is
