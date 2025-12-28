@@ -102,3 +102,9 @@ func panic(args any) {}
 // subsequent intern call with the same textual value v will return
 // the same integer identifier.
 func intern(v any) int {}
+
+// The wideMul built-in function computes the full 2n-bit product of
+// two n-bit integers.  By avoiding explicit zero-extension to 2n bits
+// before multiplication, this operation yields significantly smaller
+// arithmetic circuits than a standard 2n-bit multiply.
+func wideMul(a, b intN) int2N {}
