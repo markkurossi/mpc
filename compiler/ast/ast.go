@@ -12,6 +12,7 @@ package ast
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -454,15 +455,17 @@ type ReturnInfo struct {
 // Annotations specify function annotations.
 type Annotations []string
 
+var re1stSentence = regexp.MustCompilePOSIX(`\.([[:space:]]|$)`)
+
 // FirstSentence returns the first sentence from the annotations or an
 // empty string it if annotations are empty.
 func (ann Annotations) FirstSentence() string {
 	str := strings.Join(ann, "\n")
-	idx := strings.IndexRune(str, '.')
-	if idx > 0 {
-		return str[:idx+1]
+	m := re1stSentence.FindStringIndex(str)
+	if m == nil {
+		return ""
 	}
-	return ""
+	return str[:m[0]+1]
 }
 
 // NewFunc creates a new function definition.
