@@ -14,8 +14,7 @@ ALSZ — Malicious-secure OT extension
 
  - `m` = number of extended OTs required.
 
- - `PRG(seed, outlen)` — expands `seed` (k-bit) to `outlen` bits
-   (AES-CTR / AES-ECB block stream). (Your `prgAES128`.)
+ - `PRG(seed, outlen)` — expands `seed` (k-bit) to `outlen` bits (`prgAESCTR`)
 
  - `H(index, input)` — correlation-robust hash / random oracle used to
    mask sender messages.
@@ -26,7 +25,7 @@ ALSZ — Malicious-secure OT extension
  - Pack rows as bit-rows of length `m`. Use `rowBytes =
    ceil(m/8)`. Pack `k` rows → `k × rowBytes` bytes.
 
- - For label construction: treat 128-bit column bits as 16-byte label blocks (as in your code).
+ - For label construction: treat 128-bit column bits as 16-byte label blocks.
 
 ## IKNP / ALSZ — Semi-honest OT extension
 
@@ -42,9 +41,10 @@ PROTOCOL IKNP_Extend(m, k):
 // rowBytes = ceil(m/8)
 
 // 1) Base OTs (k OTs)
-// R (receiver in base OTs) chooses random choice bits s[1..k]
-// R runs BASE_OT_Receive(s) and obtains k seeds seedR[i] for i=1..k
-// S (sender in base OTs) runs BASE_OT_Send() and obtains pairs (seed0[i], seed1[i]) for i=1..k
+// S (receiver in base OTs) chooses random choice bits s[1..k]
+// S runs baseOT.Receive(s) and obtains k seeds seedS[i] for i=1..k
+// R (sender in base OTs) constructs pairs (seed0[i], seed1[i]) for i=1..k
+// R runs baseOT.Send() for paris (seed0[i], seed1[i]) for i=1..k
 
 // 2) Receiver expands seeds => T0 and T1 columns
 for i in 1..k:

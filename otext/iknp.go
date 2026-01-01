@@ -10,8 +10,7 @@ import (
 
 const (
 	// IKNPK defines the number of base-OTs.
-	IKNPK      = 128
-	labelBytes = 16
+	IKNPK = 128
 )
 
 // The roles.
@@ -26,9 +25,9 @@ type IKNPExt struct {
 	conn    *p2p.Conn
 	role    int
 	k       int
-	seedS   [][]byte
-	seed0   [][]byte
-	seed1   [][]byte
+	seedS   []ot.LabelData
+	seed0   []ot.LabelData
+	seed1   []ot.LabelData
 	choices []bool // store base-OT choice bits for sender
 }
 
@@ -42,18 +41,11 @@ func NewIKNPExt(base ot.OT, conn *p2p.Conn, role int) *IKNPExt {
 	}
 }
 
-func packLabel(b []byte) ot.Label {
-	var d ot.LabelData
-	copy(d[:], b[:labelBytes])
-	var l ot.Label
-	l.SetData(&d)
-	return l
-}
-
 // Setup phase runs k=128 base OTs.
 func (e *IKNPExt) Setup(r io.Reader) error {
 	if e.role == SenderRole {
-		// base OT receiver: choose random choice bits and call base.Receive.
+		// Base OT receiver: choose random choice bits and call
+		// base.Receive.
 		choices := make([]bool, e.k)
 		var buf [IKNPK / 8]byte
 		if _, err := io.ReadFull(r, buf[:]); err != nil {
@@ -68,23 +60,19 @@ func (e *IKNPExt) Setup(r io.Reader) error {
 			return err
 		}
 
-		e.seedS = make([][]byte, e.k)
+		e.seedS = make([]ot.LabelData, e.k)
 		for i := 0; i < e.k; i++ {
-			var d ot.LabelData
-			labels[i].GetData(&d)
-			b := make([]byte, 16)
-			copy(b, d[:])
-			e.seedS[i] = b
+			labels[i].GetData(&e.seedS[i])
 		}
-		// store choice bits for later expansion
+		// Store choice bits for later expansion.
 		e.choices = choices
 
 		return nil
 
 	} else {
-		// base OT sender: prepare k label pairs and call base.Send
-		e.seed0 = make([][]byte, e.k)
-		e.seed1 = make([][]byte, e.k)
+		// Base OT sender: prepare k label pairs and call base.Send.
+		e.seed0 = make([]ot.LabelData, e.k)
+		e.seed1 = make([]ot.LabelData, e.k)
 
 		wires := make([]ot.Wire, e.k)
 		for i := 0; i < e.k; i++ {
@@ -96,17 +84,8 @@ func (e *IKNPExt) Setup(r io.Reader) error {
 			if err != nil {
 				return err
 			}
-
-			var d0, d1 ot.LabelData
-			l0.GetData(&d0)
-			l1.GetData(&d1)
-
-			b0 := make([]byte, 16)
-			b1 := make([]byte, 16)
-			copy(b0, d0[:])
-			copy(b1, d1[:])
-			e.seed0[i] = b0
-			e.seed1[i] = b1
+			l0.GetData(&e.seed0[i])
+			l1.GetData(&e.seed1[i])
 
 			wires[i] = ot.Wire{L0: l0, L1: l1}
 		}
@@ -119,12 +98,11 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	if e.role != SenderRole {
 		return nil, errors.New("wrong role")
 	}
-
 	if e.seedS == nil || len(e.seedS) != e.k {
-		return nil, errors.New("seedS not initialized; call Setup() first")
+		return nil, errors.New("seedS not initialized")
 	}
 	if e.choices == nil || len(e.choices) != e.k {
-		return nil, errors.New("choices not initialized; call Setup() first")
+		return nil, errors.New("choices not initialized")
 	}
 	if n <= 0 {
 		return nil, errors.New("n must be positive")
@@ -133,7 +111,7 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	rowBytes := (n + 7) / 8
 	total := e.k * rowBytes
 
-	// receive U (k xor-rows) from receiver: U = T0 ^ T1 for each row
+	// Receive U (k xor-rows) from receiver: U = T0 ^ T1 for each row
 	U, err := e.conn.ReceiveData()
 	if err != nil {
 		return nil, err
@@ -142,7 +120,7 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 		return nil, errors.New("not enough U")
 	}
 
-	// generate T0 rows from seedS and, if choice bit == 1, PRG(seedS)
+	// Generate T0 rows from seedS and, if choice bit == 1, PRG(seedS)
 	// ^ U_row would be T0?  The standard IKNP computation yields rows
 	// equal to T0 for all i after this step.  We'll compute rows =
 	// PRG(seedS) XOR (choices[i] ? U_row : 0) which yields T0 in
@@ -150,7 +128,7 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	rows := make([][]byte, e.k)
 	for i := 0; i < e.k; i++ {
 		rows[i] = make([]byte, rowBytes)
-		prgAESCTR(e.seedS[i], rows[i])
+		prgAESCTR(e.seedS[i][:], rows[i])
 
 		if e.choices[i] {
 			urow := U[i*rowBytes : (i+1)*rowBytes]
@@ -165,8 +143,8 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	//  L1 from T1 = T0 ^ U_row
 	wires := make([]ot.Wire, n)
 	for j := 0; j < n; j++ {
-		var b0 [16]byte
-		var b1 [16]byte
+		var b0 ot.LabelData
+		var b1 ot.LabelData
 
 		for bit := 0; bit < 128; bit++ {
 			if bit >= e.k {
@@ -191,8 +169,10 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 			}
 		}
 
-		L0 := packLabel(b0[:])
-		L1 := packLabel(b1[:])
+		var L0, L1 ot.Label
+
+		L0.SetData(&b0)
+		L1.SetData(&b1)
 
 		wires[j] = ot.Wire{L0: L0, L1: L1}
 	}
@@ -200,14 +180,14 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	return wires, nil
 }
 
-// ExpandReceive implemenets the receiver side of IKNP.
+// ExpandReceive implements the receiver side of IKNP.
 func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	if e.role != ReceiverRole {
 		return nil, errors.New("wrong role")
 	}
-
-	if e.seed0 == nil || len(e.seed0) != e.k || e.seed1 == nil || len(e.seed1) != e.k {
-		return nil, errors.New("seed0/seed1 not initialized; call Setup() first")
+	if e.seed0 == nil || len(e.seed0) != e.k ||
+		e.seed1 == nil || len(e.seed1) != e.k {
+		return nil, errors.New("seed0/seed1 not initialized")
 	}
 	N := len(flags)
 	if N == 0 {
@@ -220,11 +200,11 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	for i := 0; i < e.k; i++ {
 		T0[i] = make([]byte, rowBytes)
 		T1[i] = make([]byte, rowBytes)
-		prgAESCTR(e.seed0[i], T0[i])
-		prgAESCTR(e.seed1[i], T1[i])
+		prgAESCTR(e.seed0[i][:], T0[i])
+		prgAESCTR(e.seed1[i][:], T1[i])
 	}
 
-	// send U rows (T0 xor T1) concatenated
+	// Send U rows (T0 xor T1) concatenated
 	U := make([]byte, e.k*rowBytes)
 	for i := 0; i < e.k; i++ {
 		for j := 0; j < rowBytes; j++ {
@@ -241,7 +221,8 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 	// Construct chosen labels
 	out := make([]ot.Label, N)
 	for j := 0; j < N; j++ {
-		var b [16]byte
+		var b ot.LabelData
+
 		for bit := 0; bit < 128; bit++ {
 			if bit >= e.k {
 				break
@@ -260,7 +241,9 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 				b[bytePos] |= (1 << inner)
 			}
 		}
-		out[j] = packLabel(b[:])
+
+		out[j].SetData(&b)
 	}
+
 	return out, nil
 }
