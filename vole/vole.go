@@ -1,98 +1,54 @@
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
 package vole
 
 import (
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
 	"math/big"
-	"sync"
 
 	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/otext"
 	"github.com/markkurossi/mpc/p2p"
 )
 
-// Role constants
-type Role int
-
-const (
-	SenderRole   Role = 0
-	ReceiverRole Role = 1
-)
-
-// Ext wraps base OT (optional) and provides VOLE batched interface.
-type Ext struct {
+type Sender struct {
 	oti  ot.OT
 	conn *p2p.Conn
-	role Role
-
-	// internal IKNP ext (created in Setup if oti != nil)
-	iknp *otext.IKNPExt
-
-	// small pool for buffers; reused for PRG outputs etc.
-	bufPool sync.Pool
+	iknp *otext.IKNPSender
 }
 
-func NewExt(oti ot.OT, conn *p2p.Conn, role Role) *Ext {
-	e := &Ext{
+func NewSender(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Sender, error) {
+	e := &Sender{
 		oti:  oti,
 		conn: conn,
-		role: role,
 	}
-	e.bufPool = sync.Pool{New: func() any { return make([]byte, 0, 4096) }}
-	return e
+	if err := e.oti.InitSender(e.conn); err != nil {
+		return nil, err
+	}
+
+	var err error
+	e.iknp, err = otext.NewIKNPSender(oti, conn, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
 }
 
-// Setup sets up underlying IKNP if an OT instance is present.
-// If oti == nil then Setup is a no-op (shim mode for tests).
-func (e *Ext) Setup(r io.Reader) error {
-	if e.oti == nil {
-		e.iknp = nil
-		return nil
-	}
-
-	if e.role == SenderRole {
-		if err := e.oti.InitSender(e.conn); err != nil {
-			return fmt.Errorf("vole: InitSender: %w", err)
-		}
-	} else {
-		if err := e.oti.InitReceiver(e.conn); err != nil {
-			return fmt.Errorf("vole: InitReceiver: %w", err)
-		}
-	}
-
-	var rrole int
-	if e.role == SenderRole {
-		rrole = otext.SenderRole
-	} else {
-		rrole = otext.ReceiverRole
-	}
-	e.iknp = otext.NewIKNPExt(e.oti, e.conn, rrole)
-	return e.iknp.Setup(r)
-}
-
-// -----------------------------------------------------------------------------
-// MulSender / MulReceiver (packed-IKNP path)
-// -----------------------------------------------------------------------------
-
-// MulSender functionality: senderInputs = x[0..m-1]. Returns r[0..m-1].
-func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
-	if e == nil {
-		return nil, errors.New("vole: nil Ext")
-	}
-	m := len(senderInputs)
+func (e *Sender) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
+	m := len(inputs)
 	if m == 0 {
 		return nil, nil
 	}
 
-	// If iknp is not configured, fall back to the channel-shim (same as before)
-	if e.iknp == nil {
-		return e.mulSenderShim(senderInputs, p)
-	}
-
-	// Packed path: ExpandSend(m) -> wires (one wire per triple)
-	wires, err := e.iknp.ExpandSend(m)
+	// Packed path: Expand(m) -> wires (one wire per triple)
+	wires, err := e.iknp.Expand(m)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandSend: %w", err)
 	}
@@ -134,7 +90,7 @@ func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error)
 	// compute u_i = r_i + x_i * y_i mod p; send packed u vector back.
 	out := make([]byte, 0, m*32)
 	for i := 0; i < m; i++ {
-		tmp := new(big.Int).Mul(senderInputs[i], ys[i])
+		tmp := new(big.Int).Mul(inputs[i], ys[i])
 		tmp.Mod(tmp, p)
 		ui := new(big.Int).Add(rs[i], tmp)
 		ui.Mod(ui, p)
@@ -151,19 +107,38 @@ func (e *Ext) MulSender(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error)
 	return rs, nil
 }
 
-// MulReceiver functionality: receiverInputs = y[0..m-1]. Returns u[0..m-1] = r_i + x_i * y_i.
-func (e *Ext) MulReceiver(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
+type Receiver struct {
+	oti  ot.OT
+	conn *p2p.Conn
+	iknp *otext.IKNPReceiver
+}
+
+func NewReceiver(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Receiver, error) {
+	e := &Receiver{
+		oti:  oti,
+		conn: conn,
+	}
+	if err := e.oti.InitReceiver(e.conn); err != nil {
+		return nil, err
+	}
+
+	var err error
+	e.iknp, err = otext.NewIKNPReceiver(oti, conn, r)
+	if err != nil {
+		return nil, err
+	}
+
+	return e, nil
+}
+
+// Mul functionality: inputs = y[0..m-1]. Returns u[0..m-1] = r_i + x_i * y_i.
+func (e *Receiver) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 	if e == nil {
 		return nil, errors.New("vole: nil Ext")
 	}
-	m := len(receiverInputs)
+	m := len(inputs)
 	if m == 0 {
 		return nil, nil
-	}
-
-	// If iknp not available, fallback to shim
-	if e.iknp == nil {
-		return e.mulReceiverShim(receiverInputs, p)
 	}
 
 	// Packed receiver path:
@@ -174,7 +149,7 @@ func (e *Ext) MulReceiver(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, er
 		flags[i] = false // we could encode something useful here in a future refinement
 	}
 
-	labels, err := e.iknp.ExpandReceive(flags)
+	labels, err := e.iknp.Expand(flags)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandReceive: %w", err)
 	}
@@ -186,7 +161,7 @@ func (e *Ext) MulReceiver(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, er
 	// and (crucially) send the packed y-vector to sender, receive u-vector back.
 	outY := make([]byte, 0, m*32)
 	for i := 0; i < m; i++ {
-		outY = append(outY, bytes32(receiverInputs[i])...)
+		outY = append(outY, bytes32(inputs[i])...)
 	}
 	if err := e.conn.SendData(outY); err != nil {
 		return nil, fmt.Errorf("vole: MulReceiver send y-vector: %w", err)
@@ -202,105 +177,6 @@ func (e *Ext) MulReceiver(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, er
 	}
 	if len(ub) != m*32 {
 		return nil, fmt.Errorf("vole: MulReceiver expected %d bytes for u-vector, got %d", m*32, len(ub))
-	}
-	us := make([]*big.Int, m)
-	for i := 0; i < m; i++ {
-		off := i * 32
-		us[i] = new(big.Int).SetBytes(ub[off : off+32])
-		us[i].Mod(us[i], p)
-	}
-	return us, nil
-}
-
-// -----------------------------------------------------------------------------
-// Helper: shim implementations (channel-only) - unchanged behavior for tests
-// -----------------------------------------------------------------------------
-
-func (e *Ext) mulSenderShim(senderInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
-	// same code as prior shim implemented earlier: header + y recv + compute r+xy + send u
-	m := len(senderInputs)
-	if m == 0 {
-		return nil, nil
-	}
-	// header: send m as 4 bytes (so receiver knows how many to send)
-	if err := e.conn.SendData(uint32ToBytes(uint32(m))); err != nil {
-		return nil, fmt.Errorf("vole: mulSenderShim send header: %w", err)
-	}
-	if err := e.conn.Flush(); err != nil {
-		return nil, fmt.Errorf("vole: mulSenderShim flush header: %w", err)
-	}
-
-	yb, err := e.conn.ReceiveData()
-	if err != nil {
-		return nil, fmt.Errorf("vole: mulSenderShim recv y: %w", err)
-	}
-	if len(yb) != m*32 {
-		return nil, fmt.Errorf("vole: mulSenderShim expected %d bytes got %d", m*32, len(yb))
-	}
-	ys := make([]*big.Int, m)
-	for i := 0; i < m; i++ {
-		off := i * 32
-		ys[i] = new(big.Int).SetBytes(yb[off : off+32])
-		ys[i].Mod(ys[i], p)
-	}
-
-	rs := make([]*big.Int, m)
-	out := make([]byte, 0, m*32)
-	for i := 0; i < m; i++ {
-		ri, err := randomFieldElementFromCrypto(rand.Reader, p)
-		if err != nil {
-			return nil, fmt.Errorf("vole: mulSenderShim rand: %w", err)
-		}
-		rs[i] = ri
-		tmp := new(big.Int).Mul(senderInputs[i], ys[i])
-		tmp.Mod(tmp, p)
-		ui := new(big.Int).Add(ri, tmp)
-		ui.Mod(ui, p)
-		out = append(out, bytes32(ui)...)
-	}
-
-	if err := e.conn.SendData(out); err != nil {
-		return nil, fmt.Errorf("vole: mulSenderShim send u: %w", err)
-	}
-	if err := e.conn.Flush(); err != nil {
-		return nil, fmt.Errorf("vole: mulSenderShim flush u: %w", err)
-	}
-	return rs, nil
-}
-
-func (e *Ext) mulReceiverShim(receiverInputs []*big.Int, p *big.Int) ([]*big.Int, error) {
-	m := len(receiverInputs)
-	if m == 0 {
-		return nil, nil
-	}
-	// receive header (4 bytes)
-	header, err := e.conn.ReceiveData()
-	if err != nil {
-		return nil, fmt.Errorf("vole: mulReceiverShim recv header: %w", err)
-	}
-	if len(header) != 4 {
-		return nil, fmt.Errorf("vole: mulReceiverShim header len %d", len(header))
-	}
-	mGot := bytesToUint32(header)
-	if int(mGot) != m {
-		return nil, fmt.Errorf("vole: mulReceiverShim header mismatch m=%d local=%d", mGot, m)
-	}
-	outY := make([]byte, 0, m*32)
-	for i := 0; i < m; i++ {
-		outY = append(outY, bytes32(receiverInputs[i])...)
-	}
-	if err := e.conn.SendData(outY); err != nil {
-		return nil, fmt.Errorf("vole: mulReceiverShim send y: %w", err)
-	}
-	if err := e.conn.Flush(); err != nil {
-		return nil, fmt.Errorf("vole: mulReceiverShim flush y: %w", err)
-	}
-	ub, err := e.conn.ReceiveData()
-	if err != nil {
-		return nil, fmt.Errorf("vole: mulReceiverShim recv u: %w", err)
-	}
-	if len(ub) != m*32 {
-		return nil, fmt.Errorf("vole: mulReceiverShim unexpected u len %d", len(ub))
 	}
 	us := make([]*big.Int, m)
 	for i := 0; i < m; i++ {

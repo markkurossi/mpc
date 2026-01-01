@@ -1,3 +1,9 @@
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
 package vole
 
 import (
@@ -5,6 +11,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -28,13 +35,6 @@ func TestVOLEBasic(t *testing.T) {
 	// Create pipe
 	c0, c1 := p2p.Pipe()
 
-	ext0 := NewExt(nil, c0, SenderRole)
-	ext1 := NewExt(nil, c1, ReceiverRole)
-
-	// Setup() now works with nil OT
-	_ = ext0.Setup(rand.Reader)
-	_ = ext1.Setup(rand.Reader)
-
 	var rs []*big.Int
 	var us []*big.Int
 	var err0, err1 error
@@ -43,13 +43,25 @@ func TestVOLEBasic(t *testing.T) {
 
 	// Sender goroutine
 	go func() {
-		rs, err0 = ext0.MulSender(xs, p256P)
+		var ext0 *Sender
+		ext0, err0 = NewSender(ot.NewCO(rand.Reader), c0, rand.Reader)
+		if err0 != nil {
+			done <- true
+			return
+		}
+		rs, err0 = ext0.Mul(xs, p256P)
 		done <- true
 	}()
 
 	// Receiver goroutine
 	go func() {
-		us, err1 = ext1.MulReceiver(ys, p256P)
+		var ext1 *Receiver
+		ext1, err1 = NewReceiver(ot.NewCO(rand.Reader), c1, rand.Reader)
+		if err1 != nil {
+			done <- true
+			return
+		}
+		us, err1 = ext1.Mul(ys, p256P)
 		done <- true
 	}()
 

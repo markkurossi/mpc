@@ -20,26 +20,21 @@
 // inputs beyond what can be inferred from the correlation itself.
 //
 // This package provides a batched VOLE interface built on top of base
-// OT and the IKNP OT extension. When a base OT instance is provided,
-// the implementation uses a packed-IKNP mode where each VOLE instance
-// consumes only a single IKNP wire and expands labels using a
-// ChaCha20-based PRG. This yields large performance improvements
-// compared to bitwise OT multiplication.
-//
-// When no OT instance is provided, the implementation falls back to a
-// private, channel-based semi-honest shim used for testing. The API
-// is identical in both cases, allowing callers to transparently
-// switch between the shim and the real packed-IKNP path.
+// OT and the IKNP OT extension.  The implementation uses a
+// packed-IKNP mode where each VOLE instance consumes only a single
+// IKNP wire and expands labels using an AES-CTR PRG. This yields
+// large performance improvements compared to bitwise OT
+// multiplication.
 //
 // Typical usage:
 //
-//	ve := vole.NewExt(oti, conn, vole.SenderRole)
-//	ve.Setup(rand.Reader)
-//	rs, _ := ve.MulSender(xs, p)
+//	sender, err := vole.NewSender(oti, conn, rand.Reader)
+//	if err != nil { ... }
+//	rs, _ := sender.Mul(xs, p)
 //
-//	ve2 := vole.NewExt(oti, conn, vole.ReceiverRole)
-//	ve2.Setup(rand.Reader)
-//	us, _ := ve2.MulReceiver(ys, p)
+//	receiver, err := vole.NewReceiver(oti, conn, rand.Reader)
+//	if err != nil { ... }
+//	us, _ := receiver.Mul(ys, p)
 //
 // Here xs and ys are slices of field elements of equal length. The
 // sender obtains the r[i] masks, and the receiver obtains u[i] = r[i]

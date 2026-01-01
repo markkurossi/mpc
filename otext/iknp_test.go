@@ -1,7 +1,12 @@
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
 package otext
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -12,17 +17,6 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-//
-// --- helpers -------------------------------------------------------------
-//
-
-func labelsEqual(a, b ot.Label) bool {
-	var da, db ot.LabelData
-	a.GetData(&da)
-	b.GetData(&db)
-	return bytes.Equal(da[:], db[:])
-}
-
 func randomBools(n int) []bool {
 	buf := make([]byte, (n+7)/8)
 	rand.Read(buf)
@@ -31,12 +25,6 @@ func randomBools(n int) []bool {
 		out[i] = ((buf[i/8] >> uint(i%8)) & 1) == 1
 	}
 	return out
-}
-
-func hexLabel(l ot.Label) string {
-	var d ot.LabelData
-	l.GetData(&d)
-	return hex.EncodeToString(d[:])
 }
 
 func printRowBytes(prefix string, rows [][]byte, N int) {
@@ -65,10 +53,6 @@ func printRowBytes(prefix string, rows [][]byte, N int) {
 	}
 }
 
-//
-// --- TestIKNP ------------------------------------------------------------
-//
-
 func TestIKNP(t *testing.T) {
 	c0, c1 := p2p.Pipe()
 	oti0 := ot.NewCO(rand.Reader)
@@ -82,20 +66,20 @@ func TestIKNP(t *testing.T) {
 	var senderWires []ot.Wire
 	var recvLabels []ot.Label
 	var recvFlags []bool
-	var senderExt *IKNPExt
-	var receiverExt *IKNPExt
+	var senderExt *IKNPSender
+	var receiverExt *IKNPReceiver
 
 	// Sender goroutine
 	go func() {
 		defer wg.Done()
 		oti0.InitSender(c0)
-		ext := NewIKNPExt(oti0, c0, SenderRole)
-		senderExt = ext
-		if err := ext.Setup(rand.Reader); err != nil {
+		var err error
+		senderExt, err = NewIKNPSender(oti0, c0, rand.Reader)
+		if err != nil {
 			fatalf("sender setup err: %v", err)
 			return
 		}
-		w, err := ext.ExpandSend(N)
+		w, err := senderExt.Expand(N)
 		if err != nil {
 			fatalf("sender ExpandSend err: %v", err)
 			return
@@ -107,14 +91,14 @@ func TestIKNP(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		oti1.InitReceiver(c1)
-		ext := NewIKNPExt(oti1, c1, ReceiverRole)
-		receiverExt = ext
-		if err := ext.Setup(rand.Reader); err != nil {
+		var err error
+		receiverExt, err = NewIKNPReceiver(oti1, c1, rand.Reader)
+		if err != nil {
 			fatalf("recv setup err: %v", err)
 			return
 		}
 		recvFlags = randomBools(N)
-		labels, err := ext.ExpandReceive(recvFlags)
+		labels, err := receiverExt.Expand(recvFlags)
 		if err != nil {
 			fatalf("recv ExpandReceive err: %v", err)
 			return
@@ -145,79 +129,81 @@ func TestIKNP(t *testing.T) {
 			fmt.Printf(" - L1 : %v\n", senderWires[j].L1)
 		}
 
-		if !labelsEqual(chosen, recvLabels[j]) {
-
-			fmt.Printf("============================================================\n")
-			fmt.Printf("Label mismatch at OT index %d\n", j)
-			fmt.Printf("recvFlags[%d] = %v\n", j, recvFlags[j])
-			fmt.Printf("Sender L0: %s\n", hexLabel(senderWires[j].L0))
-			fmt.Printf("Sender L1: %s\n", hexLabel(senderWires[j].L1))
-			fmt.Printf("Receiver : %s\n", hexLabel(recvLabels[j]))
-			fmt.Println()
-
-			// Show sender choice bits
-			if senderExt != nil && senderExt.choices != nil {
-				fmt.Printf("Sender choice bits (first 64): ")
-				for i := 0; i < 64 && i < len(senderExt.choices); i++ {
-					if senderExt.choices[i] {
-						fmt.Print("1")
-					} else {
-						fmt.Print("0")
-					}
-				}
-				fmt.Println()
-			}
-
-			// Recompute sender rows
-			if senderExt != nil && receiverExt != nil {
-				Nlocal := N
-				rowBytes := (Nlocal + 7) / 8
-
-				// receiver T0/T1
-				T0 := make([][]byte, receiverExt.k)
-				T1 := make([][]byte, receiverExt.k)
-				for i := 0; i < receiverExt.k; i++ {
-					T0[i] = make([]byte, rowBytes)
-					T1[i] = make([]byte, rowBytes)
-					prgAESCTR(receiverExt.seed0[i][:], T0[i])
-					prgAESCTR(receiverExt.seed1[i][:], T1[i])
-				}
-
-				fmt.Println("Receiver-side T0 sample:")
-				printRowBytes(" recv T0", T0, Nlocal)
-				fmt.Println("Receiver-side T1 sample:")
-				printRowBytes(" recv T1", T1, Nlocal)
-
-				// sender reconstructed rows
-				rows := make([][]byte, senderExt.k)
-				for i := 0; i < senderExt.k; i++ {
-					rows[i] = make([]byte, rowBytes)
-					prgAESCTR(senderExt.seedS[i][:], rows[i])
-
-					if senderExt.choices[i] {
-						// apply U = T0 ^ T1
-						for b := 0; b < rowBytes; b++ {
-							rows[i][b] ^= (T0[i][b] ^ T1[i][b])
-						}
-					}
-				}
-				fmt.Println("Sender-side rows sample:")
-				printRowBytes(" send rows", rows, Nlocal)
-			}
-
-			// Byte-level diff
-			var la, lb ot.LabelData
-			chosen.GetData(&la)
-			recvLabels[j].GetData(&lb)
-			fmt.Println("Byte differences (sender Lx vs receiver):")
-			for idx := 0; idx < 16; idx++ {
-				if la[idx] != lb[idx] {
-					fmt.Printf("  byte %02d: sender=%02x recv=%02x\n", idx, la[idx], lb[idx])
-				}
-			}
-
-			t.Fatalf("Label mismatch at %d", j)
+		if chosen.Equal(recvLabels[j]) {
+			continue
 		}
+
+		fmt.Printf("==================================================\n")
+		fmt.Printf("Label mismatch at OT index %d\n", j)
+		fmt.Printf("recvFlags[%d] = %v\n", j, recvFlags[j])
+		fmt.Printf("Sender L0: %s\n", senderWires[j].L0)
+		fmt.Printf("Sender L1: %s\n", senderWires[j].L1)
+		fmt.Printf("Receiver : %s\n", recvLabels[j])
+		fmt.Println()
+
+		// Show sender choice bits
+		if senderExt != nil && senderExt.choices != nil {
+			fmt.Printf("Sender choice bits (first 64): ")
+			for i := 0; i < 64 && i < len(senderExt.choices); i++ {
+				if senderExt.choices[i] {
+					fmt.Print("1")
+				} else {
+					fmt.Print("0")
+				}
+			}
+			fmt.Println()
+		}
+
+		// Recompute sender rows
+		if senderExt != nil && receiverExt != nil {
+			Nlocal := N
+			rowBytes := (Nlocal + 7) / 8
+
+			// receiver T0/T1
+			T0 := make([][]byte, IKNPK)
+			T1 := make([][]byte, IKNPK)
+			for i := 0; i < IKNPK; i++ {
+				T0[i] = make([]byte, rowBytes)
+				T1[i] = make([]byte, rowBytes)
+				prgAESCTR(receiverExt.seed0[i][:], T0[i])
+				prgAESCTR(receiverExt.seed1[i][:], T1[i])
+			}
+
+			fmt.Println("Receiver-side T0 sample:")
+			printRowBytes(" recv T0", T0, Nlocal)
+			fmt.Println("Receiver-side T1 sample:")
+			printRowBytes(" recv T1", T1, Nlocal)
+
+			// sender reconstructed rows
+			rows := make([][]byte, IKNPK)
+			for i := 0; i < IKNPK; i++ {
+				rows[i] = make([]byte, rowBytes)
+				prgAESCTR(senderExt.seedS[i][:], rows[i])
+
+				if senderExt.choices[i] {
+					// apply U = T0 ^ T1
+					for b := 0; b < rowBytes; b++ {
+						rows[i][b] ^= (T0[i][b] ^ T1[i][b])
+					}
+				}
+			}
+			fmt.Println("Sender-side rows sample:")
+			printRowBytes(" send rows", rows, Nlocal)
+		}
+
+		// Byte-level diff
+		var la, lb ot.LabelData
+		chosen.GetData(&la)
+		recvLabels[j].GetData(&lb)
+		fmt.Println("Byte differences (sender Lx vs receiver):")
+		for idx := 0; idx < 16; idx++ {
+			if la[idx] != lb[idx] {
+				fmt.Printf("  byte %02d: sender=%02x recv=%02x\n",
+					idx, la[idx], lb[idx])
+			}
+		}
+
+		t.Fatalf("Label mismatch at %d", j)
 	}
 
 	fmt.Println("IKNP test passed with no mismatches.")

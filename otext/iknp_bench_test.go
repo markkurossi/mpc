@@ -1,3 +1,9 @@
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
 package otext
 
 import (
@@ -9,19 +15,7 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
-//
-// --- Benchmark Setup -----------------------------------------------------
-//
-
-func makeFlags(n int) []bool {
-	return randomBools(n)
-}
-
-//
-// --- Benchmarks ----------------------------------------------------------
-//
-
-// Only measure setup
+// Measure IKNP setup.
 func BenchmarkIKNPSetup(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		c0, c1 := p2p.Pipe()
@@ -34,8 +28,8 @@ func BenchmarkIKNPSetup(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			oti0.InitSender(c0)
-			ext := NewIKNPExt(oti0, c0, SenderRole)
-			if err := ext.Setup(rand.Reader); err != nil {
+			_, err := NewIKNPSender(oti0, c0, rand.Reader)
+			if err != nil {
 				panic(err)
 			}
 		}()
@@ -43,8 +37,8 @@ func BenchmarkIKNPSetup(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			oti1.InitReceiver(c1)
-			ext := NewIKNPExt(oti1, c1, ReceiverRole)
-			if err := ext.Setup(rand.Reader); err != nil {
+			_, err := NewIKNPReceiver(oti1, c1, rand.Reader)
+			if err != nil {
 				panic(err)
 			}
 		}()
@@ -71,14 +65,14 @@ func benchmarkIKNPExpand(b *testing.B, N int) {
 		defer wg.Done()
 
 		oti1.InitReceiver(c1)
-		ext := NewIKNPExt(oti1, c1, ReceiverRole)
-		if err := ext.Setup(rand.Reader); err != nil {
+		iknp, err := NewIKNPReceiver(oti1, c1, rand.Reader)
+		if err != nil {
 			panic(err)
 		}
 
-		flags := makeFlags(N)
+		flags := randomBools(N)
 		for i := 0; i < b.N; i++ {
-			_, err := ext.ExpandReceive(flags)
+			_, err := iknp.Expand(flags)
 			if err != nil {
 				panic(err)
 			}
@@ -87,15 +81,15 @@ func benchmarkIKNPExpand(b *testing.B, N int) {
 
 	// --- Sender measured path ---
 	oti0.InitSender(c0)
-	ext := NewIKNPExt(oti0, c0, SenderRole)
-	if err := ext.Setup(rand.Reader); err != nil {
+	iknp, err := NewIKNPSender(oti0, c0, rand.Reader)
+	if err != nil {
 		panic(err)
 	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := ext.ExpandSend(N)
+		_, err := iknp.Expand(N)
 		if err != nil {
 			panic(err)
 		}

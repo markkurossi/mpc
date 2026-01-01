@@ -1,3 +1,9 @@
+//
+// Copyright (c) 2025 Markku Rossi
+//
+// All rights reserved.
+//
+
 package otext
 
 import (
@@ -9,110 +15,71 @@ import (
 )
 
 const (
-	// IKNPK defines the number of base-OTs.
+	// IKNPK defines the security parameter k of the IKNP
+	// protocol. The IKNPK is the number of base-OTs.
 	IKNPK = 128
 )
 
-// The roles.
-const (
-	SenderRole   = 0
-	ReceiverRole = 1
-)
-
-// IKNPExt implements the IKNP OT extension.
-type IKNPExt struct {
+// IKNPSender implements the sender side of the IKNP OT extension.
+type IKNPSender struct {
 	base    ot.OT
 	conn    *p2p.Conn
-	role    int
-	k       int
+	choices []bool
 	seedS   []ot.LabelData
-	seed0   []ot.LabelData
-	seed1   []ot.LabelData
-	choices []bool // store base-OT choice bits for sender
 }
 
-// NewIKNPExt creates a new IKNP OT extension.
-func NewIKNPExt(base ot.OT, conn *p2p.Conn, role int) *IKNPExt {
-	return &IKNPExt{
-		base: base,
-		conn: conn,
-		role: role,
-		k:    IKNPK,
-	}
+// IKNPReceiver implements the receiver side of the IKNP OT extension.
+type IKNPReceiver struct {
+	base  ot.OT
+	conn  *p2p.Conn
+	seed0 []ot.LabelData
+	seed1 []ot.LabelData
 }
 
-// Setup phase runs k=128 base OTs.
-func (e *IKNPExt) Setup(r io.Reader) error {
-	if e.role == SenderRole {
-		// Base OT receiver: choose random choice bits and call
-		// base.Receive.
-		choices := make([]bool, e.k)
-		var buf [IKNPK / 8]byte
-		if _, err := io.ReadFull(r, buf[:]); err != nil {
-			return err
-		}
-		for i := 0; i < e.k; i++ {
-			choices[i] = ((buf[i/8] >> uint(i%8)) & 1) == 1
-		}
+// NewIKNPSender creates a new IKNP sender.
+func NewIKNPSender(base ot.OT, conn *p2p.Conn, r io.Reader) (
+	*IKNPSender, error) {
 
-		labels := make([]ot.Label, e.k)
-		if err := e.base.Receive(choices, labels); err != nil {
-			return err
-		}
-
-		e.seedS = make([]ot.LabelData, e.k)
-		for i := 0; i < e.k; i++ {
-			labels[i].GetData(&e.seedS[i])
-		}
-		// Store choice bits for later expansion.
-		e.choices = choices
-
-		return nil
-
-	} else {
-		// Base OT sender: prepare k label pairs and call base.Send.
-		e.seed0 = make([]ot.LabelData, e.k)
-		e.seed1 = make([]ot.LabelData, e.k)
-
-		wires := make([]ot.Wire, e.k)
-		for i := 0; i < e.k; i++ {
-			l0, err := ot.NewLabel(r)
-			if err != nil {
-				return err
-			}
-			l1, err := ot.NewLabel(r)
-			if err != nil {
-				return err
-			}
-			l0.GetData(&e.seed0[i])
-			l1.GetData(&e.seed1[i])
-
-			wires[i] = ot.Wire{L0: l0, L1: l1}
-		}
-		return e.base.Send(wires)
+	// Base OT receiver: choose random choice bits and call
+	// base.Receive.
+	choices := make([]bool, IKNPK)
+	var buf [IKNPK / 8]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return nil, err
 	}
+	for i := 0; i < IKNPK; i++ {
+		choices[i] = ((buf[i/8] >> uint(i%8)) & 1) == 1
+	}
+
+	labels := make([]ot.Label, IKNPK)
+	if err := base.Receive(choices, labels); err != nil {
+		return nil, err
+	}
+
+	seedS := make([]ot.LabelData, IKNPK)
+	for i := 0; i < IKNPK; i++ {
+		labels[i].GetData(&seedS[i])
+	}
+
+	return &IKNPSender{
+		base:    base,
+		conn:    conn,
+		choices: choices,
+		seedS:   seedS,
+	}, nil
 }
 
-// ExpandSend implements the sender side of IKNP.
-func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
-	if e.role != SenderRole {
-		return nil, errors.New("wrong role")
-	}
-	if e.seedS == nil || len(e.seedS) != e.k {
-		return nil, errors.New("seedS not initialized")
-	}
-	if e.choices == nil || len(e.choices) != e.k {
-		return nil, errors.New("choices not initialized")
-	}
+// Expand implements the sender IKNP expansion.
+func (iknp *IKNPSender) Expand(n int) ([]ot.Wire, error) {
 	if n <= 0 {
 		return nil, errors.New("n must be positive")
 	}
 
 	rowBytes := (n + 7) / 8
-	total := e.k * rowBytes
+	total := IKNPK * rowBytes
 
 	// Receive U (k xor-rows) from receiver: U = T0 ^ T1 for each row
-	U, err := e.conn.ReceiveData()
+	U, err := iknp.conn.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
@@ -125,12 +92,12 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	// equal to T0 for all i after this step.  We'll compute rows =
 	// PRG(seedS) XOR (choices[i] ? U_row : 0) which yields T0 in
 	// either case.
-	rows := make([][]byte, e.k)
-	for i := 0; i < e.k; i++ {
+	rows := make([][]byte, IKNPK)
+	for i := 0; i < IKNPK; i++ {
 		rows[i] = make([]byte, rowBytes)
-		prgAESCTR(e.seedS[i][:], rows[i])
+		prgAESCTR(iknp.seedS[i][:], rows[i])
 
-		if e.choices[i] {
+		if iknp.choices[i] {
 			urow := U[i*rowBytes : (i+1)*rowBytes]
 			for j := 0; j < rowBytes; j++ {
 				rows[i][j] ^= urow[j]
@@ -147,7 +114,7 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 		var b1 ot.LabelData
 
 		for bit := 0; bit < 128; bit++ {
-			if bit >= e.k {
+			if bit >= IKNPK {
 				break
 			}
 			byteRow := j / 8
@@ -180,41 +147,69 @@ func (e *IKNPExt) ExpandSend(n int) ([]ot.Wire, error) {
 	return wires, nil
 }
 
-// ExpandReceive implements the receiver side of IKNP.
-func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
-	if e.role != ReceiverRole {
-		return nil, errors.New("wrong role")
+// NewIKNPReceiver creates a new IKNP receiver.
+func NewIKNPReceiver(base ot.OT, conn *p2p.Conn, r io.Reader) (
+	*IKNPReceiver, error) {
+
+	// Base OT sender: prepare k label pairs and call base.Send.
+	seed0 := make([]ot.LabelData, IKNPK)
+	seed1 := make([]ot.LabelData, IKNPK)
+
+	wires := make([]ot.Wire, IKNPK)
+	for i := 0; i < IKNPK; i++ {
+		l0, err := ot.NewLabel(r)
+		if err != nil {
+			return nil, err
+		}
+		l1, err := ot.NewLabel(r)
+		if err != nil {
+			return nil, err
+		}
+		l0.GetData(&seed0[i])
+		l1.GetData(&seed1[i])
+
+		wires[i] = ot.Wire{L0: l0, L1: l1}
 	}
-	if e.seed0 == nil || len(e.seed0) != e.k ||
-		e.seed1 == nil || len(e.seed1) != e.k {
-		return nil, errors.New("seed0/seed1 not initialized")
+	if err := base.Send(wires); err != nil {
+		return nil, err
 	}
+
+	return &IKNPReceiver{
+		base:  base,
+		conn:  conn,
+		seed0: seed0,
+		seed1: seed1,
+	}, nil
+}
+
+// Expand implements the receiver IKNP expansion.
+func (iknp *IKNPReceiver) Expand(flags []bool) ([]ot.Label, error) {
 	N := len(flags)
 	if N == 0 {
 		return nil, errors.New("flags empty")
 	}
 	rowBytes := (N + 7) / 8
 
-	T0 := make([][]byte, e.k)
-	T1 := make([][]byte, e.k)
-	for i := 0; i < e.k; i++ {
+	T0 := make([][]byte, IKNPK)
+	T1 := make([][]byte, IKNPK)
+	for i := 0; i < IKNPK; i++ {
 		T0[i] = make([]byte, rowBytes)
 		T1[i] = make([]byte, rowBytes)
-		prgAESCTR(e.seed0[i][:], T0[i])
-		prgAESCTR(e.seed1[i][:], T1[i])
+		prgAESCTR(iknp.seed0[i][:], T0[i])
+		prgAESCTR(iknp.seed1[i][:], T1[i])
 	}
 
 	// Send U rows (T0 xor T1) concatenated
-	U := make([]byte, e.k*rowBytes)
-	for i := 0; i < e.k; i++ {
+	U := make([]byte, IKNPK*rowBytes)
+	for i := 0; i < IKNPK; i++ {
 		for j := 0; j < rowBytes; j++ {
 			U[i*rowBytes+j] = T0[i][j] ^ T1[i][j]
 		}
 	}
-	if err := e.conn.SendData(U); err != nil {
+	if err := iknp.conn.SendData(U); err != nil {
 		return nil, err
 	}
-	if err := e.conn.Flush(); err != nil {
+	if err := iknp.conn.Flush(); err != nil {
 		return nil, err
 	}
 
@@ -224,7 +219,7 @@ func (e *IKNPExt) ExpandReceive(flags []bool) ([]ot.Label, error) {
 		var b ot.LabelData
 
 		for bit := 0; bit < 128; bit++ {
-			if bit >= e.k {
+			if bit >= IKNPK {
 				break
 			}
 			byteRow := j / 8
