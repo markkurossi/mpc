@@ -11,21 +11,52 @@ ALSZ — Malicious-secure OT extension
 ## Conventions / helper primitives
 
  - `k` = symmetric security parameter (e.g. 128).
-
  - `m` = number of extended OTs required.
-
  - `PRG(seed, outlen)` — expands `seed` (k-bit) to `outlen` bits (`prgAESCTR`)
-
  - `H(index, input)` — correlation-robust hash / random oracle used to
    mask sender messages.
-
  - `BASE_OT_Send(wires)` and `BASE_OT_Receive(choices)` — perform `k`
    base OTs, returning seeds/labels.
-
  - Pack rows as bit-rows of length `m`. Use `rowBytes =
    ceil(m/8)`. Pack `k` rows → `k × rowBytes` bytes.
-
  - For label construction: treat 128-bit column bits as 16-byte label blocks.
+
+## IKNP Semi-Honest OT Extension
+
+### Sender
+
+ - choices: [k]bool - random
+ - OT receive seedS
+ - seedS:   [k]ot.Label - random seed0/seed1 based on choices
+
+### Receiver
+
+Init:
+ - seed0: [k]ot.Label
+ - seed1: [k]ot.Label
+ - wires: [k]seed0,seed1
+ - OT send wires
+
+Expand(flags [n]bool) [n]ot.Label
+ - rowBytes: [(n+7)/8]byte
+ - T0:       [k][rowBytes]byte - i=1...k(prg(seed0[i]))
+ - T1:       [k][rowBytes]byte - i=1...k(prg(seed1[i]))
+ - U:        [k]i=1...k(T0[i]⊕T1[i])
+ - result:   [n]ot.Label
+ - for i=1...n {
+     for bit=1...k {
+        byteCol := i / 8
+        bitPos  := i % 8
+        if flag[i]
+           rowBit = (T1[bit][byteCol] >> bitPos) & 1
+        else
+           rowBit = (T0[bit][byteCol] >> bitPos) & 1
+       resultPos := bit / 8
+       shift := 7-(bit%8)
+       if rowBit == 1
+          result[i][bytePos] |= 1<<shift
+     }
+  }
 
 ## IKNP / ALSZ — Semi-honest OT extension
 

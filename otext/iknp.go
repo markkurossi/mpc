@@ -218,10 +218,7 @@ func (iknp *IKNPReceiver) Expand(flags []bool) ([]ot.Label, error) {
 	for j := 0; j < N; j++ {
 		var b ot.LabelData
 
-		for bit := 0; bit < 128; bit++ {
-			if bit >= IKNPK {
-				break
-			}
+		for bit := 0; bit < IKNPK; bit++ {
 			byteRow := j / 8
 			bitPos := uint(j % 8)
 			var rowBit byte
