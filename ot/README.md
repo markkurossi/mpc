@@ -36,3 +36,8 @@ the same helpers, so both styles always share the exact same cryptographic core.
 | CO-batch-32  |    3273137 |    9777 |
 | CO-batch-64  |    6480310 |    9876 |
 | CO-batch-128 |   12845639 |    9964 |
+
+# IKNP OT Extension
+
+The `COTSender` and `COTReceiver` implement correlated OT with the
+`IKNP` protocol.
