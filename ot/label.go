@@ -1,7 +1,7 @@
 //
 // label.go
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2024, 2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -117,4 +117,44 @@ func (l Label) Bytes(buf *LabelData) []byte {
 func (l *Label) SetBytes(data []byte) {
 	l.D0 = binary.BigEndian.Uint64(data[0:8])
 	l.D1 = binary.BigEndian.Uint64(data[8:16])
+}
+
+// Bit returns the value of the i'th bit.
+func (l Label) Bit(i int) uint {
+	if i < 0 || i > 127 {
+		panic("invalid bit index")
+	}
+	var d uint64
+	if i > 63 {
+		d = l.D1
+		i -= 64
+	} else {
+		d = l.D0
+	}
+	return uint((d >> i) & 1)
+}
+
+// SetBit sets the i'th bit to b (0 or 1). SetBit panics if b is not 0
+// or 1.
+func (l *Label) SetBit(i int, b uint) {
+	switch b {
+	case 0:
+		if i >= 64 {
+			i -= 64
+			l.D1 &^= (1 << i)
+		} else {
+			l.D0 &^= (1 << i)
+		}
+
+	case 1:
+		if i >= 64 {
+			i -= 64
+			l.D1 |= (1 << i)
+		} else {
+			l.D0 |= (1 << i)
+		}
+
+	default:
+		panic("invalid b")
+	}
 }
