@@ -137,7 +137,7 @@ func (s *IKNPSender) Send(n int) ([]Label, error) {
 				xor(t[i*byteRows:(i+1)*byteRows], chunk[i*byteRows:])
 			}
 		}
-		createLabels(result[ofs/8:], t[:], byteRows)
+		createLabels(result[ofs:], t[:], byteRows)
 
 		ofs += byteRows * 8
 	}
@@ -233,7 +233,7 @@ func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
 		if err := r.io.SendData(out[:byteRows*128]); err != nil {
 			return nil, err
 		}
-		createLabels(result[ofs/8:], chunk[:], byteRows)
+		createLabels(result[ofs:], chunk[:], byteRows)
 
 		ofs += rows
 	}

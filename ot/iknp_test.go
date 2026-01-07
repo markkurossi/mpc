@@ -15,20 +15,36 @@ import (
 )
 
 func TestIKNPExpand(t *testing.T) {
+	err := expandN(129, t)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestIKNPChunkSizes(t *testing.T) {
+	values := []int{
+		1, chunkSize / 16,
+		chunkSize/16 + 1, chunkSize / 16 * 2,
+		chunkSize/16*2 + 1, chunkSize / 16 * 3,
+		chunkSize/16*3 + 1, chunkSize / 16 * 4,
+		chunkSize/16*4 + 1, chunkSize / 16 * 5,
+	}
+	for n := range values {
+		err := expandN(n, t)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func expandN(n int, t *testing.T) error {
 	c0, c1 := NewPipe()
 	oti0 := NewCO(rand.Reader)
 	oti1 := NewCO(rand.Reader)
 
 	errCh := make(chan error)
 
-	const N = 8
-
-	b := randomBools(N)
-	if false {
-		for i := range b {
-			b[i] = true
-		}
-	}
+	b := randomBools(n)
 
 	var sent []Label
 	var rcvd []Label
@@ -54,7 +70,7 @@ func TestIKNPExpand(t *testing.T) {
 			errCh <- err
 		}
 
-		sent, err = sender.Send(N)
+		sent, err = sender.Send(n)
 		errCh <- err
 	}()
 
@@ -67,8 +83,8 @@ func TestIKNPExpand(t *testing.T) {
 	if len(sent) != len(rcvd) {
 		t.Fatalf("len(sent)=%v != len(rcvd)=%v", len(sent), len(rcvd))
 	}
-	if len(sent) != N {
-		t.Fatalf("sent %v but N was %v", len(sent), N)
+	if len(sent) != n {
+		t.Fatalf("sent %v but N was %v", len(sent), n)
 	}
 
 	for i, b0 := range sent {
@@ -84,9 +100,11 @@ func TestIKNPExpand(t *testing.T) {
 			if b[i] {
 				fmt.Printf(" - ⊕Δ  : %v\n", b1)
 			}
-			t.Errorf("OT[%d] mismatch: %v != %v", i, rcvd[i], b1)
+			t.Fatalf("OT[%d] mismatch: %v != %v", i, rcvd[i], b1)
 		}
 	}
+
+	return nil
 }
 
 // Measure IKNP setup.
