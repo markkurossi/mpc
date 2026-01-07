@@ -233,12 +233,12 @@ func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
 		if err := r.io.SendData(out[:byteRows*128]); err != nil {
 			return nil, err
 		}
-		if err := r.io.Flush(); err != nil {
-			return nil, err
-		}
 		createLabels(result[ofs:], chunk[:], byteRows)
 
 		ofs += rows
+	}
+	if err := r.io.Flush(); err != nil {
+		return nil, err
 	}
 
 	return result, nil
