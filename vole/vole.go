@@ -13,14 +13,13 @@ import (
 	"math/big"
 
 	"github.com/markkurossi/mpc/ot"
-	"github.com/markkurossi/mpc/otext"
 	"github.com/markkurossi/mpc/p2p"
 )
 
 type Sender struct {
 	oti  ot.OT
 	conn *p2p.Conn
-	iknp *otext.IKNPSender
+	iknp *ot.IKNPSender
 }
 
 func NewSender(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Sender, error) {
@@ -33,7 +32,7 @@ func NewSender(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Sender, error) {
 	}
 
 	var err error
-	e.iknp, err = otext.NewIKNPSender(oti, conn, r)
+	e.iknp, err = ot.NewIKNPSender(oti, conn, r, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -48,19 +47,19 @@ func (e *Sender) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 	}
 
 	// Packed path: Expand(m) -> wires (one wire per triple)
-	wires, err := e.iknp.Expand(m)
+	labels, err := e.iknp.Send(m)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandSend: %w", err)
 	}
-	if len(wires) != m {
-		return nil, fmt.Errorf("vole: ExpandSend returned %d wires, want %d", len(wires), m)
+	if len(labels) != m {
+		return nil, fmt.Errorf("vole: ExpandSend returned %d wires, want %d", len(labels), m)
 	}
 
 	// Derive r_i from L0 label using PRG and reduce mod p.
 	rs := make([]*big.Int, m)
 	for i := 0; i < m; i++ {
 		var ld ot.LabelData
-		wires[i].L0.GetData(&ld)
+		labels[i].GetData(&ld)
 
 		// Expand label to 32-bytes.
 		var pad [32]byte
@@ -110,7 +109,7 @@ func (e *Sender) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 type Receiver struct {
 	oti  ot.OT
 	conn *p2p.Conn
-	iknp *otext.IKNPReceiver
+	iknp *ot.IKNPReceiver
 }
 
 func NewReceiver(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Receiver, error) {
@@ -123,7 +122,7 @@ func NewReceiver(oti ot.OT, conn *p2p.Conn, r io.Reader) (*Receiver, error) {
 	}
 
 	var err error
-	e.iknp, err = otext.NewIKNPReceiver(oti, conn, r)
+	e.iknp, err = ot.NewIKNPReceiver(oti, conn, r)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +148,7 @@ func (e *Receiver) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 		flags[i] = false // we could encode something useful here in a future refinement
 	}
 
-	labels, err := e.iknp.Expand(flags)
+	labels, err := e.iknp.Receive(flags)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandReceive: %w", err)
 	}
