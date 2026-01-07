@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-func TestCOTExpand(t *testing.T) {
+func TestIKNPExpand(t *testing.T) {
 	c0, c1 := NewPipe()
 	oti0 := NewCO(rand.Reader)
 	oti1 := NewCO(rand.Reader)
@@ -32,11 +32,11 @@ func TestCOTExpand(t *testing.T) {
 
 	var sent []Label
 	var rcvd []Label
-	var sender *COTSender
+	var sender *IKNPSender
 
 	go func() {
 		oti1.InitReceiver(c1)
-		iknp, err := NewCOTReceiver(oti1, c1, rand.Reader)
+		iknp, err := NewIKNPReceiver(oti1, c1, rand.Reader)
 		if err != nil {
 			errCh <- err
 			return
@@ -49,7 +49,7 @@ func TestCOTExpand(t *testing.T) {
 	go func() {
 		oti0.InitSender(c0)
 		var err error
-		sender, err = NewCOTSender(oti0, c0, rand.Reader, nil)
+		sender, err = NewIKNPSender(oti0, c0, rand.Reader, nil)
 		if err != nil {
 			errCh <- err
 		}
@@ -90,7 +90,7 @@ func TestCOTExpand(t *testing.T) {
 }
 
 // Measure IKNP setup.
-func BenchmarkCOTSetup(b *testing.B) {
+func BenchmarkIKNPSetup(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		c0, c1 := NewPipe()
 		oti0 := NewCO(rand.Reader)
@@ -102,7 +102,7 @@ func BenchmarkCOTSetup(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			oti0.InitSender(c0)
-			_, err := NewCOTSender(oti0, c0, rand.Reader, nil)
+			_, err := NewIKNPSender(oti0, c0, rand.Reader, nil)
 			if err != nil {
 				panic(err)
 			}
@@ -111,7 +111,7 @@ func BenchmarkCOTSetup(b *testing.B) {
 		go func() {
 			defer wg.Done()
 			oti1.InitReceiver(c1)
-			_, err := NewCOTReceiver(oti1, c1, rand.Reader)
+			_, err := NewIKNPReceiver(oti1, c1, rand.Reader)
 			if err != nil {
 				panic(err)
 			}
@@ -121,11 +121,11 @@ func BenchmarkCOTSetup(b *testing.B) {
 	}
 }
 
-func BenchmarkCOTExpand1K(b *testing.B)   { benchmarkCOTExpand(b, 1000) }
-func BenchmarkCOTExpand10K(b *testing.B)  { benchmarkCOTExpand(b, 10000) }
-func BenchmarkCOTExpand100K(b *testing.B) { benchmarkCOTExpand(b, 100000) }
+func BenchmarkIKNPExpand1K(b *testing.B)   { benchmarkIKNPExpand(b, 1000) }
+func BenchmarkIKNPExpand10K(b *testing.B)  { benchmarkIKNPExpand(b, 10000) }
+func BenchmarkIKNPExpand100K(b *testing.B) { benchmarkIKNPExpand(b, 100000) }
 
-func benchmarkCOTExpand(b *testing.B, N int) {
+func benchmarkIKNPExpand(b *testing.B, N int) {
 	c0, c1 := NewPipe()
 	oti0 := NewCO(rand.Reader)
 	oti1 := NewCO(rand.Reader)
@@ -137,7 +137,7 @@ func benchmarkCOTExpand(b *testing.B, N int) {
 		defer wg.Done()
 
 		oti1.InitReceiver(c1)
-		iknp, err := NewCOTReceiver(oti1, c1, rand.Reader)
+		iknp, err := NewIKNPReceiver(oti1, c1, rand.Reader)
 		if err != nil {
 			panic(err)
 		}
@@ -152,7 +152,7 @@ func benchmarkCOTExpand(b *testing.B, N int) {
 	}()
 
 	oti0.InitSender(c0)
-	iknp, err := NewCOTSender(oti0, c0, rand.Reader, nil)
+	iknp, err := NewIKNPSender(oti0, c0, rand.Reader, nil)
 	if err != nil {
 		panic(err)
 	}

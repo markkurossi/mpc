@@ -60,8 +60,8 @@ const (
 	chunkRows = chunkByteRows * 8
 )
 
-// COTSender implements the random correlated OT sender.
-type COTSender struct {
+// IKNPSender implements the random correlated OT sender.
+type IKNPSender struct {
 	// Delta defines the correlation delta: b1 = b0 ⊕ Δ
 	Delta Label
 	io    IO
@@ -69,9 +69,9 @@ type COTSender struct {
 	g0    [K]cipher.Stream
 }
 
-// NewCOTSender creates a new sender. The d is an optional delta. If
+// NewIKNPSender creates a new sender. The d is an optional delta. If
 // unset, the function creates a random delta.
-func NewCOTSender(base OT, io IO, r io.Reader, d *Label) (*COTSender, error) {
+func NewIKNPSender(base OT, io IO, r io.Reader, d *Label) (*IKNPSender, error) {
 	var delta Label
 	var err error
 	if d == nil {
@@ -83,7 +83,7 @@ func NewCOTSender(base OT, io IO, r io.Reader, d *Label) (*COTSender, error) {
 		delta = *d
 	}
 
-	s := &COTSender{
+	s := &IKNPSender{
 		Delta: delta,
 		io:    io,
 	}
@@ -114,7 +114,7 @@ func NewCOTSender(base OT, io IO, r io.Reader, d *Label) (*COTSender, error) {
 
 // Send sends n labels. The function returns the b0 labels. The b1
 // labels are b0[i] ⊕ s.Delta.
-func (s *COTSender) Send(n int) ([]Label, error) {
+func (s *IKNPSender) Send(n int) ([]Label, error) {
 	result := make([]Label, n)
 
 	// The receiver sends the K*n-byte columns.
@@ -145,15 +145,15 @@ func (s *COTSender) Send(n int) ([]Label, error) {
 	return result, nil
 }
 
-// COTReceiver implements the random correlated OT receiver.
-type COTReceiver struct {
+// IKNPReceiver implements the random correlated OT receiver.
+type IKNPReceiver struct {
 	io IO
 	g0 [K]cipher.Stream
 	g1 [K]cipher.Stream
 }
 
-// NewCOTReceiver creates a new receiver.
-func NewCOTReceiver(base OT, io IO, rand io.Reader) (*COTReceiver, error) {
+// NewIKNPReceiver creates a new receiver.
+func NewIKNPReceiver(base OT, io IO, rand io.Reader) (*IKNPReceiver, error) {
 	var wires [K]Wire
 	for i := 0; i < K; i++ {
 		l0, err := NewLabel(rand)
@@ -174,7 +174,7 @@ func NewCOTReceiver(base OT, io IO, rand io.Reader) (*COTReceiver, error) {
 		return nil, err
 	}
 
-	r := &COTReceiver{
+	r := &IKNPReceiver{
 		io: io,
 	}
 
@@ -200,7 +200,7 @@ func NewCOTReceiver(base OT, io IO, rand io.Reader) (*COTReceiver, error) {
 
 // Receive labels based on the selection flags b. The returned labels
 // implement the correlation: br[i] = b0[i] ⊕ b[i]*s.Delta.
-func (r *COTReceiver) Receive(b []bool) ([]Label, error) {
+func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
 	bbuf := make([]byte, (len(b)+7)/8)
 	for i, f := range b {
 		if f {
