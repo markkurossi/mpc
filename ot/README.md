@@ -41,3 +41,9 @@ the same helpers, so both styles always share the exact same cryptographic core.
 
 The `COTSender` and `COTReceiver` implement correlated OT with the
 `IKNP` protocol.
+
+## TODO
+
+ - [ ] malicious COT
+ - [ ] COT send / receive
+ - [ ] random send / receive
