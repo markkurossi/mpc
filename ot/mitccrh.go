@@ -41,13 +41,9 @@ package ot
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"encoding/binary"
 )
 
-const BlockSize = 16
-
-type Block [BlockSize]byte
-
+// MITCCRH implements the multi-instance TCCR hash (MITCCRH).
 type MITCCRH struct {
 	batchSize int
 
@@ -58,6 +54,7 @@ type MITCCRH struct {
 	keyUsed int
 }
 
+// NewMITCCRH creates a new MITCCRH with the seed s and batchSize.
 func NewMITCCRH(s Label, batchSize int) *MITCCRH {
 	return &MITCCRH{
 		batchSize:  batchSize,
@@ -88,15 +85,17 @@ func (m *MITCCRH) renewKeys() {
 	m.keyUsed = 0
 }
 
-func (m *MITCCRH) Hash(blks []Label, K, H int) {
-	if K > m.batchSize {
-		panic("K > batchSize")
+// Hash hashes k*h blocks. Each key k is used to hash h consecutive
+// blocks in blks.
+func (m *MITCCRH) Hash(blks []Label, k, h int) {
+	if k > m.batchSize {
+		panic("k > batchSize")
 	}
-	if m.batchSize%K != 0 {
-		panic("batchSize % K != 0")
+	if m.batchSize%k != 0 {
+		panic("batchSize % k != 0")
 	}
-	if K*H != len(blks) {
-		panic("K*H != len(blks)")
+	if k*h != len(blks) {
+		panic("k*h != len(blks)")
 	}
 	if m.keyUsed == m.batchSize {
 		m.renewKeys()
@@ -107,34 +106,20 @@ func (m *MITCCRH) Hash(blks []Label, K, H int) {
 		blks[i].GetData(&tmp[i])
 	}
 
-	// ParaEnc<K,H>
-	for k := 0; k < K; k++ {
-		c := m.ciphers[m.keyUsed+k]
-		for h := 0; h < H; h++ {
-			idx := k*H + h
+	// Use each key 1...k to encrypt h consecutive blocks.
+	for i := 0; i < k; i++ {
+		c := m.ciphers[m.keyUsed+i]
+		for j := 0; j < h; j++ {
+			idx := i*h + j
 			c.Encrypt(tmp[idx][:], tmp[idx][:])
 		}
 	}
-	m.keyUsed += K
+	m.keyUsed += k
 
-	// blks ^= tmp
+	// XOR input with encrypted blocks.
 	for i := range blks {
 		var t Label
 		t.SetData(&tmp[i])
-
 		blks[i].Xor(t)
 	}
-}
-
-func xorBlock(a, b Block) (out Block) {
-	for i := 0; i < BlockSize; i++ {
-		out[i] = a[i] ^ b[i]
-	}
-	return
-}
-
-func makeBlock(hi, lo uint64) (b Block) {
-	binary.LittleEndian.PutUint64(b[0:8], hi)
-	binary.LittleEndian.PutUint64(b[8:16], lo)
-	return
 }
