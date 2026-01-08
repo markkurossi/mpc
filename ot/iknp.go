@@ -3,6 +3,18 @@
 //
 // All rights reserved.
 //
+// IKNP OT Extension:
+//
+// Extending oblivious transfers efficiently
+//  - https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf
+//
+// More Efficient Oblivious Transfer and Extensions for Faster Secure
+// Computation
+//  - https://eprint.iacr.org/2013/552.pdf
+//
+// Better Concrete Security for Half-Gates Garbling (in the
+// Multi-Instance Setting)
+//  - https://eprint.iacr.org/2019/1168.pdf
 
 /*
 
@@ -200,6 +212,7 @@ func NewIKNPReceiver(base OT, io IO, rand io.Reader) (*IKNPReceiver, error) {
 
 // Receive labels based on the selection flags b. The returned labels
 // implement the correlation: br[i] = b0[i] ⊕ b[i]*s.Delta.
+// XXX give result []Label as an argument to avoid allocation.
 func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
 	bbuf := make([]byte, (len(b)+7)/8)
 	for i, f := range b {

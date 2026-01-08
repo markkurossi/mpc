@@ -3,14 +3,15 @@
 //
 // All rights reserved.
 //
+// Better Concrete Security for Half-Gates Garbling (in the
+// Multi-Instance Setting)
+//  - https://eprint.iacr.org/2019/1168.pdf
 
 /*
 
 This implementation is derived from the EMP Toolkit's mitccrh.h
-(https://github.com/emp-toolkit/emp-tool/blob/master/emp-tool/utils/mitccrh.h),
-which is based on the "Better Concrete Security for Half-Gates
-Garbling (in the Multi-Instance Setting)" paper
-(https://eprint.iacr.org/2019/1168.pdf). The original license as follows:
+(https://github.com/emp-toolkit/emp-tool/blob/master/emp-tool/utils/mitccrh.h)
+with original license as follows:
 
 MIT License
 
