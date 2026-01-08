@@ -59,3 +59,19 @@ func TestMITCCRH(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkMITCCRH(b *testing.B) {
+	const (
+		batchSize = 8
+		k         = 8
+		h         = 2
+	)
+	var s Block
+	mitccrh := NewMITCCRH(s, batchSize)
+
+	var pad [2 * batchSize]Block
+
+	for b.Loop() {
+		mitccrh.Hash(pad[:], batchSize, 2)
+	}
+}
