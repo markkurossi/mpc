@@ -211,17 +211,18 @@ func NewIKNPReceiver(base OT, io IO, rand io.Reader) (*IKNPReceiver, error) {
 }
 
 // Receive labels based on the selection flags b. The returned labels
-// implement the correlation: br[i] = b0[i] ⊕ b[i]*s.Delta.
-// XXX give result []Label as an argument to avoid allocation.
-func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
+// implement the correlation: br[i] = b0[i] ⊕ b[i]*s.Delta. The
+// function panics if b and result have different lengths.
+func (r *IKNPReceiver) Receive(b []bool, result []Label) error {
+	if len(b) != len(result) {
+		panic("len(b) != len(result)")
+	}
 	bbuf := make([]byte, (len(b)+7)/8)
 	for i, f := range b {
 		if f {
 			bbuf[i/8] |= 1 << (i % 8)
 		}
 	}
-
-	result := make([]Label, len(b))
 
 	var chunk, out [chunkSize]byte
 	var tmp [chunkByteRows]byte
@@ -244,17 +245,17 @@ func (r *IKNPReceiver) Receive(b []bool) ([]Label, error) {
 			copy(out[i*byteRows:], tmp[:byteRows])
 		}
 		if err := r.io.SendData(out[:byteRows*128]); err != nil {
-			return nil, err
+			return err
 		}
 		createLabels(result[ofs:], chunk[:], byteRows)
 
 		ofs += rows
 	}
 	if err := r.io.Flush(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return result, nil
+	return nil
 }
 
 func prg(c cipher.Stream, buf []byte) {

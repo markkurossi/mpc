@@ -47,8 +47,9 @@ func expandN(n int, t *testing.T) error {
 	b := randomBools(n)
 
 	var sent []Label
-	var rcvd []Label
 	var sender *IKNPSender
+
+	rcvd := make([]Label, n)
 
 	go func() {
 		oti1.InitReceiver(c1)
@@ -58,7 +59,7 @@ func expandN(n int, t *testing.T) error {
 			return
 		}
 
-		rcvd, err = iknp.Receive(b)
+		err = iknp.Receive(b, rcvd)
 		errCh <- err
 	}()
 
@@ -161,8 +162,9 @@ func benchmarkIKNPExpand(b *testing.B, N int) {
 		}
 
 		flags := randomBools(N)
+		recvd := make([]Label, N)
 		for i := 0; i < b.N; i++ {
-			_, err := iknp.Receive(flags)
+			err := iknp.Receive(flags, recvd)
 			if err != nil {
 				panic(err)
 			}

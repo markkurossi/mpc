@@ -160,7 +160,7 @@ func (cot *COT) Receive(flags []bool, result []Label) error {
 	if cot.iknpR == nil {
 		return fmt.Errorf("not initialized as receiver")
 	}
-	data, err := cot.iknpR.Receive(flags)
+	err := cot.iknpR.Receive(flags, result)
 	if err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (cot *COT) Receive(flags []bool, result []Label) error {
 			end = len(flags) - i
 		}
 		for j := 0; j < end; j++ {
-			pad[j] = data[i+j]
+			pad[j] = result[i+j]
 		}
 		mitccrh.Hash(pad, otBatchSize, 1)
 
