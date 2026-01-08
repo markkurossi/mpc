@@ -51,19 +51,17 @@ type Block [BlockSize]byte
 type MITCCRH struct {
 	batchSize int
 
-	startPoint Block
+	startPoint Label
 	gid        uint64
 
-	keys    []Block
 	ciphers []cipher.Block
 	keyUsed int
 }
 
-func NewMITCCRH(s Block, batchSize int) *MITCCRH {
+func NewMITCCRH(s Label, batchSize int) *MITCCRH {
 	return &MITCCRH{
 		batchSize:  batchSize,
 		startPoint: s,
-		keys:       make([]Block, batchSize),
 		ciphers:    make([]cipher.Block, batchSize),
 		keyUsed:    batchSize, // force renew on first use
 	}
@@ -71,12 +69,17 @@ func NewMITCCRH(s Block, batchSize int) *MITCCRH {
 
 func (m *MITCCRH) renewKeys() {
 	for i := 0; i < m.batchSize; i++ {
-		tweak := makeBlock(m.gid, 0)
+		// Init key as tweak
+		key := Label{
+			D0: m.gid,
+			D1: 0,
+		}
 		m.gid++
 
-		m.keys[i] = xorBlock(m.startPoint, tweak)
+		key.Xor(m.startPoint)
 
-		block, err := aes.NewCipher(m.keys[i][:])
+		var d LabelData
+		block, err := aes.NewCipher(key.Bytes(&d))
 		if err != nil {
 			panic(err)
 		}
@@ -85,7 +88,7 @@ func (m *MITCCRH) renewKeys() {
 	m.keyUsed = 0
 }
 
-func (m *MITCCRH) Hash(blks []Block, K, H int) {
+func (m *MITCCRH) Hash(blks []Label, K, H int) {
 	if K > m.batchSize {
 		panic("K > batchSize")
 	}
@@ -99,9 +102,10 @@ func (m *MITCCRH) Hash(blks []Block, K, H int) {
 		m.renewKeys()
 	}
 
-	// tmp = blks
-	tmp := make([]Block, len(blks))
-	copy(tmp, blks)
+	tmp := make([]LabelData, len(blks))
+	for i := 0; i < len(blks); i++ {
+		blks[i].GetData(&tmp[i])
+	}
 
 	// ParaEnc<K,H>
 	for k := 0; k < K; k++ {
@@ -115,9 +119,10 @@ func (m *MITCCRH) Hash(blks []Block, K, H int) {
 
 	// blks ^= tmp
 	for i := range blks {
-		for j := 0; j < BlockSize; j++ {
-			blks[i][j] ^= tmp[i][j]
-		}
+		var t Label
+		t.SetData(&tmp[i])
+
+		blks[i].Xor(t)
 	}
 }
 

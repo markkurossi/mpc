@@ -9,6 +9,7 @@ package ot
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"testing"
 )
 
@@ -20,13 +21,13 @@ var mitccrhTests = []struct {
 		key: "00000000000000000000000000000000",
 		blocks: []string{
 			"66e94bd4ef8a2c3b884cfa59ca342b2e",
-			"dc0ed85df9611abb7249cdd168c5467e",
-			"c117d2238d53836acd92ddcdb85d6a21",
-			"79c86d43f2be7fce99dd2c2133b0cf7c",
-			"dbe01de67e346a800c4c4b4880311de4",
-			"54ca53bb28791846e6b09a2757f014e4",
-			"86495e4a9c80564982f41de01f2b9884",
-			"d83636687394ca5538a73a2198ea4ab7",
+			"f6b7bdd1caeebab574683893c4475484",
+			"5c76002bc7206560efe550c80b8f12cc",
+			"ec331f5dd1c5f40e28ea541caec913f6",
+			"932c6dbf69255cf13edcdb72233acea3",
+			"6d5c3e022e5a6f7be663b9e69bcea443",
+			"e013d7f4fa7abd93a7b85db9cfff9b14",
+			"f0a2a65d245dd6199dc70951c2478b65",
 		},
 	},
 }
@@ -37,11 +38,11 @@ func TestMITCCRH(t *testing.T) {
 		k         = 8
 		h         = 2
 	)
-	for idx, test := range mitccrhTests {
-		var s Block
+	for _, test := range mitccrhTests {
+		var s Label
 		mitccrh := NewMITCCRH(s, batchSize)
 
-		blks := make([]Block, k*h)
+		blks := make([]Label, k*h)
 		mitccrh.Hash(blks, k, h)
 
 		for i := 0; i < k; i++ {
@@ -50,10 +51,10 @@ func TestMITCCRH(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				result := blks[i*h+j]
+				var result LabelData
+				blks[i*h+j].GetData(&result)
 				if !bytes.Equal(expected, result[:]) {
-					t.Errorf("test-%d: %02d,%02d: %x != %x\n",
-						idx, i, j, expected, result)
+					fmt.Printf("%02d,%02d: %x != %x\n", i, j, expected, result)
 				}
 			}
 		}
@@ -66,10 +67,10 @@ func BenchmarkMITCCRH(b *testing.B) {
 		k         = 8
 		h         = 2
 	)
-	var s Block
+	var s Label
 	mitccrh := NewMITCCRH(s, batchSize)
 
-	var pad [2 * batchSize]Block
+	var pad [2 * batchSize]Label
 
 	for b.Loop() {
 		mitccrh.Hash(pad[:], batchSize, 2)
