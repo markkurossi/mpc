@@ -6,7 +6,6 @@
 
 /*
 
-
 This implementation is derived from the EMP Toolkit's mitccrh.h
 (https://github.com/emp-toolkit/emp-tool/blob/master/emp-tool/utils/mitccrh.h),
 which is based on the "Better Concrete Security for Half-Gates
