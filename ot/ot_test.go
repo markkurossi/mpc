@@ -1,7 +1,7 @@
 //
 // ot_test.go
 //
-// Copyright (c) 2023-2025 Markku Rossi
+// Copyright (c) 2023-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -164,22 +164,29 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 		done <- nil
 	}(rPipe)
 
-	err := sender.InitSender(pipe)
-	if err != nil {
-		b.Fatalf("InitSender: %v", err)
-	}
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		err = sender.Send(wires)
+	go func(pipe *Pipe) {
+		err := sender.InitSender(pipe)
 		if err != nil {
-			b.Fatalf("Send: %v", err)
+			done <- err
+			return
 		}
-	}
+		b.ResetTimer()
 
-	err = <-done
-	if err != nil {
-		b.Errorf("receiver failed: %v", err)
+		for i := 0; i < b.N; i++ {
+			err = sender.Send(wires)
+			if err != nil {
+				done <- err
+				return
+			}
+		}
+		done <- nil
+	}(pipe)
+
+	for i := 0; i < 2; i++ {
+		err := <-done
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -344,4 +351,35 @@ func BenchmarkOTRSA_2048_8(b *testing.B) {
 
 func BenchmarkOTRSA_2048_64(b *testing.B) {
 	benchmarkOTRSA(2048, 64, b)
+}
+
+func benchmarkOTCOT(batchSize int, b *testing.B) {
+	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader),
+		NewCOT(NewCO(rand.Reader), rand.Reader),
+		batchSize, b)
+}
+
+func BenchmarkOTCOT_1(b *testing.B) {
+	benchmarkOTCOT(1, b)
+}
+func BenchmarkOTCOT_8(b *testing.B) {
+	benchmarkOTCOT(8, b)
+}
+func BenchmarkOTCOT_16(b *testing.B) {
+	benchmarkOTCOT(16, b)
+}
+func BenchmarkOTCOT_32(b *testing.B) {
+	benchmarkOTCOT(32, b)
+}
+func BenchmarkOTCOT_64(b *testing.B) {
+	benchmarkOTCOT(64, b)
+}
+func BenchmarkOTCOT_128(b *testing.B) {
+	benchmarkOTCOT(128, b)
+}
+func BenchmarkOTCOT_256(b *testing.B) {
+	benchmarkOTCOT(256, b)
+}
+func BenchmarkOTCOT_512(b *testing.B) {
+	benchmarkOTCOT(512, b)
 }
