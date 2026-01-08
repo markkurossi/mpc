@@ -1,7 +1,7 @@
 //
 // io.go
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2026 Markku Rossi
 //
 // All rights reserved.
 
@@ -22,6 +22,9 @@ type IO interface {
 	// SendData sends binary data.
 	SendData(val []byte) error
 
+	// SendLabel sends a Label.
+	SendLabel(val Label, data *LabelData) error
+
 	// Flush flushed any pending data in the connection.
 	Flush() error
 
@@ -33,6 +36,9 @@ type IO interface {
 
 	// ReceiveData receives binary data.
 	ReceiveData() ([]byte, error)
+
+	// ReceiveLabel receives a Label.
+	ReceiveLabel(val *Label, data *LabelData) error
 }
 
 // SendString sends a string value.

@@ -1,7 +1,7 @@
 //
 // pipe.go
 //
-// Copyright (c) 2023-2024 Markku Rossi
+// Copyright (c) 2023-2026 Markku Rossi
 //
 // All rights reserved.
 
@@ -70,6 +70,12 @@ func (p *Pipe) SendData(val []byte) error {
 	return err
 }
 
+// SendLabel sends a Label.
+func (p *Pipe) SendLabel(val Label, data *LabelData) error {
+	_, err := p.w.Write(val.Bytes(data))
+	return err
+}
+
 // Flush flushed any pending data in the connection.
 func (p *Pipe) Flush() error {
 	return nil
@@ -114,6 +120,16 @@ func (p *Pipe) ReceiveData() ([]byte, error) {
 	if l > uint32(len(p.rBuf)) {
 		return nil, fmt.Errorf("pipe buffer too short: %d > %d", l, len(p.rBuf))
 	}
-	n, err := p.r.Read(p.rBuf[:])
+	n, err := p.r.Read(p.rBuf[:l])
 	return p.rBuf[:n], err
+}
+
+// ReceiveLabel receives a Label.
+func (p *Pipe) ReceiveLabel(val *Label, data *LabelData) error {
+	_, err := p.r.Read((*data)[:])
+	if err != nil {
+		return err
+	}
+	val.SetData(data)
+	return nil
 }
