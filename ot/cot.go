@@ -60,17 +60,19 @@ type COT struct {
 	iknpR     *IKNPReceiver
 }
 
-// NewCOT creates an IKNP-based COT instance implementing the OT interface.
+// NewCOT creates an IKNP-based COT instance implementing the OT
+// interface.
 //
-// The malicious flag selects the adversary model. If malicious is true, the
-// implementation enables the checks required to protect against a malicious
-// adversary. If false, the protocol assumes a semi-honest adversary and omits
-// these checks for better performance.
+// The malicious flag selects the adversary model. If malicious is
+// true, the implementation enables KOS-style consistency checks and
+// provides security against malicious adversaries (with abort). If
+// false, the protocol reduces to semi-honest IKNP.
 //
-// The shared flag controls whether the COT instance may be shared across
-// multiple sessions. If shared is true, the COT is initialized only once on
-// the first call to InitSender or InitResponder. Subsequent initialization
-// calls are ignored and MUST use the same role as the initial one.
+// The shared flag controls whether the COT instance may be shared
+// across multiple sessions. If shared is true, the COT is initialized
+// only once on the first call to InitSender or InitResponder.
+// Subsequent initialization calls are ignored and MUST use the same
+// role as the initial one.
 func NewCOT(base OT, r io.Reader, malicious, shared bool) *COT {
 	return &COT{
 		base:      base,
