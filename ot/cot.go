@@ -51,25 +51,46 @@ const (
 
 // COT implements IKNP OT as the OT interface.
 type COT struct {
-	base  OT
-	r     io.Reader
-	io    IO
-	iknpS *IKNPSender
-	iknpR *IKNPReceiver
+	base      OT
+	r         io.Reader
+	malicious bool
+	shared    bool
+	io        IO
+	iknpS     *IKNPSender
+	iknpR     *IKNPReceiver
 }
 
-// NewCOT creates a IKNP OT implementing the OT interface.
-func NewCOT(base OT, r io.Reader) *COT {
+// NewCOT creates an IKNP-based COT instance implementing the OT interface.
+//
+// The malicious flag selects the adversary model. If malicious is true, the
+// implementation enables the checks required to protect against a malicious
+// adversary. If false, the protocol assumes a semi-honest adversary and omits
+// these checks for better performance.
+//
+// The shared flag controls whether the COT instance may be shared across
+// multiple sessions. If shared is true, the COT is initialized only once on
+// the first call to InitSender or InitResponder. Subsequent initialization
+// calls are ignored and MUST use the same role as the initial one.
+func NewCOT(base OT, r io.Reader, malicious, shared bool) *COT {
 	return &COT{
-		base: base,
-		r:    r,
+		base:      base,
+		r:         r,
+		malicious: malicious,
+		shared:    shared,
 	}
 }
 
 // InitSender implements OT.InitSender.
 func (cot *COT) InitSender(io IO) error {
-	if cot.iknpS != nil || cot.iknpR != nil {
-		return fmt.Errorf("already initialized")
+	if cot.iknpR != nil {
+		return fmt.Errorf("already initialized as receiver")
+	}
+	if cot.iknpS != nil {
+		if !cot.shared {
+			return fmt.Errorf("already initialized")
+		}
+		// Ensure sender and receiver are in sync.
+		return cot.io.Flush()
 	}
 	err := cot.base.InitSender(io)
 	if err != nil {
@@ -87,8 +108,15 @@ func (cot *COT) InitSender(io IO) error {
 
 // InitReceiver implements OT.InitReceiver.
 func (cot *COT) InitReceiver(io IO) error {
-	if cot.iknpS != nil || cot.iknpR != nil {
-		return fmt.Errorf("already initialized")
+	if cot.iknpS != nil {
+		return fmt.Errorf("already initialized as sender")
+	}
+	if cot.iknpR != nil {
+		if !cot.shared {
+			return fmt.Errorf("already initialized")
+		}
+		// Ensure sender and receiver are in sync.
+		return cot.io.Flush()
 	}
 	err := cot.base.InitReceiver(io)
 	if err != nil {

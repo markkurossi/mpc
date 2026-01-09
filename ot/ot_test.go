@@ -354,8 +354,8 @@ func BenchmarkOTRSA_2048_64(b *testing.B) {
 }
 
 func benchmarkOTCOT(batchSize int, b *testing.B) {
-	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader),
-		NewCOT(NewCO(rand.Reader), rand.Reader),
+	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader, false, false),
+		NewCOT(NewCO(rand.Reader), rand.Reader, false, false),
 		batchSize, b)
 }
 
