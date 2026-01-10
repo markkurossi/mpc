@@ -45,8 +45,9 @@ The `COTSender` and `COTReceiver` implement correlated OT with the
 ## TODO
 
  - [ ] malicious IKNP
- - [ ] COT send / receive
+ - [x] COT send / receive
  - [ ] random send / receive
  - [x] rename `COTSender` and `COTReceiver` to `IKNPSender` and `IKNPReceiver`
- - [ ] new `COTSender` and `COTReceiver` for correlated OT send and receive
+ - [x] new `COTSender` and `COTReceiver` for correlated OT send and receive
  - [ ] new `ROTSender` and `ROTReceiver` for random OT send and receive
+ - [ ] [SoftSpokenOT](https://eprint.iacr.org/2022/192)
