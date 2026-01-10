@@ -8,6 +8,6 @@
 
 package ot
 
-func mul128(a, b Block) (lo, hi Block) {
+func mul128(a, b Label) (lo, hi Label) {
 	return mul128Generic(a, b)
 }
