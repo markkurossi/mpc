@@ -44,7 +44,6 @@ func TestMul128CLMULMatchesGeneric(t *testing.T) {
 }
 
 func BenchmarkMul128AMD64(b *testing.B) {
-
 	var b0, b1 Label
 
 	for b.Loop() {
