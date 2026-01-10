@@ -1,20 +1,25 @@
-//go:build amd64 && gc && !govet
+//go:build amd64 && gc
 #include "textflag.h"
 
-// Per-64-bit-lane byte swap mask:
+// Per-64-bit-lane byte swap mask
 // [7 6 5 4 3 2 1 0 | 15 14 13 12 11 10 9 8]
 DATA ·bswap64<>(SB)/8,  $0x0706050403020100
 DATA ·bswap64<>+8(SB)/8, $0x0f0e0d0c0b0a0908
 GLOBL ·bswap64<>(SB), RODATA, $16
 
-// func mul128CLMUL(a, b Block) (lo, hi Block)
-TEXT ·mul128CLMUL(SB), NOSPLIT, $0-64
 
-    // Load a and b
-    MOVOU a+0(FP), X0
-    MOVOU b+16(FP), X1
+// func mul128CLMUL(a, b *Block, lo, hi *Block)
+TEXT ·mul128CLMUL(SB), NOSPLIT, $0-32
 
-    // Convert from little-endian polynomial to CLMUL basis
+    // Load *a into X0
+    MOVQ a+0(FP), AX
+    MOVOU (AX), X0
+
+    // Load *b into X1
+    MOVQ b+8(FP), BX
+    MOVOU (BX), X1
+
+    // Convert to CLMUL polynomial basis
     PSHUFB ·bswap64<>(SB), X0
     PSHUFB ·bswap64<>(SB), X1
 
@@ -51,8 +56,12 @@ TEXT ·mul128CLMUL(SB), NOSPLIT, $0-64
     PSHUFB ·bswap64<>(SB), X2
     PSHUFB ·bswap64<>(SB), X3
 
-    // Store results
-    MOVOU X2, lo+32(FP)
-    MOVOU X3, hi+48(FP)
+    // Store *lo
+    MOVQ lo+16(FP), CX
+    MOVOU X2, (CX)
+
+    // Store *hi
+    MOVQ hi+24(FP), DX
+    MOVOU X3, (DX)
 
     RET

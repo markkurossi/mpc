@@ -8,9 +8,11 @@
 
 package ot
 
-func mul128CLMUL(a, b Block) (lo, hi Block)
+//go:noescape
+func mul128CLMUL(a, b *Block, lo, hi *Block)
 
-//go:nosplit
 func mul128(a, b Block) (Block, Block) {
-	return mul128CLMUL(a, b)
+	var lo, hi Block
+	mul128CLMUL(&a, &b, &lo, &hi)
+	return lo, hi
 }

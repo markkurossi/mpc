@@ -15,7 +15,8 @@ func TestCLMULBasis(t *testing.T) {
 	a := Block{Lo: 1, Hi: 0}
 	b := Block{Lo: 2, Hi: 0}
 
-	lo, hi := mul128CLMUL(a, b)
+	var lo, hi Block
+	mul128CLMUL(&a, &b, &lo, &hi)
 
 	if lo.Lo != 2 || lo.Hi != 0 || hi != (Block{}) {
 		t.Fatalf("bad: lo=%v hi=%v", lo, hi)
@@ -94,7 +95,9 @@ func TestMul128CLMULMatchesGeneric(t *testing.T) {
 		a := Block{rng.Uint64(), rng.Uint64()}
 		b := Block{rng.Uint64(), rng.Uint64()}
 
-		lo1, hi1 := mul128CLMUL(a, b)
+		var lo1, hi1 Block
+		mul128CLMUL(&a, &b, &lo1, &hi1)
+
 		lo2, hi2 := mul128Generic(a, b)
 
 		if lo1 != lo2 || hi1 != hi2 {
