@@ -6,9 +6,9 @@
 
 package ot
 
-func mul128Generic(a, b Block) (lo, hi Block) {
-	a0, a1 := a.Lo, a.Hi
-	b0, b1 := b.Lo, b.Hi
+func mul128Generic(a, b Label) (lo, hi Label) {
+	a0, a1 := a.D0, a.D1
+	b0, b1 := b.D0, b.D1
 
 	p00lo, p00hi := clmul64(a0, b0)
 	p01lo, p01hi := clmul64(a0, b1)
@@ -18,11 +18,11 @@ func mul128Generic(a, b Block) (lo, hi Block) {
 	midLo := p01lo ^ p10lo
 	midHi := p01hi ^ p10hi
 
-	lo.Lo = p00lo
-	lo.Hi = p00hi ^ midLo
+	lo.D0 = p00lo
+	lo.D1 = p00hi ^ midLo
 
-	hi.Lo = midHi ^ p11lo
-	hi.Hi = p11hi
+	hi.D0 = midHi ^ p11lo
+	hi.D1 = p11hi
 
 	return
 }

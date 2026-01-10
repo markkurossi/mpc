@@ -12,50 +12,50 @@ import (
 )
 
 func TestCLMULBasis(t *testing.T) {
-	a := Block{Lo: 1, Hi: 0}
-	b := Block{Lo: 2, Hi: 0}
+	a := Label{D0: 1, D1: 0}
+	b := Label{D0: 2, D1: 0}
 
-	var lo, hi Block
+	var lo, hi Label
 	mul128CLMUL(&a, &b, &lo, &hi)
 
-	if lo.Lo != 2 || lo.Hi != 0 || hi != (Block{}) {
+	if lo.D0 != 2 || lo.D1 != 0 || hi != (Label{}) {
 		t.Fatalf("bad: lo=%v hi=%v", lo, hi)
 	}
 }
 
 func TestMul128Basic(t *testing.T) {
-	zero := Block{0, 0}
-	one := Block{1, 0}
+	zero := Label{0, 0}
+	one := Label{1, 0}
 
 	// 0 * x = 0
-	lo, hi := mul128(zero, Block{0xdeadbeef, 0x12345678})
+	lo, hi := mul128(zero, Label{0xdeadbeef, 0x12345678})
 	if lo != zero || hi != zero {
 		t.Fatal("0*x != 0")
 	}
 
 	// 1 * x = x
-	x := Block{0xabcdef, 0x1234}
+	x := Label{0xabcdef, 0x1234}
 	lo, hi = mul128(one, x)
 	if lo != x || hi != zero {
 		t.Fatal("1*x != x")
 	}
 
 	// x * x = x^2
-	a := Block{2, 0} // polynomial x
+	a := Label{2, 0} // polynomial x
 	lo, hi = mul128(a, a)
-	if lo.Lo != 4 || lo.Hi != 0 || hi != zero {
+	if lo.D0 != 4 || lo.D1 != 0 || hi != zero {
 		t.Fatal("x*x != x^2")
 	}
 }
 
 func TestMul128Cross(t *testing.T) {
 	// x^63 * x^63 = x^126
-	a := Block{Lo: 1 << 63, Hi: 0}
+	a := Label{D0: 1 << 63, D1: 0}
 
 	lo, hi := mul128(a, a)
 
-	expLo := Block{Hi: 1 << 62} // 126 = 64 + 62
-	expHi := Block{}
+	expLo := Label{D1: 1 << 62} // 126 = 64 + 62
+	expHi := Label{}
 
 	if lo != expLo || hi != expHi {
 		t.Fatalf("got lo=%v hi=%v, expected lo=%v hi=%v", lo, hi, expLo, expHi)
@@ -63,7 +63,7 @@ func TestMul128Cross(t *testing.T) {
 }
 
 func TestMul128AllOnes(t *testing.T) {
-	a := Block{^uint64(0), ^uint64(0)}
+	a := Label{^uint64(0), ^uint64(0)}
 	b := a
 
 	lo1, hi1 := mul128(a, b)
@@ -77,8 +77,8 @@ func TestMul128AllOnes(t *testing.T) {
 func TestMul128Random(t *testing.T) {
 	rng := rand.New(rand.NewSource(1))
 	for i := 0; i < 1000; i++ {
-		a := Block{rng.Uint64(), rng.Uint64()}
-		b := Block{rng.Uint64(), rng.Uint64()}
+		a := Label{rng.Uint64(), rng.Uint64()}
+		b := Label{rng.Uint64(), rng.Uint64()}
 
 		lo1, hi1 := mul128(a, b)
 		lo2, hi2 := mul128Ref(a, b)
@@ -92,10 +92,10 @@ func TestMul128Random(t *testing.T) {
 func TestMul128CLMULMatchesGeneric(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 	for i := 0; i < 10000; i++ {
-		a := Block{rng.Uint64(), rng.Uint64()}
-		b := Block{rng.Uint64(), rng.Uint64()}
+		a := Label{rng.Uint64(), rng.Uint64()}
+		b := Label{rng.Uint64(), rng.Uint64()}
 
-		var lo1, hi1 Block
+		var lo1, hi1 Label
 		mul128CLMUL(&a, &b, &lo1, &hi1)
 
 		lo2, hi2 := mul128Generic(a, b)
@@ -110,8 +110,8 @@ func TestMul128CLMULMatchesGeneric(t *testing.T) {
 // func TestMul128CLMULMatchesGeneric(t *testing.T) {
 // 	rng := rand.New(rand.NewSource(2))
 // 	for i := 0; i < 1000; i++ {
-// 		a := Block{rng.Uint64(), rng.Uint64()}
-// 		b := Block{rng.Uint64(), rng.Uint64()}
+// 		a := Label{rng.Uint64(), rng.Uint64()}
+// 		b := Label{rng.Uint64(), rng.Uint64()}
 //
 // 		lo1, hi1 := mul128(a, b)
 // 		lo2, hi2 := mul128Generic(a, b)
@@ -124,7 +124,7 @@ func TestMul128CLMULMatchesGeneric(t *testing.T) {
 
 func BenchmarkMul128(b *testing.B) {
 
-	var b0, b1 Block
+	var b0, b1 Label
 
 	for b.Loop() {
 		lo, hi := mul128Generic(b0, b1)

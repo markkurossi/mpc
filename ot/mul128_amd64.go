@@ -9,10 +9,10 @@
 package ot
 
 //go:noescape
-func mul128CLMUL(a, b *Block, lo, hi *Block)
+func mul128CLMUL(a, b *Label, lo, hi *Label)
 
-func mul128(a, b Block) (Block, Block) {
-	var lo, hi Block
+func mul128(a, b Label) (Label, Label) {
+	var lo, hi Label
 	mul128CLMUL(&a, &b, &lo, &hi)
 	return lo, hi
 }

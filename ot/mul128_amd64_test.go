@@ -14,7 +14,7 @@ import (
 
 func BenchmarkMul128AMD64(b *testing.B) {
 
-	var b0, b1 Block
+	var b0, b1 Label
 
 	for b.Loop() {
 		lo, hi := mul128(b0, b1)
