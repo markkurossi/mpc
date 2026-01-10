@@ -1,7 +1,7 @@
 //go:build amd64 && gc
 #include "textflag.h"
 
-// Per-64-bit-lane byte swap mask
+// Per-64-bit-lane byte swap mask:
 // [7 6 5 4 3 2 1 0 | 15 14 13 12 11 10 9 8]
 DATA ·bswap64<>(SB)/8,  $0x0706050403020100
 DATA ·bswap64<>+8(SB)/8, $0x0f0e0d0c0b0a0908
