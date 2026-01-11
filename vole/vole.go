@@ -47,7 +47,7 @@ func (e *Sender) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 	}
 
 	// Packed path: Expand(m) -> wires (one wire per triple)
-	labels, err := e.iknp.Send(m)
+	labels, err := e.iknp.Send(m, false)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandSend: %w", err)
 	}
@@ -150,7 +150,7 @@ func (e *Receiver) Mul(inputs []*big.Int, p *big.Int) ([]*big.Int, error) {
 
 	labels := make([]ot.Label, m)
 
-	err := e.iknp.Receive(flags, labels)
+	err := e.iknp.Receive(flags, labels, false)
 	if err != nil {
 		return nil, fmt.Errorf("vole: ExpandReceive: %w", err)
 	}
