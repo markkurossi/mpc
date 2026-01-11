@@ -26,3 +26,17 @@ func mul128Generic(a, b Label) (lo, hi Label) {
 
 	return
 }
+
+func clmul64(a, b uint64) (lo, hi uint64) {
+	for i := 0; i < 64; i++ {
+		if (b>>i)&1 != 0 {
+			if i == 0 {
+				lo ^= a
+			} else {
+				lo ^= a << i
+				hi ^= a >> (64 - i)
+			}
+		}
+	}
+	return
+}
