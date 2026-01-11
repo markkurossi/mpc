@@ -89,10 +89,16 @@ func (l *Label) Mul4() {
 	l.D1 <<= 2
 }
 
-// Xor xors the label with the argument label.
+// Xor computes the bitwise XOR of l and o and stores the result in l.
 func (l *Label) Xor(o Label) {
 	l.D0 ^= o.D0
 	l.D1 ^= o.D1
+}
+
+// And computes the bitwise AND of l and o and stores the result in l.
+func (l *Label) And(o Label) {
+	l.D0 &= o.D0
+	l.D1 &= o.D1
 }
 
 // GetData gets the labels as label data.
