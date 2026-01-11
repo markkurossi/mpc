@@ -25,6 +25,7 @@ the same helpers, so both styles always share the exact same cryptographic core.
 ## Performance
 
 ``` text
+goos: darwin
 goarch: amd64
 pkg: github.com/markkurossi/mpc/ot
 cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
@@ -34,7 +35,7 @@ cpu: Intel(R) Core(TM) i5-8257U CPU @ 1.40GHz
 | :-----------    | ---------: | ------: |
 | RSA-2048        | 8,086,829  | 124     |
 | CO              | 152,745    | 6,545   |
-| COT semi-honest | 3,007      | 3,007   |
+| COT semi-honest | 3,007      | 332,600 |
 | COT malicious   | 3,703      | 270,000 |
 
 # IKNP OT Extension
