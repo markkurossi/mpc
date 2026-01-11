@@ -139,7 +139,7 @@ func (cot *COT) Send(wires []Wire) error {
 	if cot.iknpS == nil {
 		return fmt.Errorf("not initialized as sender")
 	}
-	data, err := cot.iknpS.Send(len(wires))
+	data, err := cot.iknpS.Send(len(wires), cot.malicious)
 	if err != nil {
 		return err
 	}
@@ -190,7 +190,7 @@ func (cot *COT) Receive(flags []bool, result []Label) error {
 	if cot.iknpR == nil {
 		return fmt.Errorf("not initialized as receiver")
 	}
-	err := cot.iknpR.Receive(flags, result)
+	err := cot.iknpR.Receive(flags, result, cot.malicious)
 	if err != nil {
 		return err
 	}

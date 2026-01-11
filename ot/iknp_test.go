@@ -15,7 +15,14 @@ import (
 )
 
 func TestIKNPExpand(t *testing.T) {
-	err := expandN(129, t)
+	err := expandN(t, 129, false)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestIKNPExpandMalicious(t *testing.T) {
+	err := expandN(t, 129, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,14 +37,14 @@ func TestIKNPChunkSizes(t *testing.T) {
 		chunkSize/16*4 + 1, chunkSize / 16 * 5,
 	}
 	for n := range values {
-		err := expandN(n, t)
+		err := expandN(t, n, false)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 }
 
-func expandN(n int, t *testing.T) error {
+func expandN(t *testing.T, n int, malicious bool) error {
 	c0, c1 := NewPipe()
 	oti0 := NewCO(rand.Reader)
 	oti1 := NewCO(rand.Reader)
@@ -59,7 +66,7 @@ func expandN(n int, t *testing.T) error {
 			return
 		}
 
-		err = iknp.Receive(b, rcvd)
+		err = iknp.Receive(b, rcvd, malicious)
 		errCh <- err
 	}()
 
@@ -71,7 +78,7 @@ func expandN(n int, t *testing.T) error {
 			errCh <- err
 		}
 
-		sent, err = sender.Send(n)
+		sent, err = sender.Send(n, malicious)
 		errCh <- err
 	}()
 
@@ -140,11 +147,31 @@ func BenchmarkIKNPSetup(b *testing.B) {
 	}
 }
 
-func BenchmarkIKNPExpand1K(b *testing.B)   { benchmarkIKNPExpand(b, 1000) }
-func BenchmarkIKNPExpand10K(b *testing.B)  { benchmarkIKNPExpand(b, 10000) }
-func BenchmarkIKNPExpand100K(b *testing.B) { benchmarkIKNPExpand(b, 100000) }
+func BenchmarkIKNPExpand1K(b *testing.B) {
+	benchmarkIKNPExpand(b, 1000, false)
+}
 
-func benchmarkIKNPExpand(b *testing.B, N int) {
+func BenchmarkIKNPExpand10K(b *testing.B) {
+	benchmarkIKNPExpand(b, 10000, false)
+}
+
+func BenchmarkIKNPExpand100K(b *testing.B) {
+	benchmarkIKNPExpand(b, 100000, false)
+}
+
+func BenchmarkIKNPExpandMalicious1K(b *testing.B) {
+	benchmarkIKNPExpand(b, 1000, true)
+}
+
+func BenchmarkIKNPExpandMalicious10K(b *testing.B) {
+	benchmarkIKNPExpand(b, 10000, true)
+}
+
+func BenchmarkIKNPExpandMalicious100K(b *testing.B) {
+	benchmarkIKNPExpand(b, 100000, true)
+}
+
+func benchmarkIKNPExpand(b *testing.B, N int, malicious bool) {
 	c0, c1 := NewPipe()
 	oti0 := NewCO(rand.Reader)
 	oti1 := NewCO(rand.Reader)
@@ -164,7 +191,7 @@ func benchmarkIKNPExpand(b *testing.B, N int) {
 		flags := randomBools(N)
 		recvd := make([]Label, N)
 		for i := 0; i < b.N; i++ {
-			err := iknp.Receive(flags, recvd)
+			err := iknp.Receive(flags, recvd, malicious)
 			if err != nil {
 				panic(err)
 			}
@@ -180,7 +207,7 @@ func benchmarkIKNPExpand(b *testing.B, N int) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := iknp.Send(N)
+		_, err := iknp.Send(N, malicious)
 		if err != nil {
 			panic(err)
 		}

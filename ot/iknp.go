@@ -15,6 +15,9 @@
 // Better Concrete Security for Half-Gates Garbling (in the
 // Multi-Instance Setting)
 //  - https://eprint.iacr.org/2019/1168.pdf
+//
+// Actively Secure OT Extension with Optimal Overhead
+//  - https://eprint.iacr.org/2015/546.pdf
 
 /*
 
@@ -77,7 +80,6 @@ type IKNPSender struct {
 	// Delta defines the correlation delta: b1 = b0 ⊕ Δ
 	Delta Label
 	io    IO
-	k0    [K]Label // XXX is this needed here?
 	g0    [K]cipher.Stream
 }
 
@@ -105,20 +107,17 @@ func NewIKNPSender(base OT, io IO, r io.Reader, d *Label) (*IKNPSender, error) {
 		flags[i] = delta.Bit(i) == 1
 	}
 
-	err = base.Receive(flags[:], s.k0[:])
+	var k0 [K]Label
+	err = base.Receive(flags[:], k0[:])
 	if err != nil {
 		return nil, err
 	}
 
-	var iv [16]byte
-	var key LabelData
-
 	for i := 0; i < K; i++ {
-		block, err := aes.NewCipher(s.k0[i].Bytes(&key))
+		s.g0[i], err = newPrg(k0[i])
 		if err != nil {
 			return nil, err
 		}
-		s.g0[i] = cipher.NewCTR(block, iv[:])
 	}
 
 	return s, nil
@@ -126,7 +125,75 @@ func NewIKNPSender(base OT, io IO, r io.Reader, d *Label) (*IKNPSender, error) {
 
 // Send sends n labels. The function returns the b0 labels. The b1
 // labels are b0[i] ⊕ s.Delta.
-func (s *IKNPSender) Send(n int) ([]Label, error) {
+func (s *IKNPSender) Send(n int, malicious bool) ([]Label, error) {
+	result, err := s.send(n)
+	if err != nil {
+		return nil, err
+	}
+	if !malicious {
+		return result, nil
+	}
+
+	// Choice vector.
+	choiceVector, err := s.send(256)
+	if err != nil {
+		return nil, err
+	}
+
+	// Verify the receiver's checksum and correlation tags.
+
+	var seed2 Label
+	var ld LabelData
+	if err := s.io.ReceiveLabel(&seed2, &ld); err != nil {
+		return nil, err
+	}
+	chiPrg, err := newPrg(seed2)
+	if err != nil {
+		return nil, err
+	}
+
+	var q0, q1 Label
+	var chi [1024]Label
+
+	for i := 0; i < len(result); i += len(chi) {
+		count := len(result) - i
+		if count > len(chi) {
+			count = len(chi)
+		}
+		prgLabels(chiPrg, chi[:count])
+		r0, r1 := vectorInnPrdtSumNoRed(chi[:count], result[i:])
+		q0.Xor(r0)
+		q1.Xor(r1)
+	}
+
+	// Random choice vector.
+	prgLabels(chiPrg, chi[:len(choiceVector)])
+	r0, r1 := vectorInnPrdtSumNoRed(chi[:], choiceVector)
+	q0.Xor(r0)
+	q1.Xor(r1)
+
+	var x, t0, t1 Label
+	if err := s.io.ReceiveLabel(&x, &ld); err != nil {
+		return nil, err
+	}
+	if err := s.io.ReceiveLabel(&t0, &ld); err != nil {
+		return nil, err
+	}
+	if err := s.io.ReceiveLabel(&t1, &ld); err != nil {
+		return nil, err
+	}
+	r0, r1 = mul128(x, s.Delta)
+	q0.Xor(r0)
+	q1.Xor(r1)
+
+	if !q0.Equal(t0) || !q1.Equal(t1) {
+		return nil, fmt.Errorf("OT extension check failed")
+	}
+
+	return result, nil
+}
+
+func (s *IKNPSender) send(n int) ([]Label, error) {
 	result := make([]Label, n)
 
 	// The receiver sends the K*n-byte columns.
@@ -159,9 +226,10 @@ func (s *IKNPSender) Send(n int) ([]Label, error) {
 
 // IKNPReceiver implements the random correlated OT receiver.
 type IKNPReceiver struct {
-	io IO
-	g0 [K]cipher.Stream
-	g1 [K]cipher.Stream
+	io   IO
+	rand io.Reader
+	g0   [K]cipher.Stream
+	g1   [K]cipher.Stream
 }
 
 // NewIKNPReceiver creates a new receiver.
@@ -187,24 +255,19 @@ func NewIKNPReceiver(base OT, io IO, rand io.Reader) (*IKNPReceiver, error) {
 	}
 
 	r := &IKNPReceiver{
-		io: io,
+		io:   io,
+		rand: rand,
 	}
 
-	var key LabelData
-	var iv [16]byte
-
 	for i := 0; i < K; i++ {
-		block, err := aes.NewCipher(wires[i].L0.Bytes(&key))
+		r.g0[i], err = newPrg(wires[i].L0)
 		if err != nil {
 			return nil, err
 		}
-		r.g0[i] = cipher.NewCTR(block, iv[:])
-
-		block, err = aes.NewCipher(wires[i].L1.Bytes(&key))
+		r.g1[i], err = newPrg(wires[i].L1)
 		if err != nil {
 			return nil, err
 		}
-		r.g1[i] = cipher.NewCTR(block, iv[:])
 	}
 
 	return r, nil
@@ -213,7 +276,111 @@ func NewIKNPReceiver(base OT, io IO, rand io.Reader) (*IKNPReceiver, error) {
 // Receive labels based on the selection flags b. The returned labels
 // implement the correlation: br[i] = b0[i] ⊕ b[i]*s.Delta. The
 // function panics if b and result have different lengths.
-func (r *IKNPReceiver) Receive(b []bool, result []Label) error {
+func (r *IKNPReceiver) Receive(b []bool, result []Label, malicious bool) error {
+	err := r.receive(b, result)
+	if err != nil {
+		return err
+	}
+	if !malicious {
+		return nil
+	}
+
+	// Create random choice flags.
+	b0, err := NewLabel(r.rand)
+	if err != nil {
+		return err
+	}
+	b1, err := NewLabel(r.rand)
+	if err != nil {
+		return err
+	}
+	bcv := make([]bool, 256)
+	for i := 0; i < 256; i++ {
+		if i < 128 {
+			bcv[i] = b0.Bit(i) == 1
+		} else {
+			bcv[i] = b1.Bit(i-128) == 1
+		}
+	}
+	choiceVector := make([]Label, 256)
+	err = r.receive(bcv, choiceVector)
+	if err != nil {
+		return err
+	}
+
+	// Compute the receiver checksum and correlation tags.
+
+	var select0 Label // zero label
+	select1 := Label{ // all-one label
+		D0: 0xffffffffffffffff,
+		D1: 0xffffffffffffffff,
+	}
+	seed2, err := NewLabel(r.rand)
+	if err != nil {
+		return err
+	}
+	var ld LabelData
+	if err := r.io.SendLabel(seed2, &ld); err != nil {
+		return err
+	}
+	if err := r.io.Flush(); err != nil {
+		return err
+	}
+	chiPrg, err := newPrg(seed2)
+	if err != nil {
+		return err
+	}
+
+	var t0, t1, x Label
+	var chi [1024]Label
+
+	for i := 0; i < len(b); i += len(chi) {
+		count := len(b) - i
+		if count > len(chi) {
+			count = len(chi)
+		}
+		prgLabels(chiPrg, chi[:count])
+		r0, r1 := vectorInnPrdtSumNoRed(chi[:count], result[i:])
+		t0.Xor(r0)
+		t1.Xor(r1)
+
+		for j := 0; j < count; j++ {
+			if b[i+j] {
+				chi[j].And(select1)
+			} else {
+				chi[j].And(select0)
+			}
+			x.Xor(chi[j])
+		}
+	}
+
+	// Randon choice vector.
+	prgLabels(chiPrg, chi[:len(choiceVector)])
+	r0, r1 := vectorInnPrdtSumNoRed(chi[:], choiceVector)
+	t0.Xor(r0)
+	t1.Xor(r1)
+	for j := 0; j < len(choiceVector); j++ {
+		if bcv[j] {
+			chi[j].And(select1)
+		} else {
+			chi[j].And(select0)
+		}
+		x.Xor(chi[j])
+	}
+
+	if err := r.io.SendLabel(x, &ld); err != nil {
+		return err
+	}
+	if err := r.io.SendLabel(t0, &ld); err != nil {
+		return err
+	}
+	if err := r.io.SendLabel(t1, &ld); err != nil {
+		return err
+	}
+	return r.io.Flush()
+}
+
+func (r *IKNPReceiver) receive(b []bool, result []Label) error {
 	if len(b) != len(result) {
 		panic("len(b) != len(result)")
 	}
@@ -258,6 +425,16 @@ func (r *IKNPReceiver) Receive(b []bool, result []Label) error {
 	return nil
 }
 
+func newPrg(key Label) (cipher.Stream, error) {
+	var ld LabelData
+	block, err := aes.NewCipher(key.Bytes(&ld))
+	if err != nil {
+		return nil, err
+	}
+	var iv [16]byte
+	return cipher.NewCTR(block, iv[:]), nil
+}
+
 func prg(c cipher.Stream, buf []byte) {
 	// Clear buffer as it is shared between different caller's
 	// iterations.
@@ -265,6 +442,14 @@ func prg(c cipher.Stream, buf []byte) {
 		buf[i] = 0
 	}
 	c.XORKeyStream(buf, buf)
+}
+
+func prgLabels(c cipher.Stream, labels []Label) {
+	var buf [16]byte
+	for i := range labels {
+		prg(c, buf[:])
+		labels[i].SetBytes(buf[:])
+	}
 }
 
 func createLabels(l []Label, buf []byte, w int) {

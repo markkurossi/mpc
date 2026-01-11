@@ -353,33 +353,58 @@ func BenchmarkOTRSA_2048_64(b *testing.B) {
 	benchmarkOTRSA(2048, 64, b)
 }
 
-func benchmarkOTCOT(batchSize int, b *testing.B) {
-	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader, false, false),
-		NewCOT(NewCO(rand.Reader), rand.Reader, false, false),
+func benchmarkOTCOT(b *testing.B, batchSize int, malicious bool) {
+	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader, malicious, false),
+		NewCOT(NewCO(rand.Reader), rand.Reader, malicious, false),
 		batchSize, b)
 }
 
 func BenchmarkOTCOT_1(b *testing.B) {
-	benchmarkOTCOT(1, b)
+	benchmarkOTCOT(b, 1, false)
 }
 func BenchmarkOTCOT_8(b *testing.B) {
-	benchmarkOTCOT(8, b)
+	benchmarkOTCOT(b, 8, false)
 }
 func BenchmarkOTCOT_16(b *testing.B) {
-	benchmarkOTCOT(16, b)
+	benchmarkOTCOT(b, 16, false)
 }
 func BenchmarkOTCOT_32(b *testing.B) {
-	benchmarkOTCOT(32, b)
+	benchmarkOTCOT(b, 32, false)
 }
 func BenchmarkOTCOT_64(b *testing.B) {
-	benchmarkOTCOT(64, b)
+	benchmarkOTCOT(b, 64, false)
 }
 func BenchmarkOTCOT_128(b *testing.B) {
-	benchmarkOTCOT(128, b)
+	benchmarkOTCOT(b, 128, false)
 }
 func BenchmarkOTCOT_256(b *testing.B) {
-	benchmarkOTCOT(256, b)
+	benchmarkOTCOT(b, 256, false)
 }
 func BenchmarkOTCOT_512(b *testing.B) {
-	benchmarkOTCOT(512, b)
+	benchmarkOTCOT(b, 512, false)
+}
+
+func BenchmarkOTCOTMalicious_1(b *testing.B) {
+	benchmarkOTCOT(b, 1, true)
+}
+func BenchmarkOTCOTMalicious_8(b *testing.B) {
+	benchmarkOTCOT(b, 8, true)
+}
+func BenchmarkOTCOTMalicious_16(b *testing.B) {
+	benchmarkOTCOT(b, 16, true)
+}
+func BenchmarkOTCOTMalicious_32(b *testing.B) {
+	benchmarkOTCOT(b, 32, true)
+}
+func BenchmarkOTCOTMalicious_64(b *testing.B) {
+	benchmarkOTCOT(b, 64, true)
+}
+func BenchmarkOTCOTMalicious_128(b *testing.B) {
+	benchmarkOTCOT(b, 128, true)
+}
+func BenchmarkOTCOTMalicious_256(b *testing.B) {
+	benchmarkOTCOT(b, 256, true)
+}
+func BenchmarkOTCOTMalicious_512(b *testing.B) {
+	benchmarkOTCOT(b, 512, true)
 }
