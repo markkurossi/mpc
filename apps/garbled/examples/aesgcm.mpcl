@@ -8,7 +8,7 @@ import (
 )
 
 // ./garbled -e -stream -i 0x3dafba429d9eb430b422da80
-// ./garbled -stream -i 0x06a9214036b8a15b512e03d534120006 examples/aesgcm.mpcl
+// ./garbled -stream -i    0x06a9214036b8a15b512e03d5,1,0xa0a1a2a3,0 examples/aesgcm.mpcl
 
 type Garbler struct {
 	key   [16]byte
