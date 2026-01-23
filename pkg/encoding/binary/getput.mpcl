@@ -1,6 +1,6 @@
 // -*- go -*-
 //
-// Copyright (c) 2021-2025 Markku Rossi
+// Copyright (c) 2021-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,6 +44,19 @@ func PutUint(d []byte, offset int, v uint) []byte {
 		d[offset+bytes-1-i] = byte(v)
 		v >>= 8
 	}
+	return d
+}
+
+// GetUint16 gets a MSB-encoded uint16 value from the argument buffer.
+func GetUint16(d []byte) uint16 {
+	return uint16(d[0])<<8 | uint16(d[1])
+}
+
+// PutUint16 puts the uint16 value v to the buffer d starting from the
+// offset offset in MSB-order.
+func PutUint16(d []byte, offset int, v uint16) []byte {
+	d[offset+0] = byte(v >> 8)
+	d[offset+1] = byte(v)
 	return d
 }
 
