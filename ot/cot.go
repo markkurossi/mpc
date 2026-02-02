@@ -209,9 +209,7 @@ func (cot *COT) Receive(flags []bool, result []Label) error {
 		if end > len(flags)-i {
 			end = len(flags) - i
 		}
-		for j := 0; j < end; j++ {
-			pad[j] = result[i+j]
-		}
+		copy(pad, result[i:])
 		mitccrh.Hash(pad, otBatchSize, 1)
 
 		var res0 Label
