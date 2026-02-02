@@ -62,22 +62,6 @@ func testOT(sender, receiver OT, t *testing.T) {
 			done <- err
 			return
 		}
-		for i := 0; i < len(flags); i++ {
-			var expected Label
-			if flags[i] {
-				expected = wires[i].L1
-			} else {
-				expected = wires[i].L0
-			}
-			if !labels[i].Equal(expected) {
-				err := fmt.Errorf("label %d mismatch %v %v,%v", i,
-					labels[i], wires[i].L0, wires[i].L1)
-				pipe.Close()
-				done <- err
-				return
-			}
-		}
-
 		done <- nil
 	}(rPipe)
 
@@ -94,6 +78,24 @@ func testOT(sender, receiver OT, t *testing.T) {
 	if err != nil {
 		t.Errorf("receiver failed: %v", err)
 	}
+
+	// Verify results.
+	for i := 0; i < len(flags); i++ {
+		var expected Label
+		if flags[i] {
+			expected = wires[i].L1
+		} else {
+			expected = wires[i].L0
+		}
+		if !labels[i].Equal(expected) {
+			err := fmt.Errorf("label %d mismatch %v %v,%v", i,
+				labels[i], wires[i].L0, wires[i].L1)
+			pipe.Close()
+			done <- err
+			return
+		}
+	}
+
 }
 
 func TestOTCO(t *testing.T) {
@@ -104,7 +106,29 @@ func TestOTRSA(t *testing.T) {
 	testOT(NewRSA(rand.Reader, 2048), NewRSA(rand.Reader, 2048), t)
 }
 
-func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
+func TestOTCOT(t *testing.T) {
+	testOT(NewCOT(NewCO(rand.Reader), rand.Reader, false, false),
+		NewCOT(NewCO(rand.Reader), rand.Reader, false, false), t)
+}
+
+func TestOTCOTMalicious(t *testing.T) {
+	testOT(NewCOT(NewCO(rand.Reader), rand.Reader, true, false),
+		NewCOT(NewCO(rand.Reader), rand.Reader, true, false), t)
+}
+
+func TestOTROT(t *testing.T) {
+	testOT(NewROT(NewCO(rand.Reader), rand.Reader, false, false),
+		NewROT(NewCO(rand.Reader), rand.Reader, false, false), t)
+}
+
+func TestOTROTMalicious(t *testing.T) {
+	testOT(NewROT(NewCO(rand.Reader), rand.Reader, true, false),
+		NewROT(NewCO(rand.Reader), rand.Reader, true, false), t)
+}
+
+func benchmarkOT(sender, receiver OT, batchSize int, verify bool,
+	b *testing.B) {
+
 	wires := make([]Wire, batchSize)
 	flags := make([]bool, batchSize)
 	labels := make([]Label, batchSize)
@@ -144,19 +168,21 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 				pipe.Close()
 				return
 			}
-			for i := 0; i < len(flags); i++ {
-				var expected Label
-				if flags[i] {
-					expected = wires[i].L1
-				} else {
-					expected = wires[i].L0
-				}
-				if !labels[i].Equal(expected) {
-					err := fmt.Errorf("label %d mismatch %v %v,%v", i,
-						labels[i], wires[i].L0, wires[i].L1)
-					done <- err
-					pipe.Close()
-					return
+			if verify {
+				for i := 0; i < len(flags); i++ {
+					var expected Label
+					if flags[i] {
+						expected = wires[i].L1
+					} else {
+						expected = wires[i].L0
+					}
+					if !labels[i].Equal(expected) {
+						err := fmt.Errorf("label %d mismatch %v %v,%v", i,
+							labels[i], wires[i].L0, wires[i].L1)
+						done <- err
+						pipe.Close()
+						return
+					}
 				}
 			}
 		}
@@ -191,23 +217,23 @@ func benchmarkOT(sender, receiver OT, batchSize int, b *testing.B) {
 }
 
 func BenchmarkOTCO_1(b *testing.B) {
-	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 1, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 1, true, b)
 }
 
 func BenchmarkOTCO_8(b *testing.B) {
-	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 8, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 8, true, b)
 }
 
 func BenchmarkOTCO_16(b *testing.B) {
-	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 16, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 16, true, b)
 }
 
 func BenchmarkOTCO_32(b *testing.B) {
-	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 32, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 32, true, b)
 }
 
 func BenchmarkOTCO_64(b *testing.B) {
-	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 64, b)
+	benchmarkOT(NewCO(rand.Reader), NewCO(rand.Reader), 64, true, b)
 }
 
 // readLabelFromReader deterministically fills a label using the reader's bytes.
@@ -338,7 +364,7 @@ func TestCODeterministicTranscript(t *testing.T) {
 
 func benchmarkOTRSA(keySize, batchSize int, b *testing.B) {
 	benchmarkOT(NewRSA(rand.Reader, keySize), NewRSA(rand.Reader, keySize),
-		batchSize, b)
+		batchSize, true, b)
 }
 
 func BenchmarkOTRSA_2048_1(b *testing.B) {
@@ -356,7 +382,7 @@ func BenchmarkOTRSA_2048_64(b *testing.B) {
 func benchmarkOTCOT(b *testing.B, batchSize int, malicious bool) {
 	benchmarkOT(NewCOT(NewCO(rand.Reader), rand.Reader, malicious, false),
 		NewCOT(NewCO(rand.Reader), rand.Reader, malicious, false),
-		batchSize, b)
+		batchSize, true, b)
 }
 
 func BenchmarkOTCOT_1(b *testing.B) {
@@ -407,4 +433,60 @@ func BenchmarkOTCOTMalicious_256(b *testing.B) {
 }
 func BenchmarkOTCOTMalicious_512(b *testing.B) {
 	benchmarkOTCOT(b, 512, true)
+}
+
+func benchmarkOTROT(b *testing.B, batchSize int, malicious bool) {
+	benchmarkOT(NewROT(NewCO(rand.Reader), rand.Reader, malicious, false),
+		NewROT(NewCO(rand.Reader), rand.Reader, malicious, false),
+		batchSize, false, b)
+}
+
+func BenchmarkOTROT_1(b *testing.B) {
+	benchmarkOTROT(b, 1, false)
+}
+func BenchmarkOTROT_8(b *testing.B) {
+	benchmarkOTROT(b, 8, false)
+}
+func BenchmarkOTROT_16(b *testing.B) {
+	benchmarkOTROT(b, 16, false)
+}
+func BenchmarkOTROT_32(b *testing.B) {
+	benchmarkOTROT(b, 32, false)
+}
+func BenchmarkOTROT_64(b *testing.B) {
+	benchmarkOTROT(b, 64, false)
+}
+func BenchmarkOTROT_128(b *testing.B) {
+	benchmarkOTROT(b, 128, false)
+}
+func BenchmarkOTROT_256(b *testing.B) {
+	benchmarkOTROT(b, 256, false)
+}
+func BenchmarkOTROT_512(b *testing.B) {
+	benchmarkOTROT(b, 512, false)
+}
+
+func BenchmarkOTROTMalicious_1(b *testing.B) {
+	benchmarkOTROT(b, 1, true)
+}
+func BenchmarkOTROTMalicious_8(b *testing.B) {
+	benchmarkOTROT(b, 8, true)
+}
+func BenchmarkOTROTMalicious_16(b *testing.B) {
+	benchmarkOTROT(b, 16, true)
+}
+func BenchmarkOTROTMalicious_32(b *testing.B) {
+	benchmarkOTROT(b, 32, true)
+}
+func BenchmarkOTROTMalicious_64(b *testing.B) {
+	benchmarkOTROT(b, 64, true)
+}
+func BenchmarkOTROTMalicious_128(b *testing.B) {
+	benchmarkOTROT(b, 128, true)
+}
+func BenchmarkOTROTMalicious_256(b *testing.B) {
+	benchmarkOTROT(b, 256, true)
+}
+func BenchmarkOTROTMalicious_512(b *testing.B) {
+	benchmarkOTROT(b, 512, true)
 }
