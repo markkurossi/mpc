@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -38,6 +39,7 @@ type Peer struct {
 	input   *big.Int
 	randBuf []byte
 	shared  *big.Int
+	ot      *ot.COT
 }
 
 func (p *Peer) String() string {
@@ -68,11 +70,7 @@ func (p *Peer) shareInput(o *Peer) error {
 	if err != nil {
 		return err
 	}
-	if p.shared == nil {
-		p.shared = share
-	} else {
-		p.shared.Xor(p.shared, share)
-	}
+	p.shared.Xor(p.shared, share)
 
 	return nil
 }
@@ -162,6 +160,7 @@ func (nw *Network) Run(input *big.Int) ([]*big.Int, error) {
 	// Save peer's input.
 	nw.self.input = input
 	nw.self.randBuf = make([]byte, (nw.circ.Inputs[nw.self.id].Type.Bits+7)/8)
+	nw.self.shared = big.NewInt(0)
 
 	var err error
 	if nw.self.id == 0 {
@@ -313,6 +312,32 @@ func (nw *Network) runPeer() error {
 func (nw *Network) run() error {
 	self := nw.self
 
+	fmt.Printf("%v: run: %v\n", self, nw.circ)
+	if false {
+		for i := 0; i < len(nw.circ.Gates); i++ {
+			g := nw.circ.Gates[i]
+			fmt.Printf("g%v:\t%v\t%v\n", i, g, g.Level)
+		}
+	}
+
+	// Create OT instances.
+	for _, peer := range nw.peers {
+		if peer.id == self.id {
+			continue
+		}
+		peer.ot = ot.NewCOT(ot.NewCO(rand.Reader), rand.Reader, false, false)
+
+		var err error
+		if self.id < peer.id {
+			err = peer.ot.InitSender(peer.conn)
+		} else {
+			err = peer.ot.InitReceiver(peer.conn)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
 	// Secret share inputs.
 	for _, peer := range nw.peers {
 		if peer.id == self.id {
@@ -342,29 +367,170 @@ func (nw *Network) run() error {
 	self.shared.Xor(self.shared, self.input)
 	nw.setWires(self, self.shared)
 
+	fmt.Printf("My shares:\n")
+	for i := 0; i < nw.circ.Inputs.Size(); i++ {
+		fmt.Printf("  %d: %v\n", i, nw.wires.Bit(i))
+	}
+
+	// OT sender masks.
+	r := make([]uint, nw.circ.NumParties())
+
+	// Received masked terms.
+	t := make([]uint, nw.circ.NumParties())
+
+	// XXX size
+	wires := make([]ot.Wire, 1)
+	labels := make([]ot.Label, 1)
+	flags := make([]bool, 1)
+
 	// Evaluate circuit.
 	for i := 0; i < len(nw.circ.Gates); i++ {
 		gate := &nw.circ.Gates[i]
 
-		a := int(gate.Input0)
-		c := int(gate.Output)
+		a := nw.wires.Bit(int(gate.Input0))
 
-		var b int
+		fmt.Printf("g%v:\t%v\t%v\n", i, gate, gate.Level)
+		fmt.Printf("    \t- w%v: %v\n", gate.Input0, a)
 
+		var b uint
 		if gate.Op != circuit.INV {
-			b = int(gate.Input1)
+			b = nw.wires.Bit(int(gate.Input1))
+			fmt.Printf("    \t- w%v: %v\n", gate.Input1, b)
 		}
 
 		var bit uint
 
 		switch gate.Op {
 		case circuit.XOR:
-			bit = nw.wires.Bit(a) ^ nw.wires.Bit(b)
+			bit = a ^ b
+
+		case circuit.XNOR:
+			bit = a ^ b
+			if self.id == 0 {
+				bit ^= 1
+			}
+
+		case circuit.AND:
+			// Local term: a_i & b_i
+			bit = a & b
+
+			for i := range r {
+				r[i] = 0
+				t[i] = 0
+			}
+
+			// Cross terms via OT.
+			for _, peer := range nw.peers {
+				if peer.id == self.id {
+					continue
+				}
+				if self.id < peer.id {
+					// Sender: contribute a_self · b_peer
+
+					var buf [1]byte
+					_, err := rand.Read(buf[:])
+					if err != nil {
+						return err
+					}
+					m0 := uint(buf[0] & 0x1)
+
+					wires[0] = ot.Wire{}
+					wires[0].L0.D0 = uint64(m0)
+					wires[0].L1.D0 = uint64(m0 ^ a)
+
+					fmt.Printf("%v->%v: send: %v/%v\n",
+						self, peer, wires[0].L0.D0, wires[0].L1.D0)
+
+					err = peer.ot.Send(wires)
+					if err != nil {
+						return err
+					}
+					r[peer.id] = m0
+				} else {
+					// Receiver: get masked a_peer · b_self
+					flags[0] = (b == 1)
+					err := peer.ot.Receive(flags, labels)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("recv full label: %x\n", labels[0].D0)
+					t[peer.id] = uint(labels[0].D0 & 0x1)
+					fmt.Printf("%v->%v: recv: %v => %v\n",
+						peer, self, flags[0], labels[0].D0)
+				}
+			}
+
+			// Compute output share.
+			for _, peer := range nw.peers {
+				if peer.id == self.id {
+					continue
+				}
+				if self.id < peer.id {
+					// Subtract own mask
+					bit ^= r[peer.id]
+				} else {
+					// Add received cross term.
+					bit ^= t[peer.id]
+				}
+			}
+
+		case circuit.INV:
+			if self.id == 0 {
+				bit = a ^ 1
+			} else {
+				bit = a
+			}
 
 		default:
 			return fmt.Errorf("gate %v not supported", gate.Op)
 		}
-		nw.wires.SetBit(nw.wires, c, bit)
+		fmt.Printf("\t- %v=%v\n", gate.Output, bit)
+		nw.wires.SetBit(nw.wires, int(gate.Output), bit)
+
+		if true && gate.Op == circuit.AND {
+
+			// Send our share
+			shareBytes := []byte{
+				byte(a), byte(b), byte(bit),
+			}
+			for _, peer := range nw.peers {
+				if peer.id == self.id {
+					continue
+				}
+				if self.id < peer.id {
+					peer.conn.SendData(shareBytes)
+					peer.conn.Flush()
+				}
+			}
+
+			// Receive peer shares
+			rA := a
+			rB := b
+			rBit := bit
+			for _, peer := range nw.peers {
+				if peer.id == self.id {
+					continue
+				}
+				if self.id > peer.id {
+					data, err := peer.conn.ReceiveData()
+					if err != nil {
+						panic(err)
+					}
+					rA ^= uint(data[0])
+					rB ^= uint(data[1])
+					rBit ^= uint(data[2])
+				}
+			}
+
+			expected := rA & rB
+
+			if rBit != expected {
+				panic(fmt.Sprintf(
+					"AND mismatch: reconstructed=%d expected=%d",
+					rBit, expected))
+			}
+		}
+
 	}
 
 	// Share outputs.
