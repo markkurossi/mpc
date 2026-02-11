@@ -217,6 +217,9 @@ The MPCL runtime defines the following builtin functions:
    - [x] Parsing Ed25519 MPCL files
      - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
+ - [ ] GMW protocol
+   - [ ] n >= 2 parties
+   - [x] boolean multiplication triple R-OT2/1
 
 # Benchmarks and tests
 

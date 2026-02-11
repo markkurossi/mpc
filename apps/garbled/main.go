@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2025 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -86,6 +86,10 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
+	gmw := flag.Int("gmw", -1, "semi-honest secure GWM protocol player number")
+	leader := flag.String("leader", "", "GMW leader address")
+	addr := flag.String("addr", "", "GMW peer address")
+	loop := flag.Bool("loop", false, "keep GMW peer running")
 	mpclcErrLoc := flag.Bool("mpclc-err-loc", false,
 		"print MPCLC error locations")
 	benchmarkCompile := flag.Bool("benchmark-compile", false,
@@ -208,6 +212,21 @@ func main() {
 		log.Fatalf("expected one input file, got %v\n", len(flag.Args()))
 	}
 	file := flag.Args()[0]
+
+	if *gmw >= 0 {
+		if len(*leader) == 0 {
+			leader = &port
+		}
+		if len(*addr) == 0 {
+			a := fmt.Sprintf(":%d", 8080+*gmw)
+			addr = &a
+		}
+		err = gmwMode(file, params, *gmw, *leader, *addr, *loop)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 
 	if *bmr >= 0 {
 		err = bmrMode(file, params, *bmr)
