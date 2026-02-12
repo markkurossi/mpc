@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -81,7 +81,7 @@ func (cc *Compiler) ZeroWire() *Wire {
 func (cc *Compiler) OneWire() *Wire {
 	if cc.oneWire == nil {
 		cc.oneWire = cc.Calloc.Wire()
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.OR, cc.InputWires[0],
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, cc.InputWires[0],
 			cc.InvI0Wire(), cc.oneWire))
 		cc.oneWire.SetValue(One)
 	}

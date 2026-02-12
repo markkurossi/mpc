@@ -1,8 +1,8 @@
 //
-// Copyright (c) 2023-2025 Markku Rossi
+// Copyright (c) 2023-2026 Markku Rossi
 //
 // All rights reserved.
 //
 
-// Package circuits implements the logical circuit generation.
+// Package circuits implements the binary circuit generation.
 package circuits
