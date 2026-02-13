@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2025 Markku Rossi
+// Copyright (c) 2020-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -145,7 +145,7 @@ func NewNeqComparator(cc *Compiler, x, y, r []*Wire) error {
 		} else {
 			out = cc.Calloc.Wire()
 		}
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.OR, c, xor, out))
+		cc.OR(c, xor, out)
 		c = out
 	}
 	return nil
@@ -186,7 +186,7 @@ func NewLogicalOR(cc *Compiler, x, y, r []*Wire) error {
 		return fmt.Errorf("invalid logical or arguments: x=%d, y=%d, r=%d",
 			len(x), len(y), len(r))
 	}
-	cc.AddGate(cc.Calloc.BinaryGate(circuit.OR, x[0], y[0], r[0]))
+	cc.OR(x[0], y[0], r[0])
 	return nil
 }
 

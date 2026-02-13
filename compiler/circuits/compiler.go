@@ -144,6 +144,17 @@ func (cc *Compiler) INV(i, o *Wire) {
 	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, i, cc.OneWire(), o))
 }
 
+// OR creates an OR gate implementing o=a⊕b.
+func (cc *Compiler) OR(a, b, o *Wire) {
+	xorAB := cc.Calloc.Wire()
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, a, b, xorAB))
+
+	andAB := cc.Calloc.Wire()
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, a, b, andAB))
+
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, xorAB, andAB, o))
+}
+
 // ID creates an identity wire passing the input wire i's value to the
 // output wire o.
 func (cc *Compiler) ID(i, o *Wire) {

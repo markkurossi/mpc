@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2021, 2023 Markku Rossi
+// Copyright (c) 2020-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -46,7 +46,7 @@ func NewBinaryOR(cc *Compiler, x, y, r []*Wire) error {
 		y = y[0:len(r)]
 	}
 	for i := 0; i < len(x); i++ {
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.OR, x[i], y[i], r[i]))
+		cc.OR(x[i], y[i], r[i])
 	}
 	return nil
 }
