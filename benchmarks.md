@@ -674,6 +674,35 @@ Result[0]: f43c1cf1755345852211942af0838414334eec9cbf36e26a9f9e8d4bb720deb145ffb
           1303769088  peak memory footprint
 ```
 
+Go1.26.0, OR elimination:
+
+```
+┌──────────────┬────────────────┬─────────┬────────┐
+│ Op           │           Time │       % │   Xfer │
+├──────────────┼────────────────┼─────────┼────────┤
+│ Compile      │   1.920674074s │   2.99% │        │
+│ Init         │     1.146779ms │   0.00% │     8B │
+│ OT Init      │         7.85µs │   0.00% │   16kB │
+│ Peer Inputs  │    62.691021ms │   0.10% │   57kB │
+│ Stream       │    1m2.190701s │  96.91% │   15GB │
+│ ├╴InstrInit  │   1.283632614s │   2.06% │        │
+│ ├╴CircComp   │    13.582819ms │   0.02% │        │
+│ ├╴StreamInit │    89.464442ms │   0.14% │        │
+│ ╰╴Garble     │ 1m0.078508996s │  96.60% │        │
+│ Result       │      148.564µs │   0.00% │    8kB │
+│ Total        │ 1m4.175369288s │         │   15GB │
+│ ├╴Sent       │                │ 100.00% │   15GB │
+│ ├╴Rcvd       │                │   0.00% │   45kB │
+│ ╰╴Flcd       │                │         │ 235418 │
+└──────────────┴────────────────┴─────────┴────────┘
+Max permanent wires: 69663266, cached circuits: 23
+#gates=845172430 (XOR=543116930 XNOR=29103361 AND=272844240 OR=0 INV=107899 xor=572220291 !xor=272952139 levels=10548 width=2048) #w=869179688
+Result[0]: f43c1cf1755345852211942af0838414334eec9cbf36e26a9f9e8d4bb720deb145ffbeec82249c875116757441206bcdc56b501e750f1f590917d772dfee980f
+       64.39 real        67.14 user         5.50 sys
+          1425551360  maximum resident set size
+          1422180352  peak memory footprint
+```
+
 Theoretical minimum single-threaded garbling time:
 
 ```
