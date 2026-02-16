@@ -218,8 +218,11 @@ The MPCL runtime defines the following builtin functions:
      - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
  - [ ] GMW protocol
-   - [ ] n >= 2 parties
+   - [x] n >= 2 parties
    - [x] boolean multiplication triple R-OT2/1
+ - [ ] PQC
+   - [ ] [ML-KEM](https://github.com/FiloSottile/mlkem768) in
+         MPCL ([details](https://words.filippo.io/mlkem768/)).
 
 # Benchmarks and tests
 
