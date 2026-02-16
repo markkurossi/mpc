@@ -278,6 +278,21 @@ func (nw *Network) connectLeader() error {
 		if err != nil {
 			return err
 		}
+		inputs, err := conn.ReceiveInputSizes()
+		if err != nil {
+			return err
+		}
+		nw.inputSizes[id] = inputs
+
+		// Send out input sizes.
+		err = conn.SendInputSizes(nw.inputSizes[nw.self.id])
+		if err != nil {
+			return err
+		}
+		err = conn.Flush()
+		if err != nil {
+			return err
+		}
 	}
 	nw.sortPeers()
 
@@ -302,6 +317,10 @@ func (nw *Network) connectLeader() error {
 				return err
 			}
 			err = peer.conn.SendString(i.addr)
+			if err != nil {
+				return err
+			}
+			err = peer.conn.SendInputSizes(nw.inputSizes[i.id])
 			if err != nil {
 				return err
 			}
@@ -330,10 +349,20 @@ func (nw *Network) connectPeer() error {
 	if err != nil {
 		return err
 	}
+	err = leader.conn.SendInputSizes(nw.inputSizes[self.id])
+	if err != nil {
+		return err
+	}
 	err = leader.conn.Flush()
 	if err != nil {
 		return err
 	}
+	// Get leader's input sizes.
+	inputs, err := leader.conn.ReceiveInputSizes()
+	if err != nil {
+		return err
+	}
+	nw.inputSizes[leader.id] = inputs
 
 	// Get other peers' connection endpoints.
 	n, err := leader.conn.ReceiveUint32()
@@ -363,6 +392,11 @@ func (nw *Network) connectPeer() error {
 		if err != nil {
 			return err
 		}
+		inputs, err := leader.conn.ReceiveInputSizes()
+		if err != nil {
+			return err
+		}
+		nw.inputSizes[id] = inputs
 	}
 	nw.sortPeers()
 
@@ -378,12 +412,21 @@ func (nw *Network) connectPeer() error {
 				return err
 			}
 			conn = p2p.NewConn(c)
+			err = conn.SendInputSizes(nw.inputSizes[self.id])
+			if err != nil {
+				return err
+			}
 		} else {
 			c, err := nw.listener.Accept()
 			if err != nil {
 				return err
 			}
 			conn = p2p.NewConn(c)
+			inputs, err := conn.ReceiveInputSizes()
+			if err != nil {
+				return err
+			}
+			nw.inputSizes[peer.id] = inputs
 		}
 		peer.conn = conn
 	}
@@ -398,7 +441,7 @@ func (nw *Network) NumParties() int {
 
 // InputSizes returns the input sizes of the network parties.
 func (nw *Network) InputSizes() [][]int {
-	return nil
+	return nw.inputSizes
 }
 
 // Run runs the GMW protocol. The input argument specifies peer's
