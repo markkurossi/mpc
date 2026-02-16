@@ -20,15 +20,30 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+func debugf(format string, a ...interface{}) {
+	if false {
+		fmt.Printf(format, a...)
+	}
+}
+
 // Network implements P2P network.
 type Network struct {
-	m        sync.Mutex
-	circ     *circuit.Circuit
-	wires    *big.Int
-	output   *big.Int
-	listener net.Listener
-	peers    []*Peer
-	self     *Peer
+	m          sync.Mutex
+	numParties int
+	circ       *circuit.Circuit
+	inputSizes [][]int
+	wires      *big.Int
+	output     *big.Int
+	listener   net.Listener
+	peers      []*Peer
+	self       *Peer
+
+	andBatch      []*circuit.Gate
+	andA          []uint
+	andB          []uint
+	andBatchCount int
+	andBatchMax   int
+	andBatchLevel int
 }
 
 // Peer implements a peer in the P2P network.
@@ -76,46 +91,66 @@ func (p *Peer) shareInput(o *Peer) error {
 	return nil
 }
 
-func (p *Peer) otSend(self *Peer, a uint) (uint, error) {
-	var buf [1]byte
-	_, err := rand.Read(buf[:])
-	if err != nil {
-		return 0, err
-	}
-	m0 := uint(buf[0] & 0x1)
+func (p *Peer) otSend(self *Peer, a []uint) ([]uint, error) {
+	n := len(a)
+	wires := make([]ot.Wire, n)
 
-	var wires [1]ot.Wire
-	wires[0].L0.D0 = uint64(m0)
-	wires[0].L1.D0 = uint64(m0 ^ a)
-
-	fmt.Printf("%v->%v: send: %v/%v\n",
-		self, p, wires[0].L0.D0, wires[0].L1.D0)
-
-	err = p.otS.Send(wires[:])
-	if err != nil {
-		return 0, err
+	if err := p.otS.Send(wires); err != nil {
+		return nil, err
 	}
 
-	return m0, nil
+	corr := new(big.Int)
+	share := make([]uint, n)
+
+	for i := 0; i < n; i++ {
+		r0 := wires[i].L0.Bit(0)
+		r1 := wires[i].L1.Bit(0)
+		corr.SetBit(corr, i, r0^r1^a[i])
+		share[i] = r0
+	}
+	if err := p.conn.SendData(corr.Bytes()); err != nil {
+		return nil, err
+	}
+	if err := p.conn.Flush(); err != nil {
+		return nil, err
+	}
+
+	return share, nil
 }
 
-func (p *Peer) otReceive(self *Peer, b uint) (uint, error) {
-	flags := []bool{
-		b == 1,
+func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
+	n := len(b)
+	flags := make([]bool, n)
+	for idx, bit := range b {
+		flags[idx] = bit == 1
 	}
-	var labels [1]ot.Label
-	err := p.otR.Receive(flags, labels[:])
-	if err != nil {
-		return 0, err
-	}
-	m := uint(labels[0].D0 & 0x1)
-	fmt.Printf("%v->%v: recv: %v => %v\n", p, self, flags[0], m)
 
-	return m, nil
+	labels := make([]ot.Label, n)
+	if err := p.otR.Receive(flags, labels); err != nil {
+		return nil, err
+	}
+	data, err := p.conn.ReceiveData()
+	if err != nil {
+		return nil, err
+	}
+
+	corr := new(big.Int).SetBytes(data)
+	share := make([]uint, n)
+
+	for i := 0; i < n; i++ {
+		t := labels[i].Bit(0)
+		if flags[i] {
+			share[i] = t ^ corr.Bit(i)
+		} else {
+			share[i] = t
+		}
+	}
+
+	return share, nil
 }
 
 // CreateNetwork creates the network for the leader peer.
-func CreateNetwork(addr string, circ *circuit.Circuit) (*Network, error) {
+func CreateNetwork(addr string, numParties int) (*Network, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -126,21 +161,19 @@ func CreateNetwork(addr string, circ *circuit.Circuit) (*Network, error) {
 	}
 
 	return &Network{
-		circ:     circ,
-		wires:    new(big.Int),
-		listener: l,
-		peers:    []*Peer{self},
-		self:     self,
+		numParties: numParties,
+		inputSizes: make([][]int, numParties),
+		wires:      new(big.Int),
+		listener:   l,
+		peers:      []*Peer{self},
+		self:       self,
 	}, nil
 }
 
 // JoinNetwork joins the leader's network.
-func JoinNetwork(leader, this string, id int, circ *circuit.Circuit) (
-	*Network, error) {
-
-	if id == 0 || id >= circ.NumParties() {
-		return nil, fmt.Errorf("invalid ID %v: expected [1...%v[",
-			id, circ.NumParties())
+func JoinNetwork(leader, this string, id int) (*Network, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("invalid ID %v", id)
 	}
 
 	l, err := net.Listen("tcp", this)
@@ -160,11 +193,12 @@ func JoinNetwork(leader, this string, id int, circ *circuit.Circuit) (
 	}
 
 	nw := &Network{
-		circ:     circ,
-		wires:    new(big.Int),
-		listener: l,
-		peers:    []*Peer{self},
-		self:     self,
+		numParties: id + 1,
+		inputSizes: make([][]int, id+1),
+		wires:      new(big.Int),
+		listener:   l,
+		peers:      []*Peer{self},
+		self:       self,
 	}
 
 	err = nw.addPeer(&Peer{
@@ -193,30 +227,33 @@ func (nw *Network) Close() {
 	}
 }
 
-// Run runs the GMW protocol. The input argument specifies peer's
-// input.
-func (nw *Network) Run(input *big.Int) ([]*big.Int, error) {
-	// Save peer's input.
-	nw.self.input = input
-	nw.self.randBuf = make([]byte, (nw.circ.Inputs[nw.self.id].Type.Bits+7)/8)
-	nw.self.shared = big.NewInt(0)
+// Stats returns the network IO statistics.
+func (nw *Network) Stats() p2p.IOStats {
+	result := p2p.NewIOStats()
 
-	var err error
-	if nw.self.id == 0 {
-		err = nw.runLeader()
-	} else {
-		err = nw.runPeer()
-	}
-	if err != nil {
-		return nil, err
+	for _, p := range nw.peers {
+		if p.conn != nil {
+			result = result.Add(p.conn.Stats)
+		}
 	}
 
-	return nw.circ.Outputs.Split(nw.output), nil
+	return result
 }
 
-func (nw *Network) runLeader() error {
+// Connect connects the p2p network. After this call, all peers have
+// connected with each other and exchanged their input sizes.
+func (nw *Network) Connect(inputSizes []int) error {
+	nw.inputSizes[nw.self.id] = inputSizes
+
+	if nw.self.id == 0 {
+		return nw.connectLeader()
+	}
+	return nw.connectPeer()
+}
+
+func (nw *Network) connectLeader() error {
 	// Accept all peers.
-	for len(nw.peers) < nw.circ.NumParties() {
+	for len(nw.peers) < nw.numParties {
 		c, err := nw.listener.Accept()
 		if err != nil {
 			return err
@@ -275,10 +312,10 @@ func (nw *Network) runLeader() error {
 		}
 	}
 
-	return nw.run()
+	return nil
 }
 
-func (nw *Network) runPeer() error {
+func (nw *Network) connectPeer() error {
 	self := nw.self
 
 	leader, err := nw.getPeer(0)
@@ -303,6 +340,12 @@ func (nw *Network) runPeer() error {
 	if err != nil {
 		return err
 	}
+	nw.numParties = 2 + n
+	inputSizes := make([][]int, nw.numParties)
+	copy(inputSizes, nw.inputSizes)
+	nw.inputSizes = inputSizes
+
+	// Connect network.
 	for i := 0; i < n; i++ {
 		id, err := leader.conn.ReceiveUint32()
 		if err != nil {
@@ -345,19 +388,47 @@ func (nw *Network) runPeer() error {
 		peer.conn = conn
 	}
 
-	return nw.run()
+	return nil
+}
+
+// NumParties returns the number of parties in the network.
+func (nw *Network) NumParties() int {
+	return nw.numParties
+}
+
+// InputSizes returns the input sizes of the network parties.
+func (nw *Network) InputSizes() [][]int {
+	return nil
+}
+
+// Run runs the GMW protocol. The input argument specifies peer's
+// input.
+func (nw *Network) Run(input *big.Int, circ *circuit.Circuit) (
+	[]*big.Int, error) {
+
+	if circ.NumParties() != nw.numParties {
+		return nil, fmt.Errorf("invalid %v-party circuit for %d-party MPC",
+			circ.NumParties(), nw.numParties)
+	}
+	nw.circ = circ
+
+	// Save peer's input.
+	nw.self.input = input
+	nw.self.randBuf = make([]byte, (nw.circ.Inputs[nw.self.id].Type.Bits+7)/8)
+	nw.self.shared = big.NewInt(0)
+
+	err := nw.run()
+	if err != nil {
+		return nil, err
+	}
+
+	return nw.circ.Outputs.Split(nw.output), nil
 }
 
 func (nw *Network) run() error {
 	self := nw.self
 
 	fmt.Printf("%v: run: %v\n", self, nw.circ)
-	if false {
-		for i := 0; i < len(nw.circ.Gates); i++ {
-			g := nw.circ.Gates[i]
-			fmt.Printf("g%v:\t%v\t%v\n", i, g, g.Level)
-		}
-	}
 
 	// Create OT instances.
 	for _, peer := range nw.peers {
@@ -413,24 +484,25 @@ func (nw *Network) run() error {
 	self.shared.Xor(self.shared, self.input)
 	nw.setWires(self, self.shared)
 
-	fmt.Printf("My shares:\n")
-	for i := 0; i < nw.circ.Inputs.Size(); i++ {
-		fmt.Printf("  %d: %v\n", i, nw.wires.Bit(i))
-	}
-
 	// Evaluate circuit.
 	for i := 0; i < len(nw.circ.Gates); i++ {
 		gate := &nw.circ.Gates[i]
 
+		if int(gate.Level) != nw.andBatchLevel {
+			if err := nw.andBatchFlush(int(gate.Level)); err != nil {
+				return err
+			}
+		}
+
 		a := nw.wires.Bit(int(gate.Input0))
 
-		fmt.Printf("g%v:\t%v\t%v\n", i, gate, gate.Level)
-		fmt.Printf("    \t- w%v: %v\n", gate.Input0, a)
+		debugf("g%v:\t%v\t%v\n", i, gate, gate.Level)
+		debugf("    \t- w%v: %v\n", gate.Input0, a)
 
 		var b uint
 		if gate.Op != circuit.INV {
 			b = nw.wires.Bit(int(gate.Input1))
-			fmt.Printf("    \t- w%v: %v\n", gate.Input1, b)
+			debugf("    \t- w%v: %v\n", gate.Input1, b)
 		}
 
 		var bit uint
@@ -446,44 +518,10 @@ func (nw *Network) run() error {
 			}
 
 		case circuit.AND:
-			// Local term: a_i & b_i
-			bit = a & b
-
-			// Cross terms via OT.
-			for _, peer := range nw.peers {
-				if peer.id == self.id {
-					continue
-				}
-				if self.id < peer.id {
-					// Sender: contribute a_self · b_peer
-					m0, err := peer.otSend(self, a)
-					if err != nil {
-						return err
-					}
-					bit ^= m0
-
-					// Receiver: get masked a_peer · b_self
-					m, err := peer.otReceive(self, b)
-					if err != nil {
-						return err
-					}
-					bit ^= m
-				} else {
-					// Receiver: get masked a_peer · b_self
-					m, err := peer.otReceive(self, b)
-					if err != nil {
-						return err
-					}
-					bit ^= m
-
-					// Sender: contribute a_self · b_peer
-					m0, err := peer.otSend(self, a)
-					if err != nil {
-						return err
-					}
-					bit ^= m0
-				}
+			if err := nw.andBatchAdd(gate, a, b); err != nil {
+				return err
 			}
+			continue
 
 		case circuit.INV:
 			if self.id == 0 {
@@ -495,9 +533,17 @@ func (nw *Network) run() error {
 		default:
 			return fmt.Errorf("gate %v not supported", gate.Op)
 		}
-		fmt.Printf("\t- %v=%v\n", gate.Output, bit)
+		debugf("\t- %v=%v\n", gate.Output, bit)
 		nw.wires.SetBit(nw.wires, int(gate.Output), bit)
 	}
+
+	if err := nw.andBatchFlush(0); err != nil {
+		return err
+	}
+
+	debugf("AND: #batches=%v, max=%v, AND/batch=%.2f\n",
+		nw.andBatchCount, nw.andBatchMax,
+		float64(nw.circ.Stats[circuit.AND])/float64(nw.andBatchCount))
 
 	// Share outputs.
 
@@ -533,8 +579,83 @@ func (nw *Network) run() error {
 	return nil
 }
 
+func (nw *Network) andBatchAdd(gate *circuit.Gate, a, b uint) error {
+	nw.andBatch = append(nw.andBatch, gate)
+	nw.andA = append(nw.andA, a)
+	nw.andB = append(nw.andB, b)
+	return nil
+}
+
+func (nw *Network) andBatchFlush(level int) error {
+	if len(nw.andBatch) == 0 {
+		nw.andBatchLevel = level
+		return nil
+	}
+
+	debugf("AND batch: count=%v\n", len(nw.andBatch))
+	nw.andBatchCount++
+	if len(nw.andBatch) > nw.andBatchMax {
+		nw.andBatchMax = len(nw.andBatch)
+	}
+
+	self := nw.self
+	n := len(nw.andBatch)
+
+	var err error
+	var senderShare, receiverShare []uint
+
+	// Compute local terms.
+	z := make([]uint, n)
+	for i := 0; i < len(z); i++ {
+		z[i] = nw.andA[i] & nw.andB[i]
+	}
+
+	// Batched cross terms via ROT.
+	for _, peer := range nw.peers {
+		if peer.id == self.id {
+			continue
+		}
+		if self.id < peer.id {
+			senderShare, err = peer.otSend(self, nw.andA)
+			if err != nil {
+				return err
+			}
+			receiverShare, err = peer.otReceive(self, nw.andB)
+			if err != nil {
+				return err
+			}
+		} else {
+			receiverShare, err = peer.otReceive(self, nw.andB)
+			if err != nil {
+				return err
+			}
+			senderShare, err = peer.otSend(self, nw.andA)
+			if err != nil {
+				return err
+			}
+		}
+		// Combine result into z.
+		for i := 0; i < n; i++ {
+			z[i] ^= senderShare[i]
+			z[i] ^= receiverShare[i]
+		}
+	}
+
+	// Set result wires.
+	for i, gate := range nw.andBatch {
+		nw.wires.SetBit(nw.wires, int(gate.Output), z[i])
+	}
+
+	nw.andBatch = nw.andBatch[:0]
+	nw.andA = nw.andA[:0]
+	nw.andB = nw.andB[:0]
+	nw.andBatchLevel = level
+
+	return nil
+}
+
 func (nw *Network) newOT() ot.OT {
-	return ot.NewCOT(ot.NewCO(rand.Reader), rand.Reader, false, false)
+	return ot.NewROT(ot.NewCO(rand.Reader), rand.Reader, false, true)
 }
 
 // receiveInput receives the input share from the peer o.
@@ -585,9 +706,9 @@ func (nw *Network) setWires(o *Peer, input *big.Int) {
 }
 
 func (nw *Network) addPeer(peer *Peer) error {
-	if peer.id >= nw.circ.NumParties() {
+	if peer.id >= nw.numParties {
 		return fmt.Errorf("invalid peer ID %v: expected [0...%v[",
-			peer.id, nw.circ.NumParties())
+			peer.id, nw.numParties)
 	}
 	nw.m.Lock()
 	defer nw.m.Unlock()

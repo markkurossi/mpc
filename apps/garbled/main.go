@@ -85,8 +85,9 @@ func main() {
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
-	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol player number")
-	gmw := flag.Int("gmw", -1, "semi-honest secure GWM protocol player number")
+	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol party number")
+	gmw := flag.Int("gmw", -1, "semi-honest secure GWM protocol party number")
+	numParties := flag.Int("num-parties", 2, "number of MPC parties")
 	leader := flag.String("leader", "", "GMW leader address")
 	addr := flag.String("addr", "", "GMW peer address")
 	loop := flag.Bool("loop", false, "keep GMW peer running")
@@ -221,7 +222,7 @@ func main() {
 			a := fmt.Sprintf(":%d", 8080+*gmw)
 			addr = &a
 		}
-		err = gmwMode(file, params, *gmw, *leader, *addr, *loop)
+		err = gmwMode(file, params, *gmw, *numParties, *leader, *addr, *loop)
 		if err != nil {
 			log.Fatal(err)
 		}
