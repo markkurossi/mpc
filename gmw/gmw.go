@@ -539,13 +539,9 @@ func (nw *Network) run() error {
 
 		a := nw.wires.Bit(int(gate.Input0))
 
-		debugf("g%v:\t%v\t%v\n", i, gate, gate.Level)
-		debugf("    \t- w%v: %v\n", gate.Input0, a)
-
 		var b uint
 		if gate.Op != circuit.INV {
 			b = nw.wires.Bit(int(gate.Input1))
-			debugf("    \t- w%v: %v\n", gate.Input1, b)
 		}
 
 		var bit uint
@@ -576,7 +572,6 @@ func (nw *Network) run() error {
 		default:
 			return fmt.Errorf("gate %v not supported", gate.Op)
 		}
-		debugf("\t- %v=%v\n", gate.Output, bit)
 		nw.wires.SetBit(nw.wires, int(gate.Output), bit)
 	}
 
