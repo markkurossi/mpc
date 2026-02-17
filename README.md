@@ -219,7 +219,13 @@ The MPCL runtime defines the following builtin functions:
    - [ ] Compound init values must be zero-padded to full size
  - [ ] GMW protocol
    - [x] n >= 2 parties
-   - [x] boolean multiplication triple R-OT2/1
+   - [x] Boolean multiplication triple R-OT2/1
+   - [ ] Optimize AND batch memory usage
+   - [ ] Measure +, -, *, / depth and if there are better algorithm
+         form GMW use. Compare results with Yao and if needed, add
+         compiler flags to optimize circuit generation on number of
+         gates vs. depth.
+   - [ ] Check if direct write on p2p.Conn() improves latency on GMW.
  - [ ] PQC
    - [ ] [ML-KEM](https://github.com/FiloSottile/mlkem768) in
          MPCL ([details](https://words.filippo.io/mlkem768/)).
