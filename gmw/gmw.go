@@ -644,13 +644,19 @@ func (nw *Network) andBatchFlush(level int) error {
 	self := nw.self
 	n := len(nw.andBatch)
 
-	var err error
-	var senderShare, receiverShare []uint
-
 	// Compute local terms.
 	z := make([]uint, n)
 	for i := 0; i < len(z); i++ {
 		z[i] = nw.andA[i] & nw.andB[i]
+	}
+	var m sync.Mutex
+	var wg sync.WaitGroup
+	var otErr error
+
+	setOTErr := func(err error) {
+		m.Lock()
+		otErr = err
+		m.Unlock()
 	}
 
 	// Batched cross terms via ROT.
@@ -658,30 +664,46 @@ func (nw *Network) andBatchFlush(level int) error {
 		if peer.id == self.id {
 			continue
 		}
-		if self.id < peer.id {
-			senderShare, err = peer.otSend(self, nw.andA)
-			if err != nil {
-				return err
+		wg.Go(func() {
+			var err error
+			var senderShare, receiverShare []uint
+
+			if self.id < peer.id {
+				senderShare, err = peer.otSend(self, nw.andA)
+				if err != nil {
+					setOTErr(err)
+					return
+				}
+				receiverShare, err = peer.otReceive(self, nw.andB)
+				if err != nil {
+					setOTErr(err)
+					return
+				}
+			} else {
+				receiverShare, err = peer.otReceive(self, nw.andB)
+				if err != nil {
+					setOTErr(err)
+					return
+				}
+				senderShare, err = peer.otSend(self, nw.andA)
+				if err != nil {
+					setOTErr(err)
+					return
+				}
 			}
-			receiverShare, err = peer.otReceive(self, nw.andB)
-			if err != nil {
-				return err
+
+			// Combine result into z.
+			m.Lock()
+			for i := 0; i < n; i++ {
+				z[i] ^= senderShare[i]
+				z[i] ^= receiverShare[i]
 			}
-		} else {
-			receiverShare, err = peer.otReceive(self, nw.andB)
-			if err != nil {
-				return err
-			}
-			senderShare, err = peer.otSend(self, nw.andA)
-			if err != nil {
-				return err
-			}
-		}
-		// Combine result into z.
-		for i := 0; i < n; i++ {
-			z[i] ^= senderShare[i]
-			z[i] ^= receiverShare[i]
-		}
+			m.Unlock()
+		})
+	}
+	wg.Wait()
+	if otErr != nil {
+		return otErr
 	}
 
 	// Set result wires.

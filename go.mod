@@ -1,6 +1,6 @@
 module github.com/markkurossi/mpc
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/markkurossi/crypto v0.0.0-20240520115340-daed3f9a1082
