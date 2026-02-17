@@ -446,7 +446,7 @@ func (nw *Network) InputSizes() [][]int {
 
 // Run runs the GMW protocol. The input argument specifies peer's
 // input.
-func (nw *Network) Run(input *big.Int, circ *circuit.Circuit) (
+func (nw *Network) Run(input *big.Int, circ *circuit.Circuit, verbose bool) (
 	[]*big.Int, error) {
 
 	if circ.NumParties() != nw.numParties {
@@ -460,7 +460,7 @@ func (nw *Network) Run(input *big.Int, circ *circuit.Circuit) (
 	nw.self.randBuf = make([]byte, (nw.circ.Inputs[nw.self.id].Type.Bits+7)/8)
 	nw.self.shared = big.NewInt(0)
 
-	err := nw.run()
+	err := nw.run(verbose)
 	if err != nil {
 		return nil, err
 	}
@@ -468,10 +468,12 @@ func (nw *Network) Run(input *big.Int, circ *circuit.Circuit) (
 	return nw.circ.Outputs.Split(nw.output), nil
 }
 
-func (nw *Network) run() error {
+func (nw *Network) run(verbose bool) error {
 	self := nw.self
 
-	fmt.Printf("%v: run: %v\n", self, nw.circ)
+	if verbose {
+		fmt.Printf("%v: run: %v\n", self, nw.circ)
+	}
 
 	// Create OT instances.
 	for _, peer := range nw.peers {
@@ -579,9 +581,11 @@ func (nw *Network) run() error {
 		return err
 	}
 
-	debugf("AND: #batches=%v, max=%v, AND/batch=%.2f\n",
-		nw.andBatchCount, nw.andBatchMax,
-		float64(nw.circ.Stats[circuit.AND])/float64(nw.andBatchCount))
+	if verbose {
+		fmt.Printf("AND: #batches=%v, max=%v, AND/batch=%.2f\n",
+			nw.andBatchCount, nw.andBatchMax,
+			float64(nw.circ.Stats[circuit.AND])/float64(nw.andBatchCount))
+	}
 
 	// Share outputs.
 

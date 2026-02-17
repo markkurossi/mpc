@@ -79,14 +79,16 @@ func gmwMode(file string, params *utils.Params,
 		fmt.Printf(" - Out: %s\n", circ.Outputs)
 		fmt.Printf(" - In:  %s\n", inputFlag)
 
-		result, err := nw.Run(input, circ)
+		result, err := nw.Run(input, circ, verbose)
 		if err != nil {
 			return err
 		}
 		xfer := nw.Stats().Sum() - ioStats
 		timing.Sample("Eval", []string{circuit.FileSize(xfer).String()})
 
-		timing.Print(nw.Stats())
+		if verbose {
+			timing.Print(nw.Stats())
+		}
 
 		nw.Close()
 
