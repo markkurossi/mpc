@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	port    = ":8080"
+	port    string
 	verbose = false
 	base    = 0
 )
@@ -99,6 +99,9 @@ func main() {
 	wNone := flag.Bool("Wnone", false, "disable all warnings")
 	baseFlag := flag.Int("base", 0, "result output base")
 	objdump := flag.Bool("objdump", false, "circuit file dumper")
+
+	flag.StringVar(&port, "port", ":8080", "default MPC port")
+
 	flag.Parse()
 
 	log.SetFlags(0)
