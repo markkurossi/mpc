@@ -634,7 +634,7 @@ func (nw *Network) andBatchFlush(level int) error {
 		return nil
 	}
 
-	debugf("AND batch: count=%v\n", len(nw.andBatch))
+	debugf("AND batch %v: count=%v\n", nw.andBatchLevel+1, len(nw.andBatch))
 	nw.andBatchCount++
 	if len(nw.andBatch) > nw.andBatchMax {
 		nw.andBatchMax = len(nw.andBatch)
