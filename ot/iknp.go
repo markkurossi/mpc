@@ -438,9 +438,7 @@ func newPrg(key Label) (cipher.Stream, error) {
 func prg(c cipher.Stream, buf []byte) {
 	// Clear buffer as it is shared between different caller's
 	// iterations.
-	for i := 0; i < len(buf); i++ {
-		buf[i] = 0
-	}
+	clear(buf)
 	c.XORKeyStream(buf, buf)
 }
 
