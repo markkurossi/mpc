@@ -20,6 +20,14 @@ import (
 	"github.com/markkurossi/mpc/p2p"
 )
 
+const (
+	// MagicOnline identifies the online connections: GMWn
+	MagicOnline = 0x474d576e
+
+	// MagicOffline identifies the offline connections: GMWf
+	MagicOffline = 0x474d5766
+)
+
 func debugf(format string, a ...interface{}) {
 	if false {
 		fmt.Printf(format, a...)
@@ -259,6 +267,15 @@ func (nw *Network) connectLeader() error {
 			return err
 		}
 		conn := p2p.NewConn(c)
+		magic, err := conn.ReceiveUint32()
+		if err != nil {
+			conn.Close()
+			return err
+		}
+		if magic != MagicOnline {
+			conn.Close()
+			return fmt.Errorf("invalid magic: %x", magic)
+		}
 		id, err := conn.ReceiveUint32()
 		if err != nil {
 			conn.Close()
@@ -341,20 +358,19 @@ func (nw *Network) connectPeer() error {
 	if err != nil {
 		return err
 	}
-	err = leader.conn.SendUint32(self.id)
-	if err != nil {
+	if err := leader.conn.SendUint32(MagicOnline); err != nil {
 		return err
 	}
-	err = leader.conn.SendString(self.addr)
-	if err != nil {
+	if err := leader.conn.SendUint32(self.id); err != nil {
 		return err
 	}
-	err = leader.conn.SendInputSizes(nw.inputSizes[self.id])
-	if err != nil {
+	if err := leader.conn.SendString(self.addr); err != nil {
 		return err
 	}
-	err = leader.conn.Flush()
-	if err != nil {
+	if err := leader.conn.SendInputSizes(nw.inputSizes[self.id]); err != nil {
+		return err
+	}
+	if err := leader.conn.Flush(); err != nil {
 		return err
 	}
 	// Get leader's input sizes.
@@ -365,6 +381,7 @@ func (nw *Network) connectPeer() error {
 	nw.inputSizes[leader.id] = inputs
 
 	// Get other peers' connection endpoints.
+
 	n, err := leader.conn.ReceiveUint32()
 	if err != nil {
 		return err
@@ -374,7 +391,6 @@ func (nw *Network) connectPeer() error {
 	copy(inputSizes, nw.inputSizes)
 	nw.inputSizes = inputSizes
 
-	// Connect network.
 	for i := 0; i < n; i++ {
 		id, err := leader.conn.ReceiveUint32()
 		if err != nil {
@@ -412,8 +428,10 @@ func (nw *Network) connectPeer() error {
 				return err
 			}
 			conn = p2p.NewConn(c)
-			err = conn.SendInputSizes(nw.inputSizes[self.id])
-			if err != nil {
+			if err := conn.SendUint32(MagicOnline); err != nil {
+				return err
+			}
+			if err := conn.SendInputSizes(nw.inputSizes[self.id]); err != nil {
 				return err
 			}
 		} else {
@@ -422,6 +440,13 @@ func (nw *Network) connectPeer() error {
 				return err
 			}
 			conn = p2p.NewConn(c)
+			magic, err := conn.ReceiveUint32()
+			if err != nil {
+				return err
+			}
+			if magic != MagicOnline {
+				return fmt.Errorf("invalid magic: %x", magic)
+			}
 			inputs, err := conn.ReceiveInputSizes()
 			if err != nil {
 				return err
