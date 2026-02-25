@@ -23,36 +23,52 @@ TEXT ·mul128CLMUL(SB), NOSPLIT, $0-32
     PSHUFB ·bswap64<>(SB), X0
     PSHUFB ·bswap64<>(SB), X1
 
-    // p00 = a0*b0
+    // -----------------------------------------
+    // Split lanes:
+    // a = [a1 | a0]
+    // b = [b1 | b0]
+    // -----------------------------------------
+
+    // z0 = a0*b0
     MOVO X0, X2
-    PCLMULQDQ $0x00, X1, X2
+    PCLMULQDQ $0x00, X1, X2      // z0
 
-    // p11 = a1*b1
+    // z2 = a1*b1
     MOVO X0, X3
-    PCLMULQDQ $0x11, X1, X3
+    PCLMULQDQ $0x11, X1, X3      // z2
 
-    // p01 = a0*b1
+    // t0 = a0 ^ a1
     MOVO X0, X4
-    PCLMULQDQ $0x10, X1, X4
+    PSRLDQ $8, X4
+    PXOR X0, X4                 // X4 = a0^a1 in low lane
 
-    // p10 = a1*b0
-    MOVO X0, X5
-    PCLMULQDQ $0x01, X1, X5
+    // t1 = b0 ^ b1
+    MOVO X1, X5
+    PSRLDQ $8, X5
+    PXOR X1, X5                 // X5 = b0^b1 in low lane
 
-    // mid = p01 ^ p10
-    PXOR X5, X4
+    // z1 = (a0^a1)*(b0^b1)
+    PCLMULQDQ $0x00, X5, X4     // z1
 
-    // lo = p00 ^ (mid << 64)
+    // z1 ^= z0 ^ z2
+    PXOR X2, X4
+    PXOR X3, X4
+
+    // -----------------------------------------
+    // Assemble 256-bit result
+    // -----------------------------------------
+
+    // lo = z0 ^ (z1 << 64)
     MOVO X4, X6
     PSLLDQ $8, X6
-    PXOR X6, X2
+    PXOR X6, X2                 // X2 = lo
 
-    // hi = p11 ^ (mid >> 64)
+    // hi = z2 ^ (z1 >> 64)
     MOVO X4, X7
     PSRLDQ $8, X7
-    PXOR X7, X3
+    PXOR X7, X3                 // X3 = hi
 
-    // Convert back to little-endian polynomial basis
+    // Convert back from CLMUL basis
     PSHUFB ·bswap64<>(SB), X2
     PSHUFB ·bswap64<>(SB), X3
 
