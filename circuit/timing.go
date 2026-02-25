@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2025 Markku Rossi
+// Copyright (c) 2020-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -44,6 +44,19 @@ func (t *Timing) Sample(label string, cols []string) *Sample {
 	return sample
 }
 
+// AbsSample adds an absolute sample with label and data columns.
+func (t *Timing) AbsSample(label string, duration time.Duration,
+	cols []string) *Sample {
+	sample := &Sample{
+		Label: label,
+		End:   time.Now(),
+		Cols:  cols,
+	}
+	sample.Start = sample.End.Add(-duration)
+	t.Samples = append(t.Samples, sample)
+	return sample
+}
+
 // Print prints profiling report to standard output.
 func (t *Timing) Print(stats p2p.IOStats) {
 	if len(t.Samples) == 0 {
@@ -66,9 +79,14 @@ func (t *Timing) Print(stats p2p.IOStats) {
 		row.Column(sample.Label)
 
 		duration := sample.End.Sub(sample.Start)
-		row.Column(duration.String())
-		row.Column(fmt.Sprintf("%.2f%%",
-			float64(duration)/float64(total)*100))
+		if duration > 0 {
+			row.Column(duration.String())
+			row.Column(fmt.Sprintf("%.2f%%",
+				float64(duration)/float64(total)*100))
+		} else {
+			row.Column("")
+			row.Column("")
+		}
 
 		for _, col := range sample.Cols {
 			row.Column(col)
