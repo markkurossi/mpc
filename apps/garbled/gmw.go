@@ -33,8 +33,6 @@ func gmwMode(file string, params *utils.Params,
 	}
 
 	for {
-		timing := circuit.NewTiming()
-
 		// Create network.
 		var nw *gmw.Network
 		if party == 0 {
@@ -50,8 +48,11 @@ func gmwMode(file string, params *utils.Params,
 		if err != nil {
 			return err
 		}
+		timing := circuit.NewTiming()
 		ioStats := nw.Stats().Sum()
-		timing.Sample("Network", []string{circuit.FileSize(ioStats).String()})
+		timing.AbsSample("Network", 0, []string{
+			circuit.FileSize(ioStats).String(),
+		})
 
 		circ, err := loadCircuit(file, params, nw.InputSizes())
 		if err != nil {
