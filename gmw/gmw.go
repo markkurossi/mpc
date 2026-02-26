@@ -38,7 +38,8 @@ func debugf(format string, a ...interface{}) {
 type Peer struct {
 	id      int
 	addr    string
-	conn    *p2p.Conn
+	online  *p2p.Conn
+	offline *p2p.Conn
 	input   *big.Int
 	randBuf []byte
 	shared  *big.Int
@@ -52,8 +53,11 @@ func (p *Peer) String() string {
 
 // Close closes the peer.
 func (p *Peer) Close() {
-	if p.conn != nil {
-		p.conn.Close()
+	if p.online != nil {
+		p.online.Close()
+	}
+	if p.offline != nil {
+		p.offline.Close()
 	}
 }
 
@@ -66,11 +70,11 @@ func (p *Peer) shareInput(o *Peer) error {
 
 	share := new(big.Int).SetBytes(p.randBuf)
 
-	err = o.conn.SendData(p.randBuf)
+	err = o.online.SendData(p.randBuf)
 	if err != nil {
 		return err
 	}
-	err = o.conn.Flush()
+	err = o.online.Flush()
 	if err != nil {
 		return err
 	}
@@ -96,10 +100,10 @@ func (p *Peer) otSend(self *Peer, a []uint) ([]uint, error) {
 		corr.SetBit(corr, i, r0^r1^a[i])
 		share[i] = r0
 	}
-	if err := p.conn.SendData(corr.Bytes()); err != nil {
+	if err := p.online.SendData(corr.Bytes()); err != nil {
 		return nil, err
 	}
-	if err := p.conn.Flush(); err != nil {
+	if err := p.online.Flush(); err != nil {
 		return nil, err
 	}
 
@@ -117,7 +121,7 @@ func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
 	if err := p.otR.Receive(flags, labels); err != nil {
 		return nil, err
 	}
-	data, err := p.conn.ReceiveData()
+	data, err := p.online.ReceiveData()
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +141,14 @@ func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
 	return share, nil
 }
 
+func (p *Peer) offlineSender() {
+	fmt.Printf("%v: offlineSender\n", p)
+}
+
+func (p *Peer) offlineReceiver() {
+	fmt.Printf("%v: offlineReceiver\n", p)
+}
+
 func (p *Peer) send(bits []uint64) error {
 	return fmt.Errorf("send not implemented yet")
 }
@@ -147,17 +159,19 @@ func (p *Peer) receive() []uint64 {
 
 // Network implements P2P network.
 type Network struct {
-	m          sync.Mutex
-	numParties int
-	circ       *circuit.Circuit
-	inputSizes [][]int
-	wires      *big.Int
-	output     *big.Int
-	listener   net.Listener
-	peers      []*Peer
-	peersByID  map[int]*Peer
-	self       *Peer
-	done       chan error
+	m           sync.Mutex
+	numParties  int
+	needOnline  int
+	needOffline int
+	circ        *circuit.Circuit
+	inputSizes  [][]int
+	wires       *big.Int
+	output      *big.Int
+	listener    net.Listener
+	peers       []*Peer
+	peersByID   map[int]*Peer
+	self        *Peer
+	done        chan error
 
 	andBatch      []*circuit.Gate
 	andA          []uint
@@ -186,16 +200,13 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 	return nw
 }
 
-func (nw *Network) accept(num int) {
-	nw.done <- nw.acceptLoop(num)
+func (nw *Network) accept(online, offline bool) {
+	nw.done <- nw.acceptLoop(online, offline)
 }
 
-func (nw *Network) acceptLoop(num int) error {
-	var numOnline int
-	var numOffline int
+func (nw *Network) acceptLoop(online, offline bool) error {
 
-	// XXX || in the cond would be correct
-	for numOnline < num && numOffline < num {
+	for (online && nw.needOnline > 0) || (offline && nw.needOffline > 0) {
 		c, err := nw.listener.Accept()
 		if err != nil {
 			return err
@@ -208,10 +219,18 @@ func (nw *Network) acceptLoop(num int) error {
 		}
 		switch magic {
 		case MagicOnline:
-			numOnline++
+			if nw.needOnline == 0 {
+				conn.Close()
+				return fmt.Errorf("unexpected online connection")
+			}
+			nw.needOnline--
 			err = nw.acceptOnline(conn)
 		case MagicOffline:
-			numOffline++
+			if nw.needOffline == 0 {
+				conn.Close()
+				return fmt.Errorf("unexpected offline connection")
+			}
+			nw.needOffline--
 			err = nw.acceptOffline(conn)
 		default:
 			err = fmt.Errorf("invalid connection magic: %x", magic)
@@ -235,9 +254,9 @@ func (nw *Network) acceptOnline(conn *p2p.Conn) error {
 		return err
 	}
 	peer := &Peer{
-		id:   id,
-		addr: addr,
-		conn: conn,
+		id:     id,
+		addr:   addr,
+		online: conn,
 	}
 	err = nw.addPeer(peer)
 	if err != nil {
@@ -258,7 +277,21 @@ func (nw *Network) acceptOnline(conn *p2p.Conn) error {
 }
 
 func (nw *Network) acceptOffline(conn *p2p.Conn) error {
-	return fmt.Errorf("acceptOffline not implemented yet")
+	id, err := conn.ReceiveUint32()
+	if err != nil {
+		return err
+	}
+	nw.m.Lock()
+	defer nw.m.Unlock()
+	peer, ok := nw.peersByID[id]
+	if !ok {
+		return fmt.Errorf("invalid offline peer ID %v", id)
+	}
+	peer.offline = conn
+
+	go peer.offlineReceiver()
+
+	return nil
 }
 
 func (nw *Network) addPeer(peer *Peer) error {
@@ -271,10 +304,10 @@ func (nw *Network) addPeer(peer *Peer) error {
 
 	old, ok := nw.peersByID[peer.id]
 	if ok {
-		if old.conn != nil {
+		if old.online != nil {
 			return fmt.Errorf("peer %v already connected", peer.id)
 		}
-		old.conn = peer.conn
+		old.online = peer.online
 	} else {
 		nw.peers = append(nw.peers, peer)
 		nw.peersByID[peer.id] = peer
@@ -316,8 +349,8 @@ func JoinNetwork(leader, this string, id int) (*Network, error) {
 	}
 
 	err = nw.addPeer(&Peer{
-		conn: p2p.NewConn(c),
-		addr: leader,
+		online: p2p.NewConn(c),
+		addr:   leader,
 	})
 	if err != nil {
 		nw.Close()
@@ -345,9 +378,14 @@ func (nw *Network) Close() {
 func (nw *Network) Stats() p2p.IOStats {
 	result := p2p.NewIOStats()
 
+	// XXX separate stats for online and offline
+
 	for _, p := range nw.peers {
-		if p.conn != nil {
-			result = result.Add(p.conn.Stats)
+		if p.online != nil {
+			result = result.Add(p.online.Stats)
+		}
+		if p.offline != nil {
+			result = result.Add(p.offline.Stats)
 		}
 	}
 
@@ -366,8 +404,13 @@ func (nw *Network) Connect(inputSizes []int) error {
 }
 
 func (nw *Network) connectLeader() error {
-	// Accept all peers.
-	go nw.accept(nw.numParties - 1)
+	// Accept all oneline connections.
+
+	accept := nw.numParties - 1
+	nw.needOnline = accept
+	nw.needOffline = accept
+
+	go nw.accept(true, false)
 	err := <-nw.done
 	if err != nil {
 		return err
@@ -376,12 +419,15 @@ func (nw *Network) connectLeader() error {
 
 	fmt.Printf("All peers connected\n")
 
+	// Accept all offline connections.
+	go nw.accept(true, true)
+
 	// Send network info to all peers.
 	for _, peer := range nw.peers {
 		if peer.id == nw.self.id {
 			continue
 		}
-		err := peer.conn.SendUint32(len(nw.peers) - 2)
+		err := peer.online.SendUint32(len(nw.peers) - 2)
 		if err != nil {
 			return err
 		}
@@ -389,16 +435,16 @@ func (nw *Network) connectLeader() error {
 			if i.id == nw.self.id || i.id == peer.id {
 				continue
 			}
-			err = peer.conn.SendUint32(i.id)
+			err = peer.online.SendUint32(i.id)
 			if err != nil {
 				return err
 			}
-			err = peer.conn.SendString(i.addr)
+			err = peer.online.SendString(i.addr)
 			if err != nil {
 				return err
 			}
 		}
-		err = peer.conn.Flush()
+		err = peer.online.Flush()
 		if err != nil {
 			return err
 		}
@@ -414,23 +460,23 @@ func (nw *Network) connectPeer() error {
 	if err != nil {
 		return err
 	}
-	if err := leader.conn.SendUint32(MagicOnline); err != nil {
+	if err := leader.online.SendUint32(MagicOnline); err != nil {
 		return err
 	}
-	if err := leader.conn.SendUint32(self.id); err != nil {
+	if err := leader.online.SendUint32(self.id); err != nil {
 		return err
 	}
-	if err := leader.conn.SendString(self.addr); err != nil {
+	if err := leader.online.SendString(self.addr); err != nil {
 		return err
 	}
-	if err := leader.conn.SendInputSizes(nw.inputSizes[self.id]); err != nil {
+	if err := leader.online.SendInputSizes(nw.inputSizes[self.id]); err != nil {
 		return err
 	}
-	if err := leader.conn.Flush(); err != nil {
+	if err := leader.online.Flush(); err != nil {
 		return err
 	}
 	// Get leader's input sizes.
-	inputs, err := leader.conn.ReceiveInputSizes()
+	inputs, err := leader.online.ReceiveInputSizes()
 	if err != nil {
 		return err
 	}
@@ -438,7 +484,7 @@ func (nw *Network) connectPeer() error {
 
 	// Get other peers' connection endpoints.
 
-	n, err := leader.conn.ReceiveUint32()
+	n, err := leader.online.ReceiveUint32()
 	if err != nil {
 		return err
 	}
@@ -450,11 +496,11 @@ func (nw *Network) connectPeer() error {
 	var numAccept int
 
 	for i := 0; i < n; i++ {
-		id, err := leader.conn.ReceiveUint32()
+		id, err := leader.online.ReceiveUint32()
 		if err != nil {
 			return err
 		}
-		addr, err := leader.conn.ReceiveString()
+		addr, err := leader.online.ReceiveString()
 		if err != nil {
 			return err
 		}
@@ -470,51 +516,99 @@ func (nw *Network) connectPeer() error {
 			numAccept++
 		}
 	}
+	nw.needOnline = numAccept
+	nw.needOffline = numAccept
 	nw.sortPeers()
 
-	go nw.accept(numAccept)
+	// Offline connection with leader.
+	err = nw.dialOffline(leader)
+	if err != nil {
+		return err
+	}
+
+	go nw.accept(true, true)
 
 	// Connect network.
 	for _, peer := range nw.peers {
-		if peer.id == 0 || peer.id == self.id {
+		if peer.id == 0 || peer.id <= self.id {
 			continue
 		}
-		var conn *p2p.Conn
-		if self.id < peer.id {
-			c, err := net.Dial("tcp", peer.addr)
-			if err != nil {
-				return err
-			}
-			conn = p2p.NewConn(c)
-			if err := conn.SendUint32(MagicOnline); err != nil {
-				return err
-			}
-			if err := conn.SendUint32(self.id); err != nil {
-				return err
-			}
-			if err := conn.SendString(self.addr); err != nil {
-				return err
-			}
-			if err := conn.SendInputSizes(nw.inputSizes[self.id]); err != nil {
-				return err
-			}
-			if err := conn.Flush(); err != nil {
-				return err
-			}
-			// Get peer's input sizes.
-			inputs, err := conn.ReceiveInputSizes()
-			if err != nil {
-				return err
-			}
-			nw.m.Lock()
-			nw.inputSizes[peer.id] = inputs
-			nw.m.Unlock()
+		err = nw.dialOnline(peer)
+		if err != nil {
+			return err
 		}
-		peer.conn = conn
+		err = nw.dialOffline(peer)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Wait until all peers have been connected.
 	return <-nw.done
+}
+
+func (nw *Network) dialOnline(peer *Peer) error {
+	self := nw.self
+
+	fmt.Printf("%v: dialOnline(%v)\n", self, peer)
+
+	c, err := net.Dial("tcp", peer.addr)
+	if err != nil {
+		return err
+	}
+	conn := p2p.NewConn(c)
+	if err := conn.SendUint32(MagicOnline); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(self.id); err != nil {
+		return err
+	}
+	if err := conn.SendString(self.addr); err != nil {
+		return err
+	}
+	if err := conn.SendInputSizes(nw.inputSizes[self.id]); err != nil {
+		return err
+	}
+	if err := conn.Flush(); err != nil {
+		return err
+	}
+	// Get peer's input sizes.
+	inputs, err := conn.ReceiveInputSizes()
+	if err != nil {
+		return err
+	}
+	nw.m.Lock()
+	nw.inputSizes[peer.id] = inputs
+	nw.m.Unlock()
+	peer.online = conn
+
+	return nil
+}
+
+func (nw *Network) dialOffline(peer *Peer) error {
+	self := nw.self
+
+	fmt.Printf("%v: dialOffline(%v)\n", self, peer)
+
+	c, err := net.Dial("tcp", peer.addr)
+	if err != nil {
+		return err
+	}
+	conn := p2p.NewConn(c)
+	if err := conn.SendUint32(MagicOffline); err != nil {
+		return err
+	}
+	if err := conn.SendUint32(self.id); err != nil {
+		return err
+	}
+	if err := conn.Flush(); err != nil {
+		return err
+	}
+	peer.offline = conn
+
+	go peer.offlineSender()
+
+	return nil
 }
 
 // NumParties returns the number of parties in the network.
@@ -567,17 +661,17 @@ func (nw *Network) run(verbose bool) error {
 		peer.otR = nw.newOT()
 
 		if self.id < peer.id {
-			if err := peer.otS.InitSender(peer.conn); err != nil {
+			if err := peer.otS.InitSender(peer.online); err != nil {
 				return err
 			}
-			if err := peer.otR.InitReceiver(peer.conn); err != nil {
+			if err := peer.otR.InitReceiver(peer.online); err != nil {
 				return err
 			}
 		} else {
-			if err := peer.otR.InitReceiver(peer.conn); err != nil {
+			if err := peer.otR.InitReceiver(peer.online); err != nil {
 				return err
 			}
-			if err := peer.otS.InitSender(peer.conn); err != nil {
+			if err := peer.otS.InitSender(peer.online); err != nil {
 				return err
 			}
 		}
@@ -807,7 +901,7 @@ func (nw *Network) newOT() ot.OT {
 
 // receiveInput receives the input share from the peer o.
 func (nw *Network) receiveInput(o *Peer) error {
-	data, err := o.conn.ReceiveData()
+	data, err := o.online.ReceiveData()
 	if err != nil {
 		return err
 	}
@@ -818,15 +912,15 @@ func (nw *Network) receiveInput(o *Peer) error {
 }
 
 func (nw *Network) sendOutput(peer *Peer, output []byte) error {
-	err := peer.conn.SendData(output)
+	err := peer.online.SendData(output)
 	if err != nil {
 		return err
 	}
-	return peer.conn.Flush()
+	return peer.online.Flush()
 }
 
 func (nw *Network) receiveOutput(peer *Peer) error {
-	data, err := peer.conn.ReceiveData()
+	data, err := peer.online.ReceiveData()
 	if err != nil {
 		return err
 	}
