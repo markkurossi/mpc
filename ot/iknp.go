@@ -66,7 +66,7 @@ const (
 	K = 128
 
 	// Chunk size. Must be multiple of 16 (K-bits).
-	chunkSize = 2 * 1024
+	chunkSize = 8 * 1024
 
 	// The maximum number of byte-rows in a chunk.
 	chunkByteRows = chunkSize / K
