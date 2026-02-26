@@ -375,21 +375,20 @@ func (nw *Network) Close() {
 }
 
 // Stats returns the network IO statistics.
-func (nw *Network) Stats() p2p.IOStats {
-	result := p2p.NewIOStats()
-
-	// XXX separate stats for online and offline
+func (nw *Network) Stats() (p2p.IOStats, p2p.IOStats) {
+	online := p2p.NewIOStats()
+	offline := p2p.NewIOStats()
 
 	for _, p := range nw.peers {
 		if p.online != nil {
-			result = result.Add(p.online.Stats)
+			online = online.Add(p.online.Stats)
 		}
 		if p.offline != nil {
-			result = result.Add(p.offline.Stats)
+			offline = offline.Add(p.offline.Stats)
 		}
 	}
 
-	return result
+	return online, offline
 }
 
 // Connect connects the p2p network. After this call, all peers have

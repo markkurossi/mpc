@@ -57,21 +57,36 @@ func (t *Timing) AbsSample(label string, duration time.Duration,
 	return sample
 }
 
+var ioHeaders = []string{"Onl", "Offl", "Xfer"}
+
 // Print prints profiling report to standard output.
-func (t *Timing) Print(stats p2p.IOStats) {
+func (t *Timing) Print(stats p2p.IOStats, iostats ...p2p.IOStats) {
 	if len(t.Samples) == 0 {
 		return
 	}
 
 	sent := stats.Sent.Load()
-	received := stats.Recvd.Load()
+	rcvd := stats.Recvd.Load()
 	flushed := stats.Flushed.Load()
 
 	tab := tabulate.New(tabulate.UnicodeLight)
 	tab.Header("Op").SetAlign(tabulate.ML)
 	tab.Header("Time").SetAlign(tabulate.MR)
 	tab.Header("%").SetAlign(tabulate.MR)
-	tab.Header("Xfer").SetAlign(tabulate.MR)
+
+	if len(iostats) == 0 {
+		tab.Header("Xfer").SetAlign(tabulate.MR)
+	} else {
+		for i := 0; i <= len(iostats); i++ {
+			var hdr string
+			if i < len(ioHeaders) {
+				hdr = ioHeaders[i]
+			} else {
+				hdr = fmt.Sprintf("Stat %v", i)
+			}
+			tab.Header(hdr).SetAlign(tabulate.MR)
+		}
+	}
 
 	total := t.Samples[len(t.Samples)-1].End.Sub(t.Start)
 	for _, sample := range t.Samples {
@@ -121,30 +136,53 @@ func (t *Timing) Print(stats p2p.IOStats) {
 	row.Column("Total").SetFormat(tabulate.FmtBold)
 	row.Column(t.Samples[len(t.Samples)-1].End.Sub(t.Start).String()).
 		SetFormat(tabulate.FmtBold)
+
 	row.Column("").SetFormat(tabulate.FmtBold)
-	row.Column(FileSize(sent + received).String()).SetFormat(tabulate.FmtBold)
+	row.Column(FileSize(sent + rcvd).String()).SetFormat(tabulate.FmtBold)
+
+	for _, stat := range iostats {
+		s := stat.Sent.Load()
+		r := stat.Recvd.Load()
+
+		row.Column(FileSize(s + r).String()).SetFormat(tabulate.FmtBold)
+	}
 
 	row = tab.Row()
 	row.Column("\u251C\u2574Sent").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column(
-		fmt.Sprintf("%.2f%%", float64(sent)/float64(sent+received)*100)).
+		fmt.Sprintf("%.2f%%", float64(sent)/float64(sent+rcvd)*100)).
 		SetFormat(tabulate.FmtItalic)
 	row.Column(FileSize(sent).String()).SetFormat(tabulate.FmtItalic)
+
+	for _, stat := range iostats {
+		s := stat.Sent.Load()
+		row.Column(FileSize(s).String()).SetFormat(tabulate.FmtItalic)
+	}
 
 	row = tab.Row()
 	row.Column("\u251C\u2574Rcvd").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column(
-		fmt.Sprintf("%.2f%%", float64(received)/float64(sent+received)*100)).
+		fmt.Sprintf("%.2f%%", float64(rcvd)/float64(sent+rcvd)*100)).
 		SetFormat(tabulate.FmtItalic)
-	row.Column(FileSize(received).String()).SetFormat(tabulate.FmtItalic)
+	row.Column(FileSize(rcvd).String()).SetFormat(tabulate.FmtItalic)
+
+	for _, stat := range iostats {
+		r := stat.Sent.Load()
+		row.Column(FileSize(r).String()).SetFormat(tabulate.FmtItalic)
+	}
 
 	row = tab.Row()
 	row.Column("\u2570\u2574Flcd").SetFormat(tabulate.FmtItalic)
 	row.Column("")
 	row.Column("")
 	row.Column(fmt.Sprintf("%v", flushed)).SetFormat(tabulate.FmtItalic)
+
+	for _, stat := range iostats {
+		f := stat.Sent.Load()
+		row.Column(fmt.Sprintf("%v", f)).SetFormat(tabulate.FmtItalic)
+	}
 
 	tab.Print(os.Stdout)
 }

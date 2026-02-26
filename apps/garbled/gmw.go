@@ -49,9 +49,12 @@ func gmwMode(file string, params *utils.Params,
 			return err
 		}
 		timing := circuit.NewTiming()
-		ioStats := nw.Stats().Sum()
+		onStats, offStats := nw.Stats()
+		onXfer := onStats.Sum()
+		offXfer := offStats.Sum()
 		timing.AbsSample("Network", 0, []string{
-			circuit.FileSize(ioStats).String(),
+			circuit.FileSize(onXfer).String(),
+			circuit.FileSize(offXfer).String(),
 		})
 
 		circ, err := loadCircuit(file, params, nw.InputSizes())
@@ -84,8 +87,13 @@ func gmwMode(file string, params *utils.Params,
 		if err != nil {
 			return err
 		}
-		xfer := nw.Stats().Sum() - ioStats
-		timing.Sample("Eval", []string{circuit.FileSize(xfer).String()})
+		onStats, offStats = nw.Stats()
+		onXfer = onStats.Sum() - onXfer
+		offXfer = offStats.Sum() - offXfer
+		timing.Sample("Eval", []string{
+			circuit.FileSize(onXfer).String(),
+			circuit.FileSize(offXfer).String(),
+		})
 
 		if verbose {
 			timing.Print(nw.Stats())
