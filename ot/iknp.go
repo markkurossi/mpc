@@ -168,7 +168,7 @@ func (s *IKNPSender) Send(n int, malicious bool) ([]Label, error) {
 
 	// Random choice vector.
 	prgLabels(chiPrg, chi[:len(choiceVector)])
-	r0, r1 := vectorInnPrdtSumNoRed(chi[:], choiceVector)
+	r0, r1 := vectorInnPrdtSumNoRed(chi[:len(choiceVector)], choiceVector)
 	q0.Xor(r0)
 	q1.Xor(r1)
 
@@ -356,7 +356,7 @@ func (r *IKNPReceiver) Receive(b []bool, result []Label, malicious bool) error {
 
 	// Randon choice vector.
 	prgLabels(chiPrg, chi[:len(choiceVector)])
-	r0, r1 := vectorInnPrdtSumNoRed(chi[:], choiceVector)
+	r0, r1 := vectorInnPrdtSumNoRed(chi[:len(choiceVector)], choiceVector)
 	t0.Xor(r0)
 	t1.Xor(r1)
 	for j := 0; j < len(choiceVector); j++ {
