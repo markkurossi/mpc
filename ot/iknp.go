@@ -455,12 +455,35 @@ func createLabels(l []Label, buf []byte, w int) {
 	if end > len(l) {
 		end = len(l)
 	}
-	for i := 0; i < end; i++ {
-		row := i / 8
-		bit := i % 8
-		for j := 0; j < K; j++ {
-			v := uint((buf[j*w+row] >> bit) & 1)
-			l[i].SetBit(j, v)
+
+	for row := 0; row < w; row++ {
+
+		// Prepare 8 output labels.
+		var out [8]Label
+
+		for j := 0; j < 128; j++ {
+			b := buf[j*w+row]
+
+			mask := uint64(1) << (uint(j) & 63)
+
+			for bit := 0; bit < 8; bit++ {
+				if (b>>bit)&1 != 0 {
+					if j < 64 {
+						out[bit].D0 |= mask
+					} else {
+						out[bit].D1 |= mask
+					}
+				}
+			}
+		}
+
+		base := row * 8
+		for bit := 0; bit < 8; bit++ {
+			i := base + bit
+			if i >= end {
+				return
+			}
+			l[i] = out[bit]
 		}
 	}
 }
