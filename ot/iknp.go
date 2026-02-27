@@ -224,20 +224,22 @@ func (s *IKNPSender) send(n int) ([]Label, error) {
 	return result, nil
 }
 
-func (s *IKNPSender) SendBits(n int) ([]uint64, error) {
+func (s *IKNPSender) SendBits(n int, result []uint64) error {
 
-	out := make([]uint64, (n+63)/64)
+	if (n+63)/64 > len(result) {
+		return fmt.Errorf("result buffer len=%v too short for n=%v",
+			len(result), n)
+	}
 
 	ofs := 0
 
 	for ofs < n {
-
 		chunk, err := s.io.ReceiveData()
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(chunk)%K != 0 {
-			return nil, fmt.Errorf("invalid chunk size: %v", len(chunk))
+			return fmt.Errorf("invalid chunk size: %v", len(chunk))
 		}
 
 		byteRows := len(chunk) / K
@@ -269,14 +271,14 @@ func (s *IKNPSender) SendBits(n int) ([]uint64, error) {
 			bit := (col0[byteIndex] >> bitIndex) & 1
 			if bit == 1 {
 				idx := ofs + row
-				out[idx/64] |= 1 << (idx % 64)
+				result[idx/64] |= 1 << (idx % 64)
 			}
 		}
 
 		ofs += maxRows
 	}
 
-	return out, nil
+	return nil
 }
 
 // IKNPReceiver implements the random correlated OT receiver.
@@ -480,10 +482,13 @@ func (r *IKNPReceiver) receive(b []bool, result []Label) error {
 	return nil
 }
 
-func (r *IKNPReceiver) ReceiveBits(b []bool) ([]uint64, error) {
+func (r *IKNPReceiver) ReceiveBits(b []bool, result []uint64) error {
 
 	n := len(b)
-	out := make([]uint64, (n+63)/64)
+	if (n+63)/64 > len(result) {
+		return fmt.Errorf("result buffer len=%v too short for n=%v",
+			len(result), n)
+	}
 
 	bbuf := make([]byte, (n+7)/8)
 	for i, f := range b {
@@ -518,7 +523,7 @@ func (r *IKNPReceiver) ReceiveBits(b []bool) ([]uint64, error) {
 		}
 
 		if err := r.io.SendData(ucol[:byteRows*K]); err != nil {
-			return nil, err
+			return err
 		}
 
 		// Transpose exactly like label path
@@ -528,7 +533,7 @@ func (r *IKNPReceiver) ReceiveBits(b []bool) ([]uint64, error) {
 		for row := 0; row < rows; row++ {
 			if labelsBuf[row].Bit(0) == 1 {
 				idx := ofs + row
-				out[idx/64] |= 1 << (idx % 64)
+				result[idx/64] |= 1 << (idx % 64)
 			}
 		}
 
@@ -536,10 +541,10 @@ func (r *IKNPReceiver) ReceiveBits(b []bool) ([]uint64, error) {
 	}
 
 	if err := r.io.Flush(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return out, nil
+	return nil
 }
 
 func newPrg(key Label) (cipher.Stream, error) {
