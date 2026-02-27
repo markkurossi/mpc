@@ -224,6 +224,61 @@ func (s *IKNPSender) send(n int) ([]Label, error) {
 	return result, nil
 }
 
+func (s *IKNPSender) SendBits(n int) ([]uint64, error) {
+
+	out := make([]uint64, (n+63)/64)
+
+	ofs := 0
+
+	for ofs < n {
+
+		chunk, err := s.io.ReceiveData()
+		if err != nil {
+			return nil, err
+		}
+		if len(chunk)%K != 0 {
+			return nil, fmt.Errorf("invalid chunk size: %v", len(chunk))
+		}
+
+		byteRows := len(chunk) / K
+		rows := byteRows * 8
+
+		var t [chunkSize]byte
+
+		// Generate q-matrix columns
+		for i := 0; i < K; i++ {
+			prg(s.g0[i], t[i*byteRows:(i+1)*byteRows])
+			if s.Delta.Bit(i) == 1 {
+				xor(t[i*byteRows:(i+1)*byteRows], chunk[i*byteRows:])
+			}
+		}
+
+		// Extract column 0 directly (no transpose)
+		col0 := t[:byteRows]
+
+		maxRows := rows
+		if maxRows > n-ofs {
+			maxRows = n - ofs
+		}
+
+		for row := 0; row < maxRows; row++ {
+
+			byteIndex := row / 8
+			bitIndex := row % 8
+
+			bit := (col0[byteIndex] >> bitIndex) & 1
+			if bit == 1 {
+				idx := ofs + row
+				out[idx/64] |= 1 << (idx % 64)
+			}
+		}
+
+		ofs += maxRows
+	}
+
+	return out, nil
+}
+
 // IKNPReceiver implements the random correlated OT receiver.
 type IKNPReceiver struct {
 	io   IO
@@ -423,6 +478,68 @@ func (r *IKNPReceiver) receive(b []bool, result []Label) error {
 	}
 
 	return nil
+}
+
+func (r *IKNPReceiver) ReceiveBits(b []bool) ([]uint64, error) {
+
+	n := len(b)
+	out := make([]uint64, (n+63)/64)
+
+	bbuf := make([]byte, (n+7)/8)
+	for i, f := range b {
+		if f {
+			bbuf[i/8] |= 1 << (i % 8)
+		}
+	}
+
+	var chunk, tmp [chunkSize]byte
+
+	for ofs := 0; ofs < n; {
+
+		rows := chunkRows
+		avail := n - ofs
+		if rows > avail {
+			rows = avail
+		}
+		byteRows := (rows + 7) / 8
+
+		var ucol [chunkSize]byte
+
+		// Build u-matrix columns (identical to receive())
+		for i := 0; i < K; i++ {
+
+			prg(r.g0[i], chunk[i*byteRows:(i+1)*byteRows])
+			prg(r.g1[i], tmp[:byteRows])
+
+			xor(tmp[:byteRows], chunk[i*byteRows:])
+			xor(tmp[:byteRows], bbuf[ofs/8:])
+
+			copy(ucol[i*byteRows:], tmp[:byteRows])
+		}
+
+		if err := r.io.SendData(ucol[:byteRows*K]); err != nil {
+			return nil, err
+		}
+
+		// Transpose exactly like label path
+		var labelsBuf [chunkRows]Label
+		createLabels(labelsBuf[:], chunk[:], byteRows)
+
+		for row := 0; row < rows; row++ {
+			if labelsBuf[row].Bit(0) == 1 {
+				idx := ofs + row
+				out[idx/64] |= 1 << (idx % 64)
+			}
+		}
+
+		ofs += rows
+	}
+
+	if err := r.io.Flush(); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 func newPrg(key Label) (cipher.Stream, error) {
