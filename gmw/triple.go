@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Markku Rossi
 //
 // All rights reserved.
+//
 
 package gmw
 
@@ -28,18 +29,157 @@ const (
 	msgTriple msgType = iota
 )
 
+// TriplePool implements beaver triple pool.
 type TriplePool struct {
-	m     sync.Mutex
-	c     *sync.Cond
-	count int
+	m       sync.Mutex
+	c       *sync.Cond
+	triples *Triples
 }
 
+// Triples contain a batch of beaver triples.
+type Triples struct {
+	Count int
+	A     []uint64
+	B     []uint64
+	C     []uint64
+}
+
+// Clear clears triples.
+func (triples *Triples) Clear() {
+	triples.Count = 0
+	clear(triples.A)
+	clear(triples.B)
+	clear(triples.C)
+}
+
+// Append appends maximum n triples from the src triple batch. The
+// function returns the number of triples appended. The return value
+// is smaller than n if the src batch did not have that many triples.
+func (triples *Triples) Append(src *Triples, n int) int {
+	if n > src.Count {
+		n = src.Count
+	}
+	ofs := triples.Count / 64
+	shift := triples.Count % 64
+
+	// Words and trailing bits.
+	words := n / 64
+	tail := n % 64
+
+	tailMask := uint64(0xffffffffffffffff)
+	tailMask >>= 64 - tail
+
+	trailMask := uint64(0xffffffffffffffff)
+	trailMask <<= tail
+
+	if shift == 0 {
+		for i := 0; i < words; i++ {
+			triples.A[ofs] = src.A[i]
+			triples.B[ofs] = src.B[i]
+			triples.C[ofs] = src.C[i]
+			ofs++
+		}
+		if tail != 0 {
+			triples.A[ofs] = src.A[words] & tailMask
+			triples.B[ofs] = src.B[words] & tailMask
+			triples.C[ofs] = src.C[words] & tailMask
+		}
+	} else {
+		for i := 0; i < words; i++ {
+			triples.A[ofs] |= src.A[i] << shift
+			triples.B[ofs] |= src.B[i] << shift
+			triples.C[ofs] |= src.C[i] << shift
+
+			triples.A[ofs+1] = src.A[i] >> (64 - shift)
+			triples.B[ofs+1] = src.B[i] >> (64 - shift)
+			triples.C[ofs+1] = src.C[i] >> (64 - shift)
+
+			ofs++
+		}
+		if tail != 0 {
+			a := src.A[words] & tailMask
+			b := src.B[words] & tailMask
+			c := src.C[words] & tailMask
+
+			triples.A[ofs] |= a << shift
+			triples.B[ofs] |= b << shift
+			triples.C[ofs] |= c << shift
+
+			if 64-shift < tail {
+				triples.A[ofs+1] = a >> (64 - shift)
+				triples.B[ofs+1] = b >> (64 - shift)
+				triples.C[ofs+1] = c >> (64 - shift)
+			}
+		}
+	}
+
+	// Compact src arrays.
+	if src.Count == n {
+		src.Clear()
+	} else {
+		src.Count -= n
+		remainingWords := src.Count / 64
+
+		if tail == 0 {
+			copy(src.A[0:], src.A[words:])
+			copy(src.B[0:], src.B[words:])
+			copy(src.C[0:], src.C[words:])
+
+			clear(src.A[remainingWords:])
+			clear(src.B[remainingWords:])
+			clear(src.C[remainingWords:])
+		} else {
+			for i := 0; i*64 < src.Count; i++ {
+				src.A[i] = src.A[ofs+i] >> tail
+				src.B[i] = src.B[ofs+i] >> tail
+				src.C[i] = src.C[ofs+i] >> tail
+
+				if i*64+(64-tail) < src.Count {
+					src.A[i] |= (src.A[ofs+i+1] & tailMask) << (64 - tail)
+					src.B[i] |= (src.B[ofs+i+1] & tailMask) << (64 - tail)
+					src.C[i] |= (src.C[ofs+i+1] & tailMask) << (64 - tail)
+				}
+			}
+		}
+	}
+
+	triples.Count += n
+
+	return n
+}
+
+// NewTriplePool creates a new beaver triple pool.
 func NewTriplePool() *TriplePool {
 	pool := &TriplePool{}
 
 	pool.c = sync.NewCond(&pool.m)
 
 	return pool
+}
+
+// Get gets count triples from the triple pool and returns them in the
+// triples. The function resizes triples if needed. If the triple pool
+// does not have count triples, the function waits until the triple
+// generation offline process produces the required amount of new
+// triples.
+func (pool *TriplePool) Get(count int, triples *Triples) {
+	words := (count + 63) / 64
+	if words > len(triples.A) {
+		// Resize result arrays.
+		triples.A = make([]uint64, count)
+		triples.B = make([]uint64, count)
+		triples.C = make([]uint64, count)
+	}
+
+	for ofs := 0; ofs < count; {
+		pool.m.Lock()
+		for pool.triples.Count == 0 {
+			pool.c.Wait()
+		}
+		ofs += triples.Append(pool.triples, count-ofs)
+		pool.c.Signal()
+		pool.m.Unlock()
+	}
 }
 
 func (nw *Network) startOffline() error {
@@ -103,7 +243,7 @@ func (nw *Network) tripleSender() error {
 
 	for {
 		nw.pool.m.Lock()
-		for nw.pool.count > lowWaterMark {
+		for nw.pool.triples.Count > lowWaterMark {
 			nw.pool.c.Wait()
 		}
 		nw.pool.m.Unlock()
@@ -321,7 +461,13 @@ func (nw *Network) tripleBatch(size int) error {
 	fmt.Printf("-batch%v=%x,%x,%x\n", self.id, a[0], b[0], c[0])
 
 	nw.pool.m.Lock()
-	nw.pool.count += size
+	nw.pool.triples.Append(&Triples{
+		Count: size,
+		A:     a,
+		B:     b,
+		C:     c,
+	}, size)
+	nw.pool.c.Signal()
 	nw.pool.m.Unlock()
 
 	return nil
@@ -364,93 +510,6 @@ func copyOf(src []uint64) []uint64 {
 	result := make([]uint64, len(src))
 	copy(result, src)
 	return result
-}
-
-func (nw *INetwork) GenerateTripleBatch(N int) *TripleBatch {
-
-	words := (N + 63) / 64
-
-	A := make([]uint64, words)
-	B := make([]uint64, words)
-	C := make([]uint64, words)
-
-	// ------------------------------------------------
-	// Step 1: Sample random local shares a_i, b_i
-	// ------------------------------------------------
-
-	for w := 0; w < words; w++ {
-		A[w] = randomUint64()
-		B[w] = randomUint64()
-	}
-
-	// ------------------------------------------------
-	// Step 2: Local term a_i * b_i
-	// ------------------------------------------------
-
-	for w := 0; w < words; w++ {
-		C[w] = A[w] & B[w] // bitwise AND
-	}
-
-	// ------------------------------------------------
-	// Step 3: Cross terms with all other parties
-	// ------------------------------------------------
-
-	for j := 0; j < nw.numParties; j++ {
-
-		if j == nw.id {
-			continue
-		}
-
-		peer := nw.peers[j]
-
-		if nw.id < j {
-			// ----------------------------------------
-			// Compute share of a_i * b_j
-			// ----------------------------------------
-
-			r := randomBitVector(words)
-
-			m0 := r
-			m1 := xorBitVector(r, A)
-
-			// Sender role
-			OTSend(peer, m0, m1)
-
-			// Receiver role for opposite cross term
-			recv := OTRecv(peer, B)
-
-			// recv = s XOR (a_j * b_i)
-			// accumulate cross share
-			C = xorBitVector(C, recv)
-
-			// add our share of first cross term
-			C = xorBitVector(C, r)
-
-		} else {
-			// ----------------------------------------
-			// Reverse roles
-			// ----------------------------------------
-
-			// Receiver role
-			recv := OTRecv(peer, B)
-
-			// Sender role
-			r := randomBitVector(words)
-			m0 := r
-			m1 := xorBitVector(r, A)
-			OTSend(peer, m0, m1)
-
-			// accumulate cross shares
-			C = xorBitVector(C, recv)
-			C = xorBitVector(C, r)
-		}
-	}
-
-	return &TripleBatch{
-		A: A,
-		B: B,
-		C: C,
-	}
 }
 
 // Now: XOR_i C_i = (XOR_i A_i) AND (XOR_i B_i)

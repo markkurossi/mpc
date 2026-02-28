@@ -40,6 +40,7 @@ type Network struct {
 	andBatch      []*circuit.Gate
 	andA          []uint
 	andB          []uint
+	triples       *Triples
 	andBatchCount int
 	andBatchMax   int
 	andBatchLevel int
