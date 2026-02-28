@@ -139,14 +139,6 @@ func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
 	return share, nil
 }
 
-func (p *Peer) offlineSender() {
-	fmt.Printf("%v: offlineSender\n", p)
-}
-
-func (p *Peer) offlineReceiver() {
-	fmt.Printf("%v: offlineReceiver\n", p)
-}
-
 func (p *Peer) SendBitsVec(bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
