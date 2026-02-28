@@ -122,35 +122,27 @@ func BenchmarkBitCOT(b *testing.B) {
 		done <- nil
 	}(sPipe)
 
-	go func(pipe *Pipe) {
-		co := NewCO(rand.Reader)
-		if err := co.InitReceiver(pipe); err != nil {
-			done <- err
-			pipe.Close()
-			return
-		}
-		iknp, err := NewIKNPReceiver(co, pipe, rand.Reader)
-		if err != nil {
-			done <- err
-			pipe.Close()
-			return
-		}
-		for i := 0; i < b.N; i++ {
-			err = iknp.ReceiveBits(choices, received, n)
-			if err != nil {
-				done <- err
-				pipe.Close()
-				return
-			}
-		}
-		done <- nil
-	}(rPipe)
+	co := NewCO(rand.Reader)
+	if err := co.InitReceiver(rPipe); err != nil {
+		b.Fatal(err)
+	}
+	iknp, err := NewIKNPReceiver(co, rPipe, rand.Reader)
+	if err != nil {
+		b.Fatal(err)
+	}
 
-	// Wait both sides.
-	for i := 0; i < 2; i++ {
-		if err := <-done; err != nil {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		err = iknp.ReceiveBits(choices, received, n)
+		if err != nil {
 			b.Fatal(err)
 		}
+	}
+
+	err = <-done
+	if err != nil {
+		b.Fatal(err)
 	}
 }
 
