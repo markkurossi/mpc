@@ -56,6 +56,7 @@ package ot
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"encoding/binary"
 	"fmt"
 	"io"
 )
@@ -224,16 +225,44 @@ func (s *IKNPSender) send(n int) ([]Label, error) {
 	return result, nil
 }
 
+// SendBits performs n batched correlated bit-OTs (COT) as the IKNP sender.
+//
+// For each i ∈ {0, …, n-1}, this function outputs a random bit s_i
+// into result such that the receiver obtains:
+//
+//	r_i = s_i ⊕ (b_i · Δ)
+//
+// where:
+//
+//   - b_i is the receiver's choice bit,
+//   - Δ is the fixed IKNP correlation value defined at sender setup,
+//   - s_i and r_i are bits.
+//
+// Only one bit of the 128-bit IKNP label (bit 0) is used, so this
+// implements *bit-level correlated OT* on top of standard IKNP.
+//
+// The function writes exactly n bits into result using packed
+// little-endian bit representation:
+//
+//   - Bit i is stored in result[i/64] at position (i % 64),
+//   - Bit 0 is the least-significant bit of result[0].
+//
+// The caller must provide a result slice with capacity at least
+// (n+63)/64 words. Existing contents are overwritten.
+//
+// Security:
+//   - Correlation security is 128-bit (IKNP parameter K).
+//   - All n OTs share the same fixed 128-bit Δ.
+//   - n may be arbitrarily large; security does not depend on n.
+//
+// Returns an error if communication fails or buffers are invalid.
 func (s *IKNPSender) SendBits(n int, result []uint64) error {
-
 	if (n+63)/64 > len(result) {
 		return fmt.Errorf("result buffer len=%v too short for n=%v",
 			len(result), n)
 	}
 
-	ofs := 0
-
-	for ofs < n {
+	for ofs := 0; ofs < n; {
 		chunk, err := s.io.ReceiveData()
 		if err != nil {
 			return err
@@ -264,7 +293,6 @@ func (s *IKNPSender) SendBits(n int, result []uint64) error {
 		}
 
 		for row := 0; row < maxRows; row++ {
-
 			byteIndex := row / 8
 			bitIndex := row % 8
 
@@ -482,19 +510,55 @@ func (r *IKNPReceiver) receive(b []bool, result []Label) error {
 	return nil
 }
 
-func (r *IKNPReceiver) ReceiveBits(b []bool, result []uint64) error {
-
-	n := len(b)
+// ReceiveBits performs n batched correlated bit-OTs (COT) as the IKNP
+// receiver.
+//
+// For each i ∈ {0, …, n-1}, the receiver provides a choice bit b_i
+// and obtains a correlated output bit r_i such that:
+//
+//	r_i = s_i ⊕ (b_i · Δ)
+//
+// where:
+//
+//   - s_i is the sender's random output bit,
+//   - Δ is the fixed 128-bit IKNP correlation value defined at sender setup,
+//   - r_i is written into result.
+//
+// Only one bit of the 128-bit IKNP label (bit 0) is used, so this
+// implements *bit-level correlated OT* on top of standard IKNP.
+//
+// Parameters:
+//
+//	choices  Packed bit vector containing n choice bits.
+//	         Bit i is read from choices[i/64] at position (i % 64),
+//	         where bit 0 is the least-significant bit of choices[0].
+//
+//	result   Packed bit vector receiving n output bits using the
+//	         same little-endian layout.
+//
+//	n        Number of bit-OT instances to execute.
+//
+// The caller must ensure:
+//
+//   - len(choices) ≥ (n+63)/64
+//   - len(result)  ≥ (n+63)/64
+//
+// Existing contents of result are overwritten.
+//
+// Security:
+//   - Correlation security is 128-bit (IKNP parameter K).
+//   - All n OTs share the same fixed 128-bit Δ.
+//   - Security does not depend on n.
+//
+// Returns an error if communication fails or buffers are invalid.
+func (r *IKNPReceiver) ReceiveBits(choices, result []uint64, n int) error {
+	if (n+63)/64 > len(choices) {
+		return fmt.Errorf("choices buffer len=%v too short for n=%v",
+			len(result), n)
+	}
 	if (n+63)/64 > len(result) {
 		return fmt.Errorf("result buffer len=%v too short for n=%v",
 			len(result), n)
-	}
-
-	bbuf := make([]byte, (n+7)/8)
-	for i, f := range b {
-		if f {
-			bbuf[i/8] |= 1 << (i % 8)
-		}
 	}
 
 	var chunk, tmp [chunkSize]byte
@@ -510,6 +574,9 @@ func (r *IKNPReceiver) ReceiveBits(b []bool, result []uint64) error {
 
 		var ucol [chunkSize]byte
 
+		wordOffset := ofs / 64
+		words := byteRows / 8
+
 		// Build u-matrix columns (identical to receive())
 		for i := 0; i < K; i++ {
 
@@ -517,7 +584,12 @@ func (r *IKNPReceiver) ReceiveBits(b []bool, result []uint64) error {
 			prg(r.g1[i], tmp[:byteRows])
 
 			xor(tmp[:byteRows], chunk[i*byteRows:])
-			xor(tmp[:byteRows], bbuf[ofs/8:])
+
+			for w := 0; w < words; w++ {
+				tmpWord := binary.LittleEndian.Uint64(tmp[w*8:])
+				tmpWord ^= choices[wordOffset+w]
+				binary.LittleEndian.PutUint64(tmp[w*8:], tmpWord)
+			}
 
 			copy(ucol[i*byteRows:], tmp[:byteRows])
 		}
