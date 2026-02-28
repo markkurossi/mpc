@@ -40,6 +40,9 @@ type Peer struct {
 	shared  *big.Int
 	otS     ot.OT
 	otR     ot.OT
+
+	iknpS *ot.IKNPSender
+	iknpR *ot.IKNPReceiver
 }
 
 func (p *Peer) String() string {
@@ -144,10 +147,35 @@ func (p *Peer) offlineReceiver() {
 	fmt.Printf("%v: offlineReceiver\n", p)
 }
 
-func (p *Peer) send(bits []uint64) error {
-	return fmt.Errorf("send not implemented yet")
+func (p *Peer) SendBitsVec(bits []uint64) error {
+	var ld ot.LabelData
+	var l ot.Label
+
+	for i := 0; i < len(bits); i += 2 {
+		l.D0 = bits[i]
+		if i+1 < len(bits) {
+			l.D1 = bits[i+1]
+		}
+		if err := p.offline.SendLabel(l, &ld); err != nil {
+			return err
+		}
+	}
+
+	return p.offline.Flush()
 }
 
-func (p *Peer) receive() []uint64 {
-	panic("Peer.receive not implemented yet")
+func (p *Peer) ReceiveBitsVec(bits []uint64) error {
+	var ld ot.LabelData
+	var l ot.Label
+
+	for i := 0; i < len(bits); i += 2 {
+		if err := p.offline.ReceiveLabel(&l, &ld); err != nil {
+			return err
+		}
+		bits[i] = l.D0
+		if i+1 < len(bits) {
+			bits[i+1] = l.D1
+		}
+	}
+	return nil
 }

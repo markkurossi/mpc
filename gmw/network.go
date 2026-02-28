@@ -55,6 +55,7 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 		peersByID:  make(map[int]*Peer),
 		self:       self,
 		done:       make(chan error),
+		pool:       NewTriplePool(),
 	}
 	err := nw.addPeer(self)
 	if err != nil {
@@ -152,8 +153,6 @@ func (nw *Network) acceptOffline(conn *p2p.Conn) error {
 		return fmt.Errorf("invalid offline peer ID %v", id)
 	}
 	peer.offline = conn
-
-	go peer.offlineReceiver()
 
 	return nil
 }
@@ -267,7 +266,7 @@ func (nw *Network) Connect(inputSizes []int) error {
 }
 
 func (nw *Network) connectLeader() error {
-	// Accept all oneline connections.
+	// Accept all online connections.
 
 	accept := nw.numParties - 1
 	nw.needOnline = accept
@@ -313,7 +312,13 @@ func (nw *Network) connectLeader() error {
 		}
 	}
 
-	return nil
+	// Wait all offline connections.
+	err = <-nw.done
+	if err != nil {
+		return err
+	}
+
+	return nw.startOffline()
 }
 
 func (nw *Network) connectPeer() error {
@@ -407,7 +412,12 @@ func (nw *Network) connectPeer() error {
 	}
 
 	// Wait until all peers have been connected.
-	return <-nw.done
+	err = <-nw.done
+	if err != nil {
+		return err
+	}
+
+	return nw.startOffline()
 }
 
 func (nw *Network) dialOnline(peer *Peer) error {
@@ -468,8 +478,6 @@ func (nw *Network) dialOffline(peer *Peer) error {
 		return err
 	}
 	peer.offline = conn
-
-	go peer.offlineSender()
 
 	return nil
 }
