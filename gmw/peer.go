@@ -139,6 +139,7 @@ func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
 	return share, nil
 }
 
+// SendBitsVec sends bits vector to the peer's offline channel.
 func (p *Peer) SendBitsVec(bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
@@ -156,6 +157,7 @@ func (p *Peer) SendBitsVec(bits []uint64) error {
 	return p.offline.Flush()
 }
 
+// ReceiveBitsVec receives bits vector from the peer's offline channel.
 func (p *Peer) ReceiveBitsVec(bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
