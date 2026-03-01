@@ -227,10 +227,10 @@ func JoinNetwork(leader, this string, id int) (*Network, error) {
 }
 
 // Close closes the network and all its peer connections.
-func (nw *Network) Close() {
+func (nw *Network) Close() error {
 	// Wait for triple pool to terminate.
 	nw.Pool.Close()
-	<-nw.Pool.done
+	err := <-nw.Pool.done
 
 	nw.m.Lock()
 	defer nw.m.Unlock()
@@ -242,6 +242,8 @@ func (nw *Network) Close() {
 	if nw.listener != nil {
 		nw.listener.Close()
 	}
+
+	return err
 }
 
 // Stats returns the network IO statistics.
@@ -707,12 +709,7 @@ func (nw *Network) andBatchFlush(level int) error {
 	// Step 2: Open d and e
 	// --------------------------------------------
 
-	// XXX Merge these into one call: broadcastXORs
-	dOpen, err := nw.broadcastXOR(nw.andD)
-	if err != nil {
-		return err
-	}
-	eOpen, err := nw.broadcastXOR(nw.andE)
+	dOpen, eOpen, err := nw.broadcastXORs(nw.andD, nw.andE)
 	if err != nil {
 		return err
 	}
@@ -776,6 +773,40 @@ func (nw *Network) broadcastXOR(local []uint64) ([]uint64, error) {
 	}
 
 	return result, nil
+}
+
+func (nw *Network) broadcastXORs(d, e []uint64) ([]uint64, []uint64, error) {
+	self := nw.self
+	dOpen := copyOf(d)
+	eOpen := copyOf(e)
+
+	dR := make([]uint64, len(d))
+	eR := make([]uint64, len(e))
+
+	for _, peer := range nw.peers {
+		if peer.id == self.id {
+			continue
+		}
+		if self.id < peer.id {
+			if err := peer.SendBitvec2(peer.online, d, e); err != nil {
+				return nil, nil, err
+			}
+			if err := peer.ReceiveBitvec2(peer.online, dR, eR); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			if err := peer.ReceiveBitvec2(peer.online, dR, eR); err != nil {
+				return nil, nil, err
+			}
+			if err := peer.SendBitvec2(peer.online, d, e); err != nil {
+				return nil, nil, err
+			}
+		}
+		xorBitvec(dOpen, dR)
+		xorBitvec(eOpen, eR)
+	}
+
+	return dOpen, eOpen, nil
 }
 
 // receiveInput receives the input share from the peer o.

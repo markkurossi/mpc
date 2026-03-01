@@ -126,3 +126,78 @@ func (p *Peer) ReceiveBitvec(conn *p2p.Conn, bits []uint64) error {
 	}
 	return nil
 }
+
+// SendBitvec2 sends two bit vector to the connection conn.
+func (p *Peer) SendBitvec2(conn *p2p.Conn, b0, b1 []uint64) error {
+	var ld ot.LabelData
+	var l ot.Label
+
+	if len(b0) != len(b1) {
+		return fmt.Errorf("bitvector length mismatch")
+	}
+
+	if err := conn.SendUint32(len(b0)); err != nil {
+		return err
+	}
+
+	for i := 0; i < len(b0); i += 2 {
+		l.D0 = b0[i]
+		if i+1 < len(b0) {
+			l.D1 = b0[i+1]
+		}
+		if err := conn.SendLabel(l, &ld); err != nil {
+			return err
+		}
+	}
+	for i := 0; i < len(b1); i += 2 {
+		l.D0 = b1[i]
+		if i+1 < len(b1) {
+			l.D1 = b1[i+1]
+		}
+		if err := conn.SendLabel(l, &ld); err != nil {
+			return err
+		}
+	}
+
+	return conn.Flush()
+}
+
+// ReceiveBitvec2 receives two bits vector from the connection conn.
+func (p *Peer) ReceiveBitvec2(conn *p2p.Conn, b0, b1 []uint64) error {
+	var ld ot.LabelData
+	var l ot.Label
+
+	if len(b0) != len(b1) {
+		return fmt.Errorf("bitvector length mismatch")
+	}
+
+	count, err := conn.ReceiveUint32()
+	if err != nil {
+		return err
+	}
+	if count != len(b0) {
+		return fmt.Errorf("bitvec length mismatch: expected %v, got %v",
+			len(b0), count)
+	}
+
+	for i := 0; i < len(b0); i += 2 {
+		if err := conn.ReceiveLabel(&l, &ld); err != nil {
+			return err
+		}
+		b0[i] = l.D0
+		if i+1 < len(b0) {
+			b0[i+1] = l.D1
+		}
+	}
+	for i := 0; i < len(b1); i += 2 {
+		if err := conn.ReceiveLabel(&l, &ld); err != nil {
+			return err
+		}
+		b1[i] = l.D0
+		if i+1 < len(b1) {
+			b1[i+1] = l.D1
+		}
+	}
+
+	return nil
+}
