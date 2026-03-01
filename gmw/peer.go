@@ -38,8 +38,6 @@ type Peer struct {
 	input   *big.Int
 	randBuf []byte
 	shared  *big.Int
-	otS     ot.OT
-	otR     ot.OT
 
 	iknpS *ot.IKNPSender
 	iknpR *ot.IKNPReceiver
@@ -79,64 +77,6 @@ func (p *Peer) shareInput(o *Peer) error {
 	p.shared.Xor(p.shared, share)
 
 	return nil
-}
-
-func (p *Peer) otSend(self *Peer, a []uint) ([]uint, error) {
-	n := len(a)
-	wires := make([]ot.Wire, n)
-
-	if err := p.otS.Send(wires); err != nil {
-		return nil, err
-	}
-
-	corr := new(big.Int)
-	share := make([]uint, n)
-
-	for i := 0; i < n; i++ {
-		r0 := wires[i].L0.Bit(0)
-		r1 := wires[i].L1.Bit(0)
-		corr.SetBit(corr, i, r0^r1^a[i])
-		share[i] = r0
-	}
-	if err := p.online.SendData(corr.Bytes()); err != nil {
-		return nil, err
-	}
-	if err := p.online.Flush(); err != nil {
-		return nil, err
-	}
-
-	return share, nil
-}
-
-func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
-	n := len(b)
-	flags := make([]bool, n)
-	for idx, bit := range b {
-		flags[idx] = bit == 1
-	}
-
-	labels := make([]ot.Label, n)
-	if err := p.otR.Receive(flags, labels); err != nil {
-		return nil, err
-	}
-	data, err := p.online.ReceiveData()
-	if err != nil {
-		return nil, err
-	}
-
-	corr := new(big.Int).SetBytes(data)
-	share := make([]uint, n)
-
-	for i := 0; i < n; i++ {
-		t := labels[i].Bit(0)
-		if flags[i] {
-			share[i] = t ^ corr.Bit(i)
-		} else {
-			share[i] = t
-		}
-	}
-
-	return share, nil
 }
 
 // SendBitvec sends bit vector to the connection conn.

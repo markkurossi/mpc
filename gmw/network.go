@@ -525,31 +525,6 @@ func (nw *Network) run(verbose bool) error {
 		fmt.Printf("%v: run: %v\n", self, nw.circ)
 	}
 
-	// Create OT instances.
-	for _, peer := range nw.peers {
-		if peer.id == self.id {
-			continue
-		}
-		peer.otS = nw.newOT()
-		peer.otR = nw.newOT()
-
-		if self.id < peer.id {
-			if err := peer.otS.InitSender(peer.online); err != nil {
-				return err
-			}
-			if err := peer.otR.InitReceiver(peer.online); err != nil {
-				return err
-			}
-		} else {
-			if err := peer.otR.InitReceiver(peer.online); err != nil {
-				return err
-			}
-			if err := peer.otS.InitSender(peer.online); err != nil {
-				return err
-			}
-		}
-	}
-
 	// Secret share inputs.
 	for _, peer := range nw.peers {
 		if peer.id == self.id {
