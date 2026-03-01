@@ -28,7 +28,24 @@ func TestTriples(t *testing.T) {
 		C:     make([]uint64, 8),
 	}
 
-	n := to.Append(from, 8)
+	// Append full words.
+	n := to.Append(from, 64)
+	if n != 64 {
+		t.Errorf("invalid return value %v for Append", n)
+	}
+	if to.A[0] != 0x0807060504030201 {
+		t.Errorf("invalid to.A[0]: %v", to.A[0])
+	}
+	if from.A[0] != 0x1817161514131211 {
+		t.Errorf("invalid from.A[0]: %v", to.A[0])
+	}
+
+	// Append one byte.
+
+	from = makeTriple()
+	to.Clear()
+
+	n = to.Append(from, 8)
 	if n != 8 {
 		t.Errorf("invalid return value %v from Append", n)
 	}
@@ -41,6 +58,9 @@ func TestTriples(t *testing.T) {
 	}
 	if from.A[0] != 0x1108070605040302 {
 		t.Errorf("invalid from.A[0]: %x", from.A[0])
+	}
+	if from.A[1] != 0x0018171615141312 {
+		t.Errorf("invalid from.A[1]: %x", from.A[1])
 	}
 
 	// Append 64 bits 1 bit at a time.

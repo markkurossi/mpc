@@ -130,14 +130,14 @@ func (triples *Triples) Append(src *Triples, n int) int {
 			clear(src.C[remainingWords:])
 		} else {
 			for i := 0; i*64 < src.Count; i++ {
-				src.A[i] = src.A[ofs+i] >> tail
-				src.B[i] = src.B[ofs+i] >> tail
-				src.C[i] = src.C[ofs+i] >> tail
+				src.A[i] = src.A[words+i] >> tail
+				src.B[i] = src.B[words+i] >> tail
+				src.C[i] = src.C[words+i] >> tail
 
 				if i*64+(64-tail) < src.Count {
-					src.A[i] |= (src.A[ofs+i+1] & tailMask) << (64 - tail)
-					src.B[i] |= (src.B[ofs+i+1] & tailMask) << (64 - tail)
-					src.C[i] |= (src.C[ofs+i+1] & tailMask) << (64 - tail)
+					src.A[i] |= (src.A[words+i+1] & tailMask) << (64 - tail)
+					src.B[i] |= (src.B[words+i+1] & tailMask) << (64 - tail)
+					src.C[i] |= (src.C[words+i+1] & tailMask) << (64 - tail)
 				}
 			}
 		}
