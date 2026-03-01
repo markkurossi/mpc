@@ -139,31 +139,44 @@ func (p *Peer) otReceive(self *Peer, b []uint) ([]uint, error) {
 	return share, nil
 }
 
-// SendBitsVec sends bits vector to the peer's offline channel.
-func (p *Peer) SendBitsVec(bits []uint64) error {
+// SendBitvec sends bit vector to the connection conn.
+func (p *Peer) SendBitvec(conn *p2p.Conn, bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
+
+	if err := conn.SendUint32(len(bits)); err != nil {
+		return err
+	}
 
 	for i := 0; i < len(bits); i += 2 {
 		l.D0 = bits[i]
 		if i+1 < len(bits) {
 			l.D1 = bits[i+1]
 		}
-		if err := p.offline.SendLabel(l, &ld); err != nil {
+		if err := conn.SendLabel(l, &ld); err != nil {
 			return err
 		}
 	}
 
-	return p.offline.Flush()
+	return conn.Flush()
 }
 
-// ReceiveBitsVec receives bits vector from the peer's offline channel.
-func (p *Peer) ReceiveBitsVec(bits []uint64) error {
+// ReceiveBitvec receives bits vector from the connection conn.
+func (p *Peer) ReceiveBitvec(conn *p2p.Conn, bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
 
+	count, err := conn.ReceiveUint32()
+	if err != nil {
+		return err
+	}
+	if count != len(bits) {
+		return fmt.Errorf("bitvec length mismatch: expected %v, got %v",
+			len(bits), count)
+	}
+
 	for i := 0; i < len(bits); i += 2 {
-		if err := p.offline.ReceiveLabel(&l, &ld); err != nil {
+		if err := conn.ReceiveLabel(&l, &ld); err != nil {
 			return err
 		}
 		bits[i] = l.D0

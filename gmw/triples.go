@@ -20,7 +20,7 @@ var (
 )
 
 const (
-	lowWaterMark = 1024
+	lowWaterMark = 8192
 )
 
 type msgType byte
@@ -44,6 +44,13 @@ type Triples struct {
 	C     []uint64
 }
 
+func (triples *Triples) EnsureCapacity(n int) {
+	words := (n + 63) / 64
+	triples.A = expand(triples.A, words)
+	triples.B = expand(triples.B, words)
+	triples.C = expand(triples.C, words)
+}
+
 // Clear clears triples.
 func (triples *Triples) Clear() {
 	triples.Count = 0
@@ -61,6 +68,8 @@ func (triples *Triples) Append(src *Triples, n int) int {
 	}
 	ofs := triples.Count / 64
 	shift := triples.Count % 64
+
+	triples.EnsureCapacity(triples.Count + n)
 
 	// Words and trailing bits.
 	words := n / 64
@@ -150,7 +159,9 @@ func (triples *Triples) Append(src *Triples, n int) int {
 
 // NewTriplePool creates a new beaver triple pool.
 func NewTriplePool() *TriplePool {
-	pool := &TriplePool{}
+	pool := &TriplePool{
+		triples: new(Triples),
+	}
 
 	pool.c = sync.NewCond(&pool.m)
 
@@ -239,7 +250,7 @@ func (nw *Network) iknpReceiver(peer *Peer) error {
 
 func (nw *Network) tripleSender() error {
 	self := nw.self
-	batchSize := 128
+	batchSize := 4096
 
 	for {
 		nw.pool.m.Lock()
@@ -249,8 +260,6 @@ func (nw *Network) tripleSender() error {
 		nw.pool.m.Unlock()
 
 		msg := int(msgTriple)<<24 | (batchSize & 0x00ffffff)
-
-		fmt.Printf("%v: new triple batch: size=%v\n", self, batchSize)
 
 		// Notify all peers about the new patch.
 		for _, peer := range nw.peers {
@@ -270,7 +279,7 @@ func (nw *Network) tripleSender() error {
 		}
 
 		// Increase batch size after first batch.
-		batchSize = 1024
+		batchSize = 8192
 	}
 }
 
@@ -359,12 +368,12 @@ func (nw *Network) tripleBatch(size int) error {
 			}
 
 			// Send u
-			if err := peer.SendBitsVec(u); err != nil {
+			if err := peer.SendBitvec(peer.offline, u); err != nil {
 				return err
 			}
 
 			// Receive v = b_peer
-			if err := peer.ReceiveBitsVec(v); err != nil {
+			if err := peer.ReceiveBitvec(peer.offline, v); err != nil {
 				return err
 			}
 
@@ -384,12 +393,12 @@ func (nw *Network) tripleBatch(size int) error {
 			}
 
 			// send v = b_self
-			if err := peer.SendBitsVec(b); err != nil {
+			if err := peer.SendBitvec(peer.offline, b); err != nil {
 				return err
 			}
 
 			// receive u = a_peer ⊕ Δ
-			if err := peer.ReceiveBitsVec(u); err != nil {
+			if err := peer.ReceiveBitvec(peer.offline, u); err != nil {
 				return err
 			}
 
@@ -411,12 +420,12 @@ func (nw *Network) tripleBatch(size int) error {
 			}
 
 			// send v = b_self
-			if err := peer.SendBitsVec(b); err != nil {
+			if err := peer.SendBitvec(peer.offline, b); err != nil {
 				return err
 			}
 
 			// receive u = a_peer ⊕ Δ
-			if err := peer.ReceiveBitsVec(u); err != nil {
+			if err := peer.ReceiveBitvec(peer.offline, u); err != nil {
 				return err
 			}
 
@@ -444,11 +453,11 @@ func (nw *Network) tripleBatch(size int) error {
 				copy(u, a)
 			}
 
-			if err := peer.SendBitsVec(u); err != nil {
+			if err := peer.SendBitvec(peer.offline, u); err != nil {
 				return err
 			}
 
-			if err := peer.ReceiveBitsVec(v); err != nil {
+			if err := peer.ReceiveBitvec(peer.offline, v); err != nil {
 				return err
 			}
 
@@ -458,7 +467,9 @@ func (nw *Network) tripleBatch(size int) error {
 		}
 	}
 
-	fmt.Printf("-batch%v=%x,%x,%x\n", self.id, a[0], b[0], c[0])
+	if false {
+		fmt.Printf("-batch%v=%x,%x,%x\n", self.id, a[0], b[0], c[0])
+	}
 
 	nw.pool.m.Lock()
 	nw.pool.triples.Append(&Triples{
@@ -504,12 +515,6 @@ func OTSend(peer *Peer, m0, m1 []uint64) {
 
 func OTRecv(peer *Peer, flags []uint64) []uint64 {
 	return nil
-}
-
-func copyOf(src []uint64) []uint64 {
-	result := make([]uint64, len(src))
-	copy(result, src)
-	return result
 }
 
 // Now: XOR_i C_i = (XOR_i A_i) AND (XOR_i B_i)
@@ -571,7 +576,7 @@ func (nw *INetwork) BroadcastXOR(local []uint64) []uint64 {
 			continue
 		}
 
-		peer.SendBitsVec(local)
+		peer.SendBitvec(peer.online, local)
 	}
 
 	for _, peer := range nw.peers {
@@ -581,7 +586,7 @@ func (nw *INetwork) BroadcastXOR(local []uint64) []uint64 {
 
 		recv := make([]uint64, len(local))
 
-		peer.ReceiveBitsVec(recv)
+		peer.ReceiveBitvec(peer.online, recv)
 		result = xorBitVector(result, recv)
 	}
 

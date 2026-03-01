@@ -38,8 +38,8 @@ type Network struct {
 	pool *TriplePool
 
 	andBatch      []*circuit.Gate
-	andA          []uint
-	andB          []uint
+	andA          []uint64
+	andB          []uint64
 	triples       *Triples
 	andBatchCount int
 	andBatchMax   int
@@ -57,6 +57,7 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 		self:       self,
 		done:       make(chan error),
 		pool:       NewTriplePool(),
+		triples:    new(Triples),
 	}
 	err := nw.addPeer(self)
 	if err != nil {
@@ -671,13 +672,18 @@ func (nw *Network) run(verbose bool) error {
 }
 
 func (nw *Network) andBatchAdd(gate *circuit.Gate, a, b uint) error {
+	bit := len(nw.andBatch)
+
 	nw.andBatch = append(nw.andBatch, gate)
-	nw.andA = append(nw.andA, a)
-	nw.andB = append(nw.andB, b)
+	nw.andA = setBit(nw.andA, bit, a)
+	nw.andB = setBit(nw.andB, bit, b)
+
 	return nil
 }
 
 func (nw *Network) andBatchFlush(level int) error {
+	self := nw.self
+
 	if len(nw.andBatch) == 0 {
 		nw.andBatchLevel = level
 		return nil
@@ -689,82 +695,105 @@ func (nw *Network) andBatchFlush(level int) error {
 		nw.andBatchMax = len(nw.andBatch)
 	}
 
-	self := nw.self
-	n := len(nw.andBatch)
+	words := (len(nw.andBatch) + 63) / 64
 
-	// Compute local terms.
-	z := make([]uint, n)
-	for i := 0; i < len(z); i++ {
-		z[i] = nw.andA[i] & nw.andB[i]
+	nw.pool.Get(len(nw.andBatch), nw.triples)
+
+	if len(nw.triples.A) < words {
+		panic("triple size mismatch")
 	}
-	var m sync.Mutex
-	var wg sync.WaitGroup
-	var otErr error
-
-	setOTErr := func(err error) {
-		m.Lock()
-		otErr = err
-		m.Unlock()
+	if (nw.triples.Count+63)/64 != words {
+		panic("triple word count mismatch")
 	}
 
-	// Batched cross terms via ROT.
-	for _, peer := range nw.peers {
-		if peer.id == self.id {
-			continue
+	d := make([]uint64, words)
+	e := make([]uint64, words)
+
+	// --------------------------------------------
+	// Step 1: Compute masked differences
+	// d = x XOR a
+	// e = y XOR b
+	// --------------------------------------------
+
+	for w := 0; w < words; w++ {
+		d[w] = nw.andA[w] ^ nw.triples.A[w]
+		e[w] = nw.andB[w] ^ nw.triples.B[w]
+	}
+
+	// --------------------------------------------
+	// Step 2: Open d and e
+	// --------------------------------------------
+
+	dOpen, err := nw.broadcastXOR(d)
+	if err != nil {
+		return err
+	}
+	eOpen, err := nw.broadcastXOR(e)
+	if err != nil {
+		return err
+	}
+
+	// --------------------------------------------
+	// Step 3: Final local computation
+	// z = c XOR (d & b) XOR (e & a) XOR (d & e)
+	// --------------------------------------------
+
+	z := make([]uint64, words)
+
+	for w := 0; w < words; w++ {
+		z[w] = nw.triples.C[w] ^
+			(dOpen[w] & nw.triples.B[w]) ^
+			(eOpen[w] & nw.triples.A[w])
+
+		if self.id == 0 {
+			z[w] ^= (dOpen[w] & eOpen[w])
 		}
-		wg.Go(func() {
-			var err error
-			var senderShare, receiverShare []uint
-
-			if self.id < peer.id {
-				senderShare, err = peer.otSend(self, nw.andA)
-				if err != nil {
-					setOTErr(err)
-					return
-				}
-				receiverShare, err = peer.otReceive(self, nw.andB)
-				if err != nil {
-					setOTErr(err)
-					return
-				}
-			} else {
-				receiverShare, err = peer.otReceive(self, nw.andB)
-				if err != nil {
-					setOTErr(err)
-					return
-				}
-				senderShare, err = peer.otSend(self, nw.andA)
-				if err != nil {
-					setOTErr(err)
-					return
-				}
-			}
-
-			// Combine result into z.
-			m.Lock()
-			for i := 0; i < n; i++ {
-				z[i] ^= senderShare[i]
-				z[i] ^= receiverShare[i]
-			}
-			m.Unlock()
-		})
-	}
-	wg.Wait()
-	if otErr != nil {
-		return otErr
 	}
 
 	// Set result wires.
 	for i, gate := range nw.andBatch {
-		nw.wires.SetBit(nw.wires, int(gate.Output), z[i])
+		nw.wires.SetBit(nw.wires, int(gate.Output), bit(z, i))
 	}
 
 	nw.andBatch = nw.andBatch[:0]
-	nw.andA = nw.andA[:0]
-	nw.andB = nw.andB[:0]
+	clear(nw.andA)
+	clear(nw.andB)
 	nw.andBatchLevel = level
 
+	nw.triples.Clear()
+
 	return nil
+}
+
+func (nw *Network) broadcastXOR(local []uint64) ([]uint64, error) {
+	self := nw.self
+	result := copyOf(local)
+
+	recv := make([]uint64, len(local))
+
+	for _, peer := range nw.peers {
+		if peer.id == self.id {
+			continue
+		}
+		if self.id < peer.id {
+			if err := peer.SendBitvec(peer.online, local); err != nil {
+				return nil, err
+			}
+			if err := peer.ReceiveBitvec(peer.online, recv); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := peer.ReceiveBitvec(peer.online, recv); err != nil {
+				return nil, err
+			}
+			if err := peer.SendBitvec(peer.online, local); err != nil {
+				return nil, err
+			}
+		}
+		xorBitvec(result, recv)
+	}
+
+	return result, nil
 }
 
 func (nw *Network) newOT() ot.OT {
