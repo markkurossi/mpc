@@ -95,15 +95,14 @@ func gmwMode(file string, params *utils.Params,
 			circuit.FileSize(offXfer).String(),
 		})
 
-		if verbose {
-			timing.Print(nw.Stats())
+		err = nw.Close()
+		if err != nil {
+			return err
 		}
-
-		nw.Close()
-
 		if verbose {
 			fmt.Printf("TriplePool: #batches=%v, #triples=%v\n",
 				nw.Pool.NumBatches, nw.Pool.NumTriples)
+			timing.Print(nw.Stats())
 		}
 
 		mpc.PrintResults(result, circ.Outputs, base)
