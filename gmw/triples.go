@@ -44,6 +44,8 @@ type Triples struct {
 	C     []uint64
 }
 
+// EnsureCapacity ensures that the triple batch has capacity for the
+// specified number of words.
 func (triples *Triples) EnsureCapacity(words int) {
 	triples.A = expand(triples.A, words)
 	triples.B = expand(triples.B, words)
@@ -417,113 +419,4 @@ func (nw *Network) tripleBatch(size int) error {
 	nw.pool.m.Unlock()
 
 	return nil
-}
-
-/**************************** Triple generation *****************************/
-
-type TripleBatch struct {
-	A []uint64 // bit-packed shares
-	B []uint64
-	C []uint64
-}
-
-type INetwork struct {
-	id         int
-	numParties int
-	peers      []*Peer // index by party id
-}
-
-func randomUint64() uint64 {
-	return 0
-}
-
-func randomBitVector(words int) []uint64 {
-	return nil
-}
-
-func xorBitVector(a, b []uint64) []uint64 {
-	return nil
-}
-
-func OTSend(peer *Peer, m0, m1 []uint64) {
-}
-
-func OTRecv(peer *Peer, flags []uint64) []uint64 {
-	return nil
-}
-
-// Now: XOR_i C_i = (XOR_i A_i) AND (XOR_i B_i)
-
-/************************ Batched AND Using Triples *************************/
-
-func (nw *INetwork) AndWithTriples(
-	X, Y []uint64,
-	T *TripleBatch,
-) []uint64 {
-
-	words := len(X)
-
-	D := make([]uint64, words)
-	E := make([]uint64, words)
-
-	// --------------------------------------------
-	// Step 1: Compute masked differences
-	// d = x XOR a
-	// e = y XOR b
-	// --------------------------------------------
-
-	for w := 0; w < words; w++ {
-		D[w] = X[w] ^ T.A[w]
-		E[w] = Y[w] ^ T.B[w]
-	}
-
-	// --------------------------------------------
-	// Step 2: Open d and e
-	// --------------------------------------------
-
-	Dopen := nw.BroadcastXOR(D)
-	Eopen := nw.BroadcastXOR(E)
-
-	// --------------------------------------------
-	// Step 3: Final local computation
-	// z = c XOR (d & b) XOR (e & a) XOR (d & e)
-	// --------------------------------------------
-
-	Z := make([]uint64, words)
-
-	for w := 0; w < words; w++ {
-		Z[w] =
-			T.C[w] ^
-				(Dopen[w] & T.B[w]) ^
-				(Eopen[w] & T.A[w]) ^
-				(Dopen[w] & Eopen[w])
-	}
-
-	return Z
-}
-
-func (nw *INetwork) BroadcastXOR(local []uint64) []uint64 {
-
-	result := copyOf(local)
-
-	for _, peer := range nw.peers {
-		if peer.id == nw.id {
-			continue
-		}
-
-		peer.SendBitvec(peer.online, local)
-	}
-
-	for _, peer := range nw.peers {
-		if peer.id == nw.id {
-			continue
-		}
-
-		recv := make([]uint64, len(local))
-
-		peer.ReceiveBitvec(peer.online, recv)
-		result = xorBitVector(result, recv)
-	}
-
-	return result
 }
