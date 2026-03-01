@@ -79,7 +79,7 @@ func (p *Peer) shareInput(o *Peer) error {
 	return nil
 }
 
-// SendBitvec sends bit vector to the connection conn.
+// SendBitvec sends a bit vector over the connection.
 func (p *Peer) SendBitvec(conn *p2p.Conn, bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
@@ -101,7 +101,7 @@ func (p *Peer) SendBitvec(conn *p2p.Conn, bits []uint64) error {
 	return conn.Flush()
 }
 
-// ReceiveBitvec receives bits vector from the connection conn.
+// ReceiveBitvec receives a bit vector from the connection.
 func (p *Peer) ReceiveBitvec(conn *p2p.Conn, bits []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
@@ -127,7 +127,7 @@ func (p *Peer) ReceiveBitvec(conn *p2p.Conn, bits []uint64) error {
 	return nil
 }
 
-// SendBitvec2 sends two bit vector to the connection conn.
+// SendBitvec2 sends two bit vectors over the connection.
 func (p *Peer) SendBitvec2(conn *p2p.Conn, b0, b1 []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label
@@ -162,7 +162,7 @@ func (p *Peer) SendBitvec2(conn *p2p.Conn, b0, b1 []uint64) error {
 	return conn.Flush()
 }
 
-// ReceiveBitvec2 receives two bits vector from the connection conn.
+// ReceiveBitvec2 receives two bit vectors from the connection.
 func (p *Peer) ReceiveBitvec2(conn *p2p.Conn, b0, b1 []uint64) error {
 	var ld ot.LabelData
 	var l ot.Label

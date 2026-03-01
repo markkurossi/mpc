@@ -89,7 +89,7 @@ func (triples *Triples) Append(src *Triples, n int) int {
 	return words * 64
 }
 
-// TriplePool implements beaver triple pool.
+// TriplePool implements a Beaver triple pool.
 type TriplePool struct {
 	m       sync.Mutex
 	c       *sync.Cond
@@ -113,7 +113,7 @@ func NewTriplePool() *TriplePool {
 	return pool
 }
 
-// Close closes the beaver triple bool.
+// Close closes the beaver triple pool.
 func (pool *TriplePool) Close() {
 	pool.m.Lock()
 	pool.closed = true
@@ -121,11 +121,11 @@ func (pool *TriplePool) Close() {
 	pool.m.Unlock()
 }
 
-// Get gets count triples from the triple pool and returns them in the
-// triples. The function resizes triples if needed. If the triple pool
-// does not have count triples, the function waits until the triple
-// generation offline process produces the required amount of new
-// triples.
+// Get retrieves count triples from the triple pool and returns them
+// in the triples. The function resizes triples if needed. If the
+// triple pool does not have count triples, the function waits until
+// the triple generation offline process produces the required amount
+// of new triples.
 func (pool *TriplePool) Get(count int, triples *Triples) {
 	pool.m.Lock()
 	for ofs := 0; ofs < count; {
