@@ -7,7 +7,6 @@
 package gmw
 
 import (
-	"crypto/rand"
 	"fmt"
 	"math/big"
 	"net"
@@ -15,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/markkurossi/mpc/circuit"
-	"github.com/markkurossi/mpc/ot"
 	"github.com/markkurossi/mpc/p2p"
 )
 
@@ -769,10 +767,6 @@ func (nw *Network) broadcastXOR(local []uint64) ([]uint64, error) {
 	}
 
 	return result, nil
-}
-
-func (nw *Network) newOT() ot.OT {
-	return ot.NewROT(ot.NewCO(rand.Reader), rand.Reader, false, true)
 }
 
 // receiveInput receives the input share from the peer o.
