@@ -20,7 +20,7 @@ var (
 )
 
 const (
-	lowWaterMark = 1024
+	lowWaterMark = 4096
 )
 
 type msgType byte
@@ -47,9 +47,12 @@ type Triples struct {
 // EnsureCapacity ensures that the triple batch has capacity for the
 // specified number of words.
 func (triples *Triples) EnsureCapacity(words int) {
-	triples.A = expand(triples.A, words)
-	triples.B = expand(triples.B, words)
-	triples.C = expand(triples.C, words)
+	var size int
+	for size = 2; size <= words; size *= 2 {
+	}
+	triples.A = expand(triples.A, size)
+	triples.B = expand(triples.B, size)
+	triples.C = expand(triples.C, size)
 }
 
 // Clear clears triples.
@@ -109,23 +112,17 @@ func NewTriplePool() *TriplePool {
 // generation offline process produces the required amount of new
 // triples.
 func (pool *TriplePool) Get(count int, triples *Triples) {
-	words := (count + 63) / 64
-	if words > len(triples.A) {
-		// Resize result arrays.
-		triples.A = make([]uint64, count)
-		triples.B = make([]uint64, count)
-		triples.C = make([]uint64, count)
-	}
-
+	pool.m.Lock()
 	for ofs := 0; ofs < count; {
-		pool.m.Lock()
 		for pool.triples.Words == 0 {
 			pool.c.Wait()
 		}
 		ofs += triples.Append(pool.triples, count-ofs)
-		pool.c.Signal()
-		pool.m.Unlock()
 	}
+	if pool.triples.Words <= lowWaterMark {
+		pool.c.Signal()
+	}
+	pool.m.Unlock()
 }
 
 func (nw *Network) startOffline() error {
