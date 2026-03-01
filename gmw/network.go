@@ -677,7 +677,7 @@ func (nw *Network) andBatchFlush(level int) error {
 	if len(nw.triples.A) < words {
 		panic("triple size mismatch")
 	}
-	if (nw.triples.Count+63)/64 != words {
+	if nw.triples.Words < words {
 		panic("triple word count mismatch")
 	}
 

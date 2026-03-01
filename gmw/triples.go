@@ -20,7 +20,7 @@ var (
 )
 
 const (
-	lowWaterMark = 8192
+	lowWaterMark = 1024
 )
 
 type msgType byte
@@ -38,14 +38,13 @@ type TriplePool struct {
 
 // Triples contain a batch of beaver triples.
 type Triples struct {
-	Count int
+	Words int
 	A     []uint64
 	B     []uint64
 	C     []uint64
 }
 
-func (triples *Triples) EnsureCapacity(n int) {
-	words := (n + 63) / 64
+func (triples *Triples) EnsureCapacity(words int) {
 	triples.A = expand(triples.A, words)
 	triples.B = expand(triples.B, words)
 	triples.C = expand(triples.C, words)
@@ -53,108 +52,42 @@ func (triples *Triples) EnsureCapacity(n int) {
 
 // Clear clears triples.
 func (triples *Triples) Clear() {
-	triples.Count = 0
+	triples.Words = 0
 	clear(triples.A)
 	clear(triples.B)
 	clear(triples.C)
 }
 
-// Append appends maximum n triples from the src triple batch. The
-// function returns the number of triples appended. The return value
-// is smaller than n if the src batch did not have that many triples.
+// Append appends n (or maximum of n+63) triples from the src triple
+// batch. The function returns the number of triples appended. The
+// return value is smaller than n if the src batch did not have that
+// many triples.  The function always appends full uint64 words.
 func (triples *Triples) Append(src *Triples, n int) int {
-	if n > src.Count {
-		n = src.Count
-	}
-	ofs := triples.Count / 64
-	shift := triples.Count % 64
-
-	triples.EnsureCapacity(triples.Count + n)
-
-	// Words and trailing bits.
-	words := n / 64
-	tail := n % 64
-
-	tailMask := uint64(0xffffffffffffffff)
-	tailMask >>= 64 - tail
-
-	trailMask := uint64(0xffffffffffffffff)
-	trailMask <<= tail
-
-	if shift == 0 {
-		for i := 0; i < words; i++ {
-			triples.A[ofs] = src.A[i]
-			triples.B[ofs] = src.B[i]
-			triples.C[ofs] = src.C[i]
-			ofs++
-		}
-		if tail != 0 {
-			triples.A[ofs] = src.A[words] & tailMask
-			triples.B[ofs] = src.B[words] & tailMask
-			triples.C[ofs] = src.C[words] & tailMask
-		}
-	} else {
-		for i := 0; i < words; i++ {
-			triples.A[ofs] |= src.A[i] << shift
-			triples.B[ofs] |= src.B[i] << shift
-			triples.C[ofs] |= src.C[i] << shift
-
-			triples.A[ofs+1] = src.A[i] >> (64 - shift)
-			triples.B[ofs+1] = src.B[i] >> (64 - shift)
-			triples.C[ofs+1] = src.C[i] >> (64 - shift)
-
-			ofs++
-		}
-		if tail != 0 {
-			a := src.A[words] & tailMask
-			b := src.B[words] & tailMask
-			c := src.C[words] & tailMask
-
-			triples.A[ofs] |= a << shift
-			triples.B[ofs] |= b << shift
-			triples.C[ofs] |= c << shift
-
-			if 64-shift < tail {
-				triples.A[ofs+1] = a >> (64 - shift)
-				triples.B[ofs+1] = b >> (64 - shift)
-				triples.C[ofs+1] = c >> (64 - shift)
-			}
-		}
+	// Round n up to word boundary.
+	words := (n + 63) / 64
+	if words > src.Words {
+		words = src.Words
 	}
 
-	// Compact src arrays.
-	if src.Count == n {
-		src.Clear()
-	} else {
-		src.Count -= n
-		remainingWords := src.Count / 64
+	triples.EnsureCapacity(triples.Words + words)
 
-		if tail == 0 {
-			copy(src.A[0:], src.A[words:])
-			copy(src.B[0:], src.B[words:])
-			copy(src.C[0:], src.C[words:])
+	copy(triples.A[triples.Words:], src.A[:words])
+	copy(triples.B[triples.Words:], src.B[:words])
+	copy(triples.C[triples.Words:], src.C[:words])
 
-			clear(src.A[remainingWords:])
-			clear(src.B[remainingWords:])
-			clear(src.C[remainingWords:])
-		} else {
-			for i := 0; i*64 < src.Count; i++ {
-				src.A[i] = src.A[words+i] >> tail
-				src.B[i] = src.B[words+i] >> tail
-				src.C[i] = src.C[words+i] >> tail
+	triples.Words += words
 
-				if i*64+(64-tail) < src.Count {
-					src.A[i] |= (src.A[words+i+1] & tailMask) << (64 - tail)
-					src.B[i] |= (src.B[words+i+1] & tailMask) << (64 - tail)
-					src.C[i] |= (src.C[words+i+1] & tailMask) << (64 - tail)
-				}
-			}
-		}
-	}
+	copy(src.A[0:], src.A[words:])
+	copy(src.B[0:], src.B[words:])
+	copy(src.C[0:], src.C[words:])
 
-	triples.Count += n
+	src.Words -= words
 
-	return n
+	clear(src.A[src.Words:])
+	clear(src.B[src.Words:])
+	clear(src.C[src.Words:])
+
+	return words * 64
 }
 
 // NewTriplePool creates a new beaver triple pool.
@@ -184,7 +117,7 @@ func (pool *TriplePool) Get(count int, triples *Triples) {
 
 	for ofs := 0; ofs < count; {
 		pool.m.Lock()
-		for pool.triples.Count == 0 {
+		for pool.triples.Words == 0 {
 			pool.c.Wait()
 		}
 		ofs += triples.Append(pool.triples, count-ofs)
@@ -250,11 +183,11 @@ func (nw *Network) iknpReceiver(peer *Peer) error {
 
 func (nw *Network) tripleSender() error {
 	self := nw.self
-	batchSize := 4096
+	batchSize := 1024
 
 	for {
 		nw.pool.m.Lock()
-		for nw.pool.triples.Count > lowWaterMark {
+		for nw.pool.triples.Words > lowWaterMark {
 			nw.pool.c.Wait()
 		}
 		nw.pool.m.Unlock()
@@ -279,7 +212,7 @@ func (nw *Network) tripleSender() error {
 		}
 
 		// Increase batch size after first batch.
-		batchSize = 8192
+		batchSize = 4096
 	}
 }
 
@@ -309,7 +242,9 @@ func (nw *Network) tripleReceiver() error {
 
 func (nw *Network) tripleBatch(size int) error {
 	self := nw.self
-	fmt.Printf("%v: new triple batch: size=%v\n", self, size)
+	if false {
+		fmt.Printf("%v: new triple batch: size=%v\n", self, size)
+	}
 
 	words := (size + 63) / 64
 
@@ -473,7 +408,7 @@ func (nw *Network) tripleBatch(size int) error {
 
 	nw.pool.m.Lock()
 	nw.pool.triples.Append(&Triples{
-		Count: size,
+		Words: words,
 		A:     a,
 		B:     b,
 		C:     c,
