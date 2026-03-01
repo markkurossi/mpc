@@ -23,18 +23,12 @@ const (
 	lowWaterMark = 4096
 )
 
-type msgType byte
+type msgType int
 
 const (
-	msgTriple msgType = iota
+	msgClose msgType = iota
+	msgTriple
 )
-
-// TriplePool implements beaver triple pool.
-type TriplePool struct {
-	m       sync.Mutex
-	c       *sync.Cond
-	triples *Triples
-}
 
 // Triples contain a batch of beaver triples.
 type Triples struct {
@@ -95,15 +89,36 @@ func (triples *Triples) Append(src *Triples, n int) int {
 	return words * 64
 }
 
+// TriplePool implements beaver triple pool.
+type TriplePool struct {
+	m       sync.Mutex
+	c       *sync.Cond
+	closed  bool
+	done    chan error
+	triples *Triples
+
+	NumTriples uint64
+	NumBatches uint64
+}
+
 // NewTriplePool creates a new beaver triple pool.
 func NewTriplePool() *TriplePool {
 	pool := &TriplePool{
+		done:    make(chan error),
 		triples: new(Triples),
 	}
 
 	pool.c = sync.NewCond(&pool.m)
 
 	return pool
+}
+
+// Close closes the beaver triple bool.
+func (pool *TriplePool) Close() {
+	pool.m.Lock()
+	pool.closed = true
+	pool.c.Broadcast()
+	pool.m.Unlock()
 }
 
 // Get gets count triples from the triple pool and returns them in the
@@ -180,20 +195,29 @@ func (nw *Network) iknpReceiver(peer *Peer) error {
 	return err
 }
 
-func (nw *Network) tripleSender() error {
+func (nw *Network) tripleSender() {
+	nw.Pool.done <- nw.tripleSenderLoop()
+}
+
+func (nw *Network) tripleSenderLoop() error {
 	self := nw.self
 	batchSize := 1024
 
 	for {
-		nw.pool.m.Lock()
-		for nw.pool.triples.Words > lowWaterMark {
-			nw.pool.c.Wait()
+		nw.Pool.m.Lock()
+		for !nw.Pool.closed && nw.Pool.triples.Words > lowWaterMark {
+			nw.Pool.c.Wait()
 		}
-		nw.pool.m.Unlock()
+		nw.Pool.m.Unlock()
 
-		msg := int(msgTriple)<<24 | (batchSize & 0x00ffffff)
+		var msg int
+		if nw.Pool.closed {
+			msg = int(msgClose) << 24
+		} else {
+			msg = int(msgTriple)<<24 | (batchSize & 0x00ffffff)
+		}
 
-		// Notify all peers about the new patch.
+		// Send message to all peers.
 		for _, peer := range nw.peers {
 			if peer.id == self.id {
 				continue
@@ -205,6 +229,9 @@ func (nw *Network) tripleSender() error {
 				return err
 			}
 		}
+		if msg == int(msgClose) {
+			return nil
+		}
 		err := nw.tripleBatch(batchSize)
 		if err != nil {
 			return err
@@ -215,7 +242,11 @@ func (nw *Network) tripleSender() error {
 	}
 }
 
-func (nw *Network) tripleReceiver() error {
+func (nw *Network) tripleReceiver() {
+	nw.Pool.done <- nw.tripleReceiverLoop()
+}
+
+func (nw *Network) tripleReceiverLoop() error {
 	leader, err := nw.getPeer(0)
 	if err != nil {
 		return err
@@ -227,14 +258,25 @@ func (nw *Network) tripleReceiver() error {
 
 	for {
 		// Wait for the next batch.
-		batchSize, err := leader.offline.ReceiveUint32()
+		ival, err := leader.offline.ReceiveUint32()
 		if err != nil {
 			return err
 		}
-		err = nw.tripleBatch(batchSize)
-		if err != nil {
-			fmt.Printf("tripleBatch: %v\n", err)
-			return err
+		msg := msgType(ival >> 24)
+		arg := ival & 0x00ffffff
+
+		switch msg {
+		case msgClose:
+			return nil
+
+		case msgTriple:
+			err = nw.tripleBatch(arg)
+			if err != nil {
+				return err
+			}
+
+		default:
+			return fmt.Errorf("unknown message %v", msg)
 		}
 	}
 }
@@ -244,6 +286,8 @@ func (nw *Network) tripleBatch(size int) error {
 	if false {
 		fmt.Printf("%v: new triple batch: size=%v\n", self, size)
 	}
+	nw.Pool.NumTriples += uint64(size)
+	nw.Pool.NumBatches++
 
 	words := (size + 63) / 64
 
@@ -405,15 +449,15 @@ func (nw *Network) tripleBatch(size int) error {
 		fmt.Printf("-batch%v=%x,%x,%x\n", self.id, a[0], b[0], c[0])
 	}
 
-	nw.pool.m.Lock()
-	nw.pool.triples.Append(&Triples{
+	nw.Pool.m.Lock()
+	nw.Pool.triples.Append(&Triples{
 		Words: words,
 		A:     a,
 		B:     b,
 		C:     c,
 	}, size)
-	nw.pool.c.Signal()
-	nw.pool.m.Unlock()
+	nw.Pool.c.Signal()
+	nw.Pool.m.Unlock()
 
 	return nil
 }

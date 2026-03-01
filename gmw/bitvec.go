@@ -65,3 +65,11 @@ func expand(bitvec []uint64, words int) []uint64 {
 
 	return result
 }
+
+func expandClear(bitvec []uint64, words int) []uint64 {
+	if words <= len(bitvec) {
+		clear(bitvec)
+		return bitvec
+	}
+	return make([]uint64, words)
+}

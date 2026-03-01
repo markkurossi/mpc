@@ -33,12 +33,15 @@ type Network struct {
 	self        *Peer
 	done        chan error
 
-	pool *TriplePool
+	Pool *TriplePool
 
 	andBatch      []*circuit.Gate
 	andA          []uint64
 	andB          []uint64
 	triples       *Triples
+	andD          []uint64
+	andE          []uint64
+	andZ          []uint64
 	andBatchCount int
 	andBatchMax   int
 	andBatchLevel int
@@ -54,7 +57,7 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 		peersByID:  make(map[int]*Peer),
 		self:       self,
 		done:       make(chan error),
-		pool:       NewTriplePool(),
+		Pool:       NewTriplePool(),
 		triples:    new(Triples),
 	}
 	err := nw.addPeer(self)
@@ -225,6 +228,10 @@ func JoinNetwork(leader, this string, id int) (*Network, error) {
 
 // Close closes the network and all its peer connections.
 func (nw *Network) Close() {
+	// Wait for triple pool to terminate.
+	nw.Pool.Close()
+	<-nw.Pool.done
+
 	nw.m.Lock()
 	defer nw.m.Unlock()
 
@@ -670,7 +677,13 @@ func (nw *Network) andBatchFlush(level int) error {
 
 	words := (len(nw.andBatch) + 63) / 64
 
-	nw.pool.Get(len(nw.andBatch), nw.triples)
+	// Ensure temp arrays has enough space, and clear them for the new
+	// batch.
+	nw.andD = expandClear(nw.andD, words)
+	nw.andE = expandClear(nw.andE, words)
+	nw.andZ = expandClear(nw.andZ, words)
+
+	nw.Pool.Get(len(nw.andBatch), nw.triples)
 
 	if len(nw.triples.A) < words {
 		panic("triple size mismatch")
@@ -679,9 +692,6 @@ func (nw *Network) andBatchFlush(level int) error {
 		panic("triple word count mismatch")
 	}
 
-	d := make([]uint64, words)
-	e := make([]uint64, words)
-
 	// --------------------------------------------
 	// Step 1: Compute masked differences
 	// d = x XOR a
@@ -689,19 +699,20 @@ func (nw *Network) andBatchFlush(level int) error {
 	// --------------------------------------------
 
 	for w := 0; w < words; w++ {
-		d[w] = nw.andA[w] ^ nw.triples.A[w]
-		e[w] = nw.andB[w] ^ nw.triples.B[w]
+		nw.andD[w] = nw.andA[w] ^ nw.triples.A[w]
+		nw.andE[w] = nw.andB[w] ^ nw.triples.B[w]
 	}
 
 	// --------------------------------------------
 	// Step 2: Open d and e
 	// --------------------------------------------
 
-	dOpen, err := nw.broadcastXOR(d)
+	// XXX Merge these into one call: broadcastXORs
+	dOpen, err := nw.broadcastXOR(nw.andD)
 	if err != nil {
 		return err
 	}
-	eOpen, err := nw.broadcastXOR(e)
+	eOpen, err := nw.broadcastXOR(nw.andE)
 	if err != nil {
 		return err
 	}
@@ -711,21 +722,19 @@ func (nw *Network) andBatchFlush(level int) error {
 	// z = c XOR (d & b) XOR (e & a) XOR (d & e)
 	// --------------------------------------------
 
-	z := make([]uint64, words)
-
 	for w := 0; w < words; w++ {
-		z[w] = nw.triples.C[w] ^
+		nw.andZ[w] = nw.triples.C[w] ^
 			(dOpen[w] & nw.triples.B[w]) ^
 			(eOpen[w] & nw.triples.A[w])
 
 		if self.id == 0 {
-			z[w] ^= (dOpen[w] & eOpen[w])
+			nw.andZ[w] ^= (dOpen[w] & eOpen[w])
 		}
 	}
 
 	// Set result wires.
 	for i, gate := range nw.andBatch {
-		nw.wires.SetBit(nw.wires, int(gate.Output), bit(z, i))
+		nw.wires.SetBit(nw.wires, int(gate.Output), bit(nw.andZ, i))
 	}
 
 	nw.andBatch = nw.andBatch[:0]
