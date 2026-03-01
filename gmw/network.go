@@ -35,6 +35,7 @@ type Network struct {
 
 	Pool *TriplePool
 
+	batched       *big.Int
 	andBatch      []*circuit.Gate
 	andA          []uint64
 	andB          []uint64
@@ -44,7 +45,6 @@ type Network struct {
 	andZ          []uint64
 	andBatchCount int
 	andBatchMax   int
-	andBatchLevel int
 }
 
 // NewNetwork creates a new network instance.
@@ -59,6 +59,7 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 		done:       make(chan error),
 		Pool:       NewTriplePool(),
 		triples:    new(Triples),
+		batched:    new(big.Int),
 	}
 	err := nw.addPeer(self)
 	if err != nil {
@@ -565,8 +566,9 @@ func (nw *Network) run(verbose bool) error {
 	for i := 0; i < len(nw.circ.Gates); i++ {
 		gate := &nw.circ.Gates[i]
 
-		if int(gate.Level) != nw.andBatchLevel {
-			if err := nw.andBatchFlush(int(gate.Level)); err != nil {
+		if nw.batched.Bit(int(gate.Input0)) == 1 ||
+			(gate.Op != circuit.INV && nw.batched.Bit(int(gate.Input1)) == 1) {
+			if err := nw.andBatchFlush(); err != nil {
 				return err
 			}
 		}
@@ -609,7 +611,7 @@ func (nw *Network) run(verbose bool) error {
 		nw.wires.SetBit(nw.wires, int(gate.Output), bit)
 	}
 
-	if err := nw.andBatchFlush(0); err != nil {
+	if err := nw.andBatchFlush(); err != nil {
 		return err
 	}
 
@@ -660,18 +662,20 @@ func (nw *Network) andBatchAdd(gate *circuit.Gate, a, b uint) error {
 	nw.andA = setBit(nw.andA, bit, a)
 	nw.andB = setBit(nw.andB, bit, b)
 
+	nw.batched.SetBit(nw.batched, int(gate.Output), 1)
+
 	return nil
 }
 
-func (nw *Network) andBatchFlush(level int) error {
+func (nw *Network) andBatchFlush() error {
 	self := nw.self
 
 	if len(nw.andBatch) == 0 {
-		nw.andBatchLevel = level
+		nw.batched.SetInt64(0)
 		return nil
 	}
 
-	debugf("AND batch %v: count=%v\n", nw.andBatchLevel+1, len(nw.andBatch))
+	debugf("AND batch %v: count=%v\n", nw.andBatchCount+1, len(nw.andBatch))
 	nw.andBatchCount++
 	if len(nw.andBatch) > nw.andBatchMax {
 		nw.andBatchMax = len(nw.andBatch)
@@ -737,7 +741,7 @@ func (nw *Network) andBatchFlush(level int) error {
 	nw.andBatch = nw.andBatch[:0]
 	clear(nw.andA)
 	clear(nw.andB)
-	nw.andBatchLevel = level
+	nw.batched.SetInt64(0)
 
 	nw.triples.Clear()
 
