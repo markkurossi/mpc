@@ -220,13 +220,17 @@ The MPCL runtime defines the following builtin functions:
  - [ ] GMW protocol
    - [x] n >= 2 parties
    - [x] Boolean multiplication triple R-OT2/1
-   - [ ] Implement OT-based triple generator and add separate p2p.Conn
+   - [x] Implement OT-based triple generator and add separate p2p.Conn
          for offline phase (triple generation)
    - [ ] Optimize AND batch memory usage
    - [ ] Measure +, -, *, / depth and if there are better algorithm
          form GMW use. Compare results with Yao and if needed, add
          compiler flags to optimize circuit generation on number of
          gates vs. depth.
+   - [ ] GMW vs. Yao? Efficient Secure Two-Party Computation with Low
+         Depth Circuits
+ - [ ] Highly-Scalable Searchable Symmetric Encryption with Support
+       for Boolean Queries - any linkage to MPC with this?
  - [ ] PQC
    - [ ] [ML-KEM](https://github.com/FiloSottile/mlkem768) in
          MPCL ([details](https://words.filippo.io/mlkem768/)).

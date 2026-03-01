@@ -101,6 +101,11 @@ func gmwMode(file string, params *utils.Params,
 
 		nw.Close()
 
+		if verbose {
+			fmt.Printf("TriplePool: #batches=%v, #triples=%v\n",
+				nw.Pool.NumBatches, nw.Pool.NumTriples)
+		}
+
 		mpc.PrintResults(result, circ.Outputs, base)
 		if !loop {
 			break
