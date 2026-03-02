@@ -88,6 +88,22 @@ func (cc *Compiler) OneWire() *Wire {
 	return cc.oneWire
 }
 
+// Pad pads the argument wires with zero values.
+func (cc *Compiler) Pad(wires []*Wire, n int) []*Wire {
+	if len(wires) >= n {
+		return wires
+	}
+	result := make([]*Wire, n)
+	for i := 0; i < n; i++ {
+		if i < len(wires) {
+			result[i] = wires[i]
+		} else {
+			result[i] = cc.ZeroWire()
+		}
+	}
+	return result
+}
+
 // ZeroPad pads the argument wires x and y with zero values so that
 // the resulting wires have the same number of bits.
 func (cc *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {

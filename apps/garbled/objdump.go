@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2025 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -23,6 +23,8 @@ func dumpObjects(files []string) error {
 		if err != nil {
 			return err
 		}
+		c.AssignLevels()
+
 		fmt.Printf("%s:\n", file)
 		fmt.Printf(" - inputs:\n")
 		for idx, input := range c.Inputs {
@@ -45,6 +47,8 @@ func dumpObjects(files []string) error {
 			c.Stats[circuit.XOR]+c.Stats[circuit.XNOR])
 		fmt.Printf("   - #!xor: %v\n",
 			c.Stats[circuit.AND]+c.Stats[circuit.OR]+c.Stats[circuit.INV])
+		fmt.Printf(" - levels : %v\n", c.Stats[circuit.NumLevels])
+		fmt.Printf(" - width  : %v\n", c.Stats[circuit.MaxWidth])
 		fmt.Printf(" - wires  : %v\n", c.NumWires)
 		fmt.Printf(" - Cost   : %v\n", c.Cost())
 	}

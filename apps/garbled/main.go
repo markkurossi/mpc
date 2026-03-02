@@ -138,6 +138,9 @@ func main() {
 	if *wNone {
 		params.Warn.DisableAll()
 	}
+	if *gmw >= 0 {
+		params.Target = utils.TargetGMW
+	}
 	base = *baseFlag
 
 	if len(*sids) > 0 {

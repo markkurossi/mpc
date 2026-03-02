@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2025 Markku Rossi
+// Copyright (c) 2020-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -19,9 +19,32 @@ import (
 	"github.com/markkurossi/mpc/env"
 )
 
+// Target defines the compilation target.
+type Target int
+
+// Supported compilation targets.
+const (
+	TargetYao Target = iota
+	TargetGMW
+)
+
+var targetNames = map[Target]string{
+	TargetYao: "Yao",
+	TargetGMW: "GMW",
+}
+
+func (t Target) String() string {
+	name, ok := targetNames[t]
+	if ok {
+		return name
+	}
+	return fmt.Sprintf("{Target %d}", t)
+}
+
 // Params specify compiler parameters.
 type Params struct {
 	Config        *env.Config
+	Target        Target
 	Verbose       bool
 	Diagnostics   bool
 	SSAOut        io.WriteCloser

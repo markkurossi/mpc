@@ -1,7 +1,7 @@
 //
 // circ_adder.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -9,7 +9,10 @@
 package circuits
 
 import (
+	"math"
+
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 // NewHalfAdder creates a half adder circuit.
@@ -52,6 +55,10 @@ func NewFullAdder(cc *Compiler, a, b, cin, s, cout *Wire) {
 
 // NewAdder creates a new adder circuit implementing z=x+y.
 func NewAdder(cc *Compiler, x, y, z []*Wire) error {
+	if cc.Params.Target == utils.TargetGMW {
+		return NewKoggeStoneAdder(cc, x, y, z)
+	}
+
 	x, y = cc.ZeroPad(x, y)
 	if len(x) > len(z) {
 		x = x[0:len(z)]
@@ -89,6 +96,81 @@ func NewAdder(cc *Compiler, x, y, z []*Wire) error {
 
 	// Set all leftover bits to zero.
 	for i := len(x) + 1; i < len(z); i++ {
+		z[i] = cc.ZeroWire()
+	}
+
+	return nil
+}
+
+// NewKoggeStoneAdder creates a Kogge-Stone parallel prefix adder.  It
+// achieves O(log n) AND-depth at the cost of a larger gate count.
+func NewKoggeStoneAdder(cc *Compiler, x, y, z []*Wire) error {
+	n := len(x)
+	if n < len(y) {
+		n = len(y)
+	}
+	if len(z) > n {
+		n++
+	}
+	x = cc.Pad(x, n)
+	y = cc.Pad(y, n)
+
+	if len(x) > len(z) {
+		x = x[0:len(z)]
+		y = y[0:len(z)]
+		n = len(z)
+	}
+	p := make([]*Wire, n)
+	g := make([]*Wire, n)
+
+	// Pre-processing.
+	for i := 0; i < n; i++ {
+		p[i] = cc.Calloc.Wire()
+		g[i] = cc.Calloc.Wire()
+
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[i], y[i], p[i]))
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, x[i], y[i], g[i]))
+	}
+
+	// Prefix network (logarithmic depth).
+	numStages := int(math.Ceil(math.Log2(float64(n))))
+	for s := 0; s < numStages; s++ {
+		newP := make([]*Wire, n)
+		newG := make([]*Wire, n)
+		shift := 1 << s
+
+		for i := 0; i < n; i++ {
+			if i < shift {
+				newP[i], newG[i] = p[i], g[i]
+			} else {
+				// Black cell logic.
+
+				newG[i] = cc.Calloc.Wire()
+				newP[i] = cc.Calloc.Wire()
+				and := cc.Calloc.Wire()
+
+				cc.AddGate(cc.Calloc.BinaryGate(
+					circuit.AND, p[i], g[i-shift], and))
+				cc.OR(g[i], and, newG[i])
+				cc.AddGate(cc.Calloc.BinaryGate(
+					circuit.AND, p[i], p[i-shift], newP[i]))
+			}
+		}
+		p, g = newP, newG
+	}
+
+	// Post-processing.
+	for i := 0; i < n; i++ {
+		if i == 0 {
+			cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[i], y[i], z[i]))
+		} else {
+			xor := cc.Calloc.Wire()
+			cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[i], y[i], xor))
+			cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, xor, g[i-1], z[i]))
+		}
+	}
+	// Set all leftover bits to zero.
+	for i := n; i < len(z); i++ {
 		z[i] = cc.ZeroWire()
 	}
 
