@@ -147,13 +147,20 @@ func NewKoggeStoneAdder(cc *Compiler, x, y, z []*Wire) error {
 
 				newG[i] = cc.Calloc.Wire()
 				newP[i] = cc.Calloc.Wire()
-				and := cc.Calloc.Wire()
 
+				andG := cc.Calloc.Wire() // For: p[i] AND g[i-shift]
+
+				// 2. Depth Round 1: Perform the two ANDs in parallel
 				cc.AddGate(cc.Calloc.BinaryGate(
-					circuit.AND, p[i], g[i-shift], and))
-				cc.OR(g[i], and, newG[i])
+					circuit.AND, p[i], g[i-shift], andG))
 				cc.AddGate(cc.Calloc.BinaryGate(
 					circuit.AND, p[i], p[i-shift], newP[i]))
+
+				// 3. Depth Round 0 (FREE): Use XOR instead of OR for
+				// the carry signal This is valid because g[i] and
+				// andG are mutually exclusive.
+				cc.AddGate(cc.Calloc.BinaryGate(
+					circuit.XOR, g[i], andG, newG[i]))
 			}
 		}
 		p, g = newP, newG
