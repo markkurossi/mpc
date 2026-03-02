@@ -1,7 +1,7 @@
 //
 // circ_multiplier.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2023, 2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,11 +10,15 @@ package circuits
 
 import (
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/mpc/types"
 )
 
 // NewMultiplier creates a multiplier circuit implementing x*y=z.
 func NewMultiplier(c *Compiler, arrayTreshold int, x, y, z []*Wire) error {
+	if c.Params.Target == utils.TargetGMW {
+		return NewWallaceMultiplier(c, x, y, z)
+	}
 	if false {
 		return NewArrayMultiplier(c, x, y, z)
 	}
@@ -210,6 +214,99 @@ func NewKaratsubaMultiplier(cc *Compiler, limit int, a, b, r []*Wire) error {
 	}
 
 	return NewAdder(cc, add1, z0, r)
+}
+
+// NewWallaceMultiplier implements multiplication using a Wallace
+// tree reduction. It reduces AND-depth at the cost of a larger
+// gate count and increased circuit width.
+func NewWallaceMultiplier(cc *Compiler, a, b, r []*Wire) error {
+	n := len(r)
+
+	a = cc.Pad(a, n)
+	b = cc.Pad(b, n)
+
+	if len(a) > len(r) {
+		a = a[0:len(r)]
+		b = b[0:len(r)]
+		n = len(b)
+	}
+	columns := make([][]*Wire, 2*n)
+
+	// 1. Partial Product Generation (Depth 1).
+	for i := 0; i < n; i++ {
+		for j := 0; j < n; j++ {
+			and := cc.Calloc.Wire()
+			cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, a[i], b[j], and))
+			columns[i+j] = append(columns[i+j], and)
+		}
+	}
+
+	// 2. Wallace Tree Reduction (Depth log_1.5(n))
+	for {
+		maxH := 0
+		for _, col := range columns {
+			if len(col) > maxH {
+				maxH = len(col)
+			}
+		}
+		if maxH <= 2 {
+			break
+		}
+
+		nextColumns := make([][]*Wire, 2*n)
+		for i := 0; i < len(columns); i++ {
+			j := 0
+			for j+2 < len(columns[i]) {
+				s := cc.Calloc.Wire()
+				c := cc.Calloc.Wire()
+
+				NewFullAdder(cc,
+					columns[i][j], columns[i][j+1], columns[i][j+2], s, c)
+
+				nextColumns[i] = append(nextColumns[i], s)
+				if i+1 < len(nextColumns) {
+					nextColumns[i+1] = append(nextColumns[i+1], c)
+				}
+				j += 3
+			}
+			if j+1 < len(columns[i]) {
+				s := cc.Calloc.Wire()
+				c := cc.Calloc.Wire()
+
+				NewHalfAdder(cc, columns[i][j], columns[i][j+1], s, c)
+
+				nextColumns[i] = append(nextColumns[i], s)
+				if i+1 < len(nextColumns) {
+					nextColumns[i+1] = append(nextColumns[i+1], c)
+				}
+				j += 2
+			}
+			if j < len(columns[i]) {
+				nextColumns[i] = append(nextColumns[i], columns[i][j])
+			}
+		}
+		columns = nextColumns
+	}
+
+	// 3. Prepare rows for final addition
+	row1 := make([]*Wire, 2*n)
+	row2 := make([]*Wire, 2*n)
+	for i := 0; i < len(columns); i++ {
+		if len(columns[i]) > 0 {
+			row1[i] = columns[i][0]
+		} else {
+			row1[i] = cc.ZeroWire()
+		}
+		if len(columns[i]) > 1 {
+			row2[i] = columns[i][1]
+		} else {
+			row2[i] = cc.ZeroWire()
+		}
+	}
+
+	// 4. Final Addition using Kogge-Stone (Depth log2(n))
+	return NewKoggeStoneAdder(cc, row1, row2, r)
+
 }
 
 func max(a, b int) int {
