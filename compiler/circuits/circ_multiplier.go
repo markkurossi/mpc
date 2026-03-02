@@ -253,37 +253,43 @@ func NewWallaceMultiplier(cc *Compiler, a, b, r []*Wire) error {
 			break
 		}
 
+		// "nextColumns" stores outputs for the NEXT round
 		nextColumns := make([][]*Wire, 2*n)
+
+		// "carriesForNext" ensures carries don't get used in the current round
+		carriesForNext := make([][]*Wire, 2*n)
+
 		for i := 0; i < len(columns); i++ {
 			j := 0
+			// Use inputs ONLY from the current 'columns' slice
 			for j+2 < len(columns[i]) {
-				s := cc.Calloc.Wire()
-				c := cc.Calloc.Wire()
-
-				NewFullAdder(cc,
-					columns[i][j], columns[i][j+1], columns[i][j+2], s, c)
+				s, c := cc.Calloc.Wire(), cc.Calloc.Wire()
+				NewFullAdder(cc, columns[i][j], columns[i][j+1], columns[i][j+2], s, c)
 
 				nextColumns[i] = append(nextColumns[i], s)
-				if i+1 < len(nextColumns) {
-					nextColumns[i+1] = append(nextColumns[i+1], c)
+				if i+1 < len(carriesForNext) {
+					carriesForNext[i+1] = append(carriesForNext[i+1], c)
 				}
 				j += 3
 			}
 			if j+1 < len(columns[i]) {
-				s := cc.Calloc.Wire()
-				c := cc.Calloc.Wire()
-
+				s, c := cc.Calloc.Wire(), cc.Calloc.Wire()
 				NewHalfAdder(cc, columns[i][j], columns[i][j+1], s, c)
 
 				nextColumns[i] = append(nextColumns[i], s)
-				if i+1 < len(nextColumns) {
-					nextColumns[i+1] = append(nextColumns[i+1], c)
+				if i+1 < len(carriesForNext) {
+					carriesForNext[i+1] = append(carriesForNext[i+1], c)
 				}
 				j += 2
 			}
 			if j < len(columns[i]) {
 				nextColumns[i] = append(nextColumns[i], columns[i][j])
 			}
+		}
+
+		// Merge the carries and the sums ONLY after the entire level is processed
+		for i := 0; i < len(nextColumns); i++ {
+			nextColumns[i] = append(nextColumns[i], carriesForNext[i]...)
 		}
 		columns = nextColumns
 	}
