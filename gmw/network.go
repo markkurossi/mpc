@@ -229,9 +229,13 @@ func JoinNetwork(leader, this string, id int) (*Network, error) {
 
 // Close closes the network and all its peer connections.
 func (nw *Network) Close() error {
-	// Wait for triple pool to terminate.
-	nw.Pool.Close()
-	err := <-nw.Pool.done
+	var err error
+
+	if nw.Pool.started {
+		// Wait for triple pool to terminate.
+		nw.Pool.Close()
+		err = <-nw.Pool.done
+	}
 
 	nw.m.Lock()
 	defer nw.m.Unlock()

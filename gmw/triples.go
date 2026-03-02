@@ -93,6 +93,7 @@ func (triples *Triples) Append(src *Triples, n int) int {
 type TriplePool struct {
 	m       sync.Mutex
 	c       *sync.Cond
+	started bool
 	closed  bool
 	done    chan error
 	triples *Triples
@@ -164,6 +165,8 @@ func (nw *Network) startOffline() error {
 			}
 		}
 	}
+
+	nw.Pool.started = true
 
 	if self.id == 0 {
 		go nw.tripleSender()
