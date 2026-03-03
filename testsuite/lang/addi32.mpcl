@@ -1,0 +1,16 @@
+// -*- go -*-
+
+package main
+
+// @Test 0  1 = 1
+// @Test 1  2 = 3
+// @Test 3  3 = 6
+// @Test 6  4 = 10
+// @Test 10 5 = 15
+// @Test 15 6 = 21
+// @Test 21 7 = 28
+// @Test 28 8 = 36
+// @Test 36 9 = 45
+func main(a, b int32) int {
+	return a + b
+}
