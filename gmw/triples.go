@@ -204,7 +204,7 @@ func (nw *Network) tripleSender() {
 
 func (nw *Network) tripleSenderLoop() error {
 	self := nw.self
-	batchSize := 1024
+	batchSize := 4096
 
 	for {
 		nw.Pool.m.Lock()
@@ -241,7 +241,7 @@ func (nw *Network) tripleSenderLoop() error {
 		}
 
 		// Increase batch size after first batch.
-		batchSize = 4096
+		batchSize = 8192
 	}
 }
 
