@@ -285,9 +285,9 @@ func NewWallaceMultiplier(cc *Compiler, a, b, r []*Wire) error {
 	}
 
 	// 3. Prepare rows for final addition
-	row1 := make([]*Wire, 2*n)
-	row2 := make([]*Wire, 2*n)
-	for i := 0; i < len(columns); i++ {
+	row1 := make([]*Wire, n)
+	row2 := make([]*Wire, n)
+	for i := 0; i < n; i++ {
 		if len(columns[i]) > 0 {
 			row1[i] = columns[i][0]
 		} else {
