@@ -134,9 +134,9 @@ func (pool *TriplePool) Get(count int, triples *Triples) {
 			pool.c.Wait()
 		}
 		ofs += triples.Append(pool.triples, count-ofs)
-	}
-	if pool.triples.Words <= lowWaterMark {
-		pool.c.Signal()
+		if pool.triples.Words <= lowWaterMark {
+			pool.c.Signal()
+		}
 	}
 	pool.m.Unlock()
 }
