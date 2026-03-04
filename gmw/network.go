@@ -35,7 +35,6 @@ type Network struct {
 
 	Pool *TriplePool
 
-	batched       *big.Int
 	andBatch      []*circuit.Gate
 	andA          []uint64
 	andB          []uint64
@@ -59,7 +58,6 @@ func NewNetwork(numParties int, listener net.Listener, self *Peer) *Network {
 		done:       make(chan error),
 		Pool:       NewTriplePool(),
 		triples:    new(Triples),
-		batched:    new(big.Int),
 	}
 	err := nw.addPeer(self)
 	if err != nil {
@@ -566,57 +564,68 @@ func (nw *Network) run(verbose bool) error {
 	self.shared.Xor(self.shared, self.input)
 	nw.setWires(self, self.shared)
 
-	// Evaluate circuit.
-	for i := 0; i < len(nw.circ.Gates); i++ {
+	// Collect gates by levels.
+	numLevels := int(nw.circ.Stats[circuit.NumLevels]) + 1
+	ands := make([][]*circuit.Gate, numLevels)
+	rest := make([][]*circuit.Gate, numLevels)
+
+	for i := range nw.circ.Gates {
 		gate := &nw.circ.Gates[i]
-
-		if nw.batched.Bit(int(gate.Input0)) == 1 ||
-			(gate.Op != circuit.INV && nw.batched.Bit(int(gate.Input1)) == 1) {
-			if err := nw.andBatchFlush(); err != nil {
-				return err
-			}
+		level := gate.Level
+		if gate.Op == circuit.AND {
+			ands[level] = append(ands[level], gate)
+		} else {
+			rest[level] = append(rest[level], gate)
 		}
+	}
+	debugf("Level\tAND\tRest\n")
 
-		a := nw.wires.Bit(int(gate.Input0))
+	for i := 0; i < numLevels; i++ {
+		debugf("%v\t%v\t%v\n", i, len(ands[i]), len(rest[i]))
 
-		var b uint
-		if gate.Op != circuit.INV {
-			b = nw.wires.Bit(int(gate.Input1))
-		}
+		for _, gate := range rest[i] {
+			a := nw.wires.Bit(int(gate.Input0))
 
-		var bit uint
-
-		switch gate.Op {
-		case circuit.XOR:
-			bit = a ^ b
-
-		case circuit.XNOR:
-			bit = a ^ b
-			if self.id == 0 {
-				bit ^= 1
+			var b uint
+			if gate.Op != circuit.INV {
+				b = nw.wires.Bit(int(gate.Input1))
 			}
 
-		case circuit.AND:
+			var bit uint
+			switch gate.Op {
+			case circuit.XOR:
+				bit = a ^ b
+
+			case circuit.XNOR:
+				bit = a ^ b
+				if self.id == 0 {
+					bit ^= 1
+				}
+
+			case circuit.INV:
+				if self.id == 0 {
+					bit = a ^ 1
+				} else {
+					bit = a
+				}
+
+			default:
+				return fmt.Errorf("gate %v not supported", gate.Op)
+			}
+			nw.wires.SetBit(nw.wires, int(gate.Output), bit)
+		}
+
+		for _, gate := range ands[i] {
+			a := nw.wires.Bit(int(gate.Input0))
+			b := nw.wires.Bit(int(gate.Input1))
+
 			if err := nw.andBatchAdd(gate, a, b); err != nil {
 				return err
 			}
-			continue
-
-		case circuit.INV:
-			if self.id == 0 {
-				bit = a ^ 1
-			} else {
-				bit = a
-			}
-
-		default:
-			return fmt.Errorf("gate %v not supported", gate.Op)
 		}
-		nw.wires.SetBit(nw.wires, int(gate.Output), bit)
-	}
-
-	if err := nw.andBatchFlush(); err != nil {
-		return err
+		if err := nw.andBatchFlush(); err != nil {
+			return err
+		}
 	}
 
 	if verbose {
@@ -666,8 +675,6 @@ func (nw *Network) andBatchAdd(gate *circuit.Gate, a, b uint) error {
 	nw.andA = setBit(nw.andA, bit, a)
 	nw.andB = setBit(nw.andB, bit, b)
 
-	nw.batched.SetBit(nw.batched, int(gate.Output), 1)
-
 	return nil
 }
 
@@ -675,7 +682,6 @@ func (nw *Network) andBatchFlush() error {
 	self := nw.self
 
 	if len(nw.andBatch) == 0 {
-		nw.batched.SetInt64(0)
 		return nil
 	}
 
@@ -745,7 +751,6 @@ func (nw *Network) andBatchFlush() error {
 	nw.andBatch = nw.andBatch[:0]
 	clear(nw.andA)
 	clear(nw.andB)
-	nw.batched.SetInt64(0)
 
 	nw.triples.Clear()
 
