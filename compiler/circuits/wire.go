@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2024, 2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -128,7 +128,7 @@ func (w *Wire) String() string {
 }
 
 // Assign assings wire ID.
-func (w *Wire) Assign(cc *Compiler) {
+func (w *Wire) Assign(cc *Compiler, level int) {
 	if w.Output() {
 		return
 	}
@@ -136,7 +136,7 @@ func (w *Wire) Assign(cc *Compiler) {
 		w.id = cc.NextWireID()
 	}
 	w.ForEachOutput(func(gate *Gate) {
-		gate.Visit(cc)
+		gate.Visit(cc, level)
 	})
 }
 

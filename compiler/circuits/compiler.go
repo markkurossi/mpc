@@ -8,6 +8,7 @@ package circuits
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/markkurossi/mpc/circuit"
@@ -385,7 +386,7 @@ func (cc *Compiler) Compile() *circuit.Circuit {
 	cc.compiled = make([]circuit.Gate, 0, len(cc.Gates))
 
 	for _, w := range cc.InputWires {
-		w.Assign(cc)
+		w.Assign(cc, 0)
 	}
 	for len(cc.pending) > 0 {
 		gate := cc.pending[0]
@@ -401,6 +402,19 @@ func (cc *Compiler) Compile() *circuit.Circuit {
 		} else {
 			w.SetID(cc.NextWireID())
 		}
+	}
+
+	if cc.Params.Target == utils.TargetGMW {
+		sort.SliceStable(cc.assigned, func(i, j int) bool {
+			gi := cc.assigned[i]
+			gj := cc.assigned[j]
+
+			if gi.Level != gj.Level {
+				return gi.Level < gj.Level
+			}
+
+			return gi.Op == circuit.AND && gj.Op != circuit.AND
+		})
 	}
 
 	// Compile circuit.

@@ -1,7 +1,7 @@
 //
 // gates.go
 //
-// Copyright (c) 2019-2023 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -20,6 +20,7 @@ type Gate struct {
 	Visited  bool
 	Compiled bool
 	Dead     bool
+	Level    int
 	A        *Wire
 	B        *Wire
 	O        *Wire
@@ -30,17 +31,19 @@ func (g *Gate) String() string {
 }
 
 // Visit adds gate to the list of pending gates to be compiled.
-func (g *Gate) Visit(cc *Compiler) {
+func (g *Gate) Visit(cc *Compiler, level int) {
 	switch g.Op {
 	case circuit.INV:
 		if !g.Dead && !g.Visited && g.A.Assigned() {
 			g.Visited = true
+			g.Level = level
 			cc.pending = append(cc.pending, g)
 		}
 
 	default:
 		if !g.Dead && !g.Visited && g.A.Assigned() && g.B.Assigned() {
 			g.Visited = true
+			g.Level = level
 			cc.pending = append(cc.pending, g)
 		}
 	}
@@ -102,7 +105,7 @@ func (g *Gate) Prune() bool {
 // Assign assigns gate's output wire ID.
 func (g *Gate) Assign(cc *Compiler) {
 	if !g.Dead {
-		g.O.Assign(cc)
+		g.O.Assign(cc, g.Level+1)
 		cc.assigned = append(cc.assigned, g)
 	}
 }
