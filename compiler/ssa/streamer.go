@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2020-2025 Markku Rossi
+// Copyright (c) 2020-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -502,7 +502,7 @@ func (prog *Program) Stream(conn *p2p.Conn, oti ot.OT,
 				if params.Verbose && circuit.StreamDebug {
 					fmt.Printf("%05d: - %s\n", idx, circ)
 				}
-				circ.AssignLevels()
+				circ.AssignLevels(params.Target)
 				dCircCompile += time.Since(startTime)
 			}
 			if false {

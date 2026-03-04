@@ -151,7 +151,7 @@ func main() {
 	}
 
 	if *objdump {
-		err := dumpObjects(flag.Args())
+		err := dumpObjects(params, flag.Args())
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -274,7 +274,7 @@ func loadCircuit(file string, params *utils.Params, inputSizes [][]int) (
 	}
 
 	if circ != nil {
-		circ.AssignLevels()
+		circ.AssignLevels(params.Target)
 		if verbose {
 			fmt.Printf("circuit: %v\n", circ)
 		}

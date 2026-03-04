@@ -12,9 +12,10 @@ import (
 	"fmt"
 
 	"github.com/markkurossi/mpc/circuit"
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
-func dumpObjects(files []string) error {
+func dumpObjects(params *utils.Params, files []string) error {
 	for _, file := range files {
 		if !circuit.IsFilename(file) {
 			continue
@@ -23,7 +24,7 @@ func dumpObjects(files []string) error {
 		if err != nil {
 			return err
 		}
-		c.AssignLevels()
+		c.AssignLevels(params.Target)
 
 		fmt.Printf("%s:\n", file)
 		fmt.Printf(" - inputs:\n")

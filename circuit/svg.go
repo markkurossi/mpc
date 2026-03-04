@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2022 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/markkurossi/mpc/compiler/utils"
 )
 
 const (
@@ -121,7 +123,7 @@ func (ctx *svgCtx) tileAvgInputX(t *tile) {
 
 // Svg creates an SVG output of the circuit.
 func (c *Circuit) Svg(out io.Writer) {
-	c.AssignLevels()
+	c.AssignLevels(utils.TargetYao)
 
 	cols := c.Stats[MaxWidth]
 	rows := c.Stats[NumLevels]

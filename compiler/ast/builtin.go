@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -342,7 +342,7 @@ func nativeCircuit(name string, block *ssa.Block, ctx *Codegen,
 		if err != nil {
 			return nil, nil, ctx.Errorf(loc, "failed to parse circuit: %s", err)
 		}
-		circ.AssignLevels()
+		circ.AssignLevels(ctx.Params.Target)
 		ctx.Native[fp] = circ
 		if ctx.Verbose {
 			fmt.Printf(" - native %s: %v\n", name, circ)

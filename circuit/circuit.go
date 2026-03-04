@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2025 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -12,6 +12,7 @@ import (
 	"io"
 	"math"
 
+	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/tabulate"
 )
 
@@ -191,9 +192,12 @@ func (c *Circuit) Dump() {
 	}
 }
 
-// AssignLevels assigns levels for gates. The level desribes how many
-// steps away the gate is from input wires.
-func (c *Circuit) AssignLevels() {
+// AssignLevels assigns levels for gates. The level describes how many
+// steps away the gate is from input wires. The target argument
+// specifies the layering approach:
+//   - TargetYao assigns layers in topological order
+//   - TargetGMW computes the gate AND depth.
+func (c *Circuit) AssignLevels(target utils.Target) {
 	levels := make([]Level, c.NumWires)
 	countByLevel := make([]uint32, c.NumWires)
 
@@ -210,7 +214,16 @@ func (c *Circuit) AssignLevels() {
 		c.Gates[idx].Level = level
 		countByLevel[level]++
 
-		level++
+		switch target {
+		case utils.TargetYao:
+			level++
+		case utils.TargetGMW:
+			if gate.Op == AND {
+				level++
+			}
+		default:
+			panic("invalid target")
+		}
 
 		levels[gate.Output] = level
 		if level > max {

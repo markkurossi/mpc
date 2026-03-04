@@ -1,7 +1,7 @@
 //
 // main.go
 //
-// Copyright (c) 2019-2025 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
@@ -90,7 +90,7 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
-				circ.AssignLevels()
+				circ.AssignLevels(params.Target)
 
 				ch <- &result{
 					iter:  iter,
