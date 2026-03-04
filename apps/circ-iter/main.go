@@ -102,7 +102,7 @@ func main() {
 
 	next := *iterStart
 
-	fmt.Printf("Iter,XOR,NonXOR,Cost\n")
+	fmt.Printf("Iter,XOR,NonXOR,Cost,Depth\n")
 
 outer:
 	for result := range ch {
@@ -112,8 +112,8 @@ outer:
 			if !ok {
 				break
 			}
-			fmt.Printf("%v,%v,%v,%v\n", r.iter, r.stats.NumXOR(),
-				r.stats.NumNonXOR(), r.stats.Cost())
+			fmt.Printf("%v,%v,%v,%v,%v\n", r.iter, r.stats.NumXOR(),
+				r.stats.NumNonXOR(), r.stats.Cost(), r.stats[circuit.NumLevels])
 			if next >= *iterEnd {
 				break outer
 			}
