@@ -35,9 +35,6 @@ type Network struct {
 
 	Pool *TriplePool
 
-	andBatch      []*circuit.Gate
-	andA          []uint64
-	andB          []uint64
 	triples       *Triples
 	andD          []uint64
 	andE          []uint64
@@ -615,15 +612,7 @@ func (nw *Network) run(verbose bool) error {
 			nw.wires.SetBit(nw.wires, int(gate.Output), bit)
 		}
 
-		for _, gate := range ands[i] {
-			a := nw.wires.Bit(int(gate.Input0))
-			b := nw.wires.Bit(int(gate.Input1))
-
-			if err := nw.andBatchAdd(gate, a, b); err != nil {
-				return err
-			}
-		}
-		if err := nw.andBatchFlush(); err != nil {
+		if err := nw.andBatchFlush(ands[i]); err != nil {
 			return err
 		}
 	}
@@ -668,30 +657,20 @@ func (nw *Network) run(verbose bool) error {
 	return nil
 }
 
-func (nw *Network) andBatchAdd(gate *circuit.Gate, a, b uint) error {
-	bit := len(nw.andBatch)
-
-	nw.andBatch = append(nw.andBatch, gate)
-	nw.andA = setBit(nw.andA, bit, a)
-	nw.andB = setBit(nw.andB, bit, b)
-
-	return nil
-}
-
-func (nw *Network) andBatchFlush() error {
+func (nw *Network) andBatchFlush(batch []*circuit.Gate) error {
 	self := nw.self
 
-	if len(nw.andBatch) == 0 {
+	if len(batch) == 0 {
 		return nil
 	}
 
-	debugf("AND batch %v: count=%v\n", nw.andBatchCount+1, len(nw.andBatch))
+	debugf("AND batch %v: count=%v\n", nw.andBatchCount+1, len(batch))
 	nw.andBatchCount++
-	if len(nw.andBatch) > nw.andBatchMax {
-		nw.andBatchMax = len(nw.andBatch)
+	if len(batch) > nw.andBatchMax {
+		nw.andBatchMax = len(batch)
 	}
 
-	words := (len(nw.andBatch) + 63) / 64
+	words := (len(batch) + 63) / 64
 
 	// Ensure temp arrays has enough space, and clear them for the new
 	// batch.
@@ -699,7 +678,7 @@ func (nw *Network) andBatchFlush() error {
 	nw.andE = expandClear(nw.andE, words)
 	nw.andZ = expandClear(nw.andZ, words)
 
-	nw.Pool.Get(len(nw.andBatch), nw.triples)
+	nw.Pool.Get(len(batch), nw.triples)
 
 	if len(nw.triples.A) < words {
 		panic("triple size mismatch")
@@ -714,9 +693,33 @@ func (nw *Network) andBatchFlush() error {
 	// e = y XOR b
 	// --------------------------------------------
 
-	for w := 0; w < words; w++ {
-		nw.andD[w] = nw.andA[w] ^ nw.triples.A[w]
-		nw.andE[w] = nw.andB[w] ^ nw.triples.B[w]
+	var andA, andB uint64
+	for i := 0; i < words*64; i++ {
+		if i < len(batch) {
+			gate := batch[i]
+			ofs := i % 64
+
+			a := nw.wires.Bit(int(gate.Input0))
+			if a == 1 {
+				andA |= (1 << ofs)
+			}
+
+			b := nw.wires.Bit(int(gate.Input1))
+			if b == 1 {
+				andB |= (1 << ofs)
+			}
+		}
+
+		if (i+1)%64 == 0 {
+			// Full word accumulated.
+			w := i / 64
+			nw.andD[w] = andA ^ nw.triples.A[w]
+			nw.andE[w] = andB ^ nw.triples.B[w]
+
+			andA = 0
+			andB = 0
+		}
+
 	}
 
 	// --------------------------------------------
@@ -744,13 +747,9 @@ func (nw *Network) andBatchFlush() error {
 	}
 
 	// Set result wires.
-	for i, gate := range nw.andBatch {
+	for i, gate := range batch {
 		nw.wires.SetBit(nw.wires, int(gate.Output), bit(nw.andZ, i))
 	}
-
-	nw.andBatch = nw.andBatch[:0]
-	clear(nw.andA)
-	clear(nw.andB)
 
 	nw.triples.Clear()
 
