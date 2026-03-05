@@ -122,32 +122,17 @@ func NewUintLeComparator(cc *Compiler, x, y, r []*Wire) error {
 
 // NewNeqComparator tewsts if x!=y.
 func NewNeqComparator(cc *Compiler, x, y, r []*Wire) error {
-	x, y = cc.ZeroPad(x, y)
 	if len(r) != 1 {
 		return fmt.Errorf("invalid neq comparator arguments: r=%d", len(r))
 	}
 
-	if len(x) == 1 {
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[0], y[0], r[0]))
-		return nil
+	eq := cc.Calloc.Wire()
+	err := NewEqComparator(cc, x, y, []*Wire{eq})
+	if err != nil {
+		return err
 	}
+	cc.INV(eq, r[0])
 
-	c := cc.Calloc.Wire()
-	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[0], y[0], c))
-
-	for i := 1; i < len(x); i++ {
-		xor := cc.Calloc.Wire()
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, x[i], y[i], xor))
-
-		var out *Wire
-		if i+1 >= len(x) {
-			out = r[0]
-		} else {
-			out = cc.Calloc.Wire()
-		}
-		cc.OR(c, xor, out)
-		c = out
-	}
 	return nil
 }
 
@@ -156,15 +141,31 @@ func NewEqComparator(cc *Compiler, x, y, r []*Wire) error {
 	if len(r) != 1 {
 		return fmt.Errorf("invalid eq comparator arguments: r=%d", len(r))
 	}
+	x, y = cc.ZeroPad(x, y)
 
-	// w = x == y
-	w := cc.Calloc.Wire()
-	err := NewNeqComparator(cc, x, y, []*Wire{w})
-	if err != nil {
-		return err
+	if len(x) == 1 {
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR, x[0], y[0], r[0]))
+		return nil
 	}
-	// r = !w
-	cc.INV(w, r[0])
+	flags := make([]*Wire, len(x))
+	for i := range x {
+		flags[i] = cc.Calloc.Wire()
+		cc.AddGate(cc.Calloc.BinaryGate(circuit.XNOR, x[i], y[i], flags[i]))
+	}
+	for len(flags) > 2 {
+		for i := 0; i < len(flags); i += 2 {
+			if i+1 < len(flags) {
+				flag := cc.Calloc.Wire()
+				cc.AddGate(cc.Calloc.BinaryGate(
+					circuit.AND, flags[i], flags[i+1], flag))
+				flags[i/2] = flag
+			} else {
+				flags[i/2] = flags[i]
+			}
+		}
+		flags = flags[:(len(flags)+1)/2]
+	}
+	cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, flags[0], flags[1], r[0]))
 	return nil
 }
 
