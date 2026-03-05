@@ -8,7 +8,7 @@
 | Batched Triples | 3.202   | 7.331   | 11.248  |
 | AND Layering    | 2.142   | 4.515   | 6.574   |
 
-## GMW 2-Party Addition of UintN Numbers
+## 2-Party Addition
 
 | Bits | Depth   | AND Count |
 | ---: | ------: | --------: |
@@ -19,7 +19,18 @@
 | 512  | 9       | 8177      |
 | 1024 | 10      | 18415     |
 
-## GMW 2-Party Multiplication of UintN Numbers
+## 2-Party Subtraction
+
+| Bits | Depth   | AND Count |
+| ---: | ------: | --------: |
+| 32   | 5       | 249       |
+| 64   | 6       | 631       |
+| 128  | 7       | 1525      |
+| 256  | 8       | 3571      |
+| 512  | 9       | 8177      |
+| 1024 | 10      | 18415     |
+
+## 2-Party Multiplication
 
 | Bits | Depth   | AND Count |
 | ---: | ------: | --------: |
@@ -29,6 +40,17 @@
 | 256  | 22      | 69460     |
 | 512  | 25      | 271670    |
 | 1024 | 27      | 1069875   |
+
+## 2-Party Comparison of UintN Numbers
+
+| Bits | Depth | AND Count |
+| ---: | ----: | --------: |
+| 32   | 5     | 31        |
+| 64   | 6     | 63        |
+| 128  | 7     | 127       |
+| 256  | 8     | 255       |
+| 512  | 9     | 511       |
+| 1024 | 10    | 1023      |
 
 # Implementation Notes
 
