@@ -1,13 +1,15 @@
 # mpc
 
-Secure Multi-Party Computation (MPC) framework written in
-Go. Implements two-party [garbled
-circuits](https://en.wikipedia.org/wiki/Garbled_circuit) (Yao) and the
+A Secure Multi-Party Computation (MPC) framework written in Go.  The
+project implements two-party Yao's [garbled
+circuits](https://en.wikipedia.org/wiki/Garbled_circuit) and the
 [Goldreich-Micali-Wigderson](https://dl.acm.org/doi/10.1145/28395.28420)
 (GMW) protocol for secure computation. The main components are:
- - [garbled](apps/garbled/): **command-line program** for running MPCL programs
+ - [garbled](apps/garbled/): **command-line tool** for compiling and
+   running MPCL programs
  - [compiler](compiler/): **Multi-Party Computation Language (MPCL)** compiler
- - [circuit](circuit/): **garbled circuit** parser, garbler, and evaluator
+ - [circuit](circuit/): **garbled circuit** parser, garbling engine,
+   and evaluator
  - [ot](ot/): **oblivious transfer** library
  - [gmw](gmw/): **GMW** protocol implementation
  - [sha2pc](sha2pc/): **SHA256(XOR(a, b))** two-party protocol for two 32-byte inputs
@@ -24,13 +26,13 @@ options:
  - `-cpuprofile`: write cpu profile to the specified file.
  - `-d`: enable diagnostics outputs.
  - `-dot`: generate Graphviz DOT output.
- - `-e`: specifies circuit _evaluator_ / _garbler_ mode. The circuit evaluator creates a TCP listener and waits for garblers to connect with computation.
+ - `-e`: specifies circuit _evaluator_ / _garbler_ mode. The circuit evaluator creates a TCP listener and waits for garbler to connect with computation.
  - `-format`: specifies circuit format for the `-circ` output file. Possible values are: `mpclc` (default), `bristol`.
  - `-i`: specifies comma-separated input values for the circuit.
  - `-memprofile`: write memory profile to the specified file.
  - `-ssa`: compile MPCL input to SSA assembly.
  - `-stream`: streaming mode.
- - `-v`: enabled verbose output.
+ - `-v`: enable verbose output.
 
 The [examples](apps/garbled/examples/) directory contains various MPCL
 example programs which can be executed with the `garbled`
@@ -65,7 +67,7 @@ Listening for connections at :8080
 ```
 
 The evaluator's input is 800000 and it is set to the circuit inputs
-`In2`. The evaluator is now waiting for garblers to connect to the TCP
+`In2`. The evaluator is now waiting for garbler to connect to the TCP
 port `:8080`.
 
 Next, let's start the garbler:
@@ -104,6 +106,76 @@ $ ./garbled -i 900000 examples/millionaire.mpcl
  -  In: [900000]
 Result[0]: true
 ```
+
+The example above used the garbled circuit protocol in a two-party
+setup. Next, we will run a 3-party version of the Millionaires' problem
+with the GMW protocol. The program is implemented in the
+[3party.mpcl](apps/garbled/examples/3party.mpcl) file:
+
+``` go
+// Yao's Millionaires' problem with three parties.
+package main
+
+func main(a, b, c int64) int {
+	if a > b {
+		if a > c {
+			return 0
+		}
+		return 2
+	}
+	if b > c {
+		return 1
+	}
+	return 2
+}
+
+```
+
+First, start the GMW leader (these examples are run in the
+`apps/garbled` directory):
+
+``` shell
+$ ./garbled -num-parties 3 -gmw 0 -i 101 examples/3party.mpcl
+semi-honest secure GWM protocol
+ - party : 0/3
+ - leader: :8080
+ - addr  : :8080
+New peer 0[:8080]
+```
+
+And we must start the two remaining parties with their inputs:
+
+``` shell
+$ ./garbled -gmw 1 -i 100 examples/3party.mpcl
+semi-honest secure GWM protocol
+ - party : 1
+ - leader: :8080
+ - addr  : :8081
+New peer 1[:8081]
+New peer 0[:8080]
+```
+
+When we start the 3rd party, the network is complete and all parties
+compute the result. Here's the output from the 3rd party:
+
+``` shell
+$ ./garbled -gmw 2 -i 100 examples/3party.mpcl
+semi-honest secure GWM protocol
+ - party : 2
+ - leader: :8080
+ - addr  : :8082
+New peer 2[:8082]
+New peer 0[:8080]
+New peer 1[:8081]
+ - In0: a:int64
+ - In1: b:int64
+ + In2: c:int64
+ - Out: %_{0,5}i32:int32
+ - In:  [100]
+Result[0]: 0
+```
+
+The result value is 0 as the party-0 had the biggest input.
 
 ## Ed25519 Key Generation and Signature Computation
 
