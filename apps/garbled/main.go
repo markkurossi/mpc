@@ -86,7 +86,7 @@ func main() {
 	memprofile := flag.String("memprofile", "",
 		"write memory profile to `file`")
 	bmr := flag.Int("bmr", -1, "semi-honest secure BMR protocol party number")
-	gmw := flag.Int("gmw", -1, "semi-honest secure GWM protocol party number")
+	gmw := flag.Int("gmw", -1, "semi-honest secure GMW protocol party number")
 	numParties := flag.Int("num-parties", 2, "number of MPC parties")
 	leader := flag.String("leader", "", "GMW leader address")
 	addr := flag.String("addr", "", "GMW peer address")
