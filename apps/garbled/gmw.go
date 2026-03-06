@@ -18,7 +18,7 @@ import (
 func gmwMode(file string, params *utils.Params,
 	party, numParties int, leader, addr string, loop bool) error {
 
-	fmt.Printf("semi-honest secure GWM protocol\n")
+	fmt.Printf("semi-honest secure GMW protocol\n")
 	if party == 0 {
 		fmt.Printf(" - party : %d/%d\n", party, numParties)
 	} else {
