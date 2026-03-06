@@ -229,10 +229,10 @@ The MPCL runtime defines the following builtin functions:
    - [x] Implement OT-based triple generator and add separate p2p.Conn
          for offline phase (triple generation)
    - [x] Optimize AND batch memory usage
-   - [ ] Measure +, -, *, / depth and if there are better algorithm
-         form GMW use. Compare results with Yao and if needed, add
-         compiler flags to optimize circuit generation on number of
-         gates vs. depth.
+   - [ ] Measure +, -, *, / depth and check if there are better
+         algorithms for GMW use. Compare results with Yao and if
+         needed, add compiler flags to optimize circuit generation on
+         number of gates vs. depth.
    - [x] GMW vs. Yao? Efficient Secure Two-Party Computation with Low
          Depth Circuits
  - [ ] Highly-Scalable Searchable Symmetric Encryption with Support
