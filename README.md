@@ -1,11 +1,17 @@
 # mpc
 
-Secure Multi-Party Computation with Go. This project implements secure
-two-party computation with [Garbled circuit](https://en.wikipedia.org/wiki/Garbled_circuit) protocol. The main components are:
+Secure Multi-Party Computation (MPC) framework written in
+Go. Implements two-party [garbled
+circuits](https://en.wikipedia.org/wiki/Garbled_circuit) (Yao) and the
+[Goldreich-Micali-Wigderson](https://dl.acm.org/doi/10.1145/28395.28420)
+(GMW) protocol for secure computation.
+
+The main components are:
  - [garbled](apps/garbled/): **command-line program** for running MPCL programs
  - [compiler](compiler/): **Multi-Party Computation Language (MPCL)** compiler
  - [circuit](circuit/): **garbled circuit** parser, garbler, and evaluator
  - [ot](ot/): **oblivious transfer** library
+ - [gmw](gmw/): **GMW** protocol implementation
  - [sha2pc](sha2pc/): **SHA256(XOR(a, b))** two-party protocol for two 32-byte inputs
 
 ## Getting started
