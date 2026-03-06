@@ -432,7 +432,7 @@ func (nw *Network) connectPeer() error {
 func (nw *Network) dialOnline(peer *Peer) error {
 	self := nw.self
 
-	fmt.Printf("%v: dialOnline(%v)\n", self, peer)
+	debugf("%v: dialOnline(%v)\n", self, peer)
 
 	c, err := net.Dial("tcp", peer.addr)
 	if err != nil {
@@ -470,7 +470,7 @@ func (nw *Network) dialOnline(peer *Peer) error {
 func (nw *Network) dialOffline(peer *Peer) error {
 	self := nw.self
 
-	fmt.Printf("%v: dialOffline(%v)\n", self, peer)
+	debugf("%v: dialOffline(%v)\n", self, peer)
 
 	c, err := net.Dial("tcp", peer.addr)
 	if err != nil {
