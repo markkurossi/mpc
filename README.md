@@ -136,7 +136,7 @@ First, start the GMW leader (these examples are run in the
 
 ``` shell
 $ ./garbled -num-parties 3 -gmw 0 -i 101 examples/3party.mpcl
-semi-honest secure GWM protocol
+semi-honest secure GMW protocol
  - party : 0/3
  - leader: :8080
  - addr  : :8080
@@ -147,7 +147,7 @@ And we must start the two remaining parties with their inputs:
 
 ``` shell
 $ ./garbled -gmw 1 -i 100 examples/3party.mpcl
-semi-honest secure GWM protocol
+semi-honest secure GMW protocol
  - party : 1
  - leader: :8080
  - addr  : :8081
@@ -160,7 +160,7 @@ compute the result. Here's the output from the 3rd party:
 
 ``` shell
 $ ./garbled -gmw 2 -i 100 examples/3party.mpcl
-semi-honest secure GWM protocol
+semi-honest secure GMW protocol
  - party : 2
  - leader: :8080
  - addr  : :8082
