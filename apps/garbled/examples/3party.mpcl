@@ -1,9 +1,17 @@
 // -*- go -*-
 
-// Sample 3-party circuit where each party provides their input bit
-// and the result is bitwise AND of the inputs.
+// Yao's Millionaires' problem with three parties.
 package main
 
-func main(a, b, c uint1) uint {
-	return a & b & c
+func main(a, b, c int64) int {
+	if a > b {
+		if a > c {
+			return 0
+		}
+		return 2
+	}
+	if b > c {
+		return 1
+	}
+	return 2
 }
