@@ -161,7 +161,7 @@ func (cc *Compiler) INV(i, o *Wire) {
 	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, i, cc.OneWire(), o))
 }
 
-// OR creates an OR gate implementing o=a⊕b.
+// OR creates an OR gate implementing o=a∨b=(a⊕b)⊕(a∧b).
 func (cc *Compiler) OR(a, b, o *Wire) {
 	xorAB := cc.Calloc.Wire()
 	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, a, b, xorAB))
@@ -170,6 +170,56 @@ func (cc *Compiler) OR(a, b, o *Wire) {
 	cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, a, b, andAB))
 
 	cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, xorAB, andAB, o))
+}
+
+// ShiftRight returns a slice of wires representing the logical right
+// shift of the input wire vector.
+//
+// The function interprets in as a little-endian bit vector (bit 0 is
+// the least significant bit). It creates a new wire slice of length
+// outWidth where the bits are shifted right by shift positions.
+//
+// Parameters:
+//
+//	in        Input wire vector to shift.
+//	outWidth  Number of wires in the returned vector.
+//	shift     Number of bit positions to shift right.
+//
+// Semantics:
+//
+//	out[i] = in[i + shift]   for i+shift < len(in)
+//	out[i] = 0               otherwise
+//
+// Bits shifted past the least significant end are discarded, and new
+// most significant bits are filled with zero wires.
+//
+// This function does not generate gates. It only rewires existing
+// wires and inserts zero wires where needed.
+//
+// Example:
+//
+//	in  = [b0 b1 b2 b3 b4]   (LSB first)
+//	shift = 2
+//	outWidth = 4
+//
+//	out = [b2 b3 b4 0]
+func (cc *Compiler) ShiftRight(in []*Wire, outWidth int, shift int) []*Wire {
+	out := make([]*Wire, outWidth)
+
+	if shift >= len(in) {
+		for i := range out {
+			out[i] = cc.ZeroWire()
+		}
+		return out
+	}
+
+	n := copy(out, in[shift:])
+
+	for ; n < len(out); n++ {
+		out[n] = cc.ZeroWire()
+
+	}
+	return out
 }
 
 // ID creates an identity wire passing the input wire i's value to the
