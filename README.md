@@ -293,18 +293,6 @@ The MPCL runtime defines the following builtin functions:
    - [x] Parsing Ed25519 MPCL files
      - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
- - [ ] GMW protocol
-   - [x] n >= 2 parties
-   - [x] Boolean multiplication triple R-OT2/1
-   - [x] Implement OT-based triple generator and add separate p2p.Conn
-         for offline phase (triple generation)
-   - [x] Optimize AND batch memory usage
-   - [ ] Measure +, -, *, / depth and check if there are better
-         algorithms for GMW use. Compare results with Yao and if
-         needed, add compiler flags to optimize circuit generation on
-         number of gates vs. depth.
-   - [x] GMW vs. Yao? Efficient Secure Two-Party Computation with Low
-         Depth Circuits
  - [ ] Highly-Scalable Searchable Symmetric Encryption with Support
        for Boolean Queries - any linkage to MPC with this?
  - [ ] PQC
