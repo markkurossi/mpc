@@ -1,10 +1,14 @@
 //
-// Copyright (c) 2019-2024 Markku Rossi
+// Copyright (c) 2019-2026 Markku Rossi
 //
 // All rights reserved.
 //
 
 package circuits
+
+import (
+	"github.com/markkurossi/mpc/compiler/utils"
+)
 
 // NewUDividerLong creates an unsigned integer division circuit
 // computing r=a/b, q=a%b. This function uses Long Division algorithm.
@@ -206,6 +210,9 @@ func NewUDividerArray(cc *Compiler, a, b, q, r []*Wire) error {
 // NewUDivider creates an unsigned integer division circuit computing
 // r=a/b, q=a%b.
 func NewUDivider(cc *Compiler, a, b, q, r []*Wire) error {
+	if cc.Params.Target == utils.TargetGMW {
+		return NewUDividerGoldschmidtFast(cc, a, b, q, r)
+	}
 	return NewUDividerLong(cc, a, b, q, r)
 }
 
