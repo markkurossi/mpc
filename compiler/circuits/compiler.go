@@ -95,12 +95,9 @@ func (cc *Compiler) Pad(wires []*Wire, n int) []*Wire {
 		return wires
 	}
 	result := make([]*Wire, n)
-	for i := 0; i < n; i++ {
-		if i < len(wires) {
-			result[i] = wires[i]
-		} else {
-			result[i] = cc.ZeroWire()
-		}
+	copy(result, wires)
+	for i := len(wires); i < n; i++ {
+		result[i] = cc.ZeroWire()
 	}
 	return result
 }
@@ -118,21 +115,15 @@ func (cc *Compiler) ZeroPad(x, y []*Wire) ([]*Wire, []*Wire) {
 	}
 
 	rx := make([]*Wire, max)
-	for i := 0; i < max; i++ {
-		if i < len(x) {
-			rx[i] = x[i]
-		} else {
-			rx[i] = cc.ZeroWire()
-		}
+	copy(rx, x)
+	for i := len(x); i < max; i++ {
+		rx[i] = cc.ZeroWire()
 	}
 
 	ry := make([]*Wire, max)
-	for i := 0; i < max; i++ {
-		if i < len(y) {
-			ry[i] = y[i]
-		} else {
-			ry[i] = cc.ZeroWire()
-		}
+	copy(ry, y)
+	for i := len(y); i < max; i++ {
+		ry[i] = cc.ZeroWire()
 	}
 
 	return rx, ry
