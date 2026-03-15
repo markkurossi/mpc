@@ -134,21 +134,21 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		// Copy extracted slices to fresh Calloc allocations to avoid wire aliasing.
 		//--------------------------------------------
 
-		bNormW := extendWires(cc, bNorm, W)
+		bNormW := cc.Pad(bNorm, W)
 
 		bSeedProd := cc.Calloc.Wires(types.Size(W + m))
 		NewWallaceMultiplier(cc, bNormW, recip, bSeedProd)
-		bCurr = allocCopy(cc, bSeedProd[m-1:m-1+W])
+		bCurr = bSeedProd[m-1 : m-1+W]
 
 		qSeedProd := cc.Calloc.Wires(types.Size(qWidth + m))
 		NewWallaceMultiplier(cc, aNorm2n, recip, qSeedProd)
-		qCurr = allocCopy(cc, qSeedProd[m-1:m-1+qWidth])
+		qCurr = qSeedProd[m-1 : m-1+qWidth]
 
 		iters = iterationsForWidthWithSeed(n, m)
 
 	} else {
 		// No ROM: start directly from bNorm and aNorm2n.
-		bCurr = extendWires(cc, bNorm, W)
+		bCurr = cc.Pad(bNorm, W)
 		qCurr = aNorm2n
 		iters = iterationsForWidth(n)
 	}
@@ -177,7 +177,7 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	// Copy to fresh wires.
 	//--------------------------------------------
 
-	q := allocCopy(cc, qCurr[n-1:2*n-1])
+	q := qCurr[n-1 : 2*n-1]
 
 	//--------------------------------------------
 	// Remainder: r = a - q*b
@@ -221,17 +221,6 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	return nil
 }
 
-// allocCopy copies a wire sub-slice into a fresh Calloc allocation via
-// XOR-with-zero buffer gates, preventing sub-slice aliasing issues when
-// the source wires are interior to a larger product array.
-func allocCopy(cc *Compiler, src []*Wire) []*Wire {
-	dst := cc.Calloc.Wires(types.Size(len(src)))
-	for i, w := range src {
-		cc.AddGate(cc.Calloc.BinaryGate(circuit.XOR, w, cc.ZeroWire(), dst[i]))
-	}
-	return dst
-}
-
 // iterationsForWidth returns iterations needed with no seed (plain
 // Goldschmidt).  Worst-case ε₀=0.5; after k iterations error =
 // 2^(-2^k) < 2^(-n) requires 2^k ≥ n, so k = ceil(log2(n)), plus 1
@@ -243,6 +232,7 @@ func iterationsForWidth(n int) int {
 	return bits.Len(uint(n-1)) + 1
 }
 
+// DetectMSB detects the most significant bit of a.
 func DetectMSB(cc *Compiler, a []*Wire) []*Wire {
 	n := len(a)
 	msb := make([]*Wire, n)
@@ -259,6 +249,7 @@ func DetectMSB(cc *Compiler, a []*Wire) []*Wire {
 	return msb
 }
 
+// ShiftToTop shifts in so that its wire msb is at wire n-1.
 func ShiftToTop(cc *Compiler, in []*Wire, msb []*Wire) []*Wire {
 	n := len(in)
 	out := make([]*Wire, n)
@@ -284,6 +275,7 @@ func ShiftToTop(cc *Compiler, in []*Wire, msb []*Wire) []*Wire {
 	return out
 }
 
+// ShiftToTop2n shifts in so that its wire msb is at 2n-1.
 func ShiftToTop2n(cc *Compiler, in []*Wire, msb []*Wire, n int) []*Wire {
 	out := make([]*Wire, 2*n)
 	for i := range out {
@@ -311,45 +303,23 @@ func ShiftToTop2n(cc *Compiler, in []*Wire, msb []*Wire, n int) []*Wire {
 	return out
 }
 
-func extendWires(cc *Compiler, w []*Wire, targetLen int) []*Wire {
-	out := make([]*Wire, targetLen)
-	copy(out, w)
-	for i := len(w); i < targetLen; i++ {
-		out[i] = cc.ZeroWire()
-	}
-	return out
-}
-
+// AddConstOne adds 1 to the argument a.
 func AddConstOne(cc *Compiler, a []*Wire) []*Wire {
-	n := len(a)
-	one := make([]*Wire, n)
-	for i := range one {
-		if i == 0 {
-			one[i] = cc.OneWire()
-		} else {
-			one[i] = cc.ZeroWire()
-		}
-	}
-	out := cc.Calloc.Wires(types.Size(n))
+	one := []*Wire{cc.OneWire()}
+	out := cc.Calloc.Wires(types.Size(len(a)))
 	NewKoggeStoneAdder(cc, a, one, out)
 	return out
 }
 
+// SubConstOne subtracts 1 from the argument a.
 func SubConstOne(cc *Compiler, a []*Wire) []*Wire {
-	n := len(a)
-	one := make([]*Wire, n)
-	for i := range one {
-		if i == 0 {
-			one[i] = cc.OneWire()
-		} else {
-			one[i] = cc.ZeroWire()
-		}
-	}
-	out := cc.Calloc.Wires(types.Size(n))
+	one := []*Wire{cc.OneWire()}
+	out := cc.Calloc.Wires(types.Size(len(a)))
 	NewKoggeStoneSubtractor(cc, a, one, out)
 	return out
 }
 
+// SignBit returns the sign bit of a.
 func SignBit(a []*Wire) *Wire {
 	return a[len(a)-1]
 }
