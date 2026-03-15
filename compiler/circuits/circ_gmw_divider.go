@@ -230,30 +230,56 @@ func DetectMSB(cc *Compiler, a []*Wire) []*Wire {
 	return msb
 }
 
-// ShiftToTop shifts in so that its wire msb is at wire n-1.
+// ShiftToTop shifts "in" so that its MSB is at wire n-1 using logarithmic stages.
+// This reduces gate complexity from O(n^2) to O(n log n).
 func ShiftToTop(cc *Compiler, in []*Wire, msb []*Wire) []*Wire {
 	n := len(in)
-	out := make([]*Wire, n)
-	for i := 0; i < n; i++ {
+
+	// 1. Convert one-hot MSB vector to a binary shift amount (s).
+	// msb[i] is 1 if bit i is the MSB. To move it to n-1, shift distance is (n-1-i).
+	// We calculate the binary representation of the shift distance.
+	shiftBits := bits.Len(uint(n - 1))
+	s := make([]*Wire, shiftBits)
+	for b := 0; b < shiftBits; b++ {
 		acc := cc.ZeroWire()
-		for j := 0; j < n; j++ {
-			shift := (n - 1) - j
-			src := i - shift
-			var bit *Wire
-			if src >= 0 && src < n {
-				bit = in[src]
-			} else {
-				bit = cc.ZeroWire()
+		for i := 0; i < n; i++ {
+			shiftDist := (n - 1) - i
+			if (shiftDist>>b)&1 == 1 {
+				tmp := cc.Calloc.Wire()
+				cc.OR(acc, msb[i], tmp)
+				acc = tmp
 			}
-			and := cc.Calloc.Wire()
-			cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, msb[j], bit, and))
-			tmp := cc.Calloc.Wire()
-			cc.OR(acc, and, tmp)
-			acc = tmp
 		}
-		out[i] = acc
+		s[b] = acc
 	}
-	return out
+
+	// 2. Logarithmic Shifter Stages
+	current := in
+	for b := 0; b < shiftBits; b++ {
+		shiftAmount := 1 << b
+		next := make([]*Wire, n)
+
+		for i := 0; i < n; i++ {
+			// If s[b] is 1, we take the value from a lower index (shifted up).
+			// If s[b] is 0, we keep the current value.
+			var shiftedVal *Wire
+			if i-shiftAmount >= 0 {
+				shiftedVal = current[i-shiftAmount]
+			} else {
+				shiftedVal = cc.ZeroWire()
+			}
+
+			out := cc.Calloc.Wire()
+			// NewMUX(cond, trueVal, falseVal, out)
+			// If bit s[b] is set, shift the value.
+			NewMUX(cc, []*Wire{s[b]}, []*Wire{shiftedVal}, []*Wire{current[i]},
+				[]*Wire{out})
+			next[i] = out
+		}
+		current = next
+	}
+
+	return current
 }
 
 // ShiftToTop2n shifts in so that its wire msb is at 2n-1.
