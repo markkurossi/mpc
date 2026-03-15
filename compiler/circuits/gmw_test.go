@@ -203,10 +203,12 @@ func TestGMWDivider(t *testing.T) {
 		}
 
 		if q.Cmp(result[0]) != 0 {
-			t.Errorf("quotient mismatch: got %v, expected %v", q, result[0])
+			t.Errorf("test-%v: quotient mismatch: %v/%v: got %v, expected %v",
+				idx, a, b, result[0], q)
 		}
 		if r.Cmp(result[1]) != 0 {
-			t.Errorf("remainder mismatch: got %v, expected %v", r, result[1])
+			t.Errorf("test-%v: remainder mismatch: %v/%v: got %v, expected %v",
+				idx, a, b, result[1], r)
 		}
 		t.Logf("test-%v: %v / %v: q=%v, r=%v\n", idx, a, b, q, r)
 	}
