@@ -17,93 +17,51 @@ import (
 const romBits = 8
 
 // NewUDividerGoldschmidtFast creates a Goldschmidt divider minimizing
-// the circuit AND depth. It uses NewReciprocalROM to provide an m-bit
-// reciprocal approximation as the starting point for the Goldschmidt
-// iteration, reducing iteration count.
-//
-// For m=8, n=64: 4 iterations instead of 7 (saves 3 pairs of Wallace
-// multiplies).
-//
-// HOW THE SEED INTEGRATES:
-//
-// Without seed (v7):
-//
-//	bCurr₀ = bNorm                    (bCurr_real ∈ [1.0, 2.0))
-//	qCurr₀ = aNorm2n
-//	iterate: f = 2^n - bCurr, bCurr *= f >> (n-1), qCurr *= f >> (n-1)
-//
-// With ROM seed:
-//
-//	The ROM gives recip ≈ 2^(m-1) / bNorm_real in Q.(m-1) scale (m bits).
-//	We use it for one "seed multiply" step before the main iterations:
-//
-//	seed_step:
-//	  bCurr₁ = (bNorm_extended × recip) >> (m-1)   [n+m bit product, >> (m-1)]
-//	  qCurr₁ = (aNorm2n × recip)       >> (m-1)   [2n+m bit product, >> (m-1)]
-//
-//	After seed_step:
-//	  bCurr₁_real = bNorm_real × recip_real ≈ bNorm_real × 1/bNorm_real = 1.0
-//	  But is now in Q.(n-1) scale? No — scale changed.
-//
-// SCALE ANALYSIS:
-//
-//	bNorm is Q.(n-1):    bNorm_real = bNorm / 2^(n-1) ∈ [1.0, 2.0)
-//	recip is Q.(m-1):    recip_real = recip / 2^(m-1) ≈ 1/bNorm_real
-//	product raw:         bNorm × recip
-//	product real:        bNorm_real × recip_real ≈ 1.0
-//	product raw ≈        2^(n-1) × 2^(m-1) = 2^(n+m-2)
-//	after >> (m-1):      ≈ 2^(n-1) — back to Q.(n-1) scale ✓
-//
-//	So after one seed multiply, bCurr is back in Q.(n-1) scale and close to
-//	2^(n-1) (= 1.0). The main Goldschmidt loop then proceeds unchanged.
-//
-// VERIFICATION (n=8, m=8, a=100, b=5):
-//
-//	bNorm=160, recip=table[32]=floor(16384/160)=102
-//	bCurr₁ = (160 × 102) >> 7 = 16320 >> 7 = 127   (target: 128 = 2^7) ✓ (1 off)
-//	qCurr₁ = (3200 × 102) >> 7 = 326400 >> 7 = 2550 (target: 2560 = 20×128) ✓
-//	Now 1 Goldschmidt iteration:
-//	f = 256 - 127 = 129
-//	bCurr₂ = (127 × 129) >> 7 = 16383 >> 7 = 127   (converged)
-//	qCurr₂ = (2550 × 129) >> 7 = 328950 >> 7 = 2569
-//	q = 2569 >> 7 = 20 ✓
-//	Total: 1 seed multiply + 1 iteration = 2 multiplies vs 3 without seed.
-//	For n=64 the saving is 3 iterations = 6 fewer Wallace multiplies.
-//
-// ROM ADDRESS:
-//
-//	bNorm_top = bNorm[n-1 .. n-m] (top m bits of bNorm).
-//	Bit n-1 is always 1 (MSB guaranteed by normalization) — carries no info.
-//	Address = bNorm[n-2 .. n-m] (the m-1 bits below MSB), giving 2^(m-1) entries.
-//	table index i: bNorm_top = 128+i, recip = floor(16384/(128+i)).
+// the circuit AND depth and size.
 func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) error {
-
 	n := len(a)
 
-	// Use ROM seed only when n is large enough to benefit.
-	// Minimum useful m is 2 (1 bit of precision — barely worth it).
-	// For n < 4, skip the ROM and use plain iterations.
 	useROM := n >= 4
 	m := romBits
 	if m >= n {
-		m = n - 1 // ensure address bits bNorm[n-m..n-2] are valid (at least 1 bit)
+		m = n - 1
 	}
 
-	//--------------------------------------------
-	// Normalize: shift b left so MSB is at bit n-1.
-	// Shift a into 2n-bit word to avoid overflow.
-	//--------------------------------------------
-
+	// 1. Detect MSB of b to determine shift amount.
 	msb := DetectMSB(cc, b)
-	bNorm := ShiftToTop(cc, b, msb)
-	aNorm2n := ShiftToTop2n(cc, a, msb, n)
 
-	W := n + 1 // working width for bCurr (n bits + 1 carry bit)
+	// 2. Generate Logarithmic Shift Signals.
+	// We calculate the binary shift amount 's' needed to move b's MSB to n-1.
+	shiftBits := bits.Len(uint(n - 1))
+	s := make([]*Wire, shiftBits)
+	for bIdx := 0; bIdx < shiftBits; bIdx++ {
+		acc := cc.ZeroWire()
+		for i := 0; i < n; i++ {
+			shiftDist := (n - 1) - i
+			if (shiftDist>>bIdx)&1 == 1 {
+				tmp := cc.Calloc.Wire()
+				cc.OR(acc, msb[i], tmp)
+				acc = tmp
+			}
+		}
+		s[bIdx] = acc
+	}
 
-	//--------------------------------------------
-	// Constant: twoConst = 2^n (W bits, bit n set).
-	//--------------------------------------------
+	// 3. Normalize both a and b using the SAME shift signals.
+	// This preserves the ratio a/b while aligning b for the ROM.
+	bNorm := ApplyLogShifter(cc, b, s, n)
 
+	aPadded := make([]*Wire, 2*n)
+	for i := 0; i < 2*n; i++ {
+		if i < n {
+			aPadded[i] = a[i]
+		} else {
+			aPadded[i] = cc.ZeroWire()
+		}
+	}
+	aNorm2n := ApplyLogShifter(cc, aPadded, s, 2*n)
+
+	W := n + 1
 	twoConst := make([]*Wire, W)
 	for i := range twoConst {
 		twoConst[i] = cc.ZeroWire()
@@ -116,21 +74,9 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	var iters int
 
 	if useROM {
-		// ROM seed: m-bit reciprocal approximation of bNorm.
-		// recip ≈ 2^(m-1) / bNorm_real  in Q.(m-1) scale.
-
 		recip := NewReciprocalROM(cc, bNorm, m)
 
-		// Seed multiply step.
-		// bCurr = (bNorm_extended × recip) >> (m-1)  →  Q.(n-1) scale
-		// qCurr = (aNorm2n × recip)        >> (m-1)  →  Q.(n-1) scale
-		//
-		// Product sizes:
-		//   bNorm (W bits) × recip (m bits) → W+m bits; we need bits [m-1 .. m-1+W]
-		//   aNorm2n (2n bits) × recip (m bits) → 2n+m bits; we need [m-1 .. m-1+2n]
-
 		bNormW := cc.Pad(bNorm, W)
-
 		bSeedProd := cc.Calloc.Wires(types.Size(W + m))
 		NewWallaceMultiplier(cc, bNormW, recip, bSeedProd)
 		bCurr = bSeedProd[m-1 : m-1+W]
@@ -140,9 +86,7 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		qCurr = qSeedProd[m-1 : m-1+qWidth]
 
 		iters = iterationsForWidthWithSeed(n, m)
-
 	} else {
-		// No ROM: start directly from bNorm and aNorm2n.
 		bCurr = cc.Pad(bNorm, W)
 		qCurr = aNorm2n
 		iters = iterationsForWidth(n)
@@ -163,43 +107,62 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		qCurr = qProd[n-1 : n-1+qWidth]
 	}
 
-	// Extract integer quotient: q = qCurr >> (n-1) = qCurr[n-1 : 2n-1].
+	// 4. Parallelized Correction Logic.
 	q := qCurr[n-1 : 2*n-1]
-
-	// Remainder: r = a - q*b
-
 	qbLong := cc.Calloc.Wires(types.Size(2 * n))
 	NewWallaceMultiplier(cc, q, b, qbLong)
 	qb := qbLong[:n]
 
-	r := cc.Calloc.Wires(types.Size(n))
+	// r = a - qb (using n+1 bits to detect underflow via sign bit)
+	r := cc.Calloc.Wires(types.Size(n + 1))
 	NewKoggeStoneSubtractor(cc, a, qb, r)
 
-	// Correction pass 1: r < 0 → q--, r += b
+	qMinus1 := SubConstOne(cc, q)
+	qPlus1 := AddConstOne(cc, q)
 
 	rPlusB := cc.Calloc.Wires(types.Size(n))
-	NewKoggeStoneAdder(cc, r, b, rPlusB)
-	qMinus1 := SubConstOne(cc, q)
-	neg := SignBit(r)
-
-	qCorr := cc.Calloc.Wires(types.Size(n))
-	rCorr := cc.Calloc.Wires(types.Size(n))
-	NewMUX(cc, []*Wire{neg}, qMinus1, q, qCorr)
-	NewMUX(cc, []*Wire{neg}, rPlusB, r, rCorr)
-
-	// Correction pass 2: r >= b → q++, r -= b
+	NewKoggeStoneAdder(cc, r[:n], b, rPlusB)
 
 	rMinusB := cc.Calloc.Wires(types.Size(n + 1))
-	NewKoggeStoneSubtractor(cc, rCorr, b, rMinusB)
-	borrow := rMinusB[n]
-	ge := cc.Calloc.Wire()
-	cc.INV(borrow, ge)
+	NewKoggeStoneSubtractor(cc, r[:n], b, rMinusB)
 
-	qPlus1 := AddConstOne(cc, qCorr)
-	NewMUX(cc, []*Wire{ge}, qPlus1, qCorr, qFinal)
-	NewMUX(cc, []*Wire{ge}, rMinusB[:n], rCorr, rFinal)
+	isNeg := r[n]
+	isGe := cc.Calloc.Wire()
+	cc.INV(rMinusB[n], isGe)
+
+	// Selection MUXes: Parallelize the correction choice
+	qHigh := cc.Calloc.Wires(types.Size(n))
+	rHigh := cc.Calloc.Wires(types.Size(n))
+	NewMUX(cc, []*Wire{isGe}, qPlus1, q, qHigh)
+	NewMUX(cc, []*Wire{isGe}, rMinusB[:n], r[:n], rHigh)
+
+	NewMUX(cc, []*Wire{isNeg}, qMinus1, qHigh, qFinal)
+	NewMUX(cc, []*Wire{isNeg}, rPlusB, rHigh, rFinal)
 
 	return nil
+}
+
+// ApplyLogShifter implements an O(n log n) barrel shifter.
+func ApplyLogShifter(cc *Compiler, in []*Wire, s []*Wire, width int) []*Wire {
+	current := in
+	for b := 0; b < len(s); b++ {
+		shiftAmount := 1 << b
+		next := make([]*Wire, width)
+		for i := 0; i < width; i++ {
+			var shiftedVal *Wire
+			if i-shiftAmount >= 0 {
+				shiftedVal = current[i-shiftAmount]
+			} else {
+				shiftedVal = cc.ZeroWire()
+			}
+			out := cc.Calloc.Wire()
+			NewMUX(cc, []*Wire{s[b]}, []*Wire{shiftedVal}, []*Wire{current[i]},
+				[]*Wire{out})
+			next[i] = out
+		}
+		current = next
+	}
+	return current
 }
 
 // iterationsForWidth returns iterations needed with no seed (plain
@@ -230,86 +193,6 @@ func DetectMSB(cc *Compiler, a []*Wire) []*Wire {
 	return msb
 }
 
-// ShiftToTop shifts "in" so that its MSB is at wire n-1 using logarithmic stages.
-// This reduces gate complexity from O(n^2) to O(n log n).
-func ShiftToTop(cc *Compiler, in []*Wire, msb []*Wire) []*Wire {
-	n := len(in)
-
-	// 1. Convert one-hot MSB vector to a binary shift amount (s).
-	// msb[i] is 1 if bit i is the MSB. To move it to n-1, shift distance is (n-1-i).
-	// We calculate the binary representation of the shift distance.
-	shiftBits := bits.Len(uint(n - 1))
-	s := make([]*Wire, shiftBits)
-	for b := 0; b < shiftBits; b++ {
-		acc := cc.ZeroWire()
-		for i := 0; i < n; i++ {
-			shiftDist := (n - 1) - i
-			if (shiftDist>>b)&1 == 1 {
-				tmp := cc.Calloc.Wire()
-				cc.OR(acc, msb[i], tmp)
-				acc = tmp
-			}
-		}
-		s[b] = acc
-	}
-
-	// 2. Logarithmic Shifter Stages
-	current := in
-	for b := 0; b < shiftBits; b++ {
-		shiftAmount := 1 << b
-		next := make([]*Wire, n)
-
-		for i := 0; i < n; i++ {
-			// If s[b] is 1, we take the value from a lower index (shifted up).
-			// If s[b] is 0, we keep the current value.
-			var shiftedVal *Wire
-			if i-shiftAmount >= 0 {
-				shiftedVal = current[i-shiftAmount]
-			} else {
-				shiftedVal = cc.ZeroWire()
-			}
-
-			out := cc.Calloc.Wire()
-			// NewMUX(cond, trueVal, falseVal, out)
-			// If bit s[b] is set, shift the value.
-			NewMUX(cc, []*Wire{s[b]}, []*Wire{shiftedVal}, []*Wire{current[i]},
-				[]*Wire{out})
-			next[i] = out
-		}
-		current = next
-	}
-
-	return current
-}
-
-// ShiftToTop2n shifts in so that its wire msb is at 2n-1.
-func ShiftToTop2n(cc *Compiler, in []*Wire, msb []*Wire, n int) []*Wire {
-	out := make([]*Wire, 2*n)
-	for i := range out {
-		out[i] = cc.ZeroWire()
-	}
-	for i := 0; i < 2*n; i++ {
-		acc := cc.ZeroWire()
-		for j := 0; j < n; j++ {
-			shift := (n - 1) - j
-			src := i - shift
-			var bit *Wire
-			if src >= 0 && src < n {
-				bit = in[src]
-			} else {
-				bit = cc.ZeroWire()
-			}
-			and := cc.Calloc.Wire()
-			cc.AddGate(cc.Calloc.BinaryGate(circuit.AND, msb[j], bit, and))
-			tmp := cc.Calloc.Wire()
-			cc.OR(acc, and, tmp)
-			acc = tmp
-		}
-		out[i] = acc
-	}
-	return out
-}
-
 // AddConstOne adds 1 to the argument a.
 func AddConstOne(cc *Compiler, a []*Wire) []*Wire {
 	one := []*Wire{cc.OneWire()}
@@ -324,11 +207,6 @@ func SubConstOne(cc *Compiler, a []*Wire) []*Wire {
 	out := cc.Calloc.Wires(types.Size(len(a)))
 	NewKoggeStoneSubtractor(cc, a, one, out)
 	return out
-}
-
-// SignBit returns the sign bit of a.
-func SignBit(a []*Wire) *Wire {
-	return a[len(a)-1]
 }
 
 // NewReciprocalROM returns an m-bit approximation of 1/bNorm_real in
