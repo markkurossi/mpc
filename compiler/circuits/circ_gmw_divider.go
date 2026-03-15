@@ -116,14 +116,11 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	var iters int
 
 	if useROM {
-		//--------------------------------------------
 		// ROM seed: m-bit reciprocal approximation of bNorm.
 		// recip ≈ 2^(m-1) / bNorm_real  in Q.(m-1) scale.
-		//--------------------------------------------
 
 		recip := NewReciprocalROM(cc, bNorm, m)
 
-		//--------------------------------------------
 		// Seed multiply step.
 		// bCurr = (bNorm_extended × recip) >> (m-1)  →  Q.(n-1) scale
 		// qCurr = (aNorm2n × recip)        >> (m-1)  →  Q.(n-1) scale
@@ -131,8 +128,6 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		// Product sizes:
 		//   bNorm (W bits) × recip (m bits) → W+m bits; we need bits [m-1 .. m-1+W]
 		//   aNorm2n (2n bits) × recip (m bits) → 2n+m bits; we need [m-1 .. m-1+2n]
-		// Copy extracted slices to fresh Calloc allocations to avoid wire aliasing.
-		//--------------------------------------------
 
 		bNormW := cc.Pad(bNorm, W)
 
@@ -153,12 +148,8 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		iters = iterationsForWidth(n)
 	}
 
-	//--------------------------------------------
 	// Goldschmidt iterations.
-	//--------------------------------------------
-
 	for i := 0; i < iters; i++ {
-
 		f := cc.Calloc.Wires(types.Size(W))
 		NewKoggeStoneSubtractor(cc, twoConst, bCurr, f)
 		fN := f[:n]
@@ -172,16 +163,10 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 		qCurr = qProd[n-1 : n-1+qWidth]
 	}
 
-	//--------------------------------------------
 	// Extract integer quotient: q = qCurr >> (n-1) = qCurr[n-1 : 2n-1].
-	// Copy to fresh wires.
-	//--------------------------------------------
-
 	q := qCurr[n-1 : 2*n-1]
 
-	//--------------------------------------------
 	// Remainder: r = a - q*b
-	//--------------------------------------------
 
 	qbLong := cc.Calloc.Wires(types.Size(2 * n))
 	NewWallaceMultiplier(cc, q, b, qbLong)
@@ -190,9 +175,7 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	r := cc.Calloc.Wires(types.Size(n))
 	NewKoggeStoneSubtractor(cc, a, qb, r)
 
-	//--------------------------------------------
 	// Correction pass 1: r < 0 → q--, r += b
-	//--------------------------------------------
 
 	rPlusB := cc.Calloc.Wires(types.Size(n))
 	NewKoggeStoneAdder(cc, r, b, rPlusB)
@@ -204,9 +187,7 @@ func NewUDividerGoldschmidtFast(cc *Compiler, a, b, qFinal, rFinal []*Wire) erro
 	NewMUX(cc, []*Wire{neg}, qMinus1, q, qCorr)
 	NewMUX(cc, []*Wire{neg}, rPlusB, r, rCorr)
 
-	//--------------------------------------------
 	// Correction pass 2: r >= b → q++, r -= b
-	//--------------------------------------------
 
 	rMinusB := cc.Calloc.Wires(types.Size(n + 1))
 	NewKoggeStoneSubtractor(cc, rCorr, b, rMinusB)
@@ -362,11 +343,9 @@ func NewReciprocalROM(cc *Compiler, bNorm []*Wire, m int) []*Wire {
 	numEntries := 1 << (m - 1) // 2^(m-1)
 	half := numEntries         // 2^(m-1), the implicit leading 1 of bNorm_top
 
-	//--------------------------------------------
 	// Build table as constant wire slices.
 	// table[i] = floor(2^(2m-2) / (half+i)), encoded as m-bit little-endian
 	// ZeroWire/OneWire constants.
-	//--------------------------------------------
 
 	table := make([][]*Wire, numEntries)
 	for i := 0; i < numEntries; i++ {
@@ -374,7 +353,6 @@ func NewReciprocalROM(cc *Compiler, bNorm []*Wire, m int) []*Wire {
 		table[i] = intToConstWires(cc, val, m)
 	}
 
-	//--------------------------------------------
 	// MUX tree.
 	// Level k uses address bit bNorm[n-m+k] to select between pairs.
 	// After m-1 levels exactly one m-bit vector remains.
@@ -382,7 +360,6 @@ func NewReciprocalROM(cc *Compiler, bNorm []*Wire, m int) []*Wire {
 	// NewMUX(cc, cond, t, f, out): cond[0]=1 → t,  cond[0]=0 → f
 	// So odd-indexed entry is t (selected when address bit=1),
 	//    even-indexed entry is f (selected when address bit=0).
-	//--------------------------------------------
 
 	current := table
 
