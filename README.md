@@ -293,6 +293,17 @@ The MPCL runtime defines the following builtin functions:
    - [x] Parsing Ed25519 MPCL files
      - [ ] local variables in for-loop unrolling
    - [ ] Compound init values must be zero-padded to full size
+ - [ ] GMW
+   - [ ] silent VOLE triple generation
+   - [ ] malicious security
+ - [ ] Arithmetic MPC backend
+ - [ ] ABY
+   - [ ] GMW -> Yao
+   - [ ] Yao -> GMW
+   - [ ] GMW -> Arithmetic
+   - [ ] Arithmetic -> GMW
+   - [ ] Yao -> Arithmetic
+   - [ ] Arithmetic -> Yao
  - [ ] Highly-Scalable Searchable Symmetric Encryption with Support
        for Boolean Queries - any linkage to MPC with this?
  - [ ] PQC
