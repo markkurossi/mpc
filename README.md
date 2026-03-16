@@ -266,7 +266,6 @@ The MPCL runtime defines the following builtin functions:
      - [x] Oblivious transfer extensions
      - [ ] SSA variable liveness analysis must be optimized
    - [ ] TLS for garbler-evaluator protocol
-   - [ ] BMR multi-party protocol
  - [ ] Compiler
    - [ ] Check that `types.Rune` is used consistently.
    - [ ] Incremental compiler
