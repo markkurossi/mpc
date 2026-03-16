@@ -7,8 +7,13 @@ import (
 	"crypto/cipher/gcm"
 )
 
-// ./garbled -e -stream -i 0x3dafba429d9eb430b422da80
-// ./garbled -stream -i    0x06a9214036b8a15b512e03d5,1,0xa0a1a2a3,0 examples/aesgcm.mpcl
+// Yao:
+//	./garbled -e -stream -i 0x3dafba429d9eb430b422da80
+//	./garbled -stream -i    0x06a9214036b8a15b512e03d5,1,0xa0a1a2a3,0 examples/aesgcm.mpcl
+//
+// GMW:
+//	./garbled -num-parties 2 -gmw 0 -i 0x06a9214036b8a15b512e03d5,1,0xa0a1a2a3,0 examples/aesgcm.mpclc
+//	./garbled -v -gmw 1 -i 0x3dafba429d9eb430b422da80 examples/aesgcm.mpclc
 
 type Garbler struct {
 	key   [16]byte
@@ -25,7 +30,7 @@ func main(g Garbler, e Evaluator) []byte {
 	var key [16]byte
 
 	for i := 0; i < len(key); i++ {
-		key[i] = g.key[i] ^ e.key[i]
+		key[i] = g.key[i] ^ e.key[i] // ^ f.key[i]
 	}
 	return gcm.SealAES128(key, g.nonce, g.plain, g.aad)
 }
