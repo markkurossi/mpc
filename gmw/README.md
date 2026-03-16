@@ -8,6 +8,19 @@
 | Batched Triples | 3.202   | 7.331   | 11.248  |
 | AND Layering    | 2.142   | 4.515   | 6.574   |
 
+# AES128-GCM -- 256 bytes plaintext, 5 bytes AAD
+
+| Network   | Ping    | Yao Stream | Yao Circ  | GMW-2     |
+| :-------- | ------: | ---------: | --------: | --------: |
+| localhost | 0.451   | 889.038ms  | 448.613ms | 979.478ms |
+| WAN       | 104.957 | 28.013s    | 5.372s    | 4m20.943s |
+
+``` text
+AND: #batches=2364, max=3286, AND/batch=288.56
+```
+
+2364 batches times 104.956ms roundtrip = 248s = 4m8s
+
 ## 2-Party Addition
 
 | Bits | GMW Depth | GMW AND Count | Yao Depth | Yao AND Count |
