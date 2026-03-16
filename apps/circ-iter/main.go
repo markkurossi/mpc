@@ -22,6 +22,7 @@ import (
 
 type result struct {
 	iter  int
+	wires int
 	stats circuit.Stats
 }
 
@@ -123,6 +124,7 @@ func main() {
 
 				ch <- &result{
 					iter:  iter,
+					wires: circ.NumWires,
 					stats: circ.Stats,
 				}
 			}
@@ -131,7 +133,7 @@ func main() {
 
 	next := *iterStart
 
-	fmt.Printf("Iter,XOR,NonXOR,Cost,Depth\n")
+	fmt.Printf("Iter,AND,XOR,Depth,Wires\n")
 
 outer:
 	for result := range ch {
@@ -141,8 +143,9 @@ outer:
 			if !ok {
 				break
 			}
-			fmt.Printf("%v,%v,%v,%v,%v\n", r.iter, r.stats.NumXOR(),
-				r.stats.NumNonXOR(), r.stats.Cost(), r.stats[circuit.NumLevels])
+			fmt.Printf("%v,%v,%v,%v,%v\n", r.iter, r.stats[circuit.AND],
+				r.stats[circuit.XOR]+r.stats[circuit.XNOR],
+				r.stats[circuit.NumLevels], r.wires)
 			if next >= *iterEnd {
 				break outer
 			}
