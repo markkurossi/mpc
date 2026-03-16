@@ -29,11 +29,13 @@ func main() {
 	numWorkers := flag.Int("workers", 8, "number of workers")
 	iterStart := flag.Int("start", 8, "iterator start value")
 	iterEnd := flag.Int("end", 1024, "iterator end value (inclusive)")
-	step := flag.Int("step", 1, "iterator step")
+	step := flag.String("step", "1", "iterator step: integer or xNum")
+	size := flag.Int("size", 1, "iterator size in bits")
 	inputs := flag.String("i", "",
 		"comma-separated list of circuit input sizes")
 	peerInputs := flag.String("pi", "",
 		"comma-separated list of peer's circuit input sizes")
+	gmw := flag.Int("gmw", -1, "semi-honest secure GMW protocol party number")
 	flag.Parse()
 
 	if len(flag.Args()) != 1 {
@@ -41,26 +43,42 @@ func main() {
 	}
 	file := flag.Args()[0]
 
-	iSizes, iIdx, err := parseInputSizes(*inputs)
+	iSizes, iIndices, err := parseInputSizes(*inputs)
 	if err != nil {
 		log.Fatal(err)
 	}
-	piSizes, piIdx, err := parseInputSizes(*peerInputs)
+	piSizes, piIndices, err := parseInputSizes(*peerInputs)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if iIdx >= 0 && piIdx >= 0 {
-		log.Fatalf("multiple iterators specified")
-	}
-	var ix, iy int
-	if iIdx >= 0 {
-		iy = 0
-		ix = iIdx
-	} else if piIdx >= 0 {
-		iy = 1
-		ix = piIdx
-	} else {
+	if len(iIndices) == 0 && len(piIndices) == 0 {
 		log.Fatal("no iterators specified")
+	}
+
+	var stepExp int
+	var stepInc int
+
+	if (*step)[0] == 'x' {
+		stepExp, err = strconv.Atoi((*step)[1:])
+		if err != nil {
+			log.Fatalf("invalid exponential step: %v", *step)
+		}
+	} else {
+		stepInc, err = strconv.Atoi(*step)
+		if err != nil {
+			log.Fatalf("invalid incremental step: %v", *step)
+		}
+	}
+
+	increment := func(value, n int) int {
+		if stepExp != 0 {
+			for range n {
+				value *= stepExp
+			}
+		} else {
+			value += n * stepInc
+		}
+		return value
 	}
 
 	results := make(map[int]*result)
@@ -68,6 +86,10 @@ func main() {
 
 	params := utils.NewParams()
 	defer params.Close()
+
+	if *gmw >= 0 {
+		params.Target = utils.TargetGMW
+	}
 
 	params.OptPruneGates = true
 
@@ -81,8 +103,15 @@ func main() {
 			inputSizes[1] = make([]int, len(piSizes))
 			copy(inputSizes[1], piSizes)
 
-			for ; iter <= *iterEnd; iter += *numWorkers * *step {
-				inputSizes[iy][ix] = iter * 8
+			for ; iter <= *iterEnd; iter = increment(iter, *numWorkers) {
+				iterBits := iter * *size
+				for _, idx := range iIndices {
+					inputSizes[0][idx] = iterBits
+				}
+				for _, idx := range piIndices {
+					inputSizes[1][idx] = iterBits
+				}
+
 				// fmt.Printf("iSizes: %v, iter=%v\n", inputSizes, iter)
 
 				circ, _, err := compiler.New(params).CompileFile(file,
@@ -97,7 +126,7 @@ func main() {
 					stats: circ.Stats,
 				}
 			}
-		}(*iterStart + i**step)
+		}(increment(*iterStart, i))
 	}
 
 	next := *iterStart
@@ -117,28 +146,24 @@ outer:
 			if next >= *iterEnd {
 				break outer
 			}
-			next += *step
+			next = increment(next, 1)
 		}
 	}
 }
 
-func parseInputSizes(tmpl string) ([]int, int, error) {
+func parseInputSizes(tmpl string) ([]int, []int, error) {
 	var result []int
-
-	index := -1
+	var indices []int
 
 	parts := strings.Split(tmpl, ",")
 	for idx, part := range parts {
 		size, err := strconv.Atoi(part)
 		if err != nil {
-			if index >= 0 {
-				return nil, -1, fmt.Errorf("multiple iterators")
-			}
-			index = idx
+			indices = append(indices, idx)
 			size = 0
 		}
 		result = append(result, size*8)
 	}
 
-	return result, index, nil
+	return result, indices, nil
 }
