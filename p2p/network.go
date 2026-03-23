@@ -53,6 +53,10 @@ func newNetwork(numParties, numConns int, listener net.Listener,
 	return nw
 }
 
+// Create initializes a P2P network for the given leader address.  The
+// numParties argument specifies the number of parties in the network.
+// The numConns argument specifies how many channels are opened
+// between parties.
 func Create(addr string, numParties, numConns int) (*Network, error) {
 	if numParties < 2 {
 		return nil, fmt.Errorf("invalid number of parties: %v", numParties)
@@ -70,6 +74,10 @@ func Create(addr string, numParties, numConns int) (*Network, error) {
 	}), nil
 }
 
+// Join connects to a P2P network managed by the leader.  The self
+// argument specifies this party's connection address.  The id
+// argument specifies the party's ID in the network.  The numConns
+// argument specifies how many channels are opened between parties.
 func Join(leader, self string, id, numConns int) (*Network, error) {
 	if id == 0 {
 		return nil, fmt.Errorf("invalid ID %v", id)
@@ -107,6 +115,7 @@ func Join(leader, self string, id, numConns int) (*Network, error) {
 	return nw, nil
 }
 
+// Close closes the P2P network.
 func (nw *Network) Close() error {
 	var err error
 
