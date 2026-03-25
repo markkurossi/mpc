@@ -33,6 +33,10 @@ type Network struct {
 	Done          chan error
 }
 
+func (nw *Network) logf(format string, a ...interface{}) {
+	fmt.Printf(format, a...)
+}
+
 func newNetwork(numParties, numConns int, listener net.Listener,
 	self *Peer) *Network {
 
@@ -94,8 +98,6 @@ func Join(leader, self string, id, numConns int) (*Network, error) {
 		Addr: self,
 	})
 
-	fmt.Printf("%v: connecting to leader %v\n", nw.Self, leader)
-
 	c, err := net.Dial("tcp", leader)
 	if err != nil {
 		nw.Close()
@@ -123,10 +125,14 @@ func (nw *Network) Close() error {
 	defer nw.m.Unlock()
 
 	for _, p := range nw.Peers {
-		p.Close()
+		if e := p.Close(); e != nil && err == nil {
+			err = e
+		}
 	}
 	if nw.listener != nil {
-		nw.listener.Close()
+		if e := nw.listener.Close(); e != nil && err == nil {
+			err = e
+		}
 	}
 
 	return err
@@ -329,29 +335,39 @@ func (nw *Network) connectPeerToLeader(leader *Peer) error {
 }
 
 func (nw *Network) dial(peer *Peer, connID int) error {
+	if connID > 0xff {
+		return fmt.Errorf("invalid connection ID %v", connID)
+	}
 	self := nw.Self
 
-	fmt.Printf("%v: dial(%v, %v)\n", self, peer, connID)
+	nw.logf("%v: dial(%v, %v)\n", self, peer, connID)
 
 	c, err := net.Dial("tcp", peer.Addr)
 	if err != nil {
 		return err
 	}
 	conn := NewConn(c)
-	magic := connMagic | connID
+	magic := connMagic | (connID & 0xff)
 	if err := conn.SendUint32(magic); err != nil {
+		conn.Close()
 		return err
 	}
 	if err := conn.SendUint32(self.ID); err != nil {
+		conn.Close()
 		return err
 	}
 	if err := conn.SendString(self.Addr); err != nil {
+		conn.Close()
 		return err
 	}
 	if err := conn.Flush(); err != nil {
+		conn.Close()
 		return err
 	}
-	peer.SetConn(connID, conn)
+	if err := peer.SetConn(connID, conn); err != nil {
+		conn.Close()
+		return err
+	}
 
 	return nil
 }
@@ -408,8 +424,8 @@ func (nw *Network) acceptConn(conn *Conn) error {
 
 	if nw.need[connID] == 0 {
 		nw.m.Unlock()
-		return fmt.Errorf("%v: too many connections for ID %v from peer %v: magic=%x",
-			nw.Self, connID, id, magic)
+		return fmt.Errorf("%v: too many connections for ID %v from peer %v",
+			nw.Self, connID, id)
 	}
 	nw.need[connID]--
 	nw.c.Broadcast()
@@ -421,6 +437,7 @@ func (nw *Network) acceptConn(conn *Conn) error {
 	}
 	peer.SetConn(connID, conn)
 
+	// XXX rethink API: addPeer vs. addConn for different use-cases
 	return nw.addPeer(peer)
 }
 
@@ -450,7 +467,7 @@ func (nw *Network) addPeer(peer *Peer) error {
 	} else {
 		nw.Peers = append(nw.Peers, peer)
 		nw.peersByID[peer.ID] = peer
-		fmt.Printf("%v: new peer %v\n", nw.Self, peer)
+		nw.logf("%v: new peer %v\n", nw.Self, peer)
 
 		sort.Slice(nw.Peers, func(i, j int) bool {
 			return nw.Peers[i].ID < nw.Peers[j].ID

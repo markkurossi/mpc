@@ -8,10 +8,12 @@ package p2p
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Peer implements a peer in the P2P network.
 type Peer struct {
+	m     sync.Mutex
 	ID    int
 	Addr  string
 	Conns []*Conn
@@ -22,14 +24,25 @@ func (p *Peer) String() string {
 }
 
 // Close closes all peer connections.
-func (p *Peer) Close() {
+func (p *Peer) Close() error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	var err error
+
 	for _, conn := range p.Conns {
-		conn.Close()
+		if e := conn.Close(); e != nil && err == nil {
+			err = e
+		}
 	}
+	return err
 }
 
 // SetConn assigns conn to connID.
 func (p *Peer) SetConn(connID int, conn *Conn) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
 	if len(p.Conns) <= connID {
 		n := make([]*Conn, connID+1)
 		copy(n, p.Conns)
