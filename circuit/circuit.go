@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
+	"sync/atomic"
 
 	"github.com/markkurossi/mpc/compiler/utils"
 	"github.com/markkurossi/tabulate"
@@ -122,6 +124,10 @@ type Circuit struct {
 	Outputs  IO
 	Gates    []Gate
 	Stats    Stats
+
+	// garblePool holds reusable scratch for Garble, lazily created on first
+	// use and scoped to this circuit so it is collected with it.
+	garblePool atomic.Pointer[sync.Pool]
 }
 
 func (c *Circuit) String() string {

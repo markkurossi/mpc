@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/markkurossi/mpc/ot"
 )
@@ -155,11 +156,72 @@ func makeLabels(rand io.Reader, r ot.Label) (ot.Wire, error) {
 	}, nil
 }
 
-// Garbled contains garbled circuit information.
+// Garbled holds garbled circuit information. When produced by Circuit.Garble,
+// Wires and Gates point into reusable scratch; call Release once the garbled
+// tables have been consumed (e.g. serialized) to return it for reuse.
 type Garbled struct {
 	R     ot.Label
 	Wires []ot.Wire
 	Gates [][]ot.Label
+
+	scratch *garbledScratch
+	pool    *sync.Pool
+}
+
+// Release returns the scratch buffers to the circuit's pool. It is optional:
+// skipping it just forgoes reuse. Idempotent; the Garbled must not be used
+// afterwards.
+func (g *Garbled) Release() {
+	if g == nil || g.pool == nil {
+		return
+	}
+	g.pool.Put(g.scratch)
+	g.scratch = nil
+	g.pool = nil
+	g.Wires = nil
+	g.Gates = nil
+}
+
+// garbledScratch holds the heap buffers reused across Garble calls. slab is
+// the backing array the per-gate table slices are carved from.
+type garbledScratch struct {
+	wires []ot.Wire
+	slab  []ot.Label
+	gates [][]ot.Label
+}
+
+// garbleScratchPool returns this circuit's scratch pool, building it on first
+// use. The pool is stored on the circuit so it lives and dies with it.
+func (c *Circuit) garbleScratchPool() *sync.Pool {
+	if p := c.garblePool.Load(); p != nil {
+		return p
+	}
+	var slabSize int
+	for i := range c.Gates {
+		switch c.Gates[i].Op {
+		case AND:
+			slabSize += 2
+		case OR:
+			slabSize += 3
+		case INV:
+			slabSize += 1
+		case XOR, XNOR:
+			// Free XOR: no garbled rows.
+		}
+	}
+	p := &sync.Pool{
+		New: func() any {
+			return &garbledScratch{
+				wires: make([]ot.Wire, c.NumWires),
+				slab:  make([]ot.Label, slabSize),
+				gates: make([][]ot.Label, c.NumGates),
+			}
+		},
+	}
+	if c.garblePool.CompareAndSwap(nil, p) {
+		return p
+	}
+	return c.garblePool.Load()
 }
 
 // Lambda returns the lambda value of the wire.
@@ -181,61 +243,75 @@ func (g *Garbled) SetLambda(wire Wire, val uint) {
 	g.Wires[wire] = w
 }
 
-// Garble garbles the circuit.
+// Garble garbles the circuit. The returned Garbled is backed by reusable
+// scratch; call Release once its tables are consumed to return it for reuse.
 func (c *Circuit) Garble(rand io.Reader, key []byte) (*Garbled, error) {
+	pool := c.garbleScratchPool()
+	scratch := pool.Get().(*garbledScratch)
+
 	// Create R.
 	r, err := ot.NewLabel(rand)
 	if err != nil {
+		pool.Put(scratch)
 		return nil, err
 	}
 	r.SetS(true)
 
-	garbled := make([][]ot.Label, c.NumGates)
-
 	alg, err := aes.NewCipher(key)
 	if err != nil {
+		pool.Put(scratch)
 		return nil, err
 	}
 
-	// Wire labels.
-	wires := make([]ot.Wire, c.NumWires)
+	wires := scratch.wires
+	slab := scratch.slab
+	gates := scratch.gates
 
-	// Assing all input wires.
+	// Assign all input wires.
 	for i := 0; i < c.Inputs.Size(); i++ {
 		w, err := makeLabels(rand, r)
 		if err != nil {
+			pool.Put(scratch)
 			return nil, err
 		}
 		wires[i] = w
 	}
 
-	// Garble gates.
+	// Each gate writes labels into a stack table; we copy into the slab.
 	var data ot.LabelData
 	var id uint32
+	slabOff := 0
+	var table [4]ot.Label
 	for i := 0; i < len(c.Gates); i++ {
 		gate := &c.Gates[i]
-		data, err := gate.garble(wires, alg, r, &id, &data)
+		start, count, err := gate.garbleInto(wires, alg, r, &id, &data, &table)
 		if err != nil {
+			pool.Put(scratch)
 			return nil, err
 		}
-		garbled[i] = data
+		if count == 0 {
+			gates[i] = nil
+			continue
+		}
+		copy(slab[slabOff:slabOff+count], table[start:start+count])
+		gates[i] = slab[slabOff : slabOff+count : slabOff+count]
+		slabOff += count
 	}
 
 	return &Garbled{
-		R:     r,
-		Wires: wires,
-		Gates: garbled,
+		R:       r,
+		Wires:   wires,
+		Gates:   gates,
+		scratch: scratch,
+		pool:    pool,
 	}, nil
 }
 
-// Garble garbles the gate and returns it labels.
-func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
-	idp *uint32, data *ot.LabelData) ([]ot.Label, error) {
+// Writes the gate's output table into the caller's buffer; returns the slice [start, start+count).
+func (g *Gate) garbleInto(wires []ot.Wire, enc cipher.Block, r ot.Label,
+	idp *uint32, data *ot.LabelData, table *[4]ot.Label) (start, count int, err error) {
 
 	var a, b, c ot.Wire
-
-	var table [4]ot.Label
-	var start, count int
 
 	// Inputs.
 	switch g.Op {
@@ -247,7 +323,7 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		a = wires[g.Input0]
 
 	default:
-		return nil, fmt.Errorf("invalid gate type %s", g.Op)
+		return 0, 0, fmt.Errorf("invalid gate type %s", g.Op)
 	}
 
 	// Output.
@@ -398,9 +474,9 @@ func (g *Gate) garble(wires []ot.Wire, enc cipher.Block, r ot.Label,
 		count = 1
 
 	default:
-		return nil, fmt.Errorf("invalid operand %s", g.Op)
+		return 0, 0, fmt.Errorf("invalid operand %s", g.Op)
 	}
 	wires[g.Output] = c
 
-	return table[start : start+count], nil
+	return start, count, nil
 }
